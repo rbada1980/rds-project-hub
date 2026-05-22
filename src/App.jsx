@@ -182,8 +182,13 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
 }
 
 // ─── Project Form ─────────────────────────────────────────────────────────────
-function ProjectForm({onSave,onClose,saving}){
-  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal});
+function ProjectForm({onSave,onClose,saving,users}){
+  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:[]});
+  function toggleUser(username){
+    sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));
+  }
+  function selectAll(){sf(p=>({...p,assigned_users:users.map(u=>u.username)}));}
+  function clearAll(){sf(p=>({...p,assigned_users:[]}));}
   return(
     <div>
       <div style={{display:"flex",gap:16}}>
@@ -198,6 +203,32 @@ function ProjectForm({onSave,onClose,saving}){
         </div>
       </div>
       <FInput label="Description" value={f.description} onChange={v=>sf(p=>({...p,description:v}))}/>
+      {/* Assign Users */}
+      <div style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Users</label>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={selectAll} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Select All</button>
+            <button onClick={clearAll} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:160,overflowY:"auto",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
+          {users.map(u=>(
+            <div key={u.id} onClick={()=>toggleUser(u.username)}
+              style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:"pointer",background:f.assigned_users.includes(u.username)?C.accent+"22":C.card,border:`1px solid ${f.assigned_users.includes(u.username)?C.accent:C.border}`}}>
+              <div style={{width:16,height:16,borderRadius:4,background:f.assigned_users.includes(u.username)?C.accent:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {f.assigned_users.includes(u.username)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+              </div>
+              <Av name={u.name} size={20}/>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{u.name}</div>
+                <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p style={{margin:"6px 0 0",fontSize:11,color:C.t3}}>{f.assigned_users.length} user{f.assigned_users.length!==1?"s":""} selected</p>
+      </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
         <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create Project"}</button>
@@ -537,6 +568,7 @@ export default function App(){
   const members=users.map(u=>u.name);
 
   const filtered=tasks.filter(t=>{
+    if(!accessibleProjects.some(p=>p.id===t.project_id))return false;
     if(activePid&&t.project_id!==activePid)return false;
     if(activeClient){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
     if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
@@ -545,7 +577,12 @@ export default function App(){
     return true;
   });
 
-  const visibleProjects=projects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
+  // Admins see all projects, others see only assigned projects
+  const accessibleProjects = me.role==="Admin"
+    ? projects
+    : projects.filter(p=>(p.assigned_users||[]).includes(me.username));
+
+  const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const done=tasks.filter(t=>isDone(t.status)).length;
   const inProg=tasks.filter(t=>t.status==="In Progress").length;
   const overdueTasks=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
@@ -593,7 +630,11 @@ export default function App(){
 
   async function saveProject(f){
     ssv(true);
-    const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description}).select().single();
+    const {data}=await supabase.from("projects").insert({
+      name:f.name,client:f.client,color:f.color,
+      deadline:f.deadline||null,description:f.description,
+      assigned_users:f.assigned_users||[]
+    }).select().single();
     if(data)sp(ps=>[...ps,data]);
     spm(false);showToast("Project created ✓");
     ssv(false);
@@ -724,10 +765,10 @@ export default function App(){
               <Stat label="In Progress"  value={inProg} sub="actively running" color={C.accent}/>
               <Stat label="Overdue"      value={overdueTasks.length} sub="need attention" color={C.red}/>
             </div>
-            <ClientOverview projects={projects} tasks={tasks} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>
+            <ClientOverview projects={accessibleProjects} tasks={tasks} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:16,marginBottom:32}}>
-              {projects.map(p=>{
+              {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length,pip=pt.filter(t=>t.status==="In Progress").length,ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
                 return(
@@ -828,7 +869,7 @@ export default function App(){
       )}
       {projModal&&(
         <Modal title="New Project" onClose={()=>spm(false)}>
-          <ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving}/>
+          <ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users}/>
         </Modal>
       )}
     </div>
