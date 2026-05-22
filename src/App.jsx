@@ -419,11 +419,14 @@ function Login({onLogin}){
     sl(false);
   }
   return(
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+    <div style={{height:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif",overflow:"auto"}}>
       <div style={{position:"fixed",top:"20%",left:"50%",transform:"translateX(-50%)",width:600,height:300,background:`radial-gradient(ellipse,${C.accent}18 0%,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{width:420,maxWidth:"94vw"}}>
         <div style={{textAlign:"center",marginBottom:36}}>
-          <div style={{width:64,height:64,borderRadius:18,background:`linear-gradient(135deg,${C.accent},${C.teal})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"#fff",margin:"0 auto 16px",letterSpacing:2}}>RDS</div>
+          <div style={{width:160,height:70,margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <img src="/logo.png" alt="RDS" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}
+              onError={e=>{e.target.style.display="none";}}/>
+          </div>
           <h1 style={{margin:0,fontSize:28,fontWeight:800,color:C.t1}}>RDS Project Hub</h1>
           <p style={{margin:"4px 0 0",color:C.t3,fontSize:12,letterSpacing:"0.12em",textTransform:"uppercase"}}>Design Engineering and Construction Services</p>
         </div>
@@ -472,6 +475,8 @@ export default function App(){
   const [uMenu,sMenu]      = useState(false);
   const [saving,ssv]       = useState(false);
   const [toast,sToast]     = useState(null);
+  const [logo,sLogo]       = useState(null);
+  const logoRef            = useRef();
 
   const today=new Date().toISOString().slice(0,10);
 
@@ -591,13 +596,24 @@ export default function App(){
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex"}}>
+    <div style={{height:"100vh",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden"}}>
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
 
-      <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,position:"sticky",top:0,height:"100vh"}}>
+      <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,height:"100vh",overflow:"hidden"}}>
+        {/* Logo area */}
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${C.accent},${C.teal})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",letterSpacing:1}}>RDS</div>
+            <div onClick={()=>logoRef.current.click()} title="Click to change logo"
+              style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
+              {logo
+                ?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                :<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>
+              }
+            </div>
+            <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+              const f=e.target.files[0];
+              if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}
+            }}/>
             <div><div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div></div>
           </div>
         </div>
@@ -658,7 +674,7 @@ export default function App(){
         </div>
       </aside>
 
-      <main style={{flex:1,padding:28,overflow:"auto"}}>
+      <main style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}}>
           <div>
             <h1 style={{margin:0,fontSize:26,fontWeight:800}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":"Task List"}</h1>
