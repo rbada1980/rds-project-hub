@@ -524,13 +524,15 @@ function Stat({label,value,sub,color=C.accent}){
 }
 
 // ─── Client Overview ──────────────────────────────────────────────────────────
-function ClientOverview({projects,tasks,onSelectClient}){
-  const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
+function ClientOverview({projects,tasks,onSelectClient,clients}){
+  const clientNames=[...new Set(projects.map(p=>p.client||"Unassigned"))].filter(c=>
+    c==="Unassigned"||clients.some(cl=>cl.name===c)
+  );
   return(
     <div style={{marginBottom:32}}>
       <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Client-wise Overview</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
-        {clients.map(client=>{
+        {clientNames.map(client=>{
           const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
           const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
           const cDone=cTasks.filter(t=>isDone(t.status)).length;
@@ -909,7 +911,9 @@ export default function App(){
               <div style={{marginTop:14,padding:"0 4px"}}>
                 <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span>
               </div>
-              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].map(client=>(
+              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(client=>
+                client==="Unassigned"||clients.some(c=>c.name===client)
+              ).map(client=>(
                 <button key={client} onClick={()=>{sac(client);sap(null);sv("kanban");}} style={sel(activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{client}</span>
@@ -972,13 +976,14 @@ export default function App(){
         {/* Dashboard */}
         {view==="dashboard"&&(
           <>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue}/>
               <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green}/>
               <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent}/>
+              <Stat label="Unassigned" value={filtered.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub="need assignment" color={C.yellow}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red}/>
             </div>
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
+            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} clients={clients} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
@@ -1014,6 +1019,39 @@ export default function App(){
                 );
               })}
             </div>
+            {/* Unassigned Tasks */}
+            {(()=>{
+              const unassigned=filtered.filter(t=>!t.assignee||t.assignee.trim()==="");
+              if(!unassigned.length)return null;
+              return(
+                <>
+                  <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>⚠ Unassigned Tasks</h2>
+                  <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+                    {unassigned.map(t=>{
+                      const pj=projects.find(p=>p.id===t.project_id);
+                      return(
+                        <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
+                          <div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/>
+                          <div style={{flex:1}}>
+                            <p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p>
+                            <p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p>
+                          </div>
+                          <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                          <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
+                          {t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}
+                          {!isClient&&(
+                            <button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>
+                              Assign →
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+
             {overdueTasks.length>0&&(
               <>
                 <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
