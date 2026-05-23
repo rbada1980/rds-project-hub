@@ -832,6 +832,17 @@ export default function App(){
     showToast("Project deleted ✓");
   }
 
+  async function editUserFn(id,f){
+    try{
+      const updates={name:f.name,role:f.role,client_name:f.client_name||""};
+      if(f.password&&f.password.trim())updates.password=f.password.trim();
+      const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();
+      if(error)throw new Error(error.message);
+      if(data)su(us=>us.map(u=>u.id===id?data:u));
+      showToast("User updated ✓");
+    }catch(e){showToast("Error: "+e.message,false);throw e;}
+  }
+
   async function addUser(f){
     try{
       const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();
@@ -1237,7 +1248,7 @@ export default function App(){
         </Modal>
       )}
       {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(
         <Modal title="Edit Project" onClose={()=>sep(null)} wide>
           <EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/>
