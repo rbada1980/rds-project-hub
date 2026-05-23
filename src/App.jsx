@@ -11,22 +11,37 @@ const C = {
   green:"#22c55e",red:"#ef4444",yellow:"#eab308",
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
-const ROLES=["Engineer","Designer","Architect","Manager","Admin"];
-const ALL_STATUSES=["To Do","To Be Started","In Progress","Review","Done","Completed"];
-const STATUS_CLR={"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
-const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
-const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
-const getStatusColor=s=>STATUS_CLR[s]||C.t3;
-const isDone=s=>s==="Done"||s==="Completed";
 
-function Av({name,size=28}){const h=name?name.charCodeAt(0)*17%360:200;return <div title={name} style={{width:size,height:size,borderRadius:"50%",background:`hsl(${h},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.4,flexShrink:0}}>{name?name[0]:"?"}</div>;}
-function Bdg({color,children}){return <span style={{background:color+"22",color,border:`1px solid ${color}44`,borderRadius:4,padding:"1px 7px",fontSize:11,fontWeight:600,textTransform:"uppercase",whiteSpace:"nowrap"}}>{children}</span>;}
-function Pb({v,color=C.accent,h=6}){return <div style={{height:h,background:C.border,borderRadius:3,overflow:"hidden"}}><div style={{width:`${v}%`,height:"100%",background:color,borderRadius:3,transition:"width .4s"}}/></div>;}
-function IBtn({icon,onClick,title,color=C.t2}){const [hov,sh]=useState(false);return <button title={title} onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)} style={{background:hov?C.border:"transparent",border:"none",cursor:"pointer",borderRadius:6,padding:"4px 6px",color:hov?C.t1:color,fontSize:15,lineHeight:1,transition:"all .15s"}}>{icon}</button>;}
-function Spinner(){return <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:40}}><div style={{width:32,height:32,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;}
+const ROLES = ["Engineer","Designer","Architect","Manager","Admin","Client"];
+const ALL_STATUSES = ["To Do","To Be Started","In Progress","Review","Done","Completed"];
+const STATUS_CLR = {"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
+const PRI_CLR = {High:C.red,Medium:C.yellow,Low:C.green};
+const PROJECT_COLORS = [C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
+const getStatusColor = s => STATUS_CLR[s]||C.t3;
+const isDone = s => s==="Done"||s==="Completed";
+
+// ─── Atoms ────────────────────────────────────────────────────────────────────
+function Av({name,size=28}){
+  const h=name?name.charCodeAt(0)*17%360:200;
+  return <div title={name} style={{width:size,height:size,borderRadius:"50%",background:`hsl(${h},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.4,flexShrink:0}}>{name?name[0]:"?"}</div>;
+}
+function Bdg({color,children}){
+  return <span style={{background:color+"22",color,border:`1px solid ${color}44`,borderRadius:4,padding:"1px 7px",fontSize:11,fontWeight:600,textTransform:"uppercase",whiteSpace:"nowrap"}}>{children}</span>;
+}
+function Pb({v,color=C.accent,h=6}){
+  return <div style={{height:h,background:C.border,borderRadius:3,overflow:"hidden"}}><div style={{width:`${v}%`,height:"100%",background:color,borderRadius:3,transition:"width .4s"}}/></div>;
+}
+function IBtn({icon,onClick,title,color=C.t2}){
+  const [hov,sh]=useState(false);
+  return <button title={title} onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)} style={{background:hov?C.border:"transparent",border:"none",cursor:"pointer",borderRadius:6,padding:"4px 6px",color:hov?C.t1:color,fontSize:15,lineHeight:1,transition:"all .15s"}}>{icon}</button>;
+}
+function Spinner(){
+  return <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:40}}><div style={{width:32,height:32,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+}
 const SBtn={background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:"inherit"};
 const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:"inherit"};
 
+// ─── Modal ────────────────────────────────────────────────────────────────────
 function Modal({title,onClose,children,wide=false}){
   return(
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
@@ -41,6 +56,7 @@ function Modal({title,onClose,children,wide=false}){
   );
 }
 
+// ─── Form Fields ──────────────────────────────────────────────────────────────
 function FInput({label,value,onChange,type="text",placeholder}){
   return(
     <div style={{marginBottom:14}}>
@@ -61,6 +77,7 @@ function FSelect({label,value,onChange,options}){
   );
 }
 
+// ─── File Upload ──────────────────────────────────────────────────────────────
 function FileUp({files,onChange}){
   const ref=useRef();
   const [drag,sd]=useState(false);
@@ -93,6 +110,7 @@ function FileUp({files,onChange}){
   );
 }
 
+// ─── Task Form ────────────────────────────────────────────────────────────────
 function TaskForm({initial={},projects,members,onSave,onClose,saving}){
   const [custom,setCustom]=useState(false);
   const [f,sf]=useState({
@@ -155,9 +173,12 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
   );
 }
 
+// ─── Project Form ─────────────────────────────────────────────────────────────
 function ProjectForm({onSave,onClose,saving,users}){
   const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:[]});
-  function toggleUser(username){sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));}
+  function toggleUser(username){
+    sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));
+  }
   return(
     <div>
       <div style={{display:"flex",gap:16}}>
@@ -188,7 +209,10 @@ function ProjectForm({onSave,onClose,saving,users}){
                 {f.assigned_users.includes(u.username)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
               </div>
               <Av name={u.name} size={20}/>
-              <div><div style={{fontSize:12,fontWeight:600,color:C.t1}}>{u.name}</div><div style={{fontSize:10,color:C.t3}}>{u.role}</div></div>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{u.name}</div>
+                <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -202,20 +226,46 @@ function ProjectForm({onSave,onClose,saving,users}){
   );
 }
 
-function UsersModal({users,currentUser,onAdd,onDelete,onClose}){
+// ─── Manage Users Modal ───────────────────────────────────────────────────────
+function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
   const [tab,st]=useState("list");
-  const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer"});
+  const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
+
+  function toggleProj(pid){
+    sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));
+  }
+
   async function add(){
     if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
-    try{await onAdd({...f,username:f.username.trim().toLowerCase(),name:f.name.trim()});sf({name:"",username:"",password:"",role:"Engineer"});se("");st("list");}
-    catch(e){se("Error: "+e.message);}
+    try{
+      const newUser=await onAdd({
+        name:f.name.trim(),
+        username:f.username.trim().toLowerCase(),
+        password:f.password,
+        role:f.role,
+        client_name:f.client_name||"",
+      });
+      // Assign user to selected projects
+      if(f.role!=="Client"&&f.assigned_projects.length>0&&newUser){
+        for(const pid of f.assigned_projects){
+          const proj=projects.find(p=>p.id===pid);
+          if(proj){
+            const updated=[...(proj.assigned_users||[]),f.username.trim().toLowerCase()];
+            await supabase.from("projects").update({assigned_users:updated}).eq("id",pid);
+          }
+        }
+      }
+      sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
+      se("");st("list");
+    }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
+
   return(
     <Modal title="Manage Users" onClose={onClose} wide>
       <div style={{display:"flex",gap:8,marginBottom:20}}>
@@ -223,18 +273,34 @@ function UsersModal({users,currentUser,onAdd,onDelete,onClose}){
           <button key={k} onClick={()=>{st(k);se("");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab===k?C.accent:C.surface,color:tab===k?"#fff":C.t2,border:`1px solid ${tab===k?C.accent:C.border}`}}>{label}</button>
         ))}
       </div>
+
       {tab==="list"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
           {users.map(u=>(
             <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px"}}>
               <Av name={u.name} size={36}/>
-              <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:C.t1}}>{u.name}</div><div style={{fontSize:11,color:C.t3}}>@{u.username}</div></div>
-              <Bdg color={u.role==="Admin"?C.accent:C.blue}>{u.role}</Bdg>
-              {u.id!==currentUser.id&&u.role!=="Admin"?<IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Remove "${u.name}"?`))onDelete(u.id);}}/>:<div style={{width:28}}/>}
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{u.name}</div>
+                <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.client_name?` · 👤 ${u.client_name}`:""}</div>
+              </div>
+              <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,maxWidth:180}}>
+                {u.role==="Client"
+                  ?<span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{u.client_name}</span>
+                  :projects.filter(p=>(p.assigned_users||[]).includes(u.username)).map(p=>(
+                    <span key={p.id} style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{p.name}</span>
+                  ))
+                }
+              </div>
+              {u.id!==currentUser.id&&u.role!=="Admin"
+                ?<IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Remove "${u.name}"?`))onDelete(u.id);}}/>
+                :<div style={{width:28}}/>
+              }
             </div>
           ))}
         </div>
       )}
+
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
@@ -245,6 +311,36 @@ function UsersModal({users,currentUser,onAdd,onDelete,onClose}){
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={ROLES}/></div>
           </div>
+
+          {f.role==="Client"?(
+            <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
+              <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access — this user will only see projects matching their client name</p>
+              <FInput label="Client Name (must match project client exactly)" value={f.client_name} onChange={s("client_name")} placeholder="e.g. Formcrete"/>
+            </div>
+          ):(
+            <div style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign to Projects</label>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>sf(p=>({...p,assigned_projects:projects.map(p=>p.id)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
+                  <button onClick={()=>sf(p=>({...p,assigned_projects:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
+                {projects.map(p=>(
+                  <div key={p.id} onClick={()=>toggleProj(p.id)}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:"pointer",background:f.assigned_projects.includes(p.id)?p.color+"22":C.card,border:`1px solid ${f.assigned_projects.includes(p.id)?p.color:C.border}`}}>
+                    <div style={{width:16,height:16,borderRadius:4,background:f.assigned_projects.includes(p.id)?p.color:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {f.assigned_projects.includes(p.id)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+                    </div>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
+                    <div style={{fontSize:12,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
             <button onClick={()=>{st("list");se("");}} style={GBtn}>Cancel</button>
@@ -256,17 +352,19 @@ function UsersModal({users,currentUser,onAdd,onDelete,onClose}){
   );
 }
 
-function KCard({task,project,onEdit,onDelete}){
+// ─── Kanban ───────────────────────────────────────────────────────────────────
+function KCard({task,project,onEdit,onDelete,readonly}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
-    <div draggable onDragStart={e=>{sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
+    <div draggable={!readonly} onDragStart={e=>{sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
       onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-      style={{background:C.card,border:`1px solid ${h?C.border:C.surface}`,borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:"grab",opacity:d?.4:1,boxShadow:h?"0 4px 16px #00000050":"none",borderLeft:`3px solid ${project?.color||C.accent}`,transition:"all .15s"}}>
+      style={{background:C.card,border:`1px solid ${h?C.border:C.surface}`,borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:readonly?"default":"grab",opacity:d?.4:1,boxShadow:h?"0 4px 16px #00000050":"none",borderLeft:`3px solid ${project?.color||C.accent}`,transition:"all .15s"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4}}>{task.title}</p>
-        <div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
-          <IBtn icon="✏️" onClick={()=>onEdit(task)}/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>
-        </div>
+        {!readonly&&<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
+          <IBtn icon="✏️" onClick={()=>onEdit(task)}/>
+          <IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>
+        </div>}
       </div>
       <p style={{margin:"4px 0 0",fontSize:11,color:C.teal}}>📁 {project?.name}</p>
       {task.client&&<p style={{margin:"2px 0 0",fontSize:11,color:C.t2}}>👤 {task.client}</p>}
@@ -284,23 +382,24 @@ function KCard({task,project,onEdit,onDelete}){
   );
 }
 
-function KCol({status,tasks,projects,onEdit,onDelete,onDrop}){
+function KCol({status,tasks,projects,onEdit,onDelete,onDrop,readonly}){
   const [ov,so]=useState(false);
   return(
-    <div onDragOver={e=>{e.preventDefault();so(true);}} onDragLeave={()=>so(false)}
-      onDrop={e=>{e.preventDefault();so(false);onDrop(e.dataTransfer.getData("tid"),status);}}
+    <div onDragOver={e=>{if(!readonly){e.preventDefault();so(true);}}} onDragLeave={()=>so(false)}
+      onDrop={e=>{e.preventDefault();so(false);if(!readonly)onDrop(e.dataTransfer.getData("tid"),status);}}
       style={{minWidth:220,flex:1,background:ov?C.surface+"88":"transparent",border:`2px dashed ${ov?getStatusColor(status):C.border}`,borderRadius:12,padding:12,transition:"all .15s"}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
         <div style={{width:8,height:8,borderRadius:"50%",background:getStatusColor(status)}}/>
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} readonly={readonly}/>)}
     </div>
   );
 }
 
-function TRow({task,project,onEdit,onDelete}){
+// ─── Task Row ─────────────────────────────────────────────────────────────────
+function TRow({task,project,onEdit,onDelete,readonly}){
   const [h,sh]=useState(false);
   const td={padding:"10px 16px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
@@ -314,11 +413,13 @@ function TRow({task,project,onEdit,onDelete}){
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
       <td style={td}><div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div></td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
-      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}><div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div></td>
+      {!readonly&&<td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}><div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div></td>}
+      {readonly&&<td style={td}/>}
     </tr>
   );
 }
 
+// ─── Stat ─────────────────────────────────────────────────────────────────────
 function Stat({label,value,sub,color=C.accent}){
   return(
     <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`}}>
@@ -329,6 +430,7 @@ function Stat({label,value,sub,color=C.accent}){
   );
 }
 
+// ─── Client Overview ──────────────────────────────────────────────────────────
 function ClientOverview({projects,tasks,onSelectClient}){
   const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
   return(
@@ -352,7 +454,10 @@ function ClientOverview({projects,tasks,onSelectClient}){
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <div style={{width:36,height:36,borderRadius:10,background:`hsl(${hue},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff"}}>{client[0]}</div>
-                  <div><div style={{fontWeight:700,fontSize:15,color:C.t1}}>{client}</div><div style={{fontSize:11,color:C.t3}}>{cProjects.length} project(s)</div></div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:15,color:C.t1}}>{client}</div>
+                    <div style={{fontSize:11,color:C.t3}}>{cProjects.length} project(s)</div>
+                  </div>
                 </div>
                 <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:6,padding:"3px 10px",fontSize:13,fontWeight:700}}>{pct}%</span>
               </div>
@@ -374,6 +479,7 @@ function ClientOverview({projects,tasks,onSelectClient}){
   );
 }
 
+// ─── Excel Export ─────────────────────────────────────────────────────────────
 function exportExcel(projects,tasks){
   const today=new Date().toISOString().slice(0,10);
   const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
@@ -406,6 +512,7 @@ function exportExcel(projects,tasks){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 
+// ─── Login ────────────────────────────────────────────────────────────────────
 function Login({onLogin}){
   const [un,sun]=useState(""),[pw,spw]=useState(""),[show,ss]=useState(false),[err,se]=useState(""),[ld,sl]=useState(false);
   async function go(){
@@ -424,8 +531,7 @@ function Login({onLogin}){
       <div style={{width:420,maxWidth:"94vw"}}>
         <div style={{textAlign:"center",marginBottom:36}}>
           <div style={{width:160,height:70,margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <img src="/logo.png" alt="RDS" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}
-              onError={e=>{e.target.style.display="none";}}/>
+            <img src="/logo.png" alt="RDS" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>
           </div>
           <h1 style={{margin:0,fontSize:28,fontWeight:800,color:C.t1}}>RDS Project Hub</h1>
           <p style={{margin:"4px 0 0",color:C.t3,fontSize:12,letterSpacing:"0.12em",textTransform:"uppercase"}}>Design Engineering and Construction Services</p>
@@ -455,6 +561,7 @@ function Login({onLogin}){
   );
 }
 
+// ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App(){
   const [me,sm]            = useState(null);
   const [users,su]         = useState([]);
@@ -479,6 +586,8 @@ export default function App(){
   const logoRef            = useRef();
 
   const today=new Date().toISOString().slice(0,10);
+  const isClient=me?.role==="Client";
+  const isAdmin=me?.role==="Admin";
 
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
 
@@ -498,17 +607,18 @@ export default function App(){
   useEffect(()=>{if(me)loadAll();},[me]);
 
   if(!me) return <Login onLogin={sm}/>;
-
   if(loading) return(
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
 
   // Role-based project access
-  const accessibleProjects = me.role==="Admin"
+  const accessibleProjects = isAdmin
     ? projects
-    : projects.filter(p=>(p.assigned_users||[]).includes(me.username));
+    : isClient
+      ? projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase())
+      : projects.filter(p=>(p.assigned_users||[]).includes(me.username));
 
   const members=users.map(u=>u.name);
 
@@ -526,9 +636,7 @@ export default function App(){
     return true;
   });
 
-  const done=tasks.filter(t=>isDone(t.status)).length;
-  const inProg=tasks.filter(t=>t.status==="In Progress").length;
-  const overdueTasks=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+  const overdueTasks=filtered.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
 
   async function saveTask(f){
@@ -580,9 +688,10 @@ export default function App(){
   }
 
   async function addUser(f){
-    const {data}=await supabase.from("users").insert(f).select().single();
+    const {data}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();
     if(data)su(us=>[...us,data]);
     showToast("User created ✓");
+    return data;
   }
 
   async function delUser(id){
@@ -599,11 +708,11 @@ export default function App(){
     <div style={{height:"100vh",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden"}}>
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
 
+      {/* Sidebar */}
       <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,height:"100vh",overflow:"hidden"}}>
-        {/* Logo area */}
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div onClick={()=>logoRef.current.click()} title="Click to change logo"
+            <div onClick={()=>logoRef.current.click()} title="Click to upload logo"
               style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
               {logo
                 ?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
@@ -614,9 +723,13 @@ export default function App(){
               const f=e.target.files[0];
               if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}
             }}/>
-            <div><div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div></div>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div>
+              <div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div>
+            </div>
           </div>
         </div>
+
         <div style={{padding:"0 12px"}}>
           {navs.map(([k,ico,lbl])=>(
             <button key={k} onClick={()=>{sv(k);if(k!=="kanban")sac(null);}} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
@@ -624,14 +737,16 @@ export default function App(){
             </button>
           ))}
         </div>
+
         <div style={{padding:"12px 12px 0"}}>
           <input placeholder="🔍 Search projects…" value={searchProj} onChange={e=>ssp(e.target.value)}
             style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
         </div>
-        <div style={{marginTop:10,padding:"0 12px",flex:1,overflow:"auto"}}>
+
+        <div style={{marginTop:10,padding:"0 12px",flex:1,overflowY:"auto"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,padding:"0 4px"}}>
             <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
-            {me.role==="Admin"&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
+            {isAdmin&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
           </div>
           <button onClick={()=>{sap(null);sac(null);}} style={sel(!activePid&&!activeClient)}>
             <div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects
@@ -642,22 +757,28 @@ export default function App(){
               <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{p.name}</span>
             </button>
           ))}
-          <div style={{marginTop:14,padding:"0 4px"}}>
-            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span>
-          </div>
-          {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].map(client=>(
-            <button key={client} onClick={()=>{sac(client);sap(null);sv("kanban");}} style={sel(activeClient===client)}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
-              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{client}</span>
-            </button>
-          ))}
+
+          {!isClient&&(
+            <>
+              <div style={{marginTop:14,padding:"0 4px"}}>
+                <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span>
+              </div>
+              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].map(client=>(
+                <button key={client} onClick={()=>{sac(client);sap(null);sv("kanban");}} style={sel(activeClient===client)}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
+                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{client}</span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
+
         <div style={{padding:"16px 16px 0",borderTop:`1px solid ${C.border}`,position:"relative"}}>
           <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit"}}>
             <Av name={me.name} size={32}/>
             <div style={{textAlign:"left",flex:1}}>
               <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{me.name}</div>
-              <div style={{fontSize:10,color:C.t3}}>{me.role}</div>
+              <div style={{fontSize:10,color:C.t3}}>{me.role}{me.client_name?` · ${me.client_name}`:""}</div>
             </div>
             <span style={{color:C.t3,fontSize:12}}>⌄</span>
           </button>
@@ -667,23 +788,24 @@ export default function App(){
                 <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}</div>
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
-              {me.role==="Admin"&&<button onClick={()=>{sum(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
+              {isAdmin&&<button onClick={()=>{sum(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
               <button onClick={()=>{sm(null);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
             </div>
           )}
         </div>
       </aside>
 
+      {/* Main */}
       <main style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
-            <h1 style={{margin:0,fontSize:26,fontWeight:800}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":"Task List"}</h1>
+            <h1 style={{margin:0,fontSize:24,fontWeight:800}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":"Task List"}</h1>
             <p style={{margin:"3px 0 0",color:C.t3,fontSize:13}}>{activeClient?`Client: ${activeClient}`:activePid?projects.find(p=>p.id===activePid)?.name:"All Projects"}</p>
           </div>
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
             {view!=="dashboard"&&(
               <>
-                <input placeholder="Search tasks…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",color:C.t1,fontSize:13,outline:"none",width:160,fontFamily:"inherit"}}/>
+                <input placeholder="Search tasks…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
                 <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Status</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
@@ -695,21 +817,24 @@ export default function App(){
               </>
             )}
             <button onClick={()=>exportExcel(accessibleProjects,filtered)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>
-            <button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>
+            {!isClient&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
 
+        {/* Dashboard */}
         {view==="dashboard"&&(
           <>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:28}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue}/>
               <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green}/>
               <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent}/>
-              <Stat label="Overdue" value={filtered.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length} sub="need attention" color={C.red}/>
+              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red}/>
             </div>
-            <ClientOverview projects={accessibleProjects} tasks={filtered} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>
+
+            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
+
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Projects Overview</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:16,marginBottom:32}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length,pip=pt.filter(t=>t.status==="In Progress").length,ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
@@ -735,10 +860,11 @@ export default function App(){
                 );
               })}
             </div>
+
             {overdueTasks.length>0&&(
               <>
                 <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-                <div style={{background:C.card,border:`1px solid ${C.red}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+                <div style={{background:C.card,border:`1px solid ${C.red}44`,borderRadius:12,overflow:"hidden",marginBottom:24}}>
                   {overdueTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
                     <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
                       <div style={{width:3,height:28,borderRadius:2,background:C.red}}/>
@@ -751,6 +877,7 @@ export default function App(){
                 </div>
               </>
             )}
+
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Recent Tasks</h2>
             <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
               {filtered.slice(-6).reverse().map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
@@ -765,6 +892,7 @@ export default function App(){
           </>
         )}
 
+        {/* Kanban */}
         {view==="kanban"&&(
           <>
             {activeClient&&(
@@ -776,12 +904,13 @@ export default function App(){
             )}
             <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
               {kanbanCols.map(col=>(
-                <KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} onDrop={dropTask}/>
+                <KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} onDrop={dropTask} readonly={isClient}/>
               ))}
             </div>
           </>
         )}
 
+        {/* List */}
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -795,7 +924,7 @@ export default function App(){
               <tbody>
                 {filtered.length===0
                   ?<tr><td colSpan={8} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>
-                  :filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask}/>)
+                  :filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={isClient}/>)
                 }
               </tbody>
             </table>
@@ -803,7 +932,8 @@ export default function App(){
         )}
       </main>
 
-      {userModal&&<UsersModal users={users} currentUser={me} onAdd={addUser} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {/* Modals */}
+      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} onAdd={addUser} onDelete={delUser} onClose={()=>sum(false)}/>}
       {taskModal&&(
         <Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide>
           <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
