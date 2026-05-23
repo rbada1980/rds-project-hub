@@ -12,6 +12,7 @@ const C = {
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
 const ROLES=["Engineer","Designer","Architect","Manager","Admin","Client"];
+const SUPER_ADMIN="ramesh"; // Only this user can edit/delete admin users
 const ALL_STATUSES=["To Do","To Be Started","In Progress","Review","Done","Completed"];
 const STATUS_CLR={"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
@@ -116,7 +117,7 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
     project_id:initial.project_id||projects[0]?.id||"",
     custNo:"",custName:"",title:initial.title||"",client:initial.client||"",
     status:initial.status||"To Do",priority:initial.priority||"Medium",
-    assignee:initial.assignee||members[0]||"",due_date:initial.due_date||"",
+    assignee:initial.assignee||"",due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
   });
   const s=k=>v=>sf(p=>({...p,[k]:v}));
@@ -164,7 +165,12 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||!f.title.trim()} onClick={()=>onSave({...f,custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:saving?0.7:1}}>
+        <button disabled={saving||!f.title.trim()} onClick={()=>onSave({
+          ...f,
+          assignee: f.assignee||"",
+          custName:custom?f.custName:"",
+          tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)
+        })} style={{...SBtn,opacity:saving?0.7:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
@@ -200,7 +206,7 @@ function ProjectFormFields({f,sf,users,clients}){
       <FInput label="Description" value={f.description} onChange={v=>sf(p=>({...p,description:v}))}/>
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Users</label>
+          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Users <span style={{color:C.t3,fontWeight:400}}>(leave empty = unassigned)</span></label>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>sf(p=>({...p,assigned_users:users.map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
             <button onClick={()=>sf(p=>({...p,assigned_users:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
@@ -209,19 +215,26 @@ function ProjectFormFields({f,sf,users,clients}){
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:160,overflowY:"auto",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
           {users.map(u=>(
             <div key={u.id} onClick={()=>toggleUser(u.username)}
-              style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:"pointer",background:f.assigned_users.includes(u.username)?C.accent+"22":C.card,border:`1px solid ${f.assigned_users.includes(u.username)?C.accent:C.border}`}}>
+              style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:"pointer",background:f.assigned_users.includes(u.username)?C.accent+"22":C.card,border:`1px solid ${f.assigned_users.includes(u.username)?C.accent:C.border}`,transition:"all .15s"}}>
               <div style={{width:16,height:16,borderRadius:4,background:f.assigned_users.includes(u.username)?C.accent:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 {f.assigned_users.includes(u.username)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
               </div>
               <Av name={u.name} size={20}/>
-              <div>
+              <div style={{flex:1}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{u.name}</div>
                 <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
               </div>
+              {f.assigned_users.includes(u.username)&&(
+                <span title="Unassign" style={{fontSize:10,color:C.red,fontWeight:700,padding:"1px 4px",borderRadius:3,border:`1px solid ${C.red}44`,background:C.red+"11"}}>✕</span>
+              )}
             </div>
           ))}
         </div>
-        <p style={{margin:"6px 0 0",fontSize:11,color:C.t3}}>{f.assigned_users.length} user(s) selected</p>
+        <p style={{margin:"6px 0 0",fontSize:11,color:C.t3}}>
+          {f.assigned_users.length===0
+            ? <span style={{color:C.yellow}}>⚠ No users assigned — project will appear in Unassigned</span>
+            : `${f.assigned_users.length} user(s) assigned`}
+        </p>
       </div>
     </>
   );
@@ -366,28 +379,37 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose})
       </div>
       {tab==="list"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
-          {users.map(u=>(
-            <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px"}}>
-              <Av name={u.name} size={36}/>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{u.name}</div>
-                <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.client_name?` · 👤 ${u.client_name}`:""}</div>
-              </div>
-              <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,maxWidth:180}}>
-                {u.role==="Client"
-                  ?<span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{u.client_name}</span>
-                  :projects.filter(p=>(p.assigned_users||[]).includes(u.username)).map(p=>(
-                    <span key={p.id} style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{p.name}</span>
-                  ))
-                }
-              </div>
-              {u.id!==currentUser.id&&u.role!=="Admin"
-                ?<IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Remove "${u.name}"?`))onDelete(u.id);}}/>
-                :<div style={{width:28}}/>
-              }
-            </div>
-          ))}
+              {users.map(u=>{
+                const isSuperAdmin=currentUser.username===SUPER_ADMIN;
+                const canDelete=u.id!==currentUser.id&&(isSuperAdmin||u.role!=="Admin");
+                return(
+                <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px"}}>
+                  <Av name={u.name} size={36}/>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{u.name}</div>
+                      {u.username===SUPER_ADMIN&&<span style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}44`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>SUPER ADMIN</span>}
+                    </div>
+                    <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.client_name?` · 👤 ${u.client_name}`:""}</div>
+                  </div>
+                  <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4,maxWidth:180}}>
+                    {u.role==="Client"
+                      ?<span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{u.client_name}</span>
+                      :projects.filter(p=>(p.assigned_users||[]).includes(u.username)).map(p=>(
+                        <span key={p.id} style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{p.name}</span>
+                      ))
+                    }
+                  </div>
+                  {canDelete
+                    ?<IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Remove "${u.name}"?`))onDelete(u.id);}}/>
+                    :<div style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}} title={u.username===SUPER_ADMIN?"Super Admin cannot be deleted":"Only Super Admin can delete Admins"}>
+                      <span style={{fontSize:14,opacity:0.3}}>🔒</span>
+                    </div>
+                  }
+                </div>
+              );})}
+
         </div>
       )}
       {tab==="add"&&(
@@ -513,12 +535,15 @@ function TRow({task,project,onEdit,onDelete,readonly}){
 }
 
 // ─── Stat ─────────────────────────────────────────────────────────────────────
-function Stat({label,value,sub,color=C.accent}){
+function Stat({label,value,sub,color=C.accent,onClick}){
+  const [hov,sh]=useState(false);
   return(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`}}>
+    <div onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
+      style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
       <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</p>
-      <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800}}>{value}</p>
+      <p style={{margin:"8px 0 4px",color:"#ffffff",fontSize:32,fontWeight:800}}>{value}</p>
       {sub&&<p style={{margin:0,color:C.t2,fontSize:12}}>{sub}</p>}
+      {onClick&&<p style={{margin:"6px 0 0",color:color,fontSize:11,fontWeight:600}}>Click to view →</p>}
     </div>
   );
 }
@@ -529,8 +554,8 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
     c==="Unassigned"||clients.some(cl=>cl.name===c)
   );
   return(
-    <div style={{marginBottom:32}}>
-      <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Client-wise Overview</h2>
+          <div style={{marginBottom:32}}>
+      <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
         {clientNames.map(client=>{
           const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
@@ -678,7 +703,7 @@ export default function App(){
   const [filterStatus,sfs]  = useState("All");
   const [filterAssignee,sfa]= useState("All");
   const [uMenu,sMenu]       = useState(false);
-  const [saving,ssv]        = useState(false);
+  const [statModal,ssm]    = useState(null); // {title, tasks}
   const [toast,sToast]      = useState(null);
   const [logo,sLogo]        = useState(null);
   const logoRef             = useRef();
@@ -951,7 +976,7 @@ export default function App(){
       <main style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
-            <h1 style={{margin:0,fontSize:24,fontWeight:800}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":"Task List"}</h1>
+            <h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":"Task List"}</h1>
             <p style={{margin:"3px 0 0",color:C.t3,fontSize:13}}>{activeClient?`Client: ${activeClient}`:activePid?projects.find(p=>p.id===activePid)?.name:"All Projects"}</p>
           </div>
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -977,14 +1002,19 @@ export default function App(){
         {view==="dashboard"&&(
           <>
             <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue}/>
-              <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green}/>
-              <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent}/>
-              <Stat label="Unassigned" value={filtered.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub="need assignment" color={C.yellow}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red}/>
+              <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue}
+                onClick={()=>ssm({title:"All Tasks",tasks:filtered})}/>
+              <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green}
+                onClick={()=>ssm({title:"Completed Tasks",tasks:filtered.filter(t=>isDone(t.status))})}/>
+              <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent}
+                onClick={()=>ssm({title:"In Progress Tasks",tasks:filtered.filter(t=>t.status==="In Progress")})}/>
+              <Stat label="Unassigned" value={filtered.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow}
+                onClick={()=>ssm({title:"Unassigned Tasks",tasks:filtered.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
+              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red}
+                onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} clients={clients} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
-            <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Projects Overview</h2>
+            <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
@@ -1019,13 +1049,45 @@ export default function App(){
                 );
               })}
             </div>
+            {/* Unassigned Projects */}
+            {(()=>{
+              const unassignedProjects=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);
+              if(!unassignedProjects.length)return null;
+              return(
+                <>
+                  <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2>
+                  <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+                    {unassignedProjects.map(p=>{
+                      const pt=tasks.filter(t=>t.project_id===p.id);
+                      const pv=prog(p.id);
+                      return(
+                        <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
+                          <div style={{width:3,height:36,borderRadius:2,background:p.color}}/>
+                          <div style={{flex:1}}>
+                            <p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p>
+                            <p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p>
+                          </div>
+                          <Bdg color={p.color}>{pv}%</Bdg>
+                          {isAdmin&&(
+                            <button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>
+                              Assign →
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+
             {/* Unassigned Tasks */}
             {(()=>{
               const unassigned=filtered.filter(t=>!t.assignee||t.assignee.trim()==="");
               if(!unassigned.length)return null;
               return(
                 <>
-                  <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>⚠ Unassigned Tasks</h2>
+                  <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2>
                   <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
                     {unassigned.map(t=>{
                       const pj=projects.find(p=>p.id===t.project_id);
@@ -1068,7 +1130,7 @@ export default function App(){
                 </div>
               </>
             )}
-            <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Recent Tasks</h2>
+            <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
             <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
               {filtered.slice(-6).reverse().map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
                 <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
@@ -1123,6 +1185,57 @@ export default function App(){
       </main>
 
       {/* Modals */}
+      {/* Stat Task Modal */}
+      {statModal&&(
+        <Modal title={statModal.title} onClose={()=>ssm(null)} wide>
+          {statModal.tasks.length===0?(
+            <div style={{textAlign:"center",padding:32,color:C.t3}}>No tasks found.</div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:0,maxHeight:"60vh",overflowY:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead>
+                  <tr style={{background:C.surface,position:"sticky",top:0}}>
+                    {["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(
+                      <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {statModal.tasks.map(t=>{
+                    const pj=projects.find(p=>p.id===t.project_id);
+                    const today=new Date().toISOString().slice(0,10);
+                    const overdue=t.due_date&&t.due_date<today&&!isDone(t.status);
+                    return(
+                      <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                        <td style={{padding:"10px 14px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/>
+                            <span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span>
+                          </div>
+                        </td>
+                        <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td>
+                        <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td>
+                        <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                        <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td>
+                        <td style={{padding:"10px 14px"}}>
+                          {t.assignee
+                            ?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>
+                            :<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>
+                          }
+                        </td>
+                        <td style={{padding:"10px 14px"}}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{t.due_date||"—"}{overdue?" ⚠":""}</span></td>
+                        <td style={{padding:"10px 14px"}}>
+                          {!isClient&&<IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Modal>
+      )}
       {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(
