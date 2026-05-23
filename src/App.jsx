@@ -11,14 +11,13 @@ const C = {
   green:"#22c55e",red:"#ef4444",yellow:"#eab308",
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
-
-const ROLES = ["Engineer","Designer","Architect","Manager","Admin","Client"];
-const ALL_STATUSES = ["To Do","To Be Started","In Progress","Review","Done","Completed"];
-const STATUS_CLR = {"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
-const PRI_CLR = {High:C.red,Medium:C.yellow,Low:C.green};
-const PROJECT_COLORS = [C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
-const getStatusColor = s => STATUS_CLR[s]||C.t3;
-const isDone = s => s==="Done"||s==="Completed";
+const ROLES=["Engineer","Designer","Architect","Manager","Admin","Client"];
+const ALL_STATUSES=["To Do","To Be Started","In Progress","Review","Done","Completed"];
+const STATUS_CLR={"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
+const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
+const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
+const getStatusColor=s=>STATUS_CLR[s]||C.t3;
+const isDone=s=>s==="Done"||s==="Completed";
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 function Av({name,size=28}){
@@ -173,17 +172,23 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
   );
 }
 
-// ─── Project Form ─────────────────────────────────────────────────────────────
-function ProjectForm({onSave,onClose,saving,users}){
-  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:[]});
+// ─── Project Form Fields (shared) ─────────────────────────────────────────────
+function ProjectFormFields({f,sf,users,clients}){
   function toggleUser(username){
     sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));
   }
   return(
-    <div>
+    <>
       <div style={{display:"flex",gap:16}}>
         <div style={{flex:1}}><FInput label="Project Name" value={f.name} onChange={v=>sf(p=>({...p,name:v}))}/></div>
-        <div style={{flex:1}}><FInput label="Client" value={f.client} onChange={v=>sf(p=>({...p,client:v}))}/></div>
+        <div style={{flex:1,marginBottom:14}}>
+          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client</label>
+          <select value={f.client} onChange={e=>sf(p=>({...p,client:e.target.value}))}
+            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            <option value="">— Select Client —</option>
+            {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+          </select>
+        </div>
       </div>
       <FInput label="Deadline" value={f.deadline} onChange={v=>sf(p=>({...p,deadline:v}))} type="date"/>
       <div style={{marginBottom:14}}>
@@ -218,6 +223,15 @@ function ProjectForm({onSave,onClose,saving,users}){
         </div>
         <p style={{margin:"6px 0 0",fontSize:11,color:C.t3}}>{f.assigned_users.length} user(s) selected</p>
       </div>
+    </>
+  );
+}
+
+function ProjectForm({onSave,onClose,saving,users,clients}){
+  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:[]});
+  return(
+    <div>
+      <ProjectFormFields f={f} sf={sf} users={users} clients={clients}/>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
         <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create Project"}</button>
@@ -226,31 +240,109 @@ function ProjectForm({onSave,onClose,saving,users}){
   );
 }
 
-// ─── Manage Users Modal ───────────────────────────────────────────────────────
-function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
+function EditProjectForm({project,onSave,onClose,saving,users,clients}){
+  const [f,sf]=useState({
+    name:project.name||"",deadline:project.deadline||"",
+    description:project.description||"",client:project.client||"",
+    color:project.color||C.teal,assigned_users:project.assigned_users||[],
+  });
+  return(
+    <div>
+      <ProjectFormFields f={f} sf={sf} users={users} clients={clients}/>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
+        <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
+        <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Save Changes"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Clients Modal ────────────────────────────────────────────────────────────
+function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
+  const [tab,st]=useState("list");
+  const [f,sf]=useState({name:"",email:"",phone:"",address:""});
+  const [editId,sei]=useState(null);
+  const [err,se]=useState("");
+  const [saving,setSaving]=useState(false);
+  const s=k=>v=>sf(p=>({...p,[k]:v}));
+  function startEdit(c){sei(c.id);sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||""});st("add");}
+  function reset(){sei(null);sf({name:"",email:"",phone:"",address:""});se("");}
+  async function save(){
+    if(!f.name.trim()){se("Client name is required.");return;}
+    setSaving(true);
+    try{
+      if(editId){await onEdit(editId,f);}
+      else{await onAdd(f);}
+      reset();st("list");
+    }catch(e){se("Error: "+e.message);}
+    setSaving(false);
+  }
+  return(
+    <Modal title="Manage Clients" onClose={onClose} wide>
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        {[["list","🏢 All Clients"],["add",editId?"✏️ Edit Client":"➕ Add Client"]].map(([k,label])=>(
+          <button key={k} onClick={()=>{if(k==="list")reset();st(k);se("");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab===k?C.accent:C.surface,color:tab===k?"#fff":C.t2,border:`1px solid ${tab===k?C.accent:C.border}`}}>{label}</button>
+        ))}
+      </div>
+      {tab==="list"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:440,overflowY:"auto"}}>
+          {clients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients yet. Click ➕ Add Client to create one.</div>}
+          {clients.map(c=>(
+            <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px"}}>
+              <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>
+                {c.name[0]}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
+                <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                  {c.email&&<span>✉ {c.email}</span>}
+                  {c.phone&&<span>📞 {c.phone}</span>}
+                  {c.address&&<span>📍 {c.address}</span>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4}}>
+                <IBtn icon="✏️" title="Edit" onClick={()=>startEdit(c)} color={C.t2}/>
+                <IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Delete client "${c.name}"?`))onDelete(c.id);}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {tab==="add"&&(
+        <div>
+          <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="Client Name *" value={f.name} onChange={s("name")} placeholder="e.g. Formcrete"/></div>
+            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. info@formcrete.com" type="email"/></div>
+          </div>
+          <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="Phone" value={f.phone} onChange={s("phone")} placeholder="e.g. +1 234 567 8900"/></div>
+            <div style={{flex:1}}><FInput label="Address" value={f.address} onChange={s("address")} placeholder="e.g. Miami, FL"/></div>
+          </div>
+          {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
+            <button onClick={()=>{reset();st("list");}} style={GBtn}>Cancel</button>
+            <button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":editId?"Save Changes":"Add Client"}</button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ─── Users Modal ──────────────────────────────────────────────────────────────
+function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
-
-  function toggleProj(pid){
-    sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));
-  }
-
+  function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
   async function add(){
     if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
     try{
-      const newUser=await onAdd({
-        name:f.name.trim(),
-        username:f.username.trim().toLowerCase(),
-        password:f.password,
-        role:f.role,
-        client_name:f.client_name||"",
-      });
-      // Assign user to selected projects
+      const newUser=await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||""});
       if(f.role!=="Client"&&f.assigned_projects.length>0&&newUser){
         for(const pid of f.assigned_projects){
           const proj=projects.find(p=>p.id===pid);
@@ -265,7 +357,6 @@ function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
-
   return(
     <Modal title="Manage Users" onClose={onClose} wide>
       <div style={{display:"flex",gap:8,marginBottom:20}}>
@@ -273,7 +364,6 @@ function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
           <button key={k} onClick={()=>{st(k);se("");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab===k?C.accent:C.surface,color:tab===k?"#fff":C.t2,border:`1px solid ${tab===k?C.accent:C.border}`}}>{label}</button>
         ))}
       </div>
-
       {tab==="list"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
           {users.map(u=>(
@@ -300,7 +390,6 @@ function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
           ))}
         </div>
       )}
-
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
@@ -311,11 +400,17 @@ function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={ROLES}/></div>
           </div>
-
           {f.role==="Client"?(
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
               <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access — this user will only see projects matching their client name</p>
-              <FInput label="Client Name (must match project client exactly)" value={f.client_name} onChange={s("client_name")} placeholder="e.g. Formcrete"/>
+              <div style={{marginBottom:0}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
+                <select value={f.client_name} onChange={e=>s("client_name")(e.target.value)}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="">— Select Client —</option>
+                  {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
             </div>
           ):(
             <div style={{marginBottom:14}}>
@@ -340,7 +435,6 @@ function UsersModal({users,currentUser,projects,onAdd,onDelete,onClose}){
               </div>
             </div>
           )}
-
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
             <button onClick={()=>{st("list");se("");}} style={GBtn}>Cancel</button>
@@ -362,8 +456,7 @@ function KCard({task,project,onEdit,onDelete,readonly}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4}}>{task.title}</p>
         {!readonly&&<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
-          <IBtn icon="✏️" onClick={()=>onEdit(task)}/>
-          <IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>
+          <IBtn icon="✏️" onClick={()=>onEdit(task)}/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>
         </div>}
       </div>
       <p style={{margin:"4px 0 0",fontSize:11,color:C.teal}}>📁 {project?.name}</p>
@@ -381,7 +474,6 @@ function KCard({task,project,onEdit,onDelete,readonly}){
     </div>
   );
 }
-
 function KCol({status,tasks,projects,onEdit,onDelete,onDrop,readonly}){
   const [ov,so]=useState(false);
   return(
@@ -413,8 +505,9 @@ function TRow({task,project,onEdit,onDelete,readonly}){
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
       <td style={td}><div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div></td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
-      {!readonly&&<td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}><div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div></td>}
-      {readonly&&<td style={td}/>}
+      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>
+        {!readonly&&<div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div>}
+      </td>
     </tr>
   );
 }
@@ -563,27 +656,30 @@ function Login({onLogin}){
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App(){
-  const [me,sm]            = useState(null);
-  const [users,su]         = useState([]);
-  const [projects,sp]      = useState([]);
-  const [tasks,st]         = useState([]);
-  const [loading,sl]       = useState(false);
-  const [view,sv]          = useState("dashboard");
-  const [activePid,sap]    = useState(null);
-  const [activeClient,sac] = useState(null);
-  const [taskModal,stm]    = useState(false);
-  const [projModal,spm]    = useState(false);
-  const [userModal,sum]    = useState(false);
-  const [editTask,set]     = useState(null);
-  const [searchTask,sst]   = useState("");
-  const [searchProj,ssp]   = useState("");
-  const [filterStatus,sfs] = useState("All");
-  const [filterAssignee,sfa]=useState("All");
-  const [uMenu,sMenu]      = useState(false);
-  const [saving,ssv]       = useState(false);
-  const [toast,sToast]     = useState(null);
-  const [logo,sLogo]       = useState(null);
-  const logoRef            = useRef();
+  const [me,sm]             = useState(null);
+  const [users,su]          = useState([]);
+  const [projects,sp]       = useState([]);
+  const [tasks,st]          = useState([]);
+  const [clients,scl]       = useState([]);
+  const [loading,sl]        = useState(false);
+  const [view,sv]           = useState("dashboard");
+  const [activePid,sap]     = useState(null);
+  const [activeClient,sac]  = useState(null);
+  const [taskModal,stm]     = useState(false);
+  const [projModal,spm]     = useState(false);
+  const [userModal,sum]     = useState(false);
+  const [clientModal,scm]   = useState(false);
+  const [editTask,set]      = useState(null);
+  const [editProject,sep]   = useState(null);
+  const [searchTask,sst]    = useState("");
+  const [searchProj,ssp]    = useState("");
+  const [filterStatus,sfs]  = useState("All");
+  const [filterAssignee,sfa]= useState("All");
+  const [uMenu,sMenu]       = useState(false);
+  const [saving,ssv]        = useState(false);
+  const [toast,sToast]      = useState(null);
+  const [logo,sLogo]        = useState(null);
+  const logoRef             = useRef();
 
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
@@ -594,12 +690,13 @@ export default function App(){
   async function loadAll(){
     sl(true);
     try{
-      const [{data:u},{data:p},{data:t}]=await Promise.all([
+      const [{data:u},{data:p},{data:t},{data:cl}]=await Promise.all([
         supabase.from("users").select("*").order("name"),
         supabase.from("projects").select("*").order("name"),
         supabase.from("tasks").select("*").order("created_at"),
+        supabase.from("clients").select("*").order("name"),
       ]);
-      su(u||[]);sp(p||[]);st(t||[]);
+      su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
   }
@@ -613,12 +710,11 @@ export default function App(){
     </div>
   );
 
-  // Role-based project access
-  const accessibleProjects = isAdmin
-    ? projects
-    : isClient
-      ? projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase())
-      : projects.filter(p=>(p.assigned_users||[]).includes(me.username));
+  const accessibleProjects=isAdmin
+    ?projects
+    :isClient
+      ?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase())
+      :projects.filter(p=>(p.assigned_users||[]).includes(me.username));
 
   const members=users.map(u=>u.name);
 
@@ -681,23 +777,64 @@ export default function App(){
 
   async function saveProject(f){
     ssv(true);
-    const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();
-    if(data)sp(ps=>[...ps,data]);
-    spm(false);showToast("Project created ✓");
+    try{
+      const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();
+      if(data)sp(ps=>[...ps,data]);
+      spm(false);showToast("Project created ✓");
+    }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
 
+  async function updateProject(f){
+    ssv(true);
+    try{
+      const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();
+      if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));
+      sep(null);showToast("Project updated ✓");
+    }catch(e){showToast("Error: "+e.message,false);}
+    ssv(false);
+  }
+
+  async function deleteProject(id){
+    if(!window.confirm("Delete this project and all its tasks? This cannot be undone."))return;
+    await supabase.from("tasks").delete().eq("project_id",id);
+    await supabase.from("projects").delete().eq("id",id);
+    sp(ps=>ps.filter(p=>p.id!==id));
+    st(ts=>ts.filter(t=>t.project_id!==id));
+    if(activePid===id)sap(null);
+    showToast("Project deleted ✓");
+  }
+
   async function addUser(f){
-    const {data}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();
-    if(data)su(us=>[...us,data]);
-    showToast("User created ✓");
-    return data;
+    try{
+      const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();
+      if(error)throw new Error(error.message);
+      if(data)su(us=>[...us,data]);
+      showToast("User created ✓");
+      return data;
+    }catch(e){showToast("Error: "+e.message,false);throw e;}
   }
 
   async function delUser(id){
     await supabase.from("users").delete().eq("id",id);
     su(us=>us.filter(u=>u.id!==id));
     showToast("User removed ✓");
+  }
+
+  async function addClient(f){
+    const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();
+    if(data)scl(cl=>[...cl,data]);
+    showToast("Client added ✓");
+  }
+  async function editClient(id,f){
+    const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();
+    if(data)scl(cl=>cl.map(c=>c.id===id?data:c));
+    showToast("Client updated ✓");
+  }
+  async function deleteClient(id){
+    await supabase.from("clients").delete().eq("id",id);
+    scl(cl=>cl.filter(c=>c.id!==id));
+    showToast("Client deleted ✓");
   }
 
   const kanbanCols=["To Do","To Be Started","In Progress","Review","Done","Completed"];
@@ -709,8 +846,9 @@ export default function App(){
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
 
       {/* Sidebar */}
-      <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,height:"100vh",overflow:"hidden"}}>
-        <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12}}>
+      <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
+        {/* Logo */}
+        <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div onClick={()=>logoRef.current.click()} title="Click to upload logo"
               style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
@@ -730,7 +868,8 @@ export default function App(){
           </div>
         </div>
 
-        <div style={{padding:"0 12px"}}>
+        {/* Nav */}
+        <div style={{padding:"0 12px",flexShrink:0}}>
           {navs.map(([k,ico,lbl])=>(
             <button key={k} onClick={()=>{sv(k);if(k!=="kanban")sac(null);}} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
               <span style={{fontSize:16}}>{ico}</span>{lbl}
@@ -738,12 +877,14 @@ export default function App(){
           ))}
         </div>
 
-        <div style={{padding:"12px 12px 0"}}>
+        {/* Search */}
+        <div style={{padding:"12px 12px 0",flexShrink:0}}>
           <input placeholder="🔍 Search projects…" value={searchProj} onChange={e=>ssp(e.target.value)}
             style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
         </div>
 
-        <div style={{marginTop:10,padding:"0 12px",flex:1,overflowY:"auto"}}>
+        {/* Projects list — scrollable middle section */}
+        <div style={{marginTop:10,padding:"0 12px",flex:1,overflowY:"auto",minHeight:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,padding:"0 4px"}}>
             <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
             {isAdmin&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
@@ -755,9 +896,14 @@ export default function App(){
             <button key={p.id} onClick={()=>{sap(p.id);sac(null);}} style={sel(activePid===p.id)}>
               <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
               <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{p.name}</span>
+              {isAdmin&&activePid===p.id&&(
+                <div style={{display:"flex",gap:2,flexShrink:0}}>
+                  <IBtn icon="✏️" title="Edit" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
+                  <IBtn icon="🗑" title="Delete" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
+                </div>
+              )}
             </button>
           ))}
-
           {!isClient&&(
             <>
               <div style={{marginTop:14,padding:"0 4px"}}>
@@ -773,7 +919,8 @@ export default function App(){
           )}
         </div>
 
-        <div style={{padding:"16px 16px 0",borderTop:`1px solid ${C.border}`,position:"relative"}}>
+        {/* User panel — always pinned at bottom */}
+        <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,position:"relative"}}>
           <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit"}}>
             <Av name={me.name} size={32}/>
             <div style={{textAlign:"left",flex:1}}>
@@ -783,12 +930,13 @@ export default function App(){
             <span style={{color:C.t3,fontSize:12}}>⌄</span>
           </button>
           {uMenu&&(
-            <div style={{position:"absolute",bottom:60,left:12,right:12,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:8,boxShadow:"0 8px 24px #00000060",zIndex:50}}>
+            <div style={{position:"absolute",bottom:64,left:12,right:12,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:8,boxShadow:"0 8px 24px #00000060",zIndex:50}}>
               <div style={{padding:"8px 10px 10px",borderBottom:`1px solid ${C.border}`,marginBottom:6}}>
                 <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}</div>
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
               {isAdmin&&<button onClick={()=>{sum(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
+              {isAdmin&&<button onClick={()=>{scm(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🏢 Manage Clients</button>}
               <button onClick={()=>{sm(null);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
             </div>
           )}
@@ -830,9 +978,7 @@ export default function App(){
               <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red}/>
             </div>
-
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
-
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
@@ -843,9 +989,17 @@ export default function App(){
                     onClick={()=>{sap(p.id);sac(null);sv("list");}}
                     onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                       <h3 style={{margin:0,fontSize:14,fontWeight:700,flex:1}}>{p.name}</h3>
-                      <Bdg color={p.color}>{pv}%</Bdg>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {isAdmin&&(
+                          <>
+                            <IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
+                            <IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
+                          </>
+                        )}
+                        <Bdg color={p.color}>{pv}%</Bdg>
+                      </div>
                     </div>
                     {p.client&&<p style={{margin:"0 0 8px",fontSize:11,color:C.teal}}>👤 {p.client}</p>}
                     <p style={{margin:"0 0 12px",color:C.t3,fontSize:12}}>{p.description}</p>
@@ -860,7 +1014,6 @@ export default function App(){
                 );
               })}
             </div>
-
             {overdueTasks.length>0&&(
               <>
                 <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
@@ -877,7 +1030,6 @@ export default function App(){
                 </div>
               </>
             )}
-
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700}}>Recent Tasks</h2>
             <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
               {filtered.slice(-6).reverse().map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
@@ -933,7 +1085,13 @@ export default function App(){
       </main>
 
       {/* Modals */}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} onAdd={addUser} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
+      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {editProject&&(
+        <Modal title="Edit Project" onClose={()=>sep(null)} wide>
+          <EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/>
+        </Modal>
+      )}
       {taskModal&&(
         <Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide>
           <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
@@ -941,7 +1099,7 @@ export default function App(){
       )}
       {projModal&&(
         <Modal title="New Project" onClose={()=>spm(false)}>
-          <ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users}/>
+          <ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/>
         </Modal>
       )}
     </div>
