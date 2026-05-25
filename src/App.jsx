@@ -647,7 +647,7 @@ function Login({onLogin}){
     sl(false);
   }
   return(
-    <div style={{height:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif",overflow:"auto"}}>
+    <div style={{height:"100vh",width:"100vw",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif",overflow:"auto",position:"fixed",top:0,left:0}}>
       <div style={{position:"fixed",top:"20%",left:"50%",transform:"translateX(-50%)",width:600,height:300,background:`radial-gradient(ellipse,${C.accent}18 0%,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{width:420,maxWidth:"94vw"}}>
         <div style={{textAlign:"center",marginBottom:36}}>
@@ -682,6 +682,13 @@ function Login({onLogin}){
   );
 }
 export default function App(){
+  useEffect(()=>{
+    document.body.style.margin="0";
+    document.body.style.padding="0";
+    document.body.style.overflow="hidden";
+    document.documentElement.style.margin="0";
+    document.documentElement.style.padding="0";
+  },[]);
   const [me,sm]             = useState(null);
   const [users,su]          = useState([]);
   const [projects,sp]       = useState([]);
@@ -782,9 +789,9 @@ export default function App(){
   const navs=[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
-    <div style={{height:"100vh",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden"}}>
+    <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
-      <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
+      <aside style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div onClick={()=>logoRef.current.click()} title="Click to upload logo" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
@@ -813,7 +820,7 @@ export default function App(){
           {visibleProjects.map(p=>(
             <button key={p.id} onClick={()=>{sap(p.id);sac(null);}} style={sel(activePid===p.id)}>
               <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
-              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{p.name}</span>
+              <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{p.name}</span>
               {isAdmin&&activePid===p.id&&(
                 <div style={{display:"flex",gap:2,flexShrink:0}}>
                   <IBtn icon="✏️" title="Edit" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
@@ -828,18 +835,18 @@ export default function App(){
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
                 <button key={client} onClick={()=>{sac(client);sap(null);switchView("kanban");}} style={sel(activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
-                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{client}</span>
+                  <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{client}</span>
                 </button>
               ))}
             </>
           )}
         </div>
-        <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,position:"relative"}}>
-          <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit"}}>
+        <div style={{padding:"12px 10px",borderTop:`1px solid ${C.border}`,flexShrink:0,position:"relative"}}>
+          <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",minWidth:0,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit",overflow:"hidden"}}>
             <Av name={me.name} size={32}/>
-            <div style={{textAlign:"left",flex:1}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:9,marginLeft:4}}>★</span>}</div>
-              <div style={{fontSize:10,color:C.t3}}>{me.role}{me.client_name?` · ${me.client_name}`:""}</div>
+            <div style={{textAlign:"left",flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:9,marginLeft:4}}>★</span>}</div>
+              <div style={{fontSize:10,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.role}{me.client_name?` · ${me.client_name}`:""}</div>
             </div>
             <span style={{color:C.t3,fontSize:12}}>⌄</span>
           </button>
