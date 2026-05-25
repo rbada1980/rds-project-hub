@@ -346,21 +346,9 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const [saving,setSaving]=useState(false);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
-
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-
-  function startEdit(u){
-    seu(u);
-    sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",assigned_projects:[]});
-    st("edit");se("");
-  }
-
-  function resetForm(){
-    seu(null);
-    sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
-    se("");
-  }
-
+  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",assigned_projects:[]});st("edit");se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});se("");}
   async function addUser(){
     if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
@@ -370,17 +358,13 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
       if(f.role!=="Client"&&f.assigned_projects.length>0&&newUser){
         for(const pid of f.assigned_projects){
           const proj=projects.find(p=>p.id===pid);
-          if(proj){
-            const updated=[...(proj.assigned_users||[]),f.username.trim().toLowerCase()];
-            await supabase.from("projects").update({assigned_users:updated}).eq("id",pid);
-          }
+          if(proj){const updated=[...(proj.assigned_users||[]),f.username.trim().toLowerCase()];await supabase.from("projects").update({assigned_users:updated}).eq("id",pid);}
         }
       }
       resetForm();st("list");
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
-
   async function saveEdit(){
     if(!f.name.trim()){se("Name is required.");return;}
     setSaving(true);
@@ -392,7 +376,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
-
   return(
     <Modal title="Manage Users" onClose={onClose} wide>
       <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
@@ -400,7 +383,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add User</button>
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
-
       {tab==="list"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
           {users.map(u=>(
@@ -408,10 +390,9 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
               <Av name={u.name} size={32}/>
               <div>
                 <div style={{fontSize:13,fontWeight:700,color:C.t1}}>
-                  {u.name}
-                  {u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}> ★ SUPER ADMIN</span>}
+                  {u.name}{u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}>★ SUPER ADMIN</span>}
                 </div>
-                <div style={{fontSize:11,color:C.t3}}>@{u.username}</div>
+                <div style={{fontSize:11,color:C.t3}}>@{u.username} · {u.role}{u.client_name?` · ${u.client_name}`:""}</div>
               </div>
               <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
               {u.id===currentUser.id
@@ -426,7 +407,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           ))}
         </div>
       )}
-
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
@@ -478,7 +458,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           </div>
         </div>
       )}
-
       {tab==="edit"&&editUser&&(
         <div>
           <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:20,padding:"12px 16px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`}}>
@@ -520,7 +499,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     </Modal>
   );
 }
-
 function KCard({task,project,onEdit,onDelete,readonly}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
@@ -575,16 +553,9 @@ function TRow({task,project,onEdit,onDelete,readonly}){
       <td style={td}><span style={{color:C.teal,fontSize:12}}>{task.client||"—"}</span></td>
       <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
-      <td style={td}>
-        {task.assignee
-          ?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div>
-          :<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>
-        }
-      </td>
+      <td style={td}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
-      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>
-        {!readonly&&<div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div>}
-      </td>
+      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&<div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div>}</td>
     </tr>
   );
 }
@@ -611,10 +582,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <div style={{width:36,height:36,borderRadius:10,background:`hsl(${hue},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff"}}>{client[0]}</div>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:15,color:C.t1}}>{client}</div>
-                    <div style={{fontSize:11,color:C.t3}}>{cProjects.length} project(s)</div>
-                  </div>
+                  <div><div style={{fontWeight:700,fontSize:15,color:C.t1}}>{client}</div><div style={{fontSize:11,color:C.t3}}>{cProjects.length} project(s)</div></div>
                 </div>
                 <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:6,padding:"3px 10px",fontSize:13,fontWeight:700}}>{pct}%</span>
               </div>
@@ -775,8 +743,14 @@ export default function App(){
     if(filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
   });
-  const overdueTasks=filtered.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+  const dashTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
+  const overdueTasks=dashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
+  function switchView(v){
+    sv(v);
+    if(v==="dashboard"){sst("");sfs("All");sfa("All");sac(null);}
+    if(v!=="kanban")sac(null);
+  }
   async function saveTask(f){
     ssv(true);
     try{
@@ -822,7 +796,7 @@ export default function App(){
         </div>
         <div style={{padding:"0 12px",flexShrink:0}}>
           {navs.map(([k,ico,lbl])=>(
-            <button key={k} onClick={()=>{sv(k);if(k!=="kanban")sac(null);}} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
+            <button key={k} onClick={()=>switchView(k)} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
               <span style={{fontSize:16}}>{ico}</span>{lbl}
             </button>
           ))}
@@ -851,8 +825,8 @@ export default function App(){
           {!isClient&&(
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
-              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(client=>client==="Unassigned"||clients.some(c=>c.name===client)).map(client=>(
-                <button key={client} onClick={()=>{sac(client);sap(null);sv("kanban");}} style={sel(activeClient===client)}>
+              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
+                <button key={client} onClick={()=>{sac(client);sap(null);switchView("kanban");}} style={sel(activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{client}</span>
                 </button>
@@ -864,7 +838,7 @@ export default function App(){
           <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit"}}>
             <Av name={me.name} size={32}/>
             <div style={{textAlign:"left",flex:1}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{me.name}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:9,marginLeft:4}}>★</span>}</div>
               <div style={{fontSize:10,color:C.t3}}>{me.role}{me.client_name?` · ${me.client_name}`:""}</div>
             </div>
             <span style={{color:C.t3,fontSize:12}}>⌄</span>
@@ -909,13 +883,13 @@ export default function App(){
         {view==="dashboard"&&(
           <>
             <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:filtered})}/>
-              <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:filtered.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:filtered.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Unassigned" value={filtered.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:filtered.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
+              <Stat label="Total Tasks" value={dashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:dashTasks})}/>
+              <Stat label="Completed" value={dashTasks.filter(t=>isDone(t.status)).length} sub={dashTasks.length?`${Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:dashTasks.filter(t=>isDone(t.status))})}/>
+              <Stat label="In Progress" value={dashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:dashTasks.filter(t=>t.status==="In Progress")})}/>
+              <Stat label="Unassigned" value={dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} clients={clients} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
+            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);sap(null);switchView("kanban");}}/>}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
@@ -923,7 +897,7 @@ export default function App(){
                 const pd=pt.filter(t=>isDone(t.status)).length,pip=pt.filter(t=>t.status==="In Progress").length,ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
                 return(
                   <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{sap(p.id);sac(null);sv("list");}}
+                    onClick={()=>{sap(p.id);sac(null);switchView("list");}}
                     onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
@@ -946,103 +920,28 @@ export default function App(){
                 );
               })}
             </div>
-            {(()=>{
-              const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);
-              if(!up.length)return null;
-              return(<>
-                <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2>
-                <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
-                  {up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(
-                    <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
-                      <div style={{width:3,height:36,borderRadius:2,background:p.color}}/>
-                      <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div>
-                      <Bdg color={p.color}>{pv}%</Bdg>
-                      {isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}
-                    </div>
-                  );})}
-                </div>
-              </>);
-            })()}
-            {(()=>{
-              const un=filtered.filter(t=>!t.assignee||t.assignee.trim()==="");
-              if(!un.length)return null;
-              return(<>
-                <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2>
-                <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
-                  {un.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
-                    <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
-                      <div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/>
-                      <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div>
-                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                      <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
-                      {t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}
-                      {!isClient&&<button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}
-                    </div>
-                  );})}
-                </div>
-              </>);
-            })()}
-            {overdueTasks.length>0&&(
-              <>
-                <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-                <div style={{background:C.card,border:`1px solid ${C.red}44`,borderRadius:12,overflow:"hidden",marginBottom:24}}>
-                  {overdueTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
-                    <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
-                      <div style={{width:3,height:28,borderRadius:2,background:C.red}}/>
-                      <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div>
-                      <span style={{fontSize:11,color:C.red,fontWeight:700}}>Due {t.due_date}</span>
-                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                      <Av name={t.assignee} size={24}/>
-                    </div>
-                  );})}
-                </div>
-              </>
-            )}
+            {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
+            {(()=>{const un=dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="");if(!un.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{un.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>{t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}{!isClient&&<button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
+            {overdueTasks.length>0&&(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2><div style={{background:C.card,border:`1px solid ${C.red}44`,borderRadius:12,overflow:"hidden",marginBottom:24}}>{overdueTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:C.red}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><span style={{fontSize:11,color:C.red,fontWeight:700}}>Due {t.due_date}</span><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg><Av name={t.assignee} size={24}/></div>);})}</div></>)}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
             <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-              {filtered.slice(-6).reverse().map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
-                <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
-                  <div style={{width:3,height:28,borderRadius:2,background:pj?.color||C.accent}}/>
-                  <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div>
-                  <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                  {t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}
-                </div>
-              );})}
+              {dashTasks.slice(-6).reverse().map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:pj?.color||C.accent}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>{t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}</div>);})}
             </div>
           </>
         )}
         {view==="kanban"&&(
           <>
-            {activeClient&&(
-              <div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:13,color:C.t2}}>Client filter:</span>
-                <Bdg color={C.teal}>{activeClient}</Bdg>
-                <button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button>
-              </div>
-            )}
+            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
             <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(
-                <KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} onDrop={dropTask} readonly={isClient}/>
-              ))}
+              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} onDrop={dropTask} readonly={isClient}/>))}
             </div>
           </>
         )}
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead>
-                <tr style={{background:C.surface}}>
-                  {["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(
-                    <th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length===0
-                  ?<tr><td colSpan={8} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>
-                  :filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={isClient}/>)
-                }
-              </tbody>
+              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</th>))}</tr></thead>
+              <tbody>{filtered.length===0?<tr><td colSpan={8} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={isClient}/>)}</tbody>
             </table>
           </div>
         )}
@@ -1052,29 +951,8 @@ export default function App(){
           {statModal.tasks.length===0?<div style={{textAlign:"center",padding:32,color:C.t3}}>No tasks found.</div>:(
             <div style={{maxHeight:"60vh",overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:C.surface,position:"sticky",top:0}}>
-                  {["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(
-                    <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {statModal.tasks.map(t=>{
-                    const pj=projects.find(p=>p.id===t.project_id);
-                    const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
-                    return(
-                      <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
-                        <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
-                        <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td>
-                        <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td>
-                        <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                        <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td>
-                        <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
-                        <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
-                        <td style={{padding:"10px 14px"}}>{!isClient&&<IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/>}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
+                <thead><tr style={{background:C.surface,position:"sticky",top:0}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>))}</tr></thead>
+                <tbody>{statModal.tasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const ov=t.due_date&&t.due_date<today&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td><td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td><td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td><td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td><td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td><td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td><td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td><td style={{padding:"10px 14px"}}>{!isClient&&<IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/>}</td></tr>);})}</tbody>
               </table>
             </div>
           )}
@@ -1082,21 +960,9 @@ export default function App(){
       )}
       {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(
-        <Modal title="Edit Project" onClose={()=>sep(null)} wide>
-          <EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/>
-        </Modal>
-      )}
-      {taskModal&&(
-        <Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide>
-          <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-        </Modal>
-      )}
-      {projModal&&(
-        <Modal title="New Project" onClose={()=>spm(false)}>
-          <ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/>
-        </Modal>
-      )}
+      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
+      {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
     </div>
   );
 }
