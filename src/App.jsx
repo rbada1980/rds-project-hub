@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
 const supabase = createClient(SUPA_URL, SUPA_KEY);
+const SUPER_ADMIN = "ramesh";
 
 const C = {
   bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
@@ -12,7 +13,6 @@ const C = {
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
 const ROLES=["Engineer","Designer","Architect","Manager","Admin","Client"];
-const SUPER_ADMIN="ramesh"; // Only this user can edit/delete admin users
 const ALL_STATUSES=["To Do","To Be Started","In Progress","Review","Done","Completed"];
 const STATUS_CLR={"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
@@ -20,7 +20,6 @@ const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed";
 
-// ─── Atoms ────────────────────────────────────────────────────────────────────
 function Av({name,size=28}){
   const h=name?name.charCodeAt(0)*17%360:200;
   return <div title={name} style={{width:size,height:size,borderRadius:"50%",background:`hsl(${h},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.4,flexShrink:0}}>{name?name[0]:"?"}</div>;
@@ -38,14 +37,25 @@ function IBtn({icon,onClick,title,color=C.t2}){
 function Spinner(){
   return <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:40}}><div style={{width:32,height:32,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 }
+function Stat({label,value,sub,color=C.accent,onClick}){
+  const [hov,sh]=useState(false);
+  return(
+    <div onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
+      style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
+      <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</p>
+      <p style={{margin:"8px 0 4px",color:"#ffffff",fontSize:32,fontWeight:800}}>{value}</p>
+      {sub&&<p style={{margin:0,color:C.t2,fontSize:12}}>{sub}</p>}
+      {onClick&&<p style={{margin:"6px 0 0",color:color,fontSize:11,fontWeight:600}}>Click to view →</p>}
+    </div>
+  );
+}
 const SBtn={background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:"inherit"};
 const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:"inherit"};
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
 function Modal({title,onClose,children,wide=false}){
   return(
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?820:480,maxWidth:"96vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3>
           <IBtn icon="✕" onClick={onClose}/>
@@ -55,8 +65,6 @@ function Modal({title,onClose,children,wide=false}){
     </div>
   );
 }
-
-// ─── Form Fields ──────────────────────────────────────────────────────────────
 function FInput({label,value,onChange,type="text",placeholder}){
   return(
     <div style={{marginBottom:14}}>
@@ -76,8 +84,6 @@ function FSelect({label,value,onChange,options}){
     </div>
   );
 }
-
-// ─── File Upload ──────────────────────────────────────────────────────────────
 function FileUp({files,onChange}){
   const ref=useRef();
   const [drag,sd]=useState(false);
@@ -109,8 +115,6 @@ function FileUp({files,onChange}){
     </div>
   );
 }
-
-// ─── Task Form ────────────────────────────────────────────────────────────────
 function TaskForm({initial={},projects,members,onSave,onClose,saving}){
   const [custom,setCustom]=useState(false);
   const [f,sf]=useState({
@@ -152,7 +156,16 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
         <div style={col}><FInput label="Client" value={f.client} onChange={s("client")} placeholder="Customer / client name"/></div>
       </div>
       <div style={row}>
-        <div style={col}><FSelect label="Assignee" value={f.assignee} onChange={s("assignee")} options={members}/></div>
+        <div style={col}>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Assignee</label>
+            <select value={f.assignee} onChange={e=>s("assignee")(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <option value="">— Unassigned —</option>
+              {members.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+        </div>
         <div style={col}><FSelect label="Status" value={f.status} onChange={s("status")} options={ALL_STATUSES}/></div>
       </div>
       <div style={row}>
@@ -165,20 +178,13 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||!f.title.trim()} onClick={()=>onSave({
-          ...f,
-          assignee: f.assignee||"",
-          custName:custom?f.custName:"",
-          tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)
-        })} style={{...SBtn,opacity:saving?0.7:1}}>
+        <button disabled={saving||!f.title.trim()} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:saving?0.7:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
     </div>
   );
 }
-
-// ─── Project Form Fields (shared) ─────────────────────────────────────────────
 function ProjectFormFields({f,sf,users,clients}){
   function toggleUser(username){
     sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));
@@ -225,21 +231,20 @@ function ProjectFormFields({f,sf,users,clients}){
                 <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
               </div>
               {f.assigned_users.includes(u.username)&&(
-                <span title="Unassign" style={{fontSize:10,color:C.red,fontWeight:700,padding:"1px 4px",borderRadius:3,border:`1px solid ${C.red}44`,background:C.red+"11"}}>✕</span>
+                <span style={{fontSize:10,color:C.red,fontWeight:700,padding:"1px 4px",borderRadius:3,border:`1px solid ${C.red}44`,background:C.red+"11"}}>✕</span>
               )}
             </div>
           ))}
         </div>
         <p style={{margin:"6px 0 0",fontSize:11,color:C.t3}}>
           {f.assigned_users.length===0
-            ? <span style={{color:C.yellow}}>⚠ No users assigned — project will appear in Unassigned</span>
-            : `${f.assigned_users.length} user(s) assigned`}
+            ?<span style={{color:C.yellow}}>⚠ No users assigned — project will appear in Unassigned</span>
+            :`${f.assigned_users.length} user(s) assigned`}
         </p>
       </div>
     </>
   );
 }
-
 function ProjectForm({onSave,onClose,saving,users,clients}){
   const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:[]});
   return(
@@ -252,7 +257,6 @@ function ProjectForm({onSave,onClose,saving,users,clients}){
     </div>
   );
 }
-
 function EditProjectForm({project,onSave,onClose,saving,users,clients}){
   const [f,sf]=useState({
     name:project.name||"",deadline:project.deadline||"",
@@ -269,8 +273,6 @@ function EditProjectForm({project,onSave,onClose,saving,users,clients}){
     </div>
   );
 }
-
-// ─── Clients Modal ────────────────────────────────────────────────────────────
 function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [f,sf]=useState({name:"",email:"",phone:"",address:""});
@@ -283,11 +285,8 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
     setSaving(true);
-    try{
-      if(editId){await onEdit(editId,f);}
-      else{await onAdd(f);}
-      reset();st("list");
-    }catch(e){se("Error: "+e.message);}
+    try{if(editId){await onEdit(editId,f);}else{await onAdd(f);}reset();st("list");}
+    catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
   return(
@@ -299,12 +298,10 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
       </div>
       {tab==="list"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:440,overflowY:"auto"}}>
-          {clients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients yet. Click ➕ Add Client to create one.</div>}
+          {clients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients yet.</div>}
           {clients.map(c=>(
             <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px"}}>
-              <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>
-                {c.name[0]}
-              </div>
+              <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
                 <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
@@ -341,16 +338,30 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
     </Modal>
   );
 }
-
-// ─── Users Modal ──────────────────────────────────────────────────────────────
-function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose}){
+function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
+  const [editUser,seu]=useState(null);
   const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
+  const isSuperAdmin=currentUser.username===SUPER_ADMIN;
+
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  async function add(){
+
+  function startEdit(u){
+    seu(u);
+    sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",assigned_projects:[]});
+    st("edit");se("");
+  }
+
+  function resetForm(){
+    seu(null);
+    sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
+    se("");
+  }
+
+  async function addUser(){
     if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
@@ -365,53 +376,57 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose})
           }
         }
       }
-      sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
-      se("");st("list");
+      resetForm();st("list");
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
+
+  async function saveEdit(){
+    if(!f.name.trim()){se("Name is required.");return;}
+    setSaving(true);
+    try{
+      const updates={name:f.name.trim(),role:f.role,client_name:f.client_name||""};
+      if(f.password&&f.password.trim())updates.password=f.password.trim();
+      await onEdit(editUser.id,updates);
+      resetForm();st("list");
+    }catch(e){se("Error: "+e.message);}
+    setSaving(false);
+  }
+
   return(
     <Modal title="Manage Users" onClose={onClose} wide>
-      <div style={{display:"flex",gap:8,marginBottom:20}}>
-        {[["list","👥 All Users"],["add","➕ Add User"]].map(([k,label])=>(
-          <button key={k} onClick={()=>{st(k);se("");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab===k?C.accent:C.surface,color:tab===k?"#fff":C.t2,border:`1px solid ${tab===k?C.accent:C.border}`}}>{label}</button>
-        ))}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        <button onClick={()=>{resetForm();st("list");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="list"?C.accent:C.surface,color:tab==="list"?"#fff":C.t2,border:`1px solid ${tab==="list"?C.accent:C.border}`}}>👥 All Users</button>
+        <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add User</button>
+        {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
-      {tab==="list"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
-              {users.map(u=>{
-                const isSuperAdmin=currentUser.username===SUPER_ADMIN;
-                const canDelete=u.id!==currentUser.id&&(isSuperAdmin||u.role!=="Admin");
-                return(
-                <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px"}}>
-                  <Av name={u.name} size={36}/>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{u.name}</div>
-                      {u.username===SUPER_ADMIN&&<span style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}44`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>SUPER ADMIN</span>}
-                    </div>
-                    <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.client_name?` · 👤 ${u.client_name}`:""}</div>
-                  </div>
-                  <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:4,maxWidth:180}}>
-                    {u.role==="Client"
-                      ?<span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{u.client_name}</span>
-                      :projects.filter(p=>(p.assigned_users||[]).includes(u.username)).map(p=>(
-                        <span key={p.id} style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}33`,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{p.name}</span>
-                      ))
-                    }
-                  </div>
-                  {canDelete
-                    ?<IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Remove "${u.name}"?`))onDelete(u.id);}}/>
-                    :<div style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}} title={u.username===SUPER_ADMIN?"Super Admin cannot be deleted":"Only Super Admin can delete Admins"}>
-                      <span style={{fontSize:14,opacity:0.3}}>🔒</span>
-                    </div>
-                  }
-                </div>
-              );})}
 
+      {tab==="list"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
+          {users.map(u=>(
+            <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr auto auto auto",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px"}}>
+              <Av name={u.name} size={32}/>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1}}>
+                  {u.name}
+                  {u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}> ★ SUPER ADMIN</span>}
+                </div>
+                <div style={{fontSize:11,color:C.t3}}>@{u.username}</div>
+              </div>
+              <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
+              {u.id===currentUser.id
+                ?<span style={{fontSize:18,opacity:0.3}} title="This is you">👤</span>
+                :<button onClick={()=>startEdit(u)} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
+              }
+              {u.id===currentUser.id||u.username===SUPER_ADMIN
+                ?<span style={{fontSize:18,opacity:0.3}} title="Protected">🔒</span>
+                :<button onClick={()=>{if(window.confirm("Delete "+u.name+"?"))onDelete(u.id);}} style={{background:C.red,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit"}}>🗑</button>
+              }
+            </div>
+          ))}
         </div>
       )}
+
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
@@ -420,12 +435,12 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose})
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
-            <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={ROLES}/></div>
+            <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           {f.role==="Client"?(
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
-              <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access — this user will only see projects matching their client name</p>
-              <div style={{marginBottom:0}}>
+              <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access</p>
+              <div>
                 <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
                 <select value={f.client_name} onChange={e=>s("client_name")(e.target.value)}
                   style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
@@ -450,7 +465,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose})
                     <div style={{width:16,height:16,borderRadius:4,background:f.assigned_projects.includes(p.id)?p.color:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                       {f.assigned_projects.includes(p.id)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
                     </div>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
                     <div style={{fontSize:12,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
                   </div>
                 ))}
@@ -459,8 +473,47 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose})
           )}
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
-            <button onClick={()=>{st("list");se("");}} style={GBtn}>Cancel</button>
-            <button onClick={add} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create User"}</button>
+            <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
+            <button onClick={addUser} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create User"}</button>
+          </div>
+        </div>
+      )}
+
+      {tab==="edit"&&editUser&&(
+        <div>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:20,padding:"12px 16px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`}}>
+            <Av name={editUser.name} size={40}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:700,color:C.t1}}>{editUser.name}</div>
+              <div style={{fontSize:12,color:C.t3}}>@{editUser.username} · current role: {editUser.role}</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="Full Name" value={f.name} onChange={s("name")}/></div>
+            <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
+          </div>
+          <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="New Password (leave blank to keep)" value={f.password} onChange={s("password")} type="password" placeholder="Leave blank to keep unchanged"/></div>
+            {f.role==="Client"&&(
+              <div style={{flex:1}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
+                <select value={f.client_name} onChange={e=>s("client_name")(e.target.value)}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="">— Select Client —</option>
+                  {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {f.role!==editUser.role&&(
+            <div style={{marginBottom:14,padding:"10px 14px",background:C.blue+"11",border:`1px solid ${C.blue}44`,borderRadius:8}}>
+              <p style={{margin:0,fontSize:12,color:C.blue,fontWeight:600}}>🔄 Role: <strong>{editUser.role}</strong> → <strong>{f.role}</strong></p>
+            </div>
+          )}
+          {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
+            <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
+            <button onClick={saveEdit} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Save Changes"}</button>
           </div>
         </div>
       )}
@@ -468,7 +521,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onDelete,onClose})
   );
 }
 
-// ─── Kanban ───────────────────────────────────────────────────────────────────
 function KCard({task,project,onEdit,onDelete,readonly}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
@@ -490,7 +542,7 @@ function KCard({task,project,onEdit,onDelete,readonly}){
         <Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {task.due_date&&<span style={{fontSize:10,color:C.t3}}>{task.due_date}</span>}
-          <Av name={task.assignee} size={22}/>
+          {task.assignee?<Av name={task.assignee} size={22}/>:<span style={{fontSize:10,color:C.yellow}}>Unassigned</span>}
         </div>
       </div>
     </div>
@@ -511,8 +563,6 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,readonly}){
     </div>
   );
 }
-
-// ─── Task Row ─────────────────────────────────────────────────────────────────
 function TRow({task,project,onEdit,onDelete,readonly}){
   const [h,sh]=useState(false);
   const td={padding:"10px 16px",borderBottom:`1px solid ${C.border}`};
@@ -525,7 +575,12 @@ function TRow({task,project,onEdit,onDelete,readonly}){
       <td style={td}><span style={{color:C.teal,fontSize:12}}>{task.client||"—"}</span></td>
       <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
-      <td style={td}><div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div></td>
+      <td style={td}>
+        {task.assignee
+          ?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div>
+          :<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>
+        }
+      </td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
       <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>
         {!readonly&&<div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div>}
@@ -533,28 +588,10 @@ function TRow({task,project,onEdit,onDelete,readonly}){
     </tr>
   );
 }
-
-// ─── Stat ─────────────────────────────────────────────────────────────────────
-function Stat({label,value,sub,color=C.accent,onClick}){
-  const [hov,sh]=useState(false);
-  return(
-    <div onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-      style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
-      <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</p>
-      <p style={{margin:"8px 0 4px",color:"#ffffff",fontSize:32,fontWeight:800}}>{value}</p>
-      {sub&&<p style={{margin:0,color:C.t2,fontSize:12}}>{sub}</p>}
-      {onClick&&<p style={{margin:"6px 0 0",color:color,fontSize:11,fontWeight:600}}>Click to view →</p>}
-    </div>
-  );
-}
-
-// ─── Client Overview ──────────────────────────────────────────────────────────
 function ClientOverview({projects,tasks,onSelectClient,clients}){
-  const clientNames=[...new Set(projects.map(p=>p.client||"Unassigned"))].filter(c=>
-    c==="Unassigned"||clients.some(cl=>cl.name===c)
-  );
+  const clientNames=[...new Set(projects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c));
   return(
-          <div style={{marginBottom:32}}>
+    <div style={{marginBottom:32}}>
       <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
         {clientNames.map(client=>{
@@ -598,8 +635,6 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
     </div>
   );
 }
-
-// ─── Excel Export ─────────────────────────────────────────────────────────────
 function exportExcel(projects,tasks){
   const today=new Date().toISOString().slice(0,10);
   const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
@@ -619,7 +654,7 @@ function exportExcel(projects,tasks){
       pt.forEach(t=>{
         const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
         const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"todo";
-        html+=`<tr><td>${n++}</td><td>${t.title}</td><td>${proj.name}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.priority}</td><td>${t.assignee}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td></tr>`;
+        html+=`<tr><td>${n++}</td><td>${t.title}</td><td>${proj.name}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.priority}</td><td>${t.assignee||"Unassigned"}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td></tr>`;
       });
     });
     html+=`<tr><td colspan="7"></td></tr>`;
@@ -631,8 +666,6 @@ function exportExcel(projects,tasks){
   a.download=`RDS_Report_${today}.xls`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
-
-// ─── Login ────────────────────────────────────────────────────────────────────
 function Login({onLogin}){
   const [un,sun]=useState(""),[pw,spw]=useState(""),[show,ss]=useState(false),[err,se]=useState(""),[ld,sl]=useState(false);
   async function go(){
@@ -680,8 +713,6 @@ function Login({onLogin}){
     </div>
   );
 }
-
-// ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App(){
   const [me,sm]             = useState(null);
   const [users,su]          = useState([]);
@@ -696,6 +727,7 @@ export default function App(){
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
+  const [statModal,ssm]     = useState(null);
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
   const [searchTask,sst]    = useState("");
@@ -703,17 +735,14 @@ export default function App(){
   const [filterStatus,sfs]  = useState("All");
   const [filterAssignee,sfa]= useState("All");
   const [uMenu,sMenu]       = useState(false);
-  const [statModal,ssm]    = useState(null); // {title, tasks}
+  const [saving,ssv]        = useState(false);
   const [toast,sToast]      = useState(null);
   const [logo,sLogo]        = useState(null);
   const logoRef             = useRef();
-
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
   const isAdmin=me?.role==="Admin";
-
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
-
   async function loadAll(){
     sl(true);
     try{
@@ -727,28 +756,16 @@ export default function App(){
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
   }
-
   useEffect(()=>{if(me)loadAll();},[me]);
-
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-
-  const accessibleProjects=isAdmin
-    ?projects
-    :isClient
-      ?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase())
-      :projects.filter(p=>(p.assigned_users||[]).includes(me.username));
-
+  const accessibleProjects=isAdmin?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase()):projects.filter(p=>(p.assigned_users||[]).includes(me.username));
   const members=users.map(u=>u.name);
-
-  const visibleProjects=accessibleProjects.filter(p=>
-    !searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase())
-  );
-
+  const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const filtered=tasks.filter(t=>{
     if(!accessibleProjects.some(p=>p.id===t.project_id))return false;
     if(activePid&&t.project_id!==activePid)return false;
@@ -758,155 +775,51 @@ export default function App(){
     if(filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
   });
-
   const overdueTasks=filtered.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
-
   async function saveTask(f){
     ssv(true);
     try{
       let pid=f.project_id;
       if(f.custName&&f.custName.trim()){
         const exists=projects.find(p=>p.name.toLowerCase()===f.custName.trim().toLowerCase());
-        if(!exists){
-          const {data:np}=await supabase.from("projects").insert({name:f.custName.trim(),client:f.client||"",color:PROJECT_COLORS[projects.length%PROJECT_COLORS.length],description:"Auto-created.",assigned_users:users.map(u=>u.username)}).select().single();
-          if(np){sp(ps=>[...ps,np]);pid=np.id;}
-        }else{pid=exists.id;}
+        if(!exists){const {data:np}=await supabase.from("projects").insert({name:f.custName.trim(),client:f.client||"",color:PROJECT_COLORS[projects.length%PROJECT_COLORS.length],description:"Auto-created.",assigned_users:users.map(u=>u.username)}).select().single();if(np){sp(ps=>[...ps,np]);pid=np.id;}}
+        else{pid=exists.id;}
       }
-      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee,due_date:f.due_date||null,tags:f.tags,files:f.files};
-      if(editTask){
-        const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
-        st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
-        showToast("Task updated ✓");
-      }else{
-        const {data}=await supabase.from("tasks").insert(payload).select().single();
-        if(data)st(ts=>[...ts,data]);
-        showToast("Task created ✓");
-      }
+      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files};
+      if(editTask){const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));showToast("Task updated ✓");}
+      else{const {data}=await supabase.from("tasks").insert(payload).select().single();if(data)st(ts=>[...ts,data]);showToast("Task created ✓");}
       stm(false);set(null);
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
-
-  async function delTask(id){
-    if(!window.confirm("Delete this task?"))return;
-    await supabase.from("tasks").delete().eq("id",id);
-    st(ts=>ts.filter(t=>t.id!==id));
-    showToast("Task deleted ✓");
-  }
-
-  async function dropTask(tid,ns){
-    const task=tasks.find(t=>t.id===tid);
-    if(!task||task.status===ns)return;
-    st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));
-    await supabase.from("tasks").update({status:ns}).eq("id",tid);
-  }
-
-  async function saveProject(f){
-    ssv(true);
-    try{
-      const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();
-      if(data)sp(ps=>[...ps,data]);
-      spm(false);showToast("Project created ✓");
-    }catch(e){showToast("Error: "+e.message,false);}
-    ssv(false);
-  }
-
-  async function updateProject(f){
-    ssv(true);
-    try{
-      const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();
-      if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));
-      sep(null);showToast("Project updated ✓");
-    }catch(e){showToast("Error: "+e.message,false);}
-    ssv(false);
-  }
-
-  async function deleteProject(id){
-    if(!window.confirm("Delete this project and all its tasks? This cannot be undone."))return;
-    await supabase.from("tasks").delete().eq("project_id",id);
-    await supabase.from("projects").delete().eq("id",id);
-    sp(ps=>ps.filter(p=>p.id!==id));
-    st(ts=>ts.filter(t=>t.project_id!==id));
-    if(activePid===id)sap(null);
-    showToast("Project deleted ✓");
-  }
-
-  async function editUserFn(id,f){
-    try{
-      const updates={name:f.name,role:f.role,client_name:f.client_name||""};
-      if(f.password&&f.password.trim())updates.password=f.password.trim();
-      const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();
-      if(error)throw new Error(error.message);
-      if(data)su(us=>us.map(u=>u.id===id?data:u));
-      showToast("User updated ✓");
-    }catch(e){showToast("Error: "+e.message,false);throw e;}
-  }
-
-  async function addUser(f){
-    try{
-      const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();
-      if(error)throw new Error(error.message);
-      if(data)su(us=>[...us,data]);
-      showToast("User created ✓");
-      return data;
-    }catch(e){showToast("Error: "+e.message,false);throw e;}
-  }
-
-  async function delUser(id){
-    await supabase.from("users").delete().eq("id",id);
-    su(us=>us.filter(u=>u.id!==id));
-    showToast("User removed ✓");
-  }
-
-  async function addClient(f){
-    const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();
-    if(data)scl(cl=>[...cl,data]);
-    showToast("Client added ✓");
-  }
-  async function editClient(id,f){
-    const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();
-    if(data)scl(cl=>cl.map(c=>c.id===id?data:c));
-    showToast("Client updated ✓");
-  }
-  async function deleteClient(id){
-    await supabase.from("clients").delete().eq("id",id);
-    scl(cl=>cl.filter(c=>c.id!==id));
-    showToast("Client deleted ✓");
-  }
-
+  async function delTask(id){if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);}
+  async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data)sp(ps=>[...ps,data]);spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function updateProject(f){ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function deleteProject(id){if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
+  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function editUserFn(id,f){try{const updates={name:f.name,role:f.role,client_name:f.client_name||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function delUser(id){await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("User removed ✓");}
+  async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
+  async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
+  async function deleteClient(id){await supabase.from("clients").delete().eq("id",id);scl(cl=>cl.filter(c=>c.id!==id));showToast("Client deleted ✓");}
   const kanbanCols=["To Do","To Be Started","In Progress","Review","Done","Completed"];
   const navs=[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
-
   return(
     <div style={{height:"100vh",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden"}}>
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
-
-      {/* Sidebar */}
       <aside style={{width:230,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
-        {/* Logo */}
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div onClick={()=>logoRef.current.click()} title="Click to upload logo"
-              style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
-              {logo
-                ?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
-                :<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>
-              }
+            <div onClick={()=>logoRef.current.click()} title="Click to upload logo" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
+              {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>}
             </div>
-            <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
-              const f=e.target.files[0];
-              if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}
-            }}/>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div>
-              <div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div>
-            </div>
+            <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}}}/>
+            <div><div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div></div>
           </div>
         </div>
-
-        {/* Nav */}
         <div style={{padding:"0 12px",flexShrink:0}}>
           {navs.map(([k,ico,lbl])=>(
             <button key={k} onClick={()=>{sv(k);if(k!=="kanban")sac(null);}} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
@@ -914,22 +827,15 @@ export default function App(){
             </button>
           ))}
         </div>
-
-        {/* Search */}
         <div style={{padding:"12px 12px 0",flexShrink:0}}>
-          <input placeholder="🔍 Search projects…" value={searchProj} onChange={e=>ssp(e.target.value)}
-            style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+          <input placeholder="🔍 Search projects…" value={searchProj} onChange={e=>ssp(e.target.value)} style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
         </div>
-
-        {/* Projects list — scrollable middle section */}
         <div style={{marginTop:10,padding:"0 12px",flex:1,overflowY:"auto",minHeight:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,padding:"0 4px"}}>
             <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
             {isAdmin&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
           </div>
-          <button onClick={()=>{sap(null);sac(null);}} style={sel(!activePid&&!activeClient)}>
-            <div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects
-          </button>
+          <button onClick={()=>{sap(null);sac(null);}} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
           {visibleProjects.map(p=>(
             <button key={p.id} onClick={()=>{sap(p.id);sac(null);}} style={sel(activePid===p.id)}>
               <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
@@ -944,12 +850,8 @@ export default function App(){
           ))}
           {!isClient&&(
             <>
-              <div style={{marginTop:14,padding:"0 4px"}}>
-                <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span>
-              </div>
-              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(client=>
-                client==="Unassigned"||clients.some(c=>c.name===client)
-              ).map(client=>(
+              <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
+              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(client=>client==="Unassigned"||clients.some(c=>c.name===client)).map(client=>(
                 <button key={client} onClick={()=>{sac(client);sap(null);sv("kanban");}} style={sel(activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{client}</span>
@@ -958,8 +860,6 @@ export default function App(){
             </>
           )}
         </div>
-
-        {/* User panel — always pinned at bottom */}
         <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,position:"relative"}}>
           <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit"}}>
             <Av name={me.name} size={32}/>
@@ -972,7 +872,7 @@ export default function App(){
           {uMenu&&(
             <div style={{position:"absolute",bottom:64,left:12,right:12,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:8,boxShadow:"0 8px 24px #00000060",zIndex:50}}>
               <div style={{padding:"8px 10px 10px",borderBottom:`1px solid ${C.border}`,marginBottom:6}}>
-                <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}</div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★ Super Admin</span>}</div>
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
               {isAdmin&&<button onClick={()=>{sum(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
@@ -982,8 +882,6 @@ export default function App(){
           )}
         </div>
       </aside>
-
-      {/* Main */}
       <main style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
@@ -1008,21 +906,14 @@ export default function App(){
             {!isClient&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
-
-        {/* Dashboard */}
         {view==="dashboard"&&(
           <>
             <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue}
-                onClick={()=>ssm({title:"All Tasks",tasks:filtered})}/>
-              <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green}
-                onClick={()=>ssm({title:"Completed Tasks",tasks:filtered.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent}
-                onClick={()=>ssm({title:"In Progress Tasks",tasks:filtered.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Unassigned" value={filtered.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow}
-                onClick={()=>ssm({title:"Unassigned Tasks",tasks:filtered.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red}
-                onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
+              <Stat label="Total Tasks" value={filtered.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:filtered})}/>
+              <Stat label="Completed" value={filtered.filter(t=>isDone(t.status)).length} sub={filtered.length?`${Math.round(filtered.filter(t=>isDone(t.status)).length/filtered.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:filtered.filter(t=>isDone(t.status))})}/>
+              <Stat label="In Progress" value={filtered.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:filtered.filter(t=>t.status==="In Progress")})}/>
+              <Stat label="Unassigned" value={filtered.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:filtered.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
+              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={filtered} clients={clients} onSelectClient={c=>{sac(c);sap(null);sv("kanban");}}/>}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
@@ -1036,14 +927,9 @@ export default function App(){
                     onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                      <h3 style={{margin:0,fontSize:14,fontWeight:700,flex:1}}>{p.name}</h3>
+                      <h3 style={{margin:0,fontSize:14,fontWeight:700,flex:1,color:"#ffffff"}}>{p.name}</h3>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        {isAdmin&&(
-                          <>
-                            <IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
-                            <IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
-                          </>
-                        )}
+                        {isAdmin&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
                         <Bdg color={p.color}>{pv}%</Bdg>
                       </div>
                     </div>
@@ -1060,71 +946,42 @@ export default function App(){
                 );
               })}
             </div>
-            {/* Unassigned Projects */}
             {(()=>{
-              const unassignedProjects=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);
-              if(!unassignedProjects.length)return null;
-              return(
-                <>
-                  <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2>
-                  <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
-                    {unassignedProjects.map(p=>{
-                      const pt=tasks.filter(t=>t.project_id===p.id);
-                      const pv=prog(p.id);
-                      return(
-                        <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
-                          <div style={{width:3,height:36,borderRadius:2,background:p.color}}/>
-                          <div style={{flex:1}}>
-                            <p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p>
-                            <p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p>
-                          </div>
-                          <Bdg color={p.color}>{pv}%</Bdg>
-                          {isAdmin&&(
-                            <button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>
-                              Assign →
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
+              const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);
+              if(!up.length)return null;
+              return(<>
+                <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2>
+                <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+                  {up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(
+                    <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
+                      <div style={{width:3,height:36,borderRadius:2,background:p.color}}/>
+                      <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div>
+                      <Bdg color={p.color}>{pv}%</Bdg>
+                      {isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}
+                    </div>
+                  );})}
+                </div>
+              </>);
             })()}
-
-            {/* Unassigned Tasks */}
             {(()=>{
-              const unassigned=filtered.filter(t=>!t.assignee||t.assignee.trim()==="");
-              if(!unassigned.length)return null;
-              return(
-                <>
-                  <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2>
-                  <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
-                    {unassigned.map(t=>{
-                      const pj=projects.find(p=>p.id===t.project_id);
-                      return(
-                        <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
-                          <div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/>
-                          <div style={{flex:1}}>
-                            <p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p>
-                            <p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p>
-                          </div>
-                          <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                          <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
-                          {t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}
-                          {!isClient&&(
-                            <button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>
-                              Assign →
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
+              const un=filtered.filter(t=>!t.assignee||t.assignee.trim()==="");
+              if(!un.length)return null;
+              return(<>
+                <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2>
+                <div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+                  {un.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(
+                    <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
+                      <div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/>
+                      <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div>
+                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                      <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
+                      {t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}
+                      {!isClient&&<button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}
+                    </div>
+                  );})}
+                </div>
+              </>);
             })()}
-
             {overdueTasks.length>0&&(
               <>
                 <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
@@ -1148,14 +1005,12 @@ export default function App(){
                   <div style={{width:3,height:28,borderRadius:2,background:pj?.color||C.accent}}/>
                   <div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div>
                   <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                  <Av name={t.assignee} size={24}/>
+                  {t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}
                 </div>
               );})}
             </div>
           </>
         )}
-
-        {/* Kanban */}
         {view==="kanban"&&(
           <>
             {activeClient&&(
@@ -1172,8 +1027,6 @@ export default function App(){
             </div>
           </>
         )}
-
-        {/* List */}
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1194,50 +1047,30 @@ export default function App(){
           </div>
         )}
       </main>
-
-      {/* Modals */}
-      {/* Stat Task Modal */}
       {statModal&&(
         <Modal title={statModal.title} onClose={()=>ssm(null)} wide>
-          {statModal.tasks.length===0?(
-            <div style={{textAlign:"center",padding:32,color:C.t3}}>No tasks found.</div>
-          ):(
-            <div style={{display:"flex",flexDirection:"column",gap:0,maxHeight:"60vh",overflowY:"auto"}}>
+          {statModal.tasks.length===0?<div style={{textAlign:"center",padding:32,color:C.t3}}>No tasks found.</div>:(
+            <div style={{maxHeight:"60vh",overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead>
-                  <tr style={{background:C.surface,position:"sticky",top:0}}>
-                    {["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(
-                      <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+                <thead><tr style={{background:C.surface,position:"sticky",top:0}}>
+                  {["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(
+                    <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>
+                  ))}
+                </tr></thead>
                 <tbody>
                   {statModal.tasks.map(t=>{
                     const pj=projects.find(p=>p.id===t.project_id);
-                    const today=new Date().toISOString().slice(0,10);
-                    const overdue=t.due_date&&t.due_date<today&&!isDone(t.status);
+                    const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
                     return(
                       <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
-                        <td style={{padding:"10px 14px"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/>
-                            <span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span>
-                          </div>
-                        </td>
+                        <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
                         <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td>
                         <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td>
                         <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
                         <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td>
-                        <td style={{padding:"10px 14px"}}>
-                          {t.assignee
-                            ?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>
-                            :<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>
-                          }
-                        </td>
-                        <td style={{padding:"10px 14px"}}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{t.due_date||"—"}{overdue?" ⚠":""}</span></td>
-                        <td style={{padding:"10px 14px"}}>
-                          {!isClient&&<IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/>}
-                        </td>
+                        <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
+                        <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                        <td style={{padding:"10px 14px"}}>{!isClient&&<IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/>}</td>
                       </tr>
                     );
                   })}
