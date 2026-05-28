@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { notify, taskCompletedPayload, statusChangePayload, taskAssignedPayload } from "./email-notifications/notifications";
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
@@ -341,20 +342,20 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
 function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
-  const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
+  const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",email:"",client_name:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",assigned_projects:[]});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});se("");}
+  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,email:u.email||"",client_name:u.client_name||"",assigned_projects:[]});st("edit");se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"",role:"Engineer",email:"",client_name:"",assigned_projects:[]});se("");}
   async function addUser(){
     if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
     try{
-      const newUser=await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||""});
+      const newUser=await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,email:f.email||"",client_name:f.client_name||""});
       if(f.role!=="Client"&&f.assigned_projects.length>0&&newUser){
         for(const pid of f.assigned_projects){
           const proj=projects.find(p=>p.id===pid);
@@ -369,7 +370,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(!f.name.trim()){se("Name is required.");return;}
     setSaving(true);
     try{
-      const updates={name:f.name.trim(),role:f.role,client_name:f.client_name||""};
+      const updates={name:f.name.trim(),role:f.role,email:f.email||"",client_name:f.client_name||""};
       if(f.password&&f.password.trim())updates.password=f.password.trim();
       await onEdit(editUser.id,updates);
       resetForm();st("list");
@@ -393,6 +394,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                   {u.name}{u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}>★ SUPER ADMIN</span>}
                 </div>
                 <div style={{fontSize:11,color:C.t3}}>@{u.username} · {u.role}{u.client_name?` · ${u.client_name}`:""}</div>
+                {u.email&&<div style={{fontSize:11,color:C.teal,marginTop:1}}>✉ {u.email}</div>}
               </div>
               <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
               {u.id===currentUser.id
@@ -414,7 +416,10 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{flex:1}}><FInput label="Username" value={f.username} onChange={s("username")} placeholder="e.g. suresh"/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} type="email" placeholder="e.g. suresh@ecovon.in"/></div>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
+          </div>
+          <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           {f.role==="Client"?(
@@ -472,6 +477,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} type="email" placeholder="e.g. suresh@ecovon.in"/></div>
             <div style={{flex:1}}><FInput label="New Password (leave blank to keep)" value={f.password} onChange={s("password")} type="password" placeholder="Leave blank to keep unchanged"/></div>
             {f.role==="Client"&&(
               <div style={{flex:1}}>
@@ -642,7 +648,7 @@ function Login({onLogin}){
     try{
       const {data,error}=await supabase.from("users").select("*").eq("username",un.trim().toLowerCase()).eq("password",pw).single();
       if(error||!data){se("Invalid username or password.");}
-      else{onLogin(data);}
+      else{localStorage.setItem("rds_user",JSON.stringify(data));onLogin(data);}
     }catch(e){se("Connection error: "+e.message);}
     sl(false);
   }
@@ -689,7 +695,7 @@ export default function App(){
     document.documentElement.style.margin="0";
     document.documentElement.style.padding="0";
   },[]);
-  const [me,sm]             = useState(null);
+  const [me,sm] = useState(()=>{try{const s=localStorage.getItem("rds_user");return s?JSON.parse(s):null;}catch{return null;}});
   const [users,su]          = useState([]);
   const [projects,sp]       = useState([]);
   const [tasks,st]          = useState([]);
@@ -768,19 +774,59 @@ export default function App(){
         else{pid=exists.id;}
       }
       const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files};
-      if(editTask){const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));showToast("Task updated ✓");}
-      else{const {data}=await supabase.from("tasks").insert(payload).select().single();if(data)st(ts=>[...ts,data]);showToast("Task created ✓");}
+      if(editTask){
+        const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
+        st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
+        const proj=projects.find(p=>p.id===payload.project_id);
+        // ── Email notifications on task update ──────────────────
+        if(payload.status!==editTask.status){
+          notify("status_change", statusChangePayload({title:payload.title}, proj, editTask.status, payload.status, me));
+        }
+        if(isDone(payload.status)&&!isDone(editTask.status)){
+          notify("task_completed", taskCompletedPayload({title:payload.title}, proj, me));
+        }
+        if(payload.assignee&&payload.assignee!==editTask.assignee){
+          const assigneeUser=users.find(u=>u.name===payload.assignee);
+          notify("task_assigned", taskAssignedPayload({title:payload.title,due_date:payload.due_date}, proj, payload.assignee, assigneeUser?.email||"", me));
+        }
+        // ────────────────────────────────────────────────────────
+        showToast("Task updated ✓");
+      }
+      else{
+        const {data}=await supabase.from("tasks").insert(payload).select().single();
+        if(data)st(ts=>[...ts,data]);
+        const proj=projects.find(p=>p.id===payload.project_id);
+        // ── Email notification on new task assignment ────────────
+        if(payload.assignee){
+          const assigneeUser=users.find(u=>u.name===payload.assignee);
+          notify("task_assigned", taskAssignedPayload({title:payload.title,due_date:payload.due_date}, proj, payload.assignee, assigneeUser?.email||"", me));
+        }
+        // ────────────────────────────────────────────────────────
+        showToast("Task created ✓");
+      }
       stm(false);set(null);
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
   async function delTask(id){if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);}
+  async function dropTask(tid,ns){
+    const task=tasks.find(t=>t.id===tid);
+    if(!task||task.status===ns)return;
+    st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));
+    await supabase.from("tasks").update({status:ns}).eq("id",tid);
+    // ── Email notifications on kanban drag ──────────────────────
+    const proj=projects.find(p=>p.id===task.project_id);
+    notify("status_change", statusChangePayload(task, proj, task.status, ns, me));
+    if(isDone(ns)&&!isDone(task.status)){
+      notify("task_completed", taskCompletedPayload(task, proj, me));
+    }
+    // ────────────────────────────────────────────────────────────
+  }
   async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data)sp(ps=>[...ps,data]);spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
-  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
-  async function editUserFn(id,f){try{const updates={name:f.name,role:f.role,client_name:f.client_name||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,email:f.email||"",client_name:f.client_name||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function editUserFn(id,f){try{const updates={name:f.name,role:f.role,email:f.email||"",client_name:f.client_name||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("User removed ✓");}
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
@@ -858,7 +904,7 @@ export default function App(){
               </div>
               {isAdmin&&<button onClick={()=>{sum(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
               {isAdmin&&<button onClick={()=>{scm(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🏢 Manage Clients</button>}
-              <button onClick={()=>{sm(null);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
+              <button onClick={()=>{localStorage.removeItem("rds_user");sm(null);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
             </div>
           )}
         </div>
@@ -884,7 +930,7 @@ export default function App(){
               </>
             )}
             <button onClick={()=>exportExcel(accessibleProjects,filtered)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>
-            {!isClient&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
+            <button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>
           </div>
         </div>
         {view==="dashboard"&&(
@@ -910,7 +956,7 @@ export default function App(){
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                       <h3 style={{margin:0,fontSize:14,fontWeight:700,flex:1,color:"#ffffff"}}>{p.name}</h3>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        {isAdmin&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
+                        {(isAdmin||isClient)&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>{isAdmin&&<IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>}</>)}
                         <Bdg color={p.color}>{pv}%</Bdg>
                       </div>
                     </div>
@@ -940,7 +986,7 @@ export default function App(){
           <>
             {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
             <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} onDrop={dropTask} readonly={isClient}/>))}
+              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} onDrop={dropTask} readonly={false}/>))}
             </div>
           </>
         )}
@@ -948,7 +994,7 @@ export default function App(){
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={8} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={isClient}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={8} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={false}/>)}</tbody>
             </table>
           </div>
         )}
@@ -959,7 +1005,7 @@ export default function App(){
             <div style={{maxHeight:"60vh",overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead><tr style={{background:C.surface,position:"sticky",top:0}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>))}</tr></thead>
-                <tbody>{statModal.tasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const ov=t.due_date&&t.due_date<today&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td><td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td><td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td><td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td><td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td><td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td><td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td><td style={{padding:"10px 14px"}}>{!isClient&&<IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/>}</td></tr>);})}</tbody>
+                <tbody>{statModal.tasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const ov=t.due_date&&t.due_date<today&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td><td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td><td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td><td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td><td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td><td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td><td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td><td style={{padding:"10px 14px"}}><IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/></td></tr>);})}</tbody>
               </table>
             </div>
           )}
