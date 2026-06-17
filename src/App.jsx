@@ -1049,4 +1049,17 @@ export default function App(){
             <div style={{maxHeight:"60vh",overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead><tr style={{background:C.surface,position:"sticky",top:0}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>))}</tr></thead>
-                <tbody>{statModal.tasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const ov=t.due_date&&t.due_date<today&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color
+                <tbody>{statModal.tasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const ov=t.due_date&&t.due_date<today&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td><td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td><td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td><td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td><td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td><td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td><td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td><td style={{padding:"10px 14px"}}><IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/></td></tr>);})}</tbody>
+              </table>
+            </div>
+          )}
+        </Modal>
+      )}
+      {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
+      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
+      {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
+    </div>
+  );
+}
