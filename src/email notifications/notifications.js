@@ -28,9 +28,7 @@ const NOTIFY_URL  = `${SUPA_URL}/functions/v1/notify`;
  */
 export async function notify(type, data) {
   // Skip if no meaningful data
-  if (!type || !data) return;
-  // Task-based notifications require a taskName; project notifications require a projectName
-  if (type !== "project_created" && !data.taskName) return;
+  if (!type || !data?.taskName) return;
 
   try {
     await fetch(NOTIFY_URL, {
@@ -96,23 +94,6 @@ export function taskAssignedPayload(task, project, assigneeName, assigneeEmail, 
     dueDate:        task.due_date ?? "",
     description:    "",
     recipientEmail: assigneeEmail || ADMIN_EMAIL,
-  };
-}
-
-/**
- * Build payload for a newly created project.
- * @param {Object} project     - The project object returned from Supabase insert
- * @param {Object} currentUser - The logged-in user (me)
- */
-export function projectCreatedPayload(project, currentUser) {
-  return {
-    projectName:    project.name,
-    client:         project.client ?? "",
-    deadline:       project.deadline ?? "",
-    description:    project.description ?? "",
-    createdBy:      currentUser?.name ?? "Unknown",
-    createdAt:      new Date().toLocaleString("en-IN"),
-    recipientEmail: ADMIN_EMAIL,
   };
 }
 

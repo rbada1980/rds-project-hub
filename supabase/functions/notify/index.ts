@@ -64,6 +64,10 @@ serve(async (req) => {
         subject = `📋 New Task Assigned: ${data.taskName}`;
         html    = templateTaskAssigned(data);
         break;
+      case "project_created":
+        subject = `🚀 New Project Created: ${data.projectName}`;
+        html    = templateProjectCreated(data);
+        break;
       default:
         return new Response(JSON.stringify({ error: `Unknown type: ${type}` }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -175,6 +179,20 @@ function templateDeadline(d: Record<string,string>): string {
     <div class="row"><span class="lbl">Assigned to</span><span class="val">${d.assigneeName||"Unassigned"}</span></div>
     <div class="row"><span class="lbl">Due date</span><span class="val" style="color:${urgency};font-weight:700;">${d.dueDate}</span></div>
     ${d.taskUrl?`<a href="${d.taskUrl}" class="btn" style="background:${urgency};">View Task →</a>`:""}
+  `);
+}
+
+function templateProjectCreated(d: Record<string,string>): string {
+  return layout(`
+    <h2 style="margin-top:0;color:#111827;font-size:20px;">🚀 New Project Created</h2>
+    <p style="color:#4b5563;line-height:1.6;font-size:14px;">A new project has been added to <strong>${APP_NAME}</strong>.</p>
+    <hr/>
+    <div class="row"><span class="lbl">Project</span><span class="val">${d.projectName}</span></div>
+    ${d.client?`<div class="row"><span class="lbl">Client</span><span class="val">${d.client}</span></div>`:""}
+    ${d.deadline?`<div class="row"><span class="lbl">Deadline</span><span class="val">${d.deadline}</span></div>`:""}
+    ${d.description?`<div class="row"><span class="lbl">Description</span><span class="val">${d.description}</span></div>`:""}
+    <div class="row"><span class="lbl">Created by</span><span class="val">${d.createdBy||"—"}</span></div>
+    <div class="row"><span class="lbl">Created at</span><span class="val">${d.createdAt||"Just now"}</span></div>
   `);
 }
 

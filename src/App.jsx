@@ -115,16 +115,22 @@ function FileUp({files,onChange}){
     </div>
   );
 }
-function TaskForm({initial={},projects,members,onSave,onClose,saving}){
+function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving}){
   const [custom,setCustom]=useState(false);
+  const initPid=initial.project_id||projects[0]?.id||"";
+  const initClient=initial.client||(projects.find(p=>p.id===initPid)?.client||"");
   const [f,sf]=useState({
-    project_id:initial.project_id||projects[0]?.id||"",
-    custNo:"",custName:"",title:initial.title||"",client:initial.client||"",
+    project_id:initPid,
+    custNo:"",custName:"",title:initial.title||"",client:initClient,
     status:initial.status||"To Do",priority:initial.priority||"Medium",
     assignee:initial.assignee||"",due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
   });
   const s=k=>v=>sf(p=>({...p,[k]:v}));
+  function onProjectChange(pid){
+    const proj=projects.find(p=>p.id===pid);
+    sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
+  }
   const col={flex:1,minWidth:0},row={display:"flex",gap:16};
   return(
     <div>
@@ -138,7 +144,7 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
           ):(
             <div>
               <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Project</label>
-              <select value={f.project_id} onChange={e=>s("project_id")(e.target.value)}
+              <select value={f.project_id} onChange={e=>onProjectChange(e.target.value)}
                 style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                 {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -153,7 +159,14 @@ function TaskForm({initial={},projects,members,onSave,onClose,saving}){
       </div>
       <div style={row}>
         <div style={col}><FInput label="Task Title" value={f.title} onChange={s("title")} placeholder="Enter task title"/></div>
-        <div style={col}><FInput label="Client" value={f.client} onChange={s("client")} placeholder="Customer / client name"/></div>
+        <div style={col}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client</label>
+                <select value={f.client} onChange={e=>s("client")(e.target.value)}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="">— Select Client —</option>
+                  {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
       </div>
       <div style={row}>
         <div style={col}>
@@ -1022,7 +1035,7 @@ export default function App(){
       {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
-      {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
+      {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
 
             )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
