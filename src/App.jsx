@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { notify, taskCompletedPayload, statusChangePayload, taskAssignedPayload } from "./email-notifications/notifications";
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
@@ -342,20 +341,20 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
 function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
-  const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",email:"",client_name:"",assigned_projects:[]});
+  const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,email:u.email||"",client_name:u.client_name||"",assigned_projects:[]});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"",role:"Engineer",email:"",client_name:"",assigned_projects:[]});se("");}
+  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",assigned_projects:[]});st("edit");se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"",role:"Engineer",client_name:"",assigned_projects:[]});se("");}
   async function addUser(){
     if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
     try{
-      const newUser=await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,email:f.email||"",client_name:f.client_name||""});
+      const newUser=await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||""});
       if(f.role!=="Client"&&f.assigned_projects.length>0&&newUser){
         for(const pid of f.assigned_projects){
           const proj=projects.find(p=>p.id===pid);
@@ -370,7 +369,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(!f.name.trim()){se("Name is required.");return;}
     setSaving(true);
     try{
-      const updates={name:f.name.trim(),role:f.role,email:f.email||"",client_name:f.client_name||""};
+      const updates={name:f.name.trim(),role:f.role,client_name:f.client_name||""};
       if(f.password&&f.password.trim())updates.password=f.password.trim();
       await onEdit(editUser.id,updates);
       resetForm();st("list");
@@ -394,7 +393,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                   {u.name}{u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}>★ SUPER ADMIN</span>}
                 </div>
                 <div style={{fontSize:11,color:C.t3}}>@{u.username} · {u.role}{u.client_name?` · ${u.client_name}`:""}</div>
-                {u.email&&<div style={{fontSize:11,color:C.teal,marginTop:1}}>✉ {u.email}</div>}
               </div>
               <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
               {u.id===currentUser.id
@@ -416,10 +414,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{flex:1}}><FInput label="Username" value={f.username} onChange={s("username")} placeholder="e.g. suresh"/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} type="email" placeholder="e.g. suresh@ecovon.in"/></div>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
-          </div>
-          <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           {f.role==="Client"?(
@@ -477,7 +472,6 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} type="email" placeholder="e.g. suresh@ecovon.in"/></div>
             <div style={{flex:1}}><FInput label="New Password (leave blank to keep)" value={f.password} onChange={s("password")} type="password" placeholder="Leave blank to keep unchanged"/></div>
             {f.role==="Client"&&(
               <div style={{flex:1}}>
@@ -708,6 +702,7 @@ export default function App(){
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
+  const [clientDetail,scd]  = useState(null);
   const [statModal,ssm]     = useState(null);
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -774,59 +769,19 @@ export default function App(){
         else{pid=exists.id;}
       }
       const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files};
-      if(editTask){
-        const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
-        st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
-        const proj=projects.find(p=>p.id===payload.project_id);
-        // ── Email notifications on task update ──────────────────
-        if(payload.status!==editTask.status){
-          notify("status_change", statusChangePayload({title:payload.title}, proj, editTask.status, payload.status, me));
-        }
-        if(isDone(payload.status)&&!isDone(editTask.status)){
-          notify("task_completed", taskCompletedPayload({title:payload.title}, proj, me));
-        }
-        if(payload.assignee&&payload.assignee!==editTask.assignee){
-          const assigneeUser=users.find(u=>u.name===payload.assignee);
-          notify("task_assigned", taskAssignedPayload({title:payload.title,due_date:payload.due_date}, proj, payload.assignee, assigneeUser?.email||"", me));
-        }
-        // ────────────────────────────────────────────────────────
-        showToast("Task updated ✓");
-      }
-      else{
-        const {data}=await supabase.from("tasks").insert(payload).select().single();
-        if(data)st(ts=>[...ts,data]);
-        const proj=projects.find(p=>p.id===payload.project_id);
-        // ── Email notification on new task assignment ────────────
-        if(payload.assignee){
-          const assigneeUser=users.find(u=>u.name===payload.assignee);
-          notify("task_assigned", taskAssignedPayload({title:payload.title,due_date:payload.due_date}, proj, payload.assignee, assigneeUser?.email||"", me));
-        }
-        // ────────────────────────────────────────────────────────
-        showToast("Task created ✓");
-      }
+      if(editTask){const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));showToast("Task updated ✓");}
+      else{const {data}=await supabase.from("tasks").insert(payload).select().single();if(data)st(ts=>[...ts,data]);showToast("Task created ✓");}
       stm(false);set(null);
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
   async function delTask(id){if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
-  async function dropTask(tid,ns){
-    const task=tasks.find(t=>t.id===tid);
-    if(!task||task.status===ns)return;
-    st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));
-    await supabase.from("tasks").update({status:ns}).eq("id",tid);
-    // ── Email notifications on kanban drag ──────────────────────
-    const proj=projects.find(p=>p.id===task.project_id);
-    notify("status_change", statusChangePayload(task, proj, task.status, ns, me));
-    if(isDone(ns)&&!isDone(task.status)){
-      notify("task_completed", taskCompletedPayload(task, proj, me));
-    }
-    // ────────────────────────────────────────────────────────────
-  }
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);}
   async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data)sp(ps=>[...ps,data]);spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
-  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,email:f.email||"",client_name:f.client_name||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
-  async function editUserFn(id,f){try{const updates={name:f.name,role:f.role,email:f.email||"",client_name:f.client_name||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function editUserFn(id,f){try{const updates={name:f.name,role:f.role,client_name:f.client_name||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("User removed ✓");}
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
@@ -879,7 +834,7 @@ export default function App(){
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
-                <button key={client} onClick={()=>{sac(client);sap(null);switchView("kanban");}} style={sel(activeClient===client)}>
+                <button key={client} onClick={()=>{const cps=accessibleProjects.filter(p=>(p.client||"Unassigned")===client);scd({client,projects:cps});}} style={sel(false)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{client}</span>
                 </button>
@@ -942,7 +897,7 @@ export default function App(){
               <Stat label="Unassigned" value={dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);sap(null);switchView("kanban");}}/>}
+            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{const cps=accessibleProjects.filter(p=>(p.client||"Unassigned")===c);scd({client:c,projects:cps});}}/>}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
@@ -1015,6 +970,50 @@ export default function App(){
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
       {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
+
+      {clientDetail&&(
+        <Modal title={`${clientDetail.client} — Projects`} onClose={()=>scd(null)} wide>
+          <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:"65vh",overflowY:"auto"}}>
+            {clientDetail.projects.length===0
+              ?<div style={{textAlign:"center",padding:32,color:C.t3}}>No projects for this client.</div>
+              :clientDetail.projects.map(p=>{
+                const pt=tasks.filter(t=>t.project_id===p.id);
+                const pd=pt.filter(t=>isDone(t.status)).length;
+                const pip=pt.filter(t=>t.status==="In Progress").length;
+                const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
+                const pv=pt.length?Math.round(pd/pt.length*100):0;
+                return(
+                  <div key={p.id} onClick={()=>{sap(p.id);sac(null);switchView("list");scd(null);}}
+                    style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",cursor:"pointer",borderLeft:`4px solid ${p.color}`,transition:"background .12s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.card}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.surface}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{p.name}</div>
+                        {p.description&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{p.description}</div>}
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                        <Bdg color={p.color}>{pv}%</Bdg>
+                        <span style={{fontSize:11,color:C.t3}}>Due {p.deadline||"TBD"}</span>
+                      </div>
+                    </div>
+                    <Pb v={pv} color={p.color} h={4}/>
+                    <div style={{display:"flex",gap:16,marginTop:10}}>
+                      <span style={{fontSize:11,color:C.green}}>✓ {pd} done</span>
+                      <span style={{fontSize:11,color:C.blue}}>⟳ {pip} in progress</span>
+                      <span style={{fontSize:11,color:C.t3}}>◎ {ptd} to do</span>
+                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} total tasks</span>
+                    </div>
+                    <div style={{marginTop:8}}>
+                      <span style={{fontSize:11,color:C.accent,fontWeight:600}}>Click to view tasks →</span>
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </Modal>
+      )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
     </div>
   );
