@@ -702,7 +702,6 @@ export default function App(){
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
-  const [clientDetail,scd]  = useState(null);
   const [statModal,ssm]     = useState(null);
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -757,7 +756,7 @@ export default function App(){
   function switchView(v){
     sv(v);
     if(v==="dashboard"){sst("");sfs("All");sfa("All");sac(null);}
-    if(v!=="kanban")sac(null);
+    if(v!=="kanban"&&v!=="clientprojects")sac(null);
   }
   async function saveTask(f){
     ssv(true);
@@ -834,7 +833,7 @@ export default function App(){
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
-                <button key={client} onClick={()=>{const cps=accessibleProjects.filter(p=>(p.client||"Unassigned")===client);scd({client,projects:cps});}} style={sel(false)}>
+                <button key={client} onClick={()=>{sac(client);switchView("clientprojects");}} style={sel(view==="clientprojects"&&activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{client}</span>
                 </button>
@@ -867,7 +866,7 @@ export default function App(){
       <main style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
-            <h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":"Task List"}</h1>
+            <h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{view==="dashboard"?"Dashboard":view==="kanban"?"Kanban Board":view==="clientprojects"?`${activeClient} — Projects`:"Task List"}</h1>
             <p style={{margin:"3px 0 0",color:C.t3,fontSize:13}}>{activeClient?`Client: ${activeClient}`:activePid?projects.find(p=>p.id===activePid)?.name:"All Projects"}</p>
           </div>
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -897,7 +896,7 @@ export default function App(){
               <Stat label="Unassigned" value={dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{const cps=accessibleProjects.filter(p=>(p.client||"Unassigned")===c);scd({client:c,projects:cps});}}/>}
+            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);switchView("clientprojects");}}/>}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
@@ -945,6 +944,60 @@ export default function App(){
             </div>
           </>
         )}
+        {view==="clientprojects"&&(
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+              <button onClick={()=>switchView("dashboard")} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
+              <span style={{color:C.t3,fontSize:13}}>{accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient).length} project(s)</span>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient).length===0
+                ?<div style={{textAlign:"center",padding:48,color:C.t3,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No projects found for this client.</div>
+                :accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient).map(p=>{
+                  const pt=tasks.filter(t=>t.project_id===p.id);
+                  const pd=pt.filter(t=>isDone(t.status)).length;
+                  const pip=pt.filter(t=>t.status==="In Progress").length;
+                  const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
+                  const pv=pt.length?Math.round(pd/pt.length*100):0;
+                  const overduePt=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+                  return(
+                    <div key={p.id}
+                      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 24px",borderLeft:`5px solid ${p.color}`,cursor:"pointer",transition:"box-shadow .15s,transform .15s"}}
+                      onClick={()=>{sap(p.id);sac(null);switchView("list");}}
+                      onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 6px 24px #00000060";e.currentTarget.style.transform="translateY(-2px)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform="";}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                        <div>
+                          <div style={{fontSize:16,fontWeight:700,color:C.t1,marginBottom:4}}>{p.name}</div>
+                          {p.description&&<div style={{fontSize:12,color:C.t3}}>{p.description}</div>}
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                          {overduePt.length>0&&<Bdg color={C.red}>⚠ {overduePt.length} overdue</Bdg>}
+                          <Bdg color={p.color}>{pv}%</Bdg>
+                          <span style={{fontSize:12,color:C.t3}}>Due {p.deadline||"TBD"}</span>
+                          {isAdmin&&<div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
+                            <IBtn icon="✏️" title="Edit" onClick={()=>sep(p)} color={C.t2}/>
+                            <IBtn icon="🗑" title="Delete" onClick={()=>deleteProject(p.id)} color={C.red}/>
+                          </div>}
+                        </div>
+                      </div>
+                      <Pb v={pv} color={p.color} h={6}/>
+                      <div style={{display:"flex",gap:24,marginTop:12}}>
+                        <span style={{fontSize:12,color:C.green}}>✓ {pd} done</span>
+                        <span style={{fontSize:12,color:C.blue}}>⟳ {pip} in progress</span>
+                        <span style={{fontSize:12,color:C.t3}}>◎ {ptd} to do</span>
+                        <span style={{fontSize:12,color:C.t3,marginLeft:"auto"}}>{pt.length} total tasks</span>
+                      </div>
+                      <div style={{marginTop:10}}>
+                        <span style={{fontSize:12,color:C.accent,fontWeight:600}}>View Tasks →</span>
+                      </div>
+                    </div>
+                  );
+                })
+              }
+            </div>
+          </div>
+        )}
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -971,49 +1024,7 @@ export default function App(){
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
       {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
 
-      {clientDetail&&(
-        <Modal title={`${clientDetail.client} — Projects`} onClose={()=>scd(null)} wide>
-          <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:"65vh",overflowY:"auto"}}>
-            {clientDetail.projects.length===0
-              ?<div style={{textAlign:"center",padding:32,color:C.t3}}>No projects for this client.</div>
-              :clientDetail.projects.map(p=>{
-                const pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length;
-                const pip=pt.filter(t=>t.status==="In Progress").length;
-                const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
-                const pv=pt.length?Math.round(pd/pt.length*100):0;
-                return(
-                  <div key={p.id} onClick={()=>{sap(p.id);sac(null);switchView("list");scd(null);}}
-                    style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",cursor:"pointer",borderLeft:`4px solid ${p.color}`,transition:"background .12s"}}
-                    onMouseEnter={e=>e.currentTarget.style.background=C.card}
-                    onMouseLeave={e=>e.currentTarget.style.background=C.surface}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <div>
-                        <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{p.name}</div>
-                        {p.description&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{p.description}</div>}
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                        <Bdg color={p.color}>{pv}%</Bdg>
-                        <span style={{fontSize:11,color:C.t3}}>Due {p.deadline||"TBD"}</span>
-                      </div>
-                    </div>
-                    <Pb v={pv} color={p.color} h={4}/>
-                    <div style={{display:"flex",gap:16,marginTop:10}}>
-                      <span style={{fontSize:11,color:C.green}}>✓ {pd} done</span>
-                      <span style={{fontSize:11,color:C.blue}}>⟳ {pip} in progress</span>
-                      <span style={{fontSize:11,color:C.t3}}>◎ {ptd} to do</span>
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} total tasks</span>
-                    </div>
-                    <div style={{marginTop:8}}>
-                      <span style={{fontSize:11,color:C.accent,fontWeight:600}}>Click to view tasks →</span>
-                    </div>
-                  </div>
-                );
-              })
-            }
-          </div>
-        </Modal>
-      )}
+            )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
     </div>
   );
