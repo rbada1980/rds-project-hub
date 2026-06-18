@@ -293,6 +293,7 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
   const [editId,sei]=useState(null);
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
+  const [cq,scq]=useState("");
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function startEdit(c){sei(c.id);sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||""});st("add");}
   function reset(){sei(null);sf({name:"",email:"",phone:"",address:""});se("");}
@@ -303,33 +304,42 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
     catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
+  const shownClients=cq?clients.filter(c=>c.name.toLowerCase().includes(cq.toLowerCase())||(c.email||"").toLowerCase().includes(cq.toLowerCase())||(c.phone||"").includes(cq)||(c.address||"").toLowerCase().includes(cq.toLowerCase())):clients;
   return(
     <Modal title="Manage Clients" onClose={onClose} wide>
-      <div style={{display:"flex",gap:8,marginBottom:20}}>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
         {[["list","🏢 All Clients"],["add",editId?"✏️ Edit Client":"➕ Add Client"]].map(([k,label])=>(
           <button key={k} onClick={()=>{if(k==="list")reset();st(k);se("");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab===k?C.accent:C.surface,color:tab===k?"#fff":C.t2,border:`1px solid ${tab===k?C.accent:C.border}`}}>{label}</button>
         ))}
       </div>
       {tab==="list"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:440,overflowY:"auto"}}>
-          {clients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients yet.</div>}
-          {clients.map(c=>(
-            <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px"}}>
-              <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
-                <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
-                  {c.email&&<span>✉ {c.email}</span>}
-                  {c.phone&&<span>📞 {c.phone}</span>}
-                  {c.address&&<span>📍 {c.address}</span>}
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+            <input autoFocus placeholder="🔍  Search clients by name, email, phone…" value={cq} onChange={e=>scq(e.target.value)}
+              style={{flex:1,background:C.surface,border:`1px solid ${cq?C.accent:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            {cq&&<button onClick={()=>scq("")} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+            <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownClients.length}/{clients.length}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
+            {shownClients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients match your search.</div>}
+            {shownClients.map(c=>(
+              <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${cq&&c.name.toLowerCase().includes(cq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px"}}>
+                <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
+                  <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                    {c.email&&<span>✉ {c.email}</span>}
+                    {c.phone&&<span>📞 {c.phone}</span>}
+                    {c.address&&<span>📍 {c.address}</span>}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:4}}>
+                  <IBtn icon="✏️" title="Edit" onClick={()=>startEdit(c)} color={C.t2}/>
+                  <IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Delete client "${c.name}"?`))onDelete(c.id);}}/>
                 </div>
               </div>
-              <div style={{display:"flex",gap:4}}>
-                <IBtn icon="✏️" title="Edit" onClick={()=>startEdit(c)} color={C.t2}/>
-                <IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Delete client "${c.name}"?`))onDelete(c.id);}}/>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
       {tab==="add"&&(
@@ -358,6 +368,8 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const [f,sf]=useState({name:"",username:"",password:"",role:"Engineer",client_name:"",email:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
+  const [uq,suq]=useState("");
+  const [uRole,sur]=useState("All");
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
@@ -397,30 +409,50 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add User</button>
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
-      {tab==="list"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
-          {users.map(u=>(
-            <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr auto auto auto",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px"}}>
-              <Av name={u.name} size={32}/>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:C.t1}}>
-                  {u.name}{u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}>★ SUPER ADMIN</span>}
-                </div>
-                <div style={{fontSize:11,color:C.t3}}>@{u.username} · {u.role}{u.client_name?` · ${u.client_name}`:""}</div>
-              </div>
-              <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
-              {u.id===currentUser.id
-                ?<span style={{fontSize:18,opacity:0.3}} title="This is you">👤</span>
-                :<button onClick={()=>startEdit(u)} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
-              }
-              {u.id===currentUser.id||u.username===SUPER_ADMIN
-                ?<span style={{fontSize:18,opacity:0.3}} title="Protected">🔒</span>
-                :<button onClick={()=>{if(window.confirm("Delete "+u.name+"?"))onDelete(u.id);}} style={{background:C.red,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit"}}>🗑</button>
-              }
+      {tab==="list"&&(()=>{
+        const shownUsers=users.filter(u=>{
+          if(uRole!=="All"&&u.role!==uRole)return false;
+          if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.email||"").toLowerCase().includes(uq.toLowerCase())&&!(u.client_name||"").toLowerCase().includes(uq.toLowerCase()))return false;
+          return true;
+        });
+        return(
+          <div>
+            <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+              <input autoFocus placeholder="🔍  Search by name, username, email…" value={uq} onChange={e=>suq(e.target.value)}
+                style={{flex:1,background:C.surface,border:`1px solid ${uq?C.accent:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+              <select value={uRole} onChange={e=>sur(e.target.value)} style={{background:C.surface,border:`1px solid ${uRole!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <option value="All">All Roles</option>
+                {ROLES.map(r=><option key={r} value={r}>{r}</option>)}
+              </select>
+              {(uq||uRole!=="All")&&<button onClick={()=>{suq("");sur("All");}} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+              <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownUsers.length}/{users.length}</span>
             </div>
-          ))}
-        </div>
-      )}
+            <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"52vh",overflowY:"auto"}}>
+              {shownUsers.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No users match your search.</div>}
+              {shownUsers.map(u=>(
+                <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr auto auto auto",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${uq&&u.name.toLowerCase().includes(uq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px"}}>
+                  <Av name={u.name} size={32}/>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1}}>
+                      {u.name}{u.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6,fontWeight:700}}>★ SUPER ADMIN</span>}
+                    </div>
+                    <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.email?` · ${u.email}`:""}{u.client_name?` · ${u.client_name}`:""}</div>
+                  </div>
+                  <Bdg color={u.role==="Admin"?C.accent:u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
+                  {u.id===currentUser.id
+                    ?<span style={{fontSize:18,opacity:0.3}} title="This is you">👤</span>
+                    :<button onClick={()=>startEdit(u)} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
+                  }
+                  {u.id===currentUser.id||u.username===SUPER_ADMIN
+                    ?<span style={{fontSize:18,opacity:0.3}} title="Protected">🔒</span>
+                    :<button onClick={()=>{if(window.confirm("Delete "+u.name+"?"))onDelete(u.id);}} style={{background:C.red,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit"}}>🗑</button>
+                  }
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
