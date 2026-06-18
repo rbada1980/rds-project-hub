@@ -701,6 +701,107 @@ function Login({onLogin}){
     </div>
   );
 }
+function StatTaskModal({title,tasks,projects,today,onEdit,onClose}){
+  const [q,sq]=useState("");
+  const [fProj,sfp]=useState("All");
+  const [fClient,sfc]=useState("All");
+  const [fAssignee,sfa]=useState("All");
+  const [fStatus,sfs]=useState("All");
+  const allProjects=[...new Map(tasks.map(t=>{const p=projects.find(px=>px.id===t.project_id);return[t.project_id,p];}).filter(([,p])=>p)).values()];
+  const allClients=[...new Set(tasks.map(t=>{const p=projects.find(px=>px.id===t.project_id);return p?.client||"Unassigned";}))].sort();
+  const allAssignees=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
+  const hasFilter=q||fProj!=="All"||fClient!=="All"||fAssignee!=="All"||fStatus!=="All";
+  const shown=tasks.filter(t=>{
+    if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
+    if(fProj!=="All"&&t.project_id!==fProj)return false;
+    if(fStatus!=="All"&&t.status!==fStatus)return false;
+    if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
+    if(fClient!=="All"){const p=projects.find(px=>px.id===t.project_id);if((p?.client||"Unassigned")!==fClient)return false;}
+    return true;
+  });
+  const inp={width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",cursor:"pointer"};
+  return(
+    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"92vw",maxWidth:1100,maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3>
+            <p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{shown.length} of {tasks.length} tasks{hasFilter?" (filtered)":""}</p>
+          </div>
+          <IBtn icon="✕" onClick={onClose}/>
+        </div>
+        {/* Search + Filters */}
+        <div style={{marginBottom:12}}>
+          <input autoFocus placeholder="🔍  Search by task, project or assignee…" value={q} onChange={e=>sq(e.target.value)}
+            style={{width:"100%",background:C.surface,border:`1px solid ${q?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+            <div>
+              <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Project</label>
+              <select value={fProj} onChange={e=>sfp(e.target.value)} style={{...inp,borderColor:fProj!=="All"?C.accent:C.border}}>
+                <option value="All">All Projects</option>
+                {allProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Client</label>
+              <select value={fClient} onChange={e=>sfc(e.target.value)} style={{...inp,borderColor:fClient!=="All"?C.accent:C.border}}>
+                <option value="All">All Clients</option>
+                {allClients.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Assignee</label>
+              <select value={fAssignee} onChange={e=>sfa(e.target.value)} style={{...inp,borderColor:fAssignee!=="All"?C.accent:C.border}}>
+                <option value="All">All Assignees</option>
+                {allAssignees.map(a=><option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Status</label>
+              <select value={fStatus} onChange={e=>sfs(e.target.value)} style={{...inp,borderColor:fStatus!=="All"?C.accent:C.border}}>
+                <option value="All">All Statuses</option>
+                {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          {hasFilter&&<button onClick={()=>{sq("");sfp("All");sfc("All");sfa("All");sfs("All");}} style={{marginTop:8,background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕ Clear filters</button>}
+        </div>
+        {/* Table */}
+        <div style={{overflowY:"auto",flex:1}}>
+          {shown.length===0?(
+            <div style={{textAlign:"center",padding:40,color:C.t3}}>No tasks match your search.</div>
+          ):(
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
+                <tr>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(
+                  <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`}}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>{shown.map(t=>{
+                const pj=projects.find(p=>p.id===t.project_id);
+                const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const hi=q&&(t.title.toLowerCase().includes(q.toLowerCase())||(pj?.name||"").toLowerCase().includes(q.toLowerCase())||(t.assignee||"").toLowerCase().includes(q.toLowerCase()));
+                return(
+                  <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`,background:hi?"#f9731610":"transparent"}}>
+                    <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.client||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><IBtn icon="✏️" onClick={()=>onEdit(t)} title="Edit task"/></td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -1105,18 +1206,7 @@ export default function App(){
           </div>
         )}
       </main>
-      {statModal&&(
-        <Modal title={statModal.title} onClose={()=>ssm(null)} wide>
-          {statModal.tasks.length===0?<div style={{textAlign:"center",padding:32,color:C.t3}}>No tasks found.</div>:(
-            <div style={{maxHeight:"60vh",overflowY:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:C.surface,position:"sticky",top:0}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>))}</tr></thead>
-                <tbody>{statModal.tasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const ov=t.due_date&&t.due_date<today&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td><td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td><td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{t.client||"—"}</span></td><td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td><td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg></td><td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td><td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td><td style={{padding:"10px 14px"}}><IBtn icon="✏️" onClick={()=>{set(t);stm(true);ssm(null);}} title="Edit"/></td></tr>);})}</tbody>
-              </table>
-            </div>
-          )}
-        </Modal>
-      )}
+      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
