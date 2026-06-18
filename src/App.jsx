@@ -997,7 +997,6 @@ export default function App(){
   const [filterAssignee,sfa]= useState("All");
   const [uMenu,sMenu]       = useState(false);
   const [saving,ssv]        = useState(false);
-  const [showDashFilters,sdf]= useState(false);
   const [dashSearch,sdss]   = useState("");
   const [dashUser,sdsu]     = useState("All");
   const [dashProject,sdsp]  = useState("All");
@@ -1207,49 +1206,44 @@ export default function App(){
         </div>
         {view==="dashboard"&&(
           <>
-            {/* ── Advanced Search Bar ── */}
-            <div style={{marginBottom:16}}>
-              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:showDashFilters?10:0}}>
+            {/* ── Search + Always-visible Filters ── */}
+            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
                 <input placeholder="🔍  Search tasks, projects, users…" value={dashSearch} onChange={e=>sdss(e.target.value)}
-                  style={{flex:1,background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-                <button onClick={()=>sdf(v=>!v)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:hasDashFilter?C.accent:C.t2,borderColor:hasDashFilter?C.accent:C.border,display:"flex",alignItems:"center",gap:6}}>
-                  {showDashFilters?"▲":"▼"} Filters{hasDashFilter?" ●":""}
-                </button>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+                  style={{flex:1,background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red,whiteSpace:"nowrap"}}>✕ Clear All</button>}
               </div>
-              {showDashFilters&&(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
-                  <div>
-                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By User</label>
-                    <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                      <option value="All">All Users</option>
-                      {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Client</label>
-                    <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                      <option value="All">All Clients</option>
-                      {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Project</label>
-                    <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                      <option value="All">All Projects</option>
-                      {(dashClient!=="All"?accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient):accessibleProjects).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Status</label>
-                    <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                      <option value="All">All Statuses</option>
-                      {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+                <div>
+                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By User</label>
+                  <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    <option value="All">All Users</option>
+                    {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
+                  </select>
                 </div>
-              )}
-              {hasDashFilter&&<p style={{margin:"6px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks matching filters</p>}
+                <div>
+                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Client</label>
+                  <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    <option value="All">All Clients</option>
+                    {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Project</label>
+                  <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    <option value="All">All Projects</option>
+                    {(dashClient!=="All"?accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient):accessibleProjects).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Status</label>
+                  <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    <option value="All">All Statuses</option>
+                    {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+              {hasDashFilter&&<p style={{margin:"10px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
             </div>
             {/* ── Stat Cards ── */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
