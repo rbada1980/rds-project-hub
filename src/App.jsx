@@ -731,6 +731,12 @@ export default function App(){
   const [filterAssignee,sfa]= useState("All");
   const [uMenu,sMenu]       = useState(false);
   const [saving,ssv]        = useState(false);
+  const [showDashFilters,sdf]= useState(false);
+  const [dashSearch,sdss]   = useState("");
+  const [dashUser,sdsu]     = useState("All");
+  const [dashProject,sdsp]  = useState("All");
+  const [dashClient,sdsc]   = useState("All");
+  const [dashStatus,sdsst]  = useState("All");
   const [toast,sToast]      = useState(null);
   const [logo,sLogo]        = useState(null);
   const logoRef             = useRef();
@@ -771,7 +777,17 @@ export default function App(){
     return true;
   });
   const dashTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
-  const overdueTasks=dashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashStatus!=="All";
+  const filteredDashTasks=dashTasks.filter(t=>{
+    if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
+    if(dashUser!=="All"&&t.assignee!==dashUser)return false;
+    if(dashProject!=="All"&&t.project_id!==dashProject)return false;
+    if(dashStatus!=="All"&&t.status!==dashStatus)return false;
+    if(dashClient!=="All"){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
+    return true;
+  });
+  const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
+  const overdueTasks=activeDashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
   function switchView(v){
     sv(v);
@@ -925,12 +941,57 @@ export default function App(){
         </div>
         {view==="dashboard"&&(
           <>
+            {/* ── Advanced Search Bar ── */}
+            <div style={{marginBottom:16}}>
+              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:showDashFilters?10:0}}>
+                <input placeholder="🔍  Search tasks, projects, users…" value={dashSearch} onChange={e=>sdss(e.target.value)}
+                  style={{flex:1,background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                <button onClick={()=>sdf(v=>!v)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:hasDashFilter?C.accent:C.t2,borderColor:hasDashFilter?C.accent:C.border,display:"flex",alignItems:"center",gap:6}}>
+                  {showDashFilters?"▲":"▼"} Filters{hasDashFilter?" ●":""}
+                </button>
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+              </div>
+              {showDashFilters&&(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
+                  <div>
+                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By User</label>
+                    <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                      <option value="All">All Users</option>
+                      {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Client</label>
+                    <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                      <option value="All">All Clients</option>
+                      {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Project</label>
+                    <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                      <option value="All">All Projects</option>
+                      {(dashClient!=="All"?accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient):accessibleProjects).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Status</label>
+                    <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                      <option value="All">All Statuses</option>
+                      {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+              {hasDashFilter&&<p style={{margin:"6px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks matching filters</p>}
+            </div>
+            {/* ── Stat Cards ── */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={dashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:dashTasks})}/>
-              <Stat label="Completed" value={dashTasks.filter(t=>isDone(t.status)).length} sub={dashTasks.length?`${Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:dashTasks.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={dashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:dashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={dashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:dashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
-              <Stat label="Unassigned" value={dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
+              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
+              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
+              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
+              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
+              <Stat label="Unassigned" value={activeDashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:activeDashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);switchView("clientprojects");}}/>}
