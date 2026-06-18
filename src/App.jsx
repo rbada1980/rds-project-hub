@@ -701,6 +701,139 @@ function Login({onLogin}){
     </div>
   );
 }
+function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,onViewTasks,onEdit,onDelete,onEditTask}){
+  const [q,sq]=useState("");
+  const [fStatus,sfs]=useState("All");
+  const [fAssignee,sfa]=useState("All");
+  const [expanded,sexp]=useState({});
+  const sel=inp=>{return{width:"100%",background:C.surface,border:`1px solid ${inp!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",cursor:"pointer"};};
+  const hasFilter=q||fStatus!=="All"||fAssignee!=="All";
+  // filter tasks per project
+  function projTasks(pid){
+    return tasks.filter(t=>{
+      if(t.project_id!==pid)return false;
+      if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
+      if(fStatus!=="All"&&t.status!==fStatus)return false;
+      if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
+      return true;
+    });
+  }
+  // which projects are visible: always show all, but expand automatically when searching
+  const visibleProjects=projects.filter(p=>{
+    if(!hasFilter)return true;
+    // show project if its name matches OR it has matching tasks
+    const nameMatch=q&&p.name.toLowerCase().includes(q.toLowerCase());
+    return nameMatch||projTasks(p.id).length>0;
+  });
+  return(
+    <div>
+      {/* Search bar */}
+      <div style={{marginBottom:14}}>
+        <input autoFocus placeholder="🔍  Search tasks or projects…" value={q} onChange={e=>sq(e.target.value)}
+          style={{width:"100%",background:C.card,border:`1px solid ${q?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,alignItems:"end"}}>
+          <div>
+            <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Filter by Status</label>
+            <select value={fStatus} onChange={e=>sfs(e.target.value)} style={sel(fStatus)}>
+              <option value="All">All Statuses</option>
+              {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Filter by Assignee</label>
+            <select value={fAssignee} onChange={e=>sfa(e.target.value)} style={sel(fAssignee)}>
+              <option value="All">All Assignees</option>
+              {assignees.map(a=><option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          {hasFilter&&<button onClick={()=>{sq("");sfs("All");sfa("All");}} style={{background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:7,padding:"7px 14px",fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>✕ Clear</button>}
+        </div>
+        {hasFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>{visibleProjects.length} project(s) · {visibleProjects.reduce((s,p)=>s+projTasks(p.id).length,0)} task(s) matched</p>}
+      </div>
+      {/* Project cards */}
+      {visibleProjects.length===0
+        ?<div style={{textAlign:"center",padding:48,color:C.t3,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No projects or tasks match your search.</div>
+        :<div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {visibleProjects.map(p=>{
+            const allPt=tasks.filter(t=>t.project_id===p.id);
+            const matchedPt=projTasks(p.id);
+            const pd=allPt.filter(t=>isDone(t.status)).length;
+            const pip=allPt.filter(t=>t.status==="In Progress").length;
+            const ptd=allPt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+            const pv=allPt.length?Math.round(pd/allPt.length*100):0;
+            const overduePt=allPt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+            const isExpanded=hasFilter||expanded[p.id];
+            return(
+              <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,borderLeft:`5px solid ${p.color}`,overflow:"hidden"}}>
+                {/* Project header */}
+                <div style={{padding:"18px 22px",cursor:"pointer"}}
+                  onClick={()=>sexp(x=>({...x,[p.id]:!x[p.id]}))}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:3}}>{p.name}</div>
+                      {p.description&&<div style={{fontSize:12,color:C.t3,marginBottom:6}}>{p.description}</div>}
+                      <div style={{display:"flex",gap:20,marginTop:8}}>
+                        <span style={{fontSize:12,color:C.green}}>✓ {pd} done</span>
+                        <span style={{fontSize:12,color:C.blue}}>⟳ {pip} in progress</span>
+                        <span style={{fontSize:12,color:C.t3}}>◎ {ptd} to do</span>
+                        <span style={{fontSize:12,color:C.t3,marginLeft:"auto"}}>{allPt.length} total</span>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,marginLeft:16}}>
+                      {overduePt.length>0&&<Bdg color={C.red}>⚠ {overduePt.length} overdue</Bdg>}
+                      {hasFilter&&matchedPt.length>0&&<Bdg color={C.accent}>{matchedPt.length} matched</Bdg>}
+                      <Bdg color={p.color}>{pv}%</Bdg>
+                      <span style={{fontSize:12,color:C.t3}}>Due {p.deadline||"TBD"}</span>
+                      <button onClick={e=>{e.stopPropagation();onViewTasks(p.id);}} style={{...GBtn,padding:"5px 12px",fontSize:12}}>View All →</button>
+                      {isAdmin&&<div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
+                        <IBtn icon="✏️" title="Edit" onClick={()=>onEdit(p)} color={C.t2}/>
+                        <IBtn icon="🗑" title="Delete" onClick={()=>onDelete(p)} color={C.red}/>
+                      </div>}
+                      <span style={{color:C.t3,fontSize:13}}>{isExpanded?"▲":"▼"}</span>
+                    </div>
+                  </div>
+                  <Pb v={pv} color={p.color} h={5} style={{marginTop:10}}/>
+                </div>
+                {/* Task list (expanded or when filtering) */}
+                {isExpanded&&(
+                  <div style={{borderTop:`1px solid ${C.border}`}}>
+                    {matchedPt.length===0
+                      ?<div style={{padding:"16px 22px",color:C.t3,fontSize:13}}>No tasks match the current filter.</div>
+                      :<table style={{width:"100%",borderCollapse:"collapse"}}>
+                        <thead>
+                          <tr style={{background:C.surface}}>
+                            {["Task","Status","Priority","Assignee","Due Date",""].map(h=>(
+                              <th key={h} style={{padding:"9px 16px",textAlign:"left",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>{matchedPt.map(t=>{
+                          const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+                          return(
+                            <tr key={t.id} style={{borderTop:`1px solid ${C.border}`}}>
+                              <td style={{padding:"9px 16px"}}>
+                                <span style={{color:q&&t.title.toLowerCase().includes(q.toLowerCase())?C.accent:C.t1,fontSize:13,fontWeight:500}}>{t.title}</span>
+                              </td>
+                              <td style={{padding:"9px 16px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                              <td style={{padding:"9px 16px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
+                              <td style={{padding:"9px 16px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12}}>Unassigned</span>}</td>
+                              <td style={{padding:"9px 16px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                              <td style={{padding:"9px 16px"}}><IBtn icon="✏️" onClick={()=>onEditTask(t)} title="Edit"/></td>
+                            </tr>
+                          );
+                        })}</tbody>
+                      </table>
+                    }
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      }
+    </div>
+  );
+}
 function StatTaskModal({title,tasks,projects,today,onEdit,onClose}){
   const [q,sq]=useState("");
   const [fProj,sfp]=useState("All");
@@ -1143,60 +1276,28 @@ export default function App(){
             </div>
           </>
         )}
-        {view==="clientprojects"&&(
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-              <button onClick={()=>switchView("dashboard")} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-              <span style={{color:C.t3,fontSize:13}}>{accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient).length} project(s)</span>
+        {view==="clientprojects"&&(()=>{
+          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
+          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
+          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
+          return(
+            <div>
+              {/* Header + Back */}
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                <button onClick={()=>switchView("dashboard")} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
+                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
+              </div>
+              {/* Search + Filter bar */}
+              <ClientProjectSearch
+                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
+                today={today} isAdmin={isAdmin}
+                onViewTasks={pid=>{sap(pid);sac(null);switchView("list");}}
+                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
+                onEditTask={t=>{set(t);stm(true);}}
+              />
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient).length===0
-                ?<div style={{textAlign:"center",padding:48,color:C.t3,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No projects found for this client.</div>
-                :accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient).map(p=>{
-                  const pt=tasks.filter(t=>t.project_id===p.id);
-                  const pd=pt.filter(t=>isDone(t.status)).length;
-                  const pip=pt.filter(t=>t.status==="In Progress").length;
-                  const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
-                  const pv=pt.length?Math.round(pd/pt.length*100):0;
-                  const overduePt=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
-                  return(
-                    <div key={p.id}
-                      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 24px",borderLeft:`5px solid ${p.color}`,cursor:"pointer",transition:"box-shadow .15s,transform .15s"}}
-                      onClick={()=>{sap(p.id);sac(null);switchView("list");}}
-                      onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 6px 24px #00000060";e.currentTarget.style.transform="translateY(-2px)";}}
-                      onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                        <div>
-                          <div style={{fontSize:16,fontWeight:700,color:C.t1,marginBottom:4}}>{p.name}</div>
-                          {p.description&&<div style={{fontSize:12,color:C.t3}}>{p.description}</div>}
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                          {overduePt.length>0&&<Bdg color={C.red}>⚠ {overduePt.length} overdue</Bdg>}
-                          <Bdg color={p.color}>{pv}%</Bdg>
-                          <span style={{fontSize:12,color:C.t3}}>Due {p.deadline||"TBD"}</span>
-                          {isAdmin&&<div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
-                            <IBtn icon="✏️" title="Edit" onClick={()=>sep(p)} color={C.t2}/>
-                            <IBtn icon="🗑" title="Delete" onClick={()=>deleteProject(p.id)} color={C.red}/>
-                          </div>}
-                        </div>
-                      </div>
-                      <Pb v={pv} color={p.color} h={6}/>
-                      <div style={{display:"flex",gap:24,marginTop:12}}>
-                        <span style={{fontSize:12,color:C.green}}>✓ {pd} done</span>
-                        <span style={{fontSize:12,color:C.blue}}>⟳ {pip} in progress</span>
-                        <span style={{fontSize:12,color:C.t3}}>◎ {ptd} to do</span>
-                        <span style={{fontSize:12,color:C.t3,marginLeft:"auto"}}>{pt.length} total tasks</span>
-                      </div>
-                      <div style={{marginTop:10}}>
-                        <span style={{fontSize:12,color:C.accent,fontWeight:600}}>View Tasks →</span>
-                      </div>
-                    </div>
-                  );
-                })
-              }
-            </div>
-          </div>
-        )}
+          );
+        })()}
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
