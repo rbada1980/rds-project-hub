@@ -14,8 +14,8 @@ const C = {
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
 const ROLES=["Engineer","Designer","Architect","Manager","Admin","Client"];
-const ALL_STATUSES=["To Do","To Be Started","In Progress","Review","Done","Completed"];
-const STATUS_CLR={"To Do":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
+const ALL_STATUSES=["To Do","Not Yet Started","To Be Started","In Progress","Review","Done","Completed"];
+const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
@@ -925,10 +925,11 @@ export default function App(){
         </div>
         {view==="dashboard"&&(
           <>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:16,marginBottom:24}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={dashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:dashTasks})}/>
               <Stat label="Completed" value={dashTasks.filter(t=>isDone(t.status)).length} sub={dashTasks.length?`${Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:dashTasks.filter(t=>isDone(t.status))})}/>
               <Stat label="In Progress" value={dashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:dashTasks.filter(t=>t.status==="In Progress")})}/>
+              <Stat label="Not Yet Started" value={dashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:dashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
               <Stat label="Unassigned" value={dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
