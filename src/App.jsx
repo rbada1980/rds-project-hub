@@ -626,14 +626,14 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
 function exportExcel(projects,tasks){
   const today=new Date().toISOString().slice(0,10);
   const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;}.client{background:#f97316;color:#fff;font-weight:bold;}.project{background:#3b82f6;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.todo{background:#fef9c3;color:#713f12;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
+  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;}.client{background:#f97316;color:#fff;font-weight:bold;}.project{background:#3b82f6;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.todo{background:#fef9c3;color:#713f12;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
   html+=`<table><tr><td colspan="7" class="hdr" style="font-size:16px;text-align:center;">RDS Project Hub — Task Report (${today})</td></tr><tr><td colspan="7"></td></tr>`;
   clients.forEach(client=>{
     const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
     const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
     if(!cTasks.length)return;
     html+=`<tr><td colspan="7" class="client">CLIENT: ${client} | ${cProjects.length} Project(s) | ${cTasks.length} Tasks</td></tr>`;
-    html+=`<tr class="hdr"><th>#</th><th>Task</th><th>Project</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due Date</th></tr>`;
+    html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Status</th><th class="hdr">Priority</th><th class="hdr">Assignee</th><th class="hdr">Due Date</th></tr>`;
     let n=1;
     cProjects.forEach(proj=>{
       const pt=cTasks.filter(t=>t.project_id===proj.id);
