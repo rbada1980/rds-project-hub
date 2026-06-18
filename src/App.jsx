@@ -790,7 +790,7 @@ export default function App(){
       const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files};
       const proj=projects.find(p=>p.id===pid);
       const assigneeUser=users.find(u=>u.username===f.assignee||u.name===f.assignee);
-      const assigneeEmail=assigneeUser?.email||"ramesh@ecovon.in";
+      const assigneeEmail=assigneeUser?.email||"Manager@hub-rdsprojects.com";
       if(editTask){
         const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
@@ -811,7 +811,7 @@ export default function App(){
     ssv(false);
   }
   async function delTask(id){if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const assigneeEmail=assigneeUser?.email||"ramesh@ecovon.in";if(ns==="Done"){notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:assigneeEmail});}else{notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:assigneeEmail});}}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const assigneeEmail=assigneeUser?.email||"Manager@hub-rdsprojects.com";if(ns==="Done"){notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:assigneeEmail});}else{notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:assigneeEmail});}}
   async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);notify("project_created",projectCreatedPayload(data,me));}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}

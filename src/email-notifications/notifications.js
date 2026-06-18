@@ -14,7 +14,7 @@ const SUPA_URL    = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
 
 // ── Default recipient if no email is available on a user ────────────────────
-const ADMIN_EMAIL = "ramesh@ecovon.in";
+const ADMIN_EMAIL = "Manager@hub-rdsprojects.com";
 
 // ── Edge Function endpoint ──────────────────────────────────────────────────
 const NOTIFY_URL  = `${SUPA_URL}/functions/v1/notify`;
