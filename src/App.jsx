@@ -14,8 +14,8 @@ const C = {
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
 const ROLES=["Engineer","Designer","Architect","Manager","Admin","Client"];
-const ALL_STATUSES=["To Do","Not Yet Started","To Be Started","In Progress","Review","Done","Completed"];
-const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.yellow,"Completed":C.green};
+const ALL_STATUSES=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
+const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
@@ -636,7 +636,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
           const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
           const cDone=cTasks.filter(t=>isDone(t.status)).length;
           const cIP=cTasks.filter(t=>t.status==="In Progress").length;
-          const cTodo=cTasks.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
+          const cTodo=cTasks.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
           const pct=cTasks.length?Math.round(cDone/cTasks.length*100):0;
           const hue=client.charCodeAt(0)*23%360;
           const clr=`hsl(${hue},60%,50%)`;
@@ -759,7 +759,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,onViewTasks
     return tasks.filter(t=>{
       if(t.project_id!==pid)return false;
       if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
-      if(fStatus!=="All"&&t.status!==fStatus)return false;
+      if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==fStatus)return false;}
       if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
       return true;
     });
@@ -893,7 +893,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose}){
   const shown=tasks.filter(t=>{
     if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
     if(fProj!=="All"&&t.project_id!==fProj)return false;
-    if(fStatus!=="All"&&t.status!==fStatus)return false;
+    if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==fStatus)return false;}
     if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
     if(fClient!=="All"){const p=projects.find(px=>px.id===t.project_id);if((p?.client||"Unassigned")!==fClient)return false;}
     return true;
@@ -1051,7 +1051,7 @@ export default function App(){
     if(activePid&&t.project_id!==activePid)return false;
     if(activeClient){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
     if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
-    if(filterStatus!=="All"&&t.status!==filterStatus)return false;
+    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==filterStatus)return false;}
     if(filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
   });
@@ -1061,7 +1061,7 @@ export default function App(){
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
     if(dashUser!=="All"&&t.assignee!==dashUser)return false;
     if(dashProject!=="All"&&t.project_id!==dashProject)return false;
-    if(dashStatus!=="All"&&t.status!==dashStatus)return false;
+    if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!isNotStarted&&t.status!==dashStatus)return false;}
     if(dashClient!=="All"){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
     return true;
   });
@@ -1116,7 +1116,7 @@ export default function App(){
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
   async function deleteClient(id){await supabase.from("clients").delete().eq("id",id);scl(cl=>cl.filter(c=>c.id!==id));showToast("Client deleted ✓");}
-  const kanbanCols=["To Do","To Be Started","In Progress","Review","Done","Completed"];
+  const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
   const navs=[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
@@ -1273,7 +1273,7 @@ export default function App(){
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length,pip=pt.filter(t=>t.status==="In Progress").length,ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started").length;
+                const pd=pt.filter(t=>isDone(t.status)).length,pip=pt.filter(t=>t.status==="In Progress").length,ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
                 return(
                   <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
                     onClick={()=>{sap(p.id);sac(null);switchView("list");}}
