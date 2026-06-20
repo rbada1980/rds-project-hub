@@ -126,6 +126,8 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving}
     status:initial.status||"To Do",priority:initial.priority||"Medium",
     assignee:initial.assignee||"",due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
+    detailer:initial.detailer||"",checker:initial.checker||"",
+    scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",
   });
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function onProjectChange(pid){
@@ -185,6 +187,14 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving}
       <div style={row}>
         <div style={col}><FSelect label="Priority" value={f.priority} onChange={s("priority")} options={["High","Medium","Low"]}/></div>
         <div style={col}><FInput label="Due Date" value={f.due_date} onChange={s("due_date")} type="date"/></div>
+      </div>
+      <div style={row}>
+        <div style={col}><FInput label="Detailer" value={f.detailer} onChange={s("detailer")} placeholder="e.g. Nanaji"/></div>
+        <div style={col}><FInput label="Checker" value={f.checker} onChange={s("checker")} placeholder="e.g. Chandra Mouli"/></div>
+      </div>
+      <div style={row}>
+        <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
+        <div style={col}><FInput label="Client Sub Date" value={f.client_sub_date} onChange={s("client_sub_date")} type="date"/></div>
       </div>
       <div style={row}>
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
@@ -603,10 +613,14 @@ function TRow({task,project,onEdit,onDelete,readonly}){
       <td style={td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:13}}>{task.title}</span></div></td>
       <td style={td}><span style={{color:C.t2,fontSize:12}}>{project?.name}</span></td>
       <td style={td}><span style={{color:C.teal,fontSize:12}}>{task.client||"—"}</span></td>
+      <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.scope||"—"}</span></td>
       <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
       <td style={td}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
+      <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.detailer||"—"}</span></td>
+      <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.checker||"—"}</span></td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
+      <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.client_sub_date||"—"}</span></td>
       <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&<div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div>}</td>
     </tr>
   );
@@ -659,25 +673,25 @@ function exportExcel(projects,tasks){
   const today=new Date().toISOString().slice(0,10);
   const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
   let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;}.client{background:#f97316;color:#fff;font-weight:bold;}.project{background:#3b82f6;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.todo{background:#fef9c3;color:#713f12;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
-  html+=`<table><tr><td colspan="7" class="hdr" style="font-size:16px;text-align:center;">RDS Project Hub — Task Report (${today})</td></tr><tr><td colspan="7"></td></tr>`;
+  html+=`<table><tr><td colspan="11" class="hdr" style="font-size:16px;text-align:center;">RDS Project Hub — Task Report (${today})</td></tr><tr><td colspan="11"></td></tr>`;
   clients.forEach(client=>{
     const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
     const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
     if(!cTasks.length)return;
-    html+=`<tr><td colspan="7" class="client">CLIENT: ${client} | ${cProjects.length} Project(s) | ${cTasks.length} Tasks</td></tr>`;
-    html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Status</th><th class="hdr">Priority</th><th class="hdr">Assignee</th><th class="hdr">Due Date</th></tr>`;
+    html+=`<tr><td colspan="11" class="client">CLIENT: ${client} | ${cProjects.length} Project(s) | ${cTasks.length} Tasks</td></tr>`;
+    html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Scope</th><th class="hdr">Status</th><th class="hdr">Priority</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Due Date</th><th class="hdr">Client Sub Date</th></tr>`;
     let n=1;
     cProjects.forEach(proj=>{
       const pt=cTasks.filter(t=>t.project_id===proj.id);
       if(!pt.length)return;
-      html+=`<tr><td colspan="7" class="project">▸ ${proj.name} (${pt.length} tasks)</td></tr>`;
+      html+=`<tr><td colspan="11" class="project">▸ ${proj.name} (${pt.length} tasks)</td></tr>`;
       pt.forEach(t=>{
         const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
         const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"todo";
-        html+=`<tr><td>${n++}</td><td>${t.title}</td><td>${proj.name}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.priority}</td><td>${t.assignee||"Unassigned"}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td></tr>`;
+        html+=`<tr><td>${n++}</td><td>${t.title}</td><td>${proj.name}</td><td>${t.scope||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.priority}</td><td>${t.assignee||"Unassigned"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td><td>${t.client_sub_date||"—"}</td></tr>`;
       });
     });
-    html+=`<tr><td colspan="7"></td></tr>`;
+    html+=`<tr><td colspan="11"></td></tr>`;
   });
   html+=`</table></body></html>`;
   const b64=btoa(unescape(encodeURIComponent(html)));
@@ -1068,7 +1082,7 @@ export default function App(){
         if(!exists){const {data:np}=await supabase.from("projects").insert({name:f.custName.trim(),client:f.client||"",color:PROJECT_COLORS[projects.length%PROJECT_COLORS.length],description:"Auto-created.",assigned_users:users.map(u=>u.username)}).select().single();if(np){sp(ps=>[...ps,np]);pid=np.id;}}
         else{pid=exists.id;}
       }
-      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files};
+      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",scope:f.scope||"",client_sub_date:f.client_sub_date||null};
       const proj=projects.find(p=>p.id===pid);
       const assigneeUser=users.find(u=>u.username===f.assignee||u.name===f.assignee);
       const assigneeEmail=assigneeUser?.email||"Manager@hub-rdsprojects.com";
@@ -1374,8 +1388,8 @@ export default function App(){
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Status","Priority","Assignee","Due Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={8} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={false}/>)}</tbody>
+              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={false}/>)}</tbody>
             </table>
           </div>
         )}
