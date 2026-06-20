@@ -1287,10 +1287,57 @@ export default function App(){
             </div>
             {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {(()=>{const un=dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="");if(!un.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{un.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>{t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}{!isClient&&<button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
-            {overdueTasks.length>0&&(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2><div style={{background:C.card,border:`1px solid ${C.red}44`,borderRadius:12,overflow:"hidden",marginBottom:24}}>{overdueTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:C.red}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><span style={{fontSize:11,color:C.red,fontWeight:700}}>Due {t.due_date}</span><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg><Av name={t.assignee} size={24}/></div>);})}</div></>)}
+            {overdueTasks.length>0&&(<>
+              <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
+                {overdueTasks.map(t=>{
+                  const pj=projects.find(p=>p.id===t.project_id);
+                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
+                  return(
+                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
+                      onClick={()=>{set(t);stm(true);}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                        <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.4}}>{t.title}</p>
+                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,marginLeft:8,whiteSpace:"nowrap"}}>{daysOver}d late</span>
+                      </div>
+                      <p style={{margin:"0 0 10px",fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                        <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
+                        <span style={{fontSize:11,color:C.red,fontWeight:600}}>Due {t.due_date}</span>
+                        {t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>)}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-              {dashTasks.slice(-6).reverse().map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:pj?.color||C.accent}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>{t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}</div>);})}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
+              {dashTasks.slice(-6).reverse().map(t=>{
+                const pj=projects.find(p=>p.id===t.project_id);
+                const clr=pj?.color||C.accent;
+                return(
+                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
+                    onClick={()=>{set(t);stm(true);}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.4}}>{t.title}</p>
+                      <Bdg color={clr} style={{marginLeft:8}}>{pj?.name||"—"}</Bdg>
+                    </div>
+                    {t.client&&<p style={{margin:"0 0 8px",fontSize:11,color:C.teal}}>👤 {t.client}</p>}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
+                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                      <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
+                      {t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}
+                      {t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
