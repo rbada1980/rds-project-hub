@@ -672,7 +672,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
 function exportExcel(projects,tasks){
   const today=new Date().toISOString().slice(0,10);
   const clients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;}.client{background:#f97316;color:#fff;font-weight:bold;}.project{background:#3b82f6;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.todo{background:#fef9c3;color:#713f12;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
+  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;}.client{background:#f97316;color:#fff;font-weight:bold;}.project{background:#3b82f6;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.todo{background:#fef9c3;color:#713f12;}.notstarted{background:#f3f4f6;color:#374151;}.canceled{background:#fce7f3;color:#9d174d;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
   html+=`<table><tr><td colspan="11" class="hdr" style="font-size:16px;text-align:center;">RDS Project Hub — Task Report (${today})</td></tr><tr><td colspan="11"></td></tr>`;
   clients.forEach(client=>{
     const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
@@ -687,7 +687,7 @@ function exportExcel(projects,tasks){
       html+=`<tr><td colspan="11" class="project">▸ ${proj.name} (${pt.length} tasks)</td></tr>`;
       pt.forEach(t=>{
         const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
-        const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"todo";
+        const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":(t.status==="Not Yet Started"||t.status==="To Be Started")?"notstarted":t.status==="job canceled"?"canceled":"todo";
         html+=`<tr><td>${n++}</td><td>${t.title}</td><td>${proj.name}</td><td>${t.scope||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.priority}</td><td>${t.assignee||"Unassigned"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td><td>${t.client_sub_date||"—"}</td></tr>`;
       });
     });
