@@ -629,8 +629,20 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   const [statusFilter,ssf]=useState("All");
   const [clientFilter,scf]=useState("All");
   const [search,ss]=useState("");
-  const myTasks=tasks.filter(t=>(t.assignee||"").toLowerCase()===me.name.toLowerCase()||(t.detailer||"").toLowerCase().includes(me.name.toLowerCase()));
-  const myProjects=[...new Set(myTasks.map(t=>t.project_id))].map(pid=>projects.find(p=>p.id===pid)).filter(Boolean);
+  // Match by name, username, or first-name (handles Excel short names like "Anji" vs "Anji Reddy")
+  const myN=me.name.toLowerCase().trim();
+  const myU=(me.username||"").toLowerCase().trim();
+  const myFirst=myN.split(" ")[0]; // e.g. "anji"
+  function matchesMe(val){
+    const v=(val||"").toLowerCase().trim();
+    if(!v)return false;
+    return v===myN||v===myU||v===myFirst||myN.startsWith(v+" ")||v.startsWith(myFirst+" ")||v.includes(myN)||v.includes(myU);
+  }
+  const myTasks=tasks.filter(t=>matchesMe(t.assignee)||matchesMe(t.detailer)||matchesMe(t.checker));
+  // Also include projects user is assigned to (via assigned_users), even if no direct task match
+  const myAssignedProjects=projects.filter(p=>(p.assigned_users||[]).some(u=>u.toLowerCase()===myN||u.toLowerCase()===myU||u.toLowerCase()===myFirst));
+  const myProjectIds=new Set([...myTasks.map(t=>t.project_id),...myAssignedProjects.map(p=>p.id)]);
+  const myProjects=[...myProjectIds].map(pid=>projects.find(p=>p.id===pid)).filter(Boolean);
   const myClients=[...new Set(myProjects.map(p=>p.client||"Unassigned").filter(Boolean))].sort();
   const filtered=myTasks.filter(t=>{
     if(search&&!t.title.toLowerCase().includes(search.toLowerCase())&&!(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(search.toLowerCase()))return false;
