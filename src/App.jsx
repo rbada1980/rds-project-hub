@@ -471,7 +471,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. suresh@company.com" type="email"/></div>
-            <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={s("role")} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
+            <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={v=>{sf(p=>({...p,role:v,password:v==="Client"?"Client@RDS2026":"RDSTechserv@2026"}));}} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
@@ -871,6 +871,121 @@ function Login({onLogin}){
     </div>
   );
 }
+function ClientDashboard({me,tasks,projects,today,onViewProject}){
+  const [statusFilter,ssf]=useState("All");
+  const [search,ss]=useState("");
+  const myProjects=projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase());
+  const myPids=new Set(myProjects.map(p=>p.id));
+  const myTasks=tasks.filter(t=>myPids.has(t.project_id));
+  const total=myTasks.length;
+  const done=myTasks.filter(t=>isDone(t.status)).length;
+  const inprog=myTasks.filter(t=>t.status==="In Progress").length;
+  const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const notStarted=myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+  const pct=total?Math.round(done/total*100):0;
+  const filtered=myTasks.filter(t=>{
+    const pj=projects.find(p=>p.id===t.project_id);
+    if(search&&!t.title.toLowerCase().includes(search.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(search.toLowerCase()))return false;
+    if(statusFilter!=="All"){const nsMatch=statusFilter==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==statusFilter)return false;}
+    return true;
+  });
+  return(
+    <div>
+      {/* Header */}
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
+        <div style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
+        <div style={{flex:1}}>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>{me.client_name||me.name}</h2>
+          <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>Client Portal · {myProjects.length} projects · {total} tasks</p>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{fontSize:28,fontWeight:800,color:C.teal}}>{pct}%</div>
+          <div style={{fontSize:11,color:C.t3}}>overall complete</div>
+        </div>
+      </div>
+      {/* Progress bar */}
+      <div style={{marginBottom:24}}><Pb v={pct} color={C.teal} h={8}/></div>
+      {/* Stat cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:28}}>
+        <Stat label="Total Tasks" value={total} sub="all projects" color={C.teal} onClick={()=>{ssf("All");ss("");}}/>
+        <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf("Completed")}/>
+        <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf("In Progress")}/>
+        <Stat label="Not Yet Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf("Not Yet Started")}/>
+        <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf("All")}/>
+      </div>
+      {/* Projects */}
+      <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14,marginBottom:28}}>
+        {myProjects.map(p=>{
+          const pt=myTasks.filter(t=>t.project_id===p.id);
+          const pd=pt.filter(t=>isDone(t.status)).length;
+          const pp=pt.length?Math.round(pd/pt.length*100):0;
+          const ov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+          return(
+            <div key={p.id} onClick={()=>onViewProject(p.id)}
+              style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:18,cursor:"pointer",borderTop:`3px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1}}>{p.name}</p>
+                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:700,marginLeft:8}}>{pp}%</span>
+              </div>
+              <Pb v={pp} color={p.color} h={4}/>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontSize:12,color:C.t3}}>
+                <span>{pd}/{pt.length} done</span>
+                {ov>0&&<span style={{color:C.red,fontWeight:700}}>⚠ {ov} overdue</span>}
+                {p.deadline&&<span>Due {p.deadline}</span>}
+              </div>
+            </div>
+          );
+        })}
+        {myProjects.length===0&&<p style={{color:C.t3,fontSize:13}}>No projects assigned yet.</p>}
+      </div>
+      {/* Task list */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:10}}>
+        <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>All Tasks ({filtered.length})</h2>
+        <div style={{display:"flex",gap:8}}>
+          <input placeholder="🔍 Search tasks or projects…" value={search} onChange={e=>ss(e.target.value)}
+            style={{background:C.surface,border:`1px solid ${search?C.teal:C.border}`,borderRadius:8,padding:"7px 12px",color:C.t1,fontSize:12,outline:"none",width:220,fontFamily:"inherit"}}/>
+          <select value={statusFilter} onChange={e=>ssf(e.target.value)}
+            style={{background:C.surface,border:`1px solid ${statusFilter!=="All"?C.teal:C.border}`,borderRadius:8,padding:"7px 12px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer"}}>
+            <option value="All">All Status</option>
+            {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead><tr style={{background:C.surface}}>
+            {["Task","Project","Status","Priority","Assignee","Due Date"].map(h=>(
+              <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:C.t3,letterSpacing:".05em",borderBottom:`1px solid ${C.border}`}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {filtered.length===0
+              ?<tr><td colSpan={6} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>
+              :filtered.map(t=>{
+                const pj=projects.find(p=>p.id===t.project_id);
+                const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+                return(
+                  <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:"10px 14px",fontSize:13,color:C.t1,fontWeight:500,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{background:(pj?.color||C.accent)+"22",color:pj?.color||C.accent,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>{pj?.name||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12}}>Unassigned</span>}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                  </tr>
+                );
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onViewTasks,onEdit,onDelete,onEditTask}){
   const [q,sq]=useState("");
   const [fStatus,sfs]=useState("All");
@@ -1217,12 +1332,16 @@ export default function App(){
       const detailerUser=f.detailer?users.find(u=>u.name===f.detailer.split("/")[0].trim()):null;
       const detailerEmail=detailerUser?.email||"";
       const managerEmail="Manager@hub-rdsprojects.com";
-      // Helper: notify multiple recipients
+      // Find client user for this project and get their email
+      const clientUser=proj?users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(proj.client||"").toLowerCase()):null;
+      const clientEmail=clientUser?.email||"";
+      // Helper: notify multiple recipients including client
       function notifyAll(type,payload){
         const emails=new Set([managerEmail]);
         if(assigneeEmail)emails.add(assigneeEmail);
         if(checkerEmail)emails.add(checkerEmail);
         if(detailerEmail)emails.add(detailerEmail);
+        if(clientEmail)emails.add(clientEmail);
         emails.forEach(email=>notify(type,{...payload,recipientEmail:email}));
       }
       if(editTask){
@@ -1246,7 +1365,7 @@ export default function App(){
   }
   async function delTask(id){if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
   async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const checkerUser=task.checker?users.find(u=>u.name===task.checker.split("/")[0].trim()):null;const emails=new Set(["Manager@hub-rdsprojects.com"]);if(assigneeUser?.email)emails.add(assigneeUser.email);if(checkerUser?.email)emails.add(checkerUser.email);if(ns==="Done"){emails.forEach(e=>notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:e}));}else{emails.forEach(e=>notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:e}));}}
-  async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);notify("project_created",projectCreatedPayload(data,me));}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());const pce=pcu?.email||"";const pEmails=new Set(["Manager@hub-rdsprojects.com"]);if(pce)pEmails.add(pce);pEmails.forEach(em=>notify("project_created",{...projectCreatedPayload(data,me),recipientEmail:em}));}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
@@ -1364,7 +1483,13 @@ export default function App(){
             onViewProject={pid=>{sap(pid);sac(null);switchView("list");}}
           />
         )}
-        {view==="dashboard"&&(isAdmin||isManager||isClient)&&(
+        {view==="dashboard"&&isClient&&(
+          <ClientDashboard
+            me={me} tasks={tasks} projects={projects} today={today}
+            onViewProject={pid=>{sap(pid);sac(null);switchView("list");}}
+          />
+        )}
+        {view==="dashboard"&&(isAdmin||isManager)&&(
           <>
             {/* ── Search + Always-visible Filters ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:20}}>
