@@ -734,70 +734,65 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf("All")}/>
       </div>
       {/* My Projects */}
-      <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#fff"}}>My Projects ({myProjects.length})</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14,marginBottom:28}}>
+      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#fff"}}>My Projects ({myProjects.length})</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
           const pt=myTasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
+          const pip=pt.filter(t=>t.status==="In Progress").length;
+          const pnd=pt.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+          const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
           const pct2=pt.length?Math.round(pd/pt.length*100):0;
+          const myRoles=[];
+          if(pt.some(t=>matchesMe(t.assignee)))myRoles.push("Assignee");
+          if(pt.some(t=>matchesMe(t.detailer)))myRoles.push("Detailer");
+          if(pt.some(t=>matchesMe(t.checker)))myRoles.push("QC Checker");
           return(
-            <div key={p.id} onClick={()=>onViewProject(p.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:18,cursor:"pointer",borderTop:`3px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+            <div key={p.id} onClick={()=>onViewProject(p.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1}}>{p.name}</p>
-                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:700,marginLeft:8}}>{pct2}%</span>
+              {/* Title + % */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{p.name}</p>
+                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{pct2}%</span>
               </div>
-              {p.client&&<p style={{margin:"0 0 8px",fontSize:11,color:C.teal}}>👤 {p.client}</p>}
-              <Pb v={pct2} color={p.color} h={4}/>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:8}}>
-                <span style={{fontSize:11,color:C.green}}>✓ {pd}</span>
-                <span style={{fontSize:11,color:C.blue}}>⟳ {pt.filter(t=>t.status==="In Progress").length}</span>
-                <span style={{fontSize:11,color:C.t3}}>{pt.length} total</span>
+              {/* Client + Deadline */}
+              <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
+                {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
+                {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
               </div>
+              {/* Progress bar */}
+              <Pb v={pct2} color={p.color} h={7}/>
+              {/* 4-stat breakdown */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
+                </div>
+                <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
+                </div>
+                <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{pnd}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
+                </div>
+                <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
+                </div>
+              </div>
+              {/* My role badges */}
+              {myRoles.length>0&&(
+                <div style={{marginTop:12,display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {myRoles.map(r=><span key={r} style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}33`,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>{r}</span>)}
+                </div>
+              )}
+              <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
             </div>
           );
         })}
-      </div>
-      {/* My Tasks */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-        <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#fff"}}>My Tasks ({filtered.length})</h2>
-        {(statusFilter!=="All"||clientFilter!=="All"||search)&&<button onClick={()=>{ssf("All");scf("All");ss("");}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
-      </div>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:16,display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,alignItems:"center"}}>
-        <input placeholder="🔍 Search tasks or projects…" value={search} onChange={e=>ss(e.target.value)}
-          style={{background:C.surface,border:`1px solid ${search?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-        <select value={statusFilter} onChange={e=>ssf(e.target.value)} style={{background:C.surface,border:`1px solid ${statusFilter!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-          <option value="All">All Statuses</option>
-          {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={clientFilter} onChange={e=>scf(e.target.value)} style={{background:C.surface,border:`1px solid ${clientFilter!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-          <option value="All">All Clients</option>
-          {myClients.map(c=><option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-        {filtered.length===0
-          ?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>
-          :filtered.map(t=>{
-            const pj=projects.find(p=>p.id===t.project_id);
-            const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
-            return(
-              <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`,cursor:"default"}}
-                onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div style={{width:3,height:32,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</p>
-                  <p style={{margin:"2px 0 0",fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}{t.scope?` · ${t.scope}`:""}</p>
-                </div>
-                <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
-                {t.checker&&<span style={{fontSize:11,color:C.t3,whiteSpace:"nowrap"}}>QC: {t.checker}</span>}
-                <span style={{fontSize:11,color:ov?C.red:C.t3,fontWeight:ov?700:400,whiteSpace:"nowrap"}}>{t.due_date||"—"}{ov?" ⚠":""}</span>
-              </div>
-            );
-          })}
+        {myProjects.length===0&&<p style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects assigned yet.</p>}
       </div>
     </div>
   );
@@ -1039,73 +1034,62 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
         <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf("All")}/>
       </div>
       {/* Projects */}
-      <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14,marginBottom:28}}>
+      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
           const pt=myTasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
+          const pip=pt.filter(t=>t.status==="In Progress").length;
+          const pnd=pt.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+          const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
           const pp=pt.length?Math.round(pd/pt.length*100):0;
-          const ov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+          const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
           return(
             <div key={p.id} onClick={()=>onViewProject(p.id)}
-              style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:18,cursor:"pointer",borderTop:`3px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+              style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1}}>{p.name}</p>
-                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:700,marginLeft:8}}>{pp}%</span>
+              {/* Title + % */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{p.name}</p>
+                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{pp}%</span>
               </div>
-              <Pb v={pp} color={p.color} h={4}/>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontSize:12,color:C.t3}}>
-                <span>{pd}/{pt.length} done</span>
-                {ov>0&&<span style={{color:C.red,fontWeight:700}}>⚠ {ov} overdue</span>}
-                {p.deadline&&<span>Due {p.deadline}</span>}
+              {/* Deadline */}
+              {p.deadline&&<div style={{marginBottom:10}}><span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span></div>}
+              {/* Progress bar */}
+              <Pb v={pp} color={p.color} h={7}/>
+              {/* 4-stat breakdown */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
+                </div>
+                <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
+                </div>
+                <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{pnd}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
+                </div>
+                <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
+                </div>
               </div>
+              {/* Team */}
+              {assignees.length>0&&(
+                <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,color:C.t3}}>Team:</span>
+                  {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
+                  {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
+                </div>
+              )}
+              <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
             </div>
           );
         })}
-        {myProjects.length===0&&<p style={{color:C.t3,fontSize:13}}>No projects assigned yet.</p>}
-      </div>
-      {/* Task list */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:10}}>
-        <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>All Tasks ({filtered.length})</h2>
-        <div style={{display:"flex",gap:8}}>
-          <input placeholder="🔍 Search tasks or projects…" value={search} onChange={e=>ss(e.target.value)}
-            style={{background:C.surface,border:`1px solid ${search?C.teal:C.border}`,borderRadius:8,padding:"7px 12px",color:C.t1,fontSize:12,outline:"none",width:220,fontFamily:"inherit"}}/>
-          <select value={statusFilter} onChange={e=>ssf(e.target.value)}
-            style={{background:C.surface,border:`1px solid ${statusFilter!=="All"?C.teal:C.border}`,borderRadius:8,padding:"7px 12px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer"}}>
-            <option value="All">All Status</option>
-            {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr style={{background:C.surface}}>
-            {["Task","Project","Status","Priority","Assignee","Due Date"].map(h=>(
-              <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:C.t3,letterSpacing:".05em",borderBottom:`1px solid ${C.border}`}}>{h}</th>
-            ))}
-          </tr></thead>
-          <tbody>
-            {filtered.length===0
-              ?<tr><td colSpan={6} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>
-              :filtered.map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
-                    <td style={{padding:"10px 14px",fontSize:13,color:C.t1,fontWeight:500,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</td>
-                    <td style={{padding:"10px 14px"}}><span style={{background:(pj?.color||C.accent)+"22",color:pj?.color||C.accent,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>{pj?.name||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12}}>Unassigned</span>}</td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
-                  </tr>
-                );
-              })
-            }
-          </tbody>
-        </table>
+        {myProjects.length===0&&<p style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects assigned yet.</p>}
       </div>
     </div>
   );
@@ -1677,7 +1661,7 @@ export default function App(){
               <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
               <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
               <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
-              <Stat label="Unassigned" value={activeDashTasks.filter(t=>!t.assignee||t.assignee.trim()==="").length} sub={`${accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0).length} project(s) too`} color={C.yellow} onClick={()=>ssm({title:"Unassigned Tasks",tasks:activeDashTasks.filter(t=>!t.assignee||t.assignee.trim()==="")})}/>
+              <Stat label="Recent Tasks" value={Math.min(dashTasks.length,12)} sub="latest activity" color={"#a855f7"} onClick={()=>ssm({title:"Recent Tasks",tasks:[...dashTasks].slice(-12).reverse()})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);switchView("clientprojects");}}/>}
@@ -1712,7 +1696,6 @@ export default function App(){
               })}
             </div>
             {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
-            {(()=>{const un=dashTasks.filter(t=>!t.assignee||t.assignee.trim()==="");if(!un.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>👤 Unassigned Tasks</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{un.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:28,borderRadius:2,background:C.yellow}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{t.title}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p></div><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg><Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>{t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}{!isClient&&<button onClick={()=>{set(t);stm(true);}} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {overdueTasks.length>0&&(<>
               <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
@@ -1742,7 +1725,7 @@ export default function App(){
             </>)}
             <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
-              {dashTasks.slice(-6).reverse().map(t=>{
+              {dashTasks.slice(-12).reverse().map(t=>{
                 const pj=projects.find(p=>p.id===t.project_id);
                 const clr=pj?.color||C.accent;
                 return(
