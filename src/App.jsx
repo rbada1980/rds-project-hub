@@ -679,36 +679,22 @@ function TRow({task,project,onEdit,onDelete,readonly}){
   );
 }
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
+  // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
   const [statusFilter,ssf]=useState("All");
-  const [clientFilter,scf]=useState("All");
-  const [search,ss]=useState("");
-  // Match by name, username, or first-name (handles Excel short names like "Anji" vs "Anji Reddy")
-  const myN=me.name.toLowerCase().trim();
-  const myU=(me.username||"").toLowerCase().trim();
-  const myFirst=myN.split(" ")[0]; // e.g. "anji"
-  function matchesMe(val){
-    const v=(val||"").toLowerCase().trim();
-    if(!v)return false;
-    return v===myN||v===myU||v===myFirst||myN.startsWith(v+" ")||v.startsWith(myFirst+" ")||v.includes(myN)||v.includes(myU);
-  }
-  const myTasks=tasks.filter(t=>matchesMe(t.assignee)||matchesMe(t.detailer)||matchesMe(t.checker));
-  // Also include projects user is assigned to (via assigned_users), even if no direct task match
-  const myAssignedProjects=projects.filter(p=>(p.assigned_users||[]).some(u=>u.toLowerCase()===myN||u.toLowerCase()===myU||u.toLowerCase()===myFirst));
-  const myProjectIds=new Set([...myTasks.map(t=>t.project_id),...myAssignedProjects.map(p=>p.id)]);
-  const myProjects=[...myProjectIds].map(pid=>projects.find(p=>p.id===pid)).filter(Boolean);
-  const myClients=[...new Set(myProjects.map(p=>p.client||"Unassigned").filter(Boolean))].sort();
-  const filtered=myTasks.filter(t=>{
-    if(search&&!t.title.toLowerCase().includes(search.toLowerCase())&&!(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(search.toLowerCase()))return false;
-    if(statusFilter!=="All"){const nsMatch=statusFilter==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==statusFilter)return false;}
-    if(clientFilter!=="All"&&(projects.find(p=>p.id===t.project_id)?.client||"Unassigned")!==clientFilter)return false;
-    return true;
-  });
+  const matchesMe=v=>userMatchesStr(me,v);
+  // My tasks = tasks in accessible projects where I'm assignee / detailer / checker
+  const myTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&(matchesMe(t.assignee)||matchesMe(t.detailer)||matchesMe(t.checker)));
+  // My projects = all accessible projects (they're already filtered to mine in parent)
+  const myProjects=projects;
   const total=myTasks.length;
   const done=myTasks.filter(t=>isDone(t.status)).length;
   const inprog=myTasks.filter(t=>t.status==="In Progress").length;
   const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
   const notStarted=myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const pct=total?Math.round(done/total*100):0;
+  // Avatar colour palette for co-users
+  const avatarColors=["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f97316"];
+  function avatarColor(name){let h=0;for(let i=0;i<(name||"").length;i++)h=(h*31+name.charCodeAt(i))%avatarColors.length;return avatarColors[h];}
   return(
     <div>
       {/* Header */}
@@ -716,7 +702,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         <div style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.accent}}>{me.name[0]}</div>
         <div style={{flex:1}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>My Dashboard</h2>
-          <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · {me.role} · {total} tasks assigned</p>
+          <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · {me.role} · {total} task{total!==1?"s":""} assigned</p>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:28,fontWeight:800,color:C.accent}}>{pct}%</div>
@@ -727,72 +713,96 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       <div style={{marginBottom:24}}><Pb v={pct} color={C.accent} h={8}/></div>
       {/* Stat cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:28}}>
-        <Stat label="Total Tasks" value={total} sub="assigned to me" color={C.accent} onClick={()=>{ssf("All");scf("All");ss("");}}/>
+        <Stat label="Total Tasks" value={total} sub="assigned to me" color={C.accent} onClick={()=>ssf("All")}/>
         <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf("Completed")}/>
         <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf("In Progress")}/>
-        <Stat label="Not Yet Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf("Not Yet Started")}/>
+        <Stat label="Not Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf("Not Yet Started")}/>
         <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf("All")}/>
       </div>
       {/* My Projects */}
-      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#fff"}}>My Projects ({myProjects.length})</h2>
+      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
+          // My tasks in this project
           const pt=myTasks.filter(t=>t.project_id===p.id);
+          // ALL tasks in this project (for overall % and co-users)
+          const allPt=tasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
           const pip=pt.filter(t=>t.status==="In Progress").length;
           const pnd=pt.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
           const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-          const pct2=pt.length?Math.round(pd/pt.length*100):0;
+          // Overall project %
+          const allDone=allPt.filter(t=>isDone(t.status)).length;
+          const overallPct=allPt.length?Math.round(allDone/allPt.length*100):0;
+          // My roles in this project
           const myRoles=[];
           if(pt.some(t=>matchesMe(t.assignee)))myRoles.push("Assignee");
           if(pt.some(t=>matchesMe(t.detailer)))myRoles.push("Detailer");
           if(pt.some(t=>matchesMe(t.checker)))myRoles.push("QC Checker");
+          // Co-workers: unique names on this project's tasks, excluding me
+          const coUsers=[...new Set(allPt.flatMap(t=>[t.assignee,t.detailer,t.checker].filter(Boolean)).filter(u=>!matchesMe(u)))].slice(0,5);
           return(
             <div key={p.id} onClick={()=>onViewProject(p.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-              {/* Title + % */}
+              {/* Title + overall % */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{p.name}</p>
-                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{pct2}%</span>
+                <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{overallPct}%</span>
               </div>
               {/* Client + Deadline */}
               <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
                 {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
                 {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
               </div>
-              {/* Progress bar */}
-              <Pb v={pct2} color={p.color} h={7}/>
-              {/* 4-stat breakdown */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
-                <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                  <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
+              {/* Overall progress bar */}
+              <Pb v={overallPct} color={p.color} h={7}/>
+              {/* My task breakdown */}
+              {pt.length>0&&(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                  <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:2}}>My Done</div>
+                  </div>
+                  <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
+                  </div>
+                  <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{pnd}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
+                  </div>
+                  <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
+                  </div>
                 </div>
-                <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                  <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
-                </div>
-                <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                  <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{pnd}</div>
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
-                </div>
-                <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                  <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
-                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
-                </div>
-              </div>
-              {/* My role badges */}
+              )}
+              {/* My roles */}
               {myRoles.length>0&&(
                 <div style={{marginTop:12,display:"flex",gap:6,flexWrap:"wrap"}}>
                   {myRoles.map(r=><span key={r} style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}33`,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>{r}</span>)}
                 </div>
               )}
-              <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
+              {/* Co-workers */}
+              {coUsers.length>0&&(
+                <div style={{marginTop:12,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,color:C.t3,flexShrink:0}}>Team:</span>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+                    {coUsers.map(u=>(
+                      <div key={u} title={u} style={{display:"flex",alignItems:"center",gap:4,background:avatarColor(u)+"22",border:`1px solid ${avatarColor(u)}44`,borderRadius:20,padding:"2px 8px 2px 4px"}}>
+                        <div style={{width:18,height:18,borderRadius:"50%",background:avatarColor(u),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#fff",flexShrink:0}}>{(u[0]||"?").toUpperCase()}</div>
+                        <span style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>{u.split(" ")[0]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} of {allPt.length} task{allPt.length!==1?"s":""} mine · click to view →</div>
             </div>
           );
         })}
-        {myProjects.length===0&&<p style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects assigned yet.</p>}
+        {myProjects.length===0&&<p style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects assigned yet. Ask your admin or manager to assign you to a project.</p>}
       </div>
     </div>
   );
@@ -1356,6 +1366,15 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
     </div>
   );
 }
+// ── User matching helper (used in accessibleProjects + UserDashboard) ────────
+function userMatchesStr(me,str){
+  if(!str)return false;
+  const v=(str||'').toLowerCase().trim();
+  const n=(me.name||'').toLowerCase().trim();
+  const u=(me.username||'').toLowerCase().trim();
+  const f=n.split(' ')[0];
+  return v===n||v===u||v===f||n.startsWith(v+' ')||v.startsWith(f+' ')||v.includes(n)||(u&&v.includes(u));
+}
 // ── URL routing helpers ──────────────────────────────────────────────────────
 function slugify(s){return(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
 function stateToUrl(v,pid,client,projs=[]){
@@ -1524,7 +1543,12 @@ export default function App(){
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-  const accessibleProjects=(isAdmin||isManager)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase()):projects.filter(p=>(p.assigned_users||[]).includes(me.username));
+  const accessibleProjects=(isAdmin||isManager)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase()):projects.filter(p=>{
+    // Assigned at project level (username or full name match)
+    if((p.assigned_users||[]).some(u=>userMatchesStr(me,u)))return true;
+    // Assigned at task level (assignee / detailer / checker)
+    return tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker)));
+  });
   const members=users.map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const filtered=tasks.filter(t=>{
@@ -1564,7 +1588,11 @@ export default function App(){
       let pid=f.project_id;
       if(f.custName&&f.custName.trim()){
         const exists=projects.find(p=>p.name.toLowerCase()===f.custName.trim().toLowerCase());
-        if(!exists){const {data:np}=await supabase.from("projects").insert({name:f.custName.trim(),client:f.client||"",color:PROJECT_COLORS[projects.length%PROJECT_COLORS.length],description:"Auto-created.",assigned_users:users.map(u=>u.username)}).select().single();if(np){sp(ps=>[...ps,np]);pid=np.id;}}
+        if(!exists){
+          // Only assign the task's assignee/detailer/checker — NOT all users
+          const autoAssigned=[...new Set([f.assignee,f.detailer,f.checker].filter(name=>{if(!name)return false;const u=users.find(u=>u.name.toLowerCase()===name.toLowerCase()||u.username.toLowerCase()===name.toLowerCase());return u?u.username:false;}).map(name=>{const u=users.find(u=>u.name.toLowerCase()===name.toLowerCase()||u.username.toLowerCase()===name.toLowerCase());return u?.username;}).filter(Boolean))];
+          const {data:np}=await supabase.from("projects").insert({name:f.custName.trim(),client:f.client||"",color:PROJECT_COLORS[projects.length%PROJECT_COLORS.length],description:"Auto-created.",assigned_users:autoAssigned}).select().single();if(np){sp(ps=>[...ps,np]);pid=np.id;}
+        }
         else{pid=exists.id;}
       }
       const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",scope:f.scope||"",client_sub_date:f.client_sub_date||null};
@@ -1745,7 +1773,7 @@ export default function App(){
         />
         {view==="dashboard"&&!isAdmin&&!isManager&&!isClient&&(
           <UserDashboard
-            me={me} tasks={tasks} projects={projects} clients={clients} today={today}
+            me={me} tasks={tasks} projects={accessibleProjects} clients={clients} today={today}
             onEditTask={()=>{}}
             onViewProject={pid=>navTo('list',pid)}
           />
@@ -1767,7 +1795,6 @@ export default function App(){
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
                 <div>
-                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By User</label>
                   <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                     <option value="All">All Users</option>
                     {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
