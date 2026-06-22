@@ -1357,48 +1357,65 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
   );
 }
 // ── URL routing helpers ──────────────────────────────────────────────────────
-function stateToUrl(v,pid,client){
-  if(v==='list'&&pid)return`/projects/${pid}`;
+function slugify(s){return(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function stateToUrl(v,pid,client,projs=[]){
+  if(v==='list'&&pid){
+    const p=projs.find(pr=>pr.id===pid);
+    return p?`/projects/${slugify(p.name)}`:`/projects/${pid}`;
+  }
   if(v==='list')return'/tasks';
   if(v==='kanban')return'/kanban';
   if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
   return'/';
 }
-function urlToState(path){
+function urlToState(path,projs=[]){
   if(!path||path==='/'||path==='/dashboard')return{view:'dashboard',pid:null,client:null};
   if(path==='/tasks')return{view:'list',pid:null,client:null};
   if(path==='/kanban')return{view:'kanban',pid:null,client:null};
   const pm=path.match(/^\/projects\/([^/]+)$/);
-  if(pm)return{view:'list',pid:pm[1],client:null};
+  if(pm){
+    const slug=decodeURIComponent(pm[1]);
+    // match by slug first (name-based), fall back to raw id
+    const p=projs.find(pr=>slugify(pr.name)===slug)||projs.find(pr=>pr.id===slug);
+    return{view:'list',pid:p?p.id:slug,client:null};
+  }
   const cm=path.match(/^\/clients\/(.+)$/);
   if(cm)return{view:'clientprojects',pid:null,client:decodeURIComponent(cm[1])};
   return{view:'dashboard',pid:null,client:null};
 }
 // ── Breadcrumb ───────────────────────────────────────────────────────────────
-function Breadcrumb({view,activePid,activeClient,projects,onDashboard,onTasks}){
+function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard,onTasks,onProject}){
   const crumbs=[];
-  crumbs.push({label:'🏠 Dashboard',onClick:view!=='dashboard'?onDashboard:null,active:view==='dashboard'});
+  const onDash=view!=='dashboard'?onDashboard:null;
+  crumbs.push({label:'🏠 Dashboard',onClick:onDash,active:view==='dashboard'});
   if(view==='list'){
-    crumbs.push({label:'📋 Tasks',onClick:activePid?onTasks:null,active:!activePid});
-    if(activePid){const p=projects.find(pr=>pr.id===activePid);if(p)crumbs.push({label:p.name,color:p.color,active:true});}
+    const hasTask=!!(activeTask);
+    crumbs.push({label:'📋 Tasks',onClick:activePid?onTasks:null,active:!activePid&&!hasTask});
+    if(activePid){
+      const p=projects.find(pr=>pr.id===activePid);
+      if(p)crumbs.push({label:p.name,color:p.color,onClick:hasTask?onProject:null,active:!hasTask});
+    }
+    if(hasTask)crumbs.push({label:`✏️ ${activeTask.title}`,active:true});
   }else if(view==='kanban'){
     crumbs.push({label:'🗂 Kanban',active:true});
   }else if(view==='clientprojects'&&activeClient){
-    crumbs.push({label:'🏢 Clients',active:false});
+    crumbs.push({label:'🏢 Clients',onClick:onDashboard,active:false});
     crumbs.push({label:activeClient,active:true});
+  }else if(view==='dashboard'&&activeTask){
+    crumbs.push({label:`✏️ ${activeTask.title}`,active:true});
   }
   if(crumbs.length<=1)return null;
+  const items=[];
+  crumbs.forEach((c,i)=>{
+    if(i>0)items.push(<span key={`s${i}`} style={{color:C.t3,fontSize:11,fontWeight:700,padding:'0 2px'}}>›</span>);
+    if(c.onClick)
+      items.push(<button key={`c${i}`} onClick={c.onClick} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:13,padding:0,fontFamily:'inherit',fontWeight:600,textDecoration:'underline',textUnderlineOffset:2}}>{c.label}</button>);
+    else
+      items.push(<span key={`c${i}`} style={{color:c.color||C.t1,fontWeight:c.active?700:500}}>{c.label}</span>);
+  });
   return(
-    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:16,padding:'7px 14px',background:C.surface,borderRadius:8,border:`1px solid ${C.border}`,fontSize:13,flexWrap:'wrap'}}>
-      {crumbs.map((c,i)=>(
-        <React.Fragment key={i}>
-          {i>0&&<span style={{color:C.t3,fontSize:11,fontWeight:700}}>›</span>}
-          {c.onClick
-            ?<button onClick={c.onClick} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:13,padding:0,fontFamily:'inherit',fontWeight:600,textDecoration:'underline',textUnderlineOffset:2}}>{c.label}</button>
-            :<span style={{color:c.color||C.t1,fontWeight:c.active?700:500}}>{c.label}</span>
-          }
-        </React.Fragment>
-      ))}
+    <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:16,padding:'7px 14px',background:C.surface,borderRadius:8,border:`1px solid ${C.border}`,fontSize:13,flexWrap:'wrap'}}>
+      {items}
     </div>
   );
 }
@@ -1463,18 +1480,12 @@ export default function App(){
     sl(false);
   }
   useEffect(()=>{if(me)loadAll();},[me]);
-  // Push URL whenever view/project/client changes
+  // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
   useEffect(()=>{
     if(!me)return;
-    const url=stateToUrl(view,activePid,activeClient);
-    const s={view,pid:activePid,client:activeClient};
-    if(view!==prevViewRef.current){
-      window.history.pushState(s,'',url);
-      prevViewRef.current=view;
-    }else{
-      window.history.replaceState(s,'',url);
-    }
-  },[view,activePid,activeClient,me]);
+    const url=stateToUrl(view,activePid,activeClient,projects);
+    window.history.replaceState({view,pid:activePid,client:activeClient},'',url);
+  },[view,activePid,activeClient,me,projects]);
   // Handle browser back / forward
   useEffect(()=>{
     function onPop(e){
@@ -1491,12 +1502,22 @@ export default function App(){
   useEffect(()=>{
     if(!me||!projects.length||initialParsed.current)return;
     initialParsed.current=true;
-    const s=urlToState(window.location.pathname);
+    const s=urlToState(window.location.pathname,projects);
     if(s.view!=='dashboard'||s.pid||s.client){
       prevViewRef.current=s.view;
       sv(s.view);sap(s.pid);sac(s.client);
     }
   },[me,projects]);
+  // Reflect open task in URL hash so task is identifiable in the link
+  useEffect(()=>{
+    if(!me)return;
+    if(taskModal&&editTask){
+      const hash=`#task-${slugify(editTask.title||'new')}`;
+      window.history.replaceState(window.history.state,'',window.location.pathname+hash);
+    }else{
+      window.history.replaceState(window.history.state,'',window.location.pathname);
+    }
+  },[taskModal,editTask]);
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -1528,11 +1549,15 @@ export default function App(){
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
   const overdueTasks=activeDashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
-  function switchView(v){
-    sv(v);
-    if(v==="dashboard"){sst("");sfs("All");sfa("All");sac(null);}
-    if(v!=="kanban"&&v!=="clientprojects")sac(null);
+  function navTo(v,pid=null,client=null){
+    const url=stateToUrl(v,pid,client,projects);
+    window.history.pushState({view:v,pid,client},'',url);
+    prevViewRef.current=v;
+    sv(v);sap(pid);sac(client);
+    if(v==='dashboard'){sst('');sfs('All');sfa('All');}
   }
+  // keep for any residual internal callers
+  function switchView(v){navTo(v,v==='list'?activePid:null,v==='clientprojects'?activeClient:null);}
   async function saveTask(f){
     ssv(true);
     try{
@@ -1625,7 +1650,7 @@ export default function App(){
         </div>
         <div style={{padding:"0 12px",flexShrink:0}}>
           {navs.map(([k,ico,lbl])=>(
-            <button key={k} onClick={()=>switchView(k)} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
+            <button key={k} onClick={()=>navTo(k,k==='list'?activePid:null)} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
               <span style={{fontSize:16}}>{ico}</span>{lbl}
             </button>
           ))}
@@ -1655,7 +1680,7 @@ export default function App(){
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
-                <button key={client} onClick={()=>{sac(client);switchView("clientprojects");}} style={sel(view==="clientprojects"&&activeClient===client)}>
+                <button key={client} onClick={()=>navTo('clientprojects',null,client)} style={sel(view==="clientprojects"&&activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{client}</span>
                 </button>
@@ -1713,20 +1738,22 @@ export default function App(){
         <Breadcrumb
           view={view} activePid={activePid} activeClient={activeClient}
           projects={accessibleProjects}
-          onDashboard={()=>{sv('dashboard');sap(null);sac(null);sst('');sfs('All');sfa('All');}}
-          onTasks={()=>{sv('list');sap(null);sac(null);}}
+          activeTask={taskModal&&editTask?editTask:null}
+          onDashboard={()=>navTo('dashboard')}
+          onTasks={()=>navTo('list')}
+          onProject={()=>navTo('list',activePid)}
         />
         {view==="dashboard"&&!isAdmin&&!isManager&&!isClient&&(
           <UserDashboard
             me={me} tasks={tasks} projects={projects} clients={clients} today={today}
             onEditTask={()=>{}}
-            onViewProject={pid=>{sap(pid);sac(null);switchView("list");}}
+            onViewProject={pid=>navTo('list',pid)}
           />
         )}
         {view==="dashboard"&&isClient&&(
           <ClientDashboard
             me={me} tasks={tasks} projects={projects} today={today}
-            onViewProject={pid=>{sap(pid);sac(null);switchView("list");}}
+            onViewProject={pid=>navTo('list',pid)}
           />
         )}
         {view==="dashboard"&&(isAdmin||isManager)&&(
@@ -1791,7 +1818,7 @@ export default function App(){
                 const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                 return(
                   <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{sap(p.id);sac(null);switchView("list");}}
+                    onClick={()=>navTo('list',p.id)}
                     onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -1891,7 +1918,7 @@ export default function App(){
               })}
             </div>
             {/* ── 3. Client-wise Overview ── */}
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);switchView("clientprojects");}}/>}
+            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
             {/* ── 4. Overdue Tasks ── */}
             {overdueTasks.length>0&&(<>
               <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
@@ -1964,14 +1991,14 @@ export default function App(){
             <div>
               {/* Header + Back */}
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>switchView("dashboard")} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
+                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
                 <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
               </div>
               {/* Search + Filter bar */}
               <ClientProjectSearch
                 projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
                 today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>{sap(pid);sac(null);switchView("list");}}
+                onViewTasks={pid=>navTo('list',pid)}
                 onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
                 onEditTask={t=>{set(t);stm(true);}}
               />
