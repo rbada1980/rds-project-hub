@@ -877,6 +877,78 @@ function exportExcel(projects,tasks){
   a.download=`RDS_Report_${today}.xls`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
+function ChangePasswordModal({me,onClose}){
+  const [cur,scur]=useState("");
+  const [np,snp]=useState("");
+  const [conf,sconf]=useState("");
+  const [err,se]=useState("");
+  const [ok,sok]=useState(false);
+  const [saving,ssv]=useState(false);
+  const [show,ssh]=useState(false);
+  async function save(){
+    se("");
+    if(!cur.trim()||!np.trim()||!conf.trim()){se("All fields are required.");return;}
+    if(np!==conf){se("New passwords do not match.");return;}
+    if(np.length<6){se("Password must be at least 6 characters.");return;}
+    if(np===cur){se("New password must be different from current password.");return;}
+    ssv(true);
+    const {createClient}=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm");
+    const sb=createClient("https://xypcbioltukahipkqqzc.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw");
+    // Verify current password
+    const {data:check}=await sb.from("users").select("id").eq("id",me.id).eq("password",cur).single();
+    if(!check){se("Current password is incorrect.");ssv(false);return;}
+    // Save new password
+    const {error}=await sb.from("users").update({password:np}).eq("id",me.id);
+    if(error){se("Error saving: "+error.message);ssv(false);return;}
+    // Update localStorage
+    const stored=JSON.parse(localStorage.getItem("rds_user")||"{}");
+    localStorage.setItem("rds_user",JSON.stringify({...stored,password:np}));
+    sok(true);
+    ssv(false);
+  }
+  return(
+    <Modal title="🔐 Change Password" onClose={onClose}>
+      {ok?(
+        <div style={{textAlign:"center",padding:"24px 0"}}>
+          <div style={{fontSize:48,marginBottom:12}}>✅</div>
+          <h3 style={{margin:"0 0 8px",color:C.green,fontSize:18}}>Password Changed!</h3>
+          <p style={{color:C.t3,fontSize:13,margin:"0 0 20px"}}>Your new password is active. Use it next time you log in.</p>
+          <button onClick={onClose} style={{...SBtn,margin:"0 auto"}}>Done</button>
+        </div>
+      ):(
+        <div>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Current Password</label>
+            <div style={{position:"relative"}}>
+              <input type={show?"text":"password"} value={cur} onChange={e=>scur(e.target.value)}
+                style={{width:"100%",background:C.surface,border:`1px solid ${err&&!cur?C.red:C.border}`,borderRadius:8,padding:"9px 40px 9px 12px",color:C.t1,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}
+                placeholder="Enter your current password"/>
+              <button onClick={()=>ssh(v=>!v)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:C.t3,fontSize:15,padding:0}}>{show?"🙈":"👁"}</button>
+            </div>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>New Password</label>
+            <input type={show?"text":"password"} value={np} onChange={e=>snp(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}
+              placeholder="Min. 6 characters"/>
+          </div>
+          <div style={{marginBottom:16}}>
+            <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Confirm New Password</label>
+            <input type={show?"text":"password"} value={conf} onChange={e=>sconf(e.target.value)} onKeyDown={e=>e.key==="Enter"&&save()}
+              style={{width:"100%",background:C.surface,border:`1px solid ${conf&&conf!==np?C.red:C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}
+              placeholder="Re-enter new password"/>
+            {conf&&conf!==np&&<p style={{margin:"4px 0 0",fontSize:11,color:C.red}}>Passwords don't match</p>}
+          </div>
+          {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+            <button onClick={onClose} style={GBtn}>Cancel</button>
+            <button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Change Password"}</button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
 function Login({onLogin}){
   const [un,sun]=useState(""),[pw,spw]=useState(""),[show,ss]=useState(false),[err,se]=useState(""),[ld,sl]=useState(false);
   async function go(){
@@ -1294,6 +1366,7 @@ export default function App(){
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
+  const [pwModal,spwm]      = useState(false);
   const [statModal,ssm]     = useState(null);
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -1514,6 +1587,7 @@ export default function App(){
               </div>
               {isAdmin&&<button onClick={()=>{sum(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
               {isAdmin&&<button onClick={()=>{scm(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🏢 View Clients</button>}
+              <button onClick={()=>{spwm(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🔐 Change Password</button>
               <button onClick={()=>{localStorage.removeItem("rds_user");sm(null);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
             </div>
           )}
@@ -1734,6 +1808,7 @@ export default function App(){
       </main>
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
+      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
       {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
