@@ -1665,32 +1665,63 @@ export default function App(){
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>{sac(c);switchView("clientprojects");}}/>}
-            <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
+            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length,pip=pt.filter(t=>t.status==="In Progress").length,ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+                const pd=pt.filter(t=>isDone(t.status)).length;
+                const pip=pt.filter(t=>t.status==="In Progress").length;
+                const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                 return(
-                  <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
+                  <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
                     onClick={()=>{sap(p.id);sac(null);switchView("list");}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                      <h3 style={{margin:0,fontSize:14,fontWeight:700,flex:1,color:"#ffffff"}}>{p.name}</h3>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    {/* Title + % + edit/delete */}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <h3 style={{margin:0,fontSize:15,fontWeight:800,flex:1,color:"#ffffff",lineHeight:1.3}}>{p.name}</h3>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:10,flexShrink:0}}>
                         {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>{isAdmin&&<IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>}</>)}
-                        <Bdg color={p.color}>{pv}%</Bdg>
+                        <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
                       </div>
                     </div>
-                    {p.client&&<p style={{margin:"0 0 8px",fontSize:11,color:C.teal}}>👤 {p.client}</p>}
-                    <p style={{margin:"0 0 12px",color:C.t3,fontSize:12}}>{p.description}</p>
-                    <Pb v={pv} color={p.color}/>
-                    <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
-                      <span style={{fontSize:11,color:C.green}}>✓ {pd}</span>
-                      <span style={{fontSize:11,color:C.blue}}>⟳ {pip}</span>
-                      <span style={{fontSize:11,color:C.t3}}>◎ {ptd}</span>
-                      <span style={{fontSize:11,color:C.t3}}>Due {p.deadline||"TBD"}</span>
+                    {/* Client + Deadline */}
+                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
+                      {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
+                      {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
                     </div>
+                    {/* Progress bar */}
+                    <Pb v={pv} color={p.color} h={7}/>
+                    {/* 4-stat breakdown */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                      <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
+                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
+                      </div>
+                      <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
+                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
+                      </div>
+                      <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{ptd}</div>
+                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
+                      </div>
+                      <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
+                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
+                      </div>
+                    </div>
+                    {/* Team members */}
+                    {assignees.length>0&&(
+                      <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
+                        {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
+                        {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
+                      </div>
+                    )}
+                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
                   </div>
                 );
               })}
