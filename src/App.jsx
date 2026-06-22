@@ -1418,8 +1418,8 @@ function userMatchesStr(me,str){
   const v=(str||'').toLowerCase().trim();
   const n=(me.name||'').toLowerCase().trim();
   const u=(me.username||'').toLowerCase().trim();
-  const f=n.split(' ')[0];
-  return v===n||v===u||v===f||n.startsWith(v+' ')||v.startsWith(f+' ')||v.includes(n)||(u&&v.includes(u));
+  // Strict: no first-name-only or substring matches — avoids matching other users
+  return v===n||(u&&v===u)||n.startsWith(v+' ')||v.startsWith(n+' ')||v.includes(n);
 }
 // ── URL routing helpers ──────────────────────────────────────────────────────
 function slugify(s){return(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
@@ -1537,23 +1537,23 @@ export default function App(){
       const role=me?.role;
       const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Client";
       if(isRegularUser){
-        // DB-level filtering for regular users — only fetch their assigned data
-        const myName=me.name||""; const myU=me.username||"";
-        const orFilter=[`assignee.eq.${myName}`,`detailer.eq.${myName}`,`checker.eq.${myName}`];
-        if(myU&&myU!==myName){orFilter.push(`assignee.eq.${myU}`,`detailer.eq.${myU}`,`checker.eq.${myU}`);}
+        // Fetch all then filter in JS — Supabase .or() silently fails for names with spaces
+        const mn=(me.name||"").toLowerCase().trim();
+        const mu=(me.username||"").toLowerCase().trim();
+        function taskBelongsToMe(tk){
+          const chk=v=>{if(!v)return false;const vl=v.toLowerCase().trim();return vl===mn||(mu&&vl===mu)||mn.startsWith(vl+" ")||vl.startsWith(mn+" ")||vl.includes(mn);};
+          return chk(tk.assignee)||chk(tk.detailer)||chk(tk.checker);
+        }
         const [{data:u},{data:p},{data:t}]=await Promise.all([
           supabase.from("users").select("id,name,username,role,email").order("name"),
           supabase.from("projects").select("*").order("name"),
-          supabase.from("tasks").select("*").order("created_at").or(orFilter.join(",")),
+          supabase.from("tasks").select("*").order("created_at"),
         ]);
         su(u||[]);
-        // Only load projects that contain tasks assigned to this user.
-        // assigned_users is intentionally NOT used — existing DB data has all users
-        // assigned to every project (corrupted by old auto-create). Task-level
-        // assignment is the sole source of truth.
-        const taskPids=new Set((t||[]).map(tt=>tt.project_id));
+        const myTasks=(t||[]).filter(taskBelongsToMe);
+        const taskPids=new Set(myTasks.map(tt=>tt.project_id));
         const myProjects=(p||[]).filter(proj=>taskPids.has(proj.id));
-        sp(myProjects); st(t||[]); scl([]); // no client management for regular users
+        sp(myProjects); st(myTasks); scl([]);
       }else{
         const [{data:u},{data:p},{data:t},{data:cl}]=await Promise.all([
           supabase.from("users").select("*").order("name"),
