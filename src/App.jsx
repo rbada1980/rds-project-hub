@@ -614,7 +614,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     </Modal>
   );
 }
-function KCard({task,project,onEdit,onDelete,readonly}){
+function KCard({task,project,onEdit,onDelete,readonly,canDelete=true}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
     <div draggable={!readonly} onDragStart={e=>{sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
@@ -623,7 +623,8 @@ function KCard({task,project,onEdit,onDelete,readonly}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4}}>{task.title}</p>
         {!readonly&&<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
-          <IBtn icon="✏️" onClick={()=>onEdit(task)}/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>
+          <IBtn icon="✏️" onClick={()=>onEdit(task)}/>
+          {canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
         </div>}
       </div>
       <p style={{margin:"4px 0 0",fontSize:11,color:C.teal}}>📁 {project?.name}</p>
@@ -641,22 +642,22 @@ function KCard({task,project,onEdit,onDelete,readonly}){
     </div>
   );
 }
-function KCol({status,tasks,projects,onEdit,onDelete,onDrop,readonly}){
+function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true}){
   const [ov,so]=useState(false);
   return(
-    <div onDragOver={e=>{if(!readonly){e.preventDefault();so(true);}}} onDragLeave={()=>so(false)}
-      onDrop={e=>{e.preventDefault();so(false);if(!readonly)onDrop(e.dataTransfer.getData("tid"),status);}}
+    <div onDragOver={e=>{e.preventDefault();so(true);}} onDragLeave={()=>so(false)}
+      onDrop={e=>{e.preventDefault();so(false);onDrop(e.dataTransfer.getData("tid"),status);}}
       style={{minWidth:220,flex:1,background:ov?C.surface+"88":"transparent",border:`2px dashed ${ov?getStatusColor(status):C.border}`,borderRadius:12,padding:12,transition:"all .15s"}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
         <div style={{width:8,height:8,borderRadius:"50%",background:getStatusColor(status)}}/>
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} readonly={readonly}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} readonly={!canEditFn(t)} canDelete={canDelete}/>)}
     </div>
   );
 }
-function TRow({task,project,onEdit,onDelete,readonly}){
+function TRow({task,project,onEdit,onDelete,readonly,canDelete=true}){
   const [h,sh]=useState(false);
   const td={padding:"10px 16px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
@@ -674,8 +675,53 @@ function TRow({task,project,onEdit,onDelete,readonly}){
       <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.checker||"—"}</span></td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
       <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.client_sub_date||"—"}</span></td>
-      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&<div style={{display:"flex",gap:4}}><IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/><IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/></div>}</td>
+      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&<div style={{display:"flex",gap:4}}>
+        <IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/>
+        {canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/>}
+      </div>}</td>
     </tr>
+  );
+}
+// ── Limited task edit form for regular users (status + notes only) ──────────
+function UserTaskEditForm({task,project,onSave,onClose,saving}){
+  const [status,ss]=useState(task.status||"To Do");
+  const [notes,sn]=useState(task.notes||"");
+  return(
+    <div>
+      {/* Read-only task info */}
+      <div style={{background:C.surface,borderRadius:10,padding:"14px 18px",marginBottom:18,border:`1px solid ${C.border}`}}>
+        <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Task Details (read-only)</div>
+        <p style={{margin:"0 0 8px",fontSize:15,fontWeight:800,color:C.t1}}>{task.title}</p>
+        <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
+          {project&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>📁 {project.name}</span>}
+          {task.client&&<span style={{fontSize:12,color:C.t2}}>👤 {task.client}</span>}
+          {task.due_date&&<span style={{fontSize:12,color:C.t3}}>📅 Due {task.due_date}</span>}
+          {task.priority&&<Bdg color={PRI_CLR[task.priority]||C.t2}>{task.priority}</Bdg>}
+        </div>
+        {(task.scope||task.detailer||task.checker)&&(
+          <div style={{display:"flex",gap:16,marginTop:8,flexWrap:"wrap"}}>
+            {task.scope&&<span style={{fontSize:12,color:C.t3}}>Scope: <strong style={{color:C.t2}}>{task.scope}</strong></span>}
+            {task.detailer&&<span style={{fontSize:12,color:C.t3}}>Detailer: <strong style={{color:C.t2}}>{task.detailer}</strong></span>}
+            {task.checker&&<span style={{fontSize:12,color:C.t3}}>Checker: <strong style={{color:C.t2}}>{task.checker}</strong></span>}
+          </div>
+        )}
+      </div>
+      {/* Editable: Status */}
+      <FSelect label="Update Status" value={status} onChange={ss} options={ALL_STATUSES}/>
+      {/* Notes */}
+      <div style={{marginTop:14}}>
+        <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Completion Notes / Comments</label>
+        <textarea value={notes} onChange={e=>sn(e.target.value)} rows={3}
+          placeholder="Add notes, completion details, or comments…"
+          style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+        <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
+        <button disabled={saving} onClick={()=>onSave({...task,status,notes})} style={{...SBtn,opacity:saving?0.7:1}}>
+          {saving?"Saving…":"Update Status"}
+        </button>
+      </div>
+    </div>
   );
 }
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
@@ -1488,13 +1534,35 @@ export default function App(){
   async function loadAll(){
     sl(true);
     try{
-      const [{data:u},{data:p},{data:t},{data:cl}]=await Promise.all([
-        supabase.from("users").select("*").order("name"),
-        supabase.from("projects").select("*").order("name"),
-        supabase.from("tasks").select("*").order("created_at"),
-        supabase.from("clients").select("*").order("name"),
-      ]);
-      su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);
+      const role=me?.role;
+      const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Client";
+      if(isRegularUser){
+        // DB-level filtering for regular users — only fetch their assigned data
+        const myName=me.name||""; const myU=me.username||"";
+        const orFilter=[`assignee.eq.${myName}`,`detailer.eq.${myName}`,`checker.eq.${myName}`];
+        if(myU&&myU!==myName){orFilter.push(`assignee.eq.${myU}`,`detailer.eq.${myU}`,`checker.eq.${myU}`);}
+        const [{data:u},{data:p},{data:t}]=await Promise.all([
+          supabase.from("users").select("id,name,username,role,email").order("name"),
+          supabase.from("projects").select("*").order("name"),
+          supabase.from("tasks").select("*").order("created_at").or(orFilter.join(",")),
+        ]);
+        su(u||[]);
+        // Filter projects to only those assigned to this user or containing their tasks
+        const taskPids=new Set((t||[]).map(tt=>tt.project_id));
+        const myProjects=(p||[]).filter(proj=>
+          (proj.assigned_users||[]).some(u=>u===myU||u.toLowerCase()===myName.toLowerCase())
+          ||taskPids.has(proj.id)
+        );
+        sp(myProjects); st(t||[]); scl([]); // no client management for regular users
+      }else{
+        const [{data:u},{data:p},{data:t},{data:cl}]=await Promise.all([
+          supabase.from("users").select("*").order("name"),
+          supabase.from("projects").select("*").order("name"),
+          supabase.from("tasks").select("*").order("created_at"),
+          supabase.from("clients").select("*").order("name"),
+        ]);
+        su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);
+      }
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
   }
@@ -1522,11 +1590,17 @@ export default function App(){
     if(!me||!projects.length||initialParsed.current)return;
     initialParsed.current=true;
     const s=urlToState(window.location.pathname,projects);
-    if(s.view!=='dashboard'||s.pid||s.client){
-      prevViewRef.current=s.view;
-      sv(s.view);sap(s.pid);sac(s.client);
+    let {view:tv,pid:tp,client:tc}=s;
+    // Access guard on deep-link
+    if(!isAdmin&&!isManager&&!isClient){
+      if(tv==='clientprojects'){tv='dashboard';tc=null;}
+      if(tv==='list'&&tp&&!accessibleProjects.some(p=>p.id===tp)){tv='dashboard';tp=null;}
     }
-  },[me,projects]);
+    if(tv!=='dashboard'||tp||tc){
+      prevViewRef.current=tv;
+      sv(tv);sap(tp);sac(tc);
+    }
+  },[me,projects,accessibleProjects]);
   // Reflect open task in URL hash so task is identifiable in the link
   useEffect(()=>{
     if(!me)return;
@@ -1551,13 +1625,16 @@ export default function App(){
   });
   const members=users.map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
+  const isRegularUser=!isAdmin&&!isManager&&!isClient;
   const filtered=tasks.filter(t=>{
     if(!accessibleProjects.some(p=>p.id===t.project_id))return false;
+    // Regular users: ONLY see tasks explicitly assigned to them
+    if(isRegularUser&&!userMatchesStr(me,t.assignee)&&!userMatchesStr(me,t.detailer)&&!userMatchesStr(me,t.checker))return false;
     if(activePid&&t.project_id!==activePid)return false;
     if(activeClient){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
     if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
     if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==filterStatus)return false;}
-    if(filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
+    if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
   });
   const dashTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
@@ -1574,6 +1651,11 @@ export default function App(){
   const overdueTasks=activeDashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
   function navTo(v,pid=null,client=null){
+    // Access guard: regular users cannot access client view or unassigned projects
+    if(isRegularUser){
+      if(v==='clientprojects'){v='dashboard';pid=null;client=null;}
+      if(v==='list'&&pid&&!accessibleProjects.some(p=>p.id===pid)){v='dashboard';pid=null;}
+    }
     const url=stateToUrl(v,pid,client,projects);
     window.history.pushState({view:v,pid,client},'',url);
     prevViewRef.current=v;
@@ -1583,6 +1665,29 @@ export default function App(){
   // keep for any residual internal callers
   function switchView(v){navTo(v,v==='list'?activePid:null,v==='clientprojects'?activeClient:null);}
   async function saveTask(f){
+    // ── Authorization: regular users can only update status/notes on their own tasks ──
+    if(isRegularUser){
+      if(!editTask){showToast("Not authorized to create tasks",false);return;}
+      if(!userMatchesStr(me,editTask.assignee)&&!userMatchesStr(me,editTask.detailer)&&!userMatchesStr(me,editTask.checker)){
+        showToast("Not authorized to edit this task",false);return;
+      }
+      ssv(true);
+      try{
+        const updates={status:f.status,...(f.notes!==undefined&&{notes:f.notes})};
+        const {data}=await supabase.from("tasks").update(updates).eq("id",editTask.id).select().single();
+        st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...updates}):t));
+        showToast("Status updated ✓");
+        if(f.status!==editTask.status){
+          const proj=projects.find(p=>p.id===editTask.project_id);
+          const assigneeUser=users.find(u=>u.name===editTask.assignee||u.username===editTask.assignee);
+          if(f.status==="Done"){notify("task_completed",{...taskCompletedPayload(data||{...editTask,...updates},proj,me),recipientEmail:assigneeUser?.email||""});}
+          else{notify("status_change",{...statusChangePayload(data||{...editTask,...updates},proj,editTask.status,f.status,me),recipientEmail:"Manager@hub-rdsprojects.com"});}
+        }
+      }catch(e){showToast("Error: "+e.message,false);}
+      ssv(false);stm(false);set(null);
+      return;
+    }
+    // ── Admin / Manager: full task save ──
     ssv(true);
     try{
       let pid=f.project_id;
@@ -1636,7 +1741,7 @@ export default function App(){
     ssv(false);
   }
   async function delTask(id){if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const checkerUser=task.checker?users.find(u=>u.name===task.checker.split("/")[0].trim()):null;const emails=new Set(["Manager@hub-rdsprojects.com"]);if(assigneeUser?.email)emails.add(assigneeUser.email);if(checkerUser?.email)emails.add(checkerUser.email);if(ns==="Done"){emails.forEach(e=>notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:e}));}else{emails.forEach(e=>notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:e}));}}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const checkerUser=task.checker?users.find(u=>u.name===task.checker.split("/")[0].trim()):null;const emails=new Set(["Manager@hub-rdsprojects.com"]);if(assigneeUser?.email)emails.add(assigneeUser.email);if(checkerUser?.email)emails.add(checkerUser.email);if(ns==="Done"){emails.forEach(e=>notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:e}));}else{emails.forEach(e=>notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:e}));}}
   async function saveProject(f){ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());const pce=pcu?.email||"";const pEmails=new Set(["Manager@hub-rdsprojects.com"]);if(pce)pEmails.add(pce);pEmails.forEach(em=>notify("project_created",{...projectCreatedPayload(data,me),recipientEmail:em}));}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
@@ -1704,7 +1809,7 @@ export default function App(){
               )}
             </button>
           ))}
-          {!isClient&&(
+          {canEdit&&(
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
@@ -1753,10 +1858,10 @@ export default function App(){
                   <option value="All">All Status</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
-                <select value={filterAssignee} onChange={e=>sfa(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                {!isRegularUser&&<select value={filterAssignee} onChange={e=>sfa(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Assignees</option>
                   {members.map(m=><option key={m} value={m}>{m}</option>)}
-                </select>
+                </select>}
               </>
             )}
             <button onClick={()=>exportExcel(accessibleProjects,filtered)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>
@@ -1971,7 +2076,6 @@ export default function App(){
                         <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                           <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
                           <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
                         <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                           <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
                           <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
@@ -2006,11 +2110,17 @@ export default function App(){
           <>
             {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
             <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects} onEdit={t=>{if(canEdit){set(t);stm(true);}}} onDelete={delTask} onDrop={canEdit?dropTask:()=>{}} readonly={!canEdit}/>))}
+              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
+                onEdit={t=>{set(t);stm(true);}}
+                onDelete={canEdit?delTask:()=>{}}
+                onDrop={dropTask}
+                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
+                canDelete={canEdit}
+              />))}
             </div>
           </>
         )}
-        {view==="clientprojects"&&(()=>{
+        {view==="clientprojects"&&canEdit&&(()=>{
           const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
           const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
           const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -2046,7 +2156,14 @@ export default function App(){
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
-      {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
+      {taskModal&&(
+        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
+          {(canEdit||!editTask)?
+            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>:
+            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
+          }
+        </Modal>
+      )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
     </div>
   );
