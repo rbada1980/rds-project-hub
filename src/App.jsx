@@ -467,25 +467,34 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         <div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="Full Name" value={f.name} onChange={s("name")} placeholder="e.g. Suresh Kumar"/></div>
-            <div style={{flex:1}}><FInput label="Username" value={f.username} onChange={s("username")} placeholder="e.g. suresh"/></div>
-          </div>
-          <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. suresh@company.com" type="email"/></div>
             <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={v=>{sf(p=>({...p,role:v,password:v==="Client"?"Client@RDS2026":"RDSTechserv@2026"}));}} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
+            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. suresh@company.com" type="email"/></div>
+            {f.role!=="Client"&&<div style={{flex:1}}><FInput label="Username" value={f.username} onChange={s("username")} placeholder="e.g. suresh"/></div>}
           </div>
+          {f.role!=="Client"&&<div style={{display:"flex",gap:16,marginBottom:4}}>
+            <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
+          </div>}
           {f.role==="Client"?(
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
               <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access</p>
               <div>
                 <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
-                <select value={f.client_name} onChange={e=>s("client_name")(e.target.value)}
+                <select value={f.client_name} onChange={e=>{const cn=e.target.value;const au=cn.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");sf(p=>({...p,client_name:cn,username:au,name:cn||p.name}));}}
                   style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="">— Select Client —</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
+              </div>
+              <div style={{marginTop:10}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Username (auto-generated, editable)</label>
+                <input value={f.username} onChange={e=>sf(p=>({...p,username:e.target.value.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}))}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+                  placeholder="auto-filled from client name"/>
+              </div>
+              <div style={{marginTop:10}}>
+                <FInput label="Password" value={f.password} onChange={s("password")} type="password"/>
               </div>
             </div>
           ):(
@@ -534,8 +543,8 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. suresh@company.com" type="email"/></div>
             <div style={{flex:1}}><FInput label="New Password (leave blank to keep)" value={f.password} onChange={s("password")} type="password" placeholder="Leave blank to keep unchanged"/></div>
           </div>
-          <div style={{display:"flex",gap:16}}>
-            {f.role==="Client"&&(
+          {f.role==="Client"&&(
+            <div style={{display:"flex",gap:16}}>
               <div style={{flex:1}}>
                 <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
                 <select value={f.client_name} onChange={e=>s("client_name")(e.target.value)}
@@ -544,8 +553,13 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
-            )}
-          </div>
+              <div style={{flex:1}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Username</label>
+                <input value={editUser?.username||""} disabled
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t3,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+          )}
           {f.role!==editUser.role&&(
             <div style={{marginBottom:14,padding:"10px 14px",background:C.blue+"11",border:`1px solid ${C.blue}44`,borderRadius:8}}>
               <p style={{margin:0,fontSize:12,color:C.blue,fontWeight:600}}>🔄 Role: <strong>{editUser.role}</strong> → <strong>{f.role}</strong></p>
