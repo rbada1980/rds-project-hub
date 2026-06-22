@@ -1356,6 +1356,52 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
     </div>
   );
 }
+// ── URL routing helpers ──────────────────────────────────────────────────────
+function stateToUrl(v,pid,client){
+  if(v==='list'&&pid)return`/projects/${pid}`;
+  if(v==='list')return'/tasks';
+  if(v==='kanban')return'/kanban';
+  if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
+  return'/';
+}
+function urlToState(path){
+  if(!path||path==='/'||path==='/dashboard')return{view:'dashboard',pid:null,client:null};
+  if(path==='/tasks')return{view:'list',pid:null,client:null};
+  if(path==='/kanban')return{view:'kanban',pid:null,client:null};
+  const pm=path.match(/^\/projects\/([^/]+)$/);
+  if(pm)return{view:'list',pid:pm[1],client:null};
+  const cm=path.match(/^\/clients\/(.+)$/);
+  if(cm)return{view:'clientprojects',pid:null,client:decodeURIComponent(cm[1])};
+  return{view:'dashboard',pid:null,client:null};
+}
+// ── Breadcrumb ───────────────────────────────────────────────────────────────
+function Breadcrumb({view,activePid,activeClient,projects,onDashboard,onTasks}){
+  const crumbs=[];
+  crumbs.push({label:'🏠 Dashboard',onClick:view!=='dashboard'?onDashboard:null,active:view==='dashboard'});
+  if(view==='list'){
+    crumbs.push({label:'📋 Tasks',onClick:activePid?onTasks:null,active:!activePid});
+    if(activePid){const p=projects.find(pr=>pr.id===activePid);if(p)crumbs.push({label:p.name,color:p.color,active:true});}
+  }else if(view==='kanban'){
+    crumbs.push({label:'🗂 Kanban',active:true});
+  }else if(view==='clientprojects'&&activeClient){
+    crumbs.push({label:'🏢 Clients',active:false});
+    crumbs.push({label:activeClient,active:true});
+  }
+  if(crumbs.length<=1)return null;
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:16,padding:'7px 14px',background:C.surface,borderRadius:8,border:`1px solid ${C.border}`,fontSize:13,flexWrap:'wrap'}}>
+      {crumbs.map((c,i)=>(
+        <React.Fragment key={i}>
+          {i>0&&<span style={{color:C.t3,fontSize:11,fontWeight:700}}>›</span>}
+          {c.onClick
+            ?<button onClick={c.onClick} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:13,padding:0,fontFamily:'inherit',fontWeight:600,textDecoration:'underline',textUnderlineOffset:2}}>{c.label}</button>
+            :<span style={{color:c.color||C.t1,fontWeight:c.active?700:500}}>{c.label}</span>
+          }
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -1395,6 +1441,8 @@ export default function App(){
   const [toast,sToast]      = useState(null);
   const [logo,sLogo]        = useState(null);
   const logoRef             = useRef();
+  const prevViewRef         = useRef('dashboard');
+  const initialParsed       = useRef(false);
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
   const isAdmin=me?.role==="Admin";
@@ -1415,6 +1463,40 @@ export default function App(){
     sl(false);
   }
   useEffect(()=>{if(me)loadAll();},[me]);
+  // Push URL whenever view/project/client changes
+  useEffect(()=>{
+    if(!me)return;
+    const url=stateToUrl(view,activePid,activeClient);
+    const s={view,pid:activePid,client:activeClient};
+    if(view!==prevViewRef.current){
+      window.history.pushState(s,'',url);
+      prevViewRef.current=view;
+    }else{
+      window.history.replaceState(s,'',url);
+    }
+  },[view,activePid,activeClient,me]);
+  // Handle browser back / forward
+  useEffect(()=>{
+    function onPop(e){
+      const s=e.state;
+      const v=s?.view||'dashboard';
+      prevViewRef.current=v;
+      sv(v);sap(s?.pid||null);sac(s?.client||null);
+      if(v==='dashboard'){sst('');sfs('All');sfa('All');}
+    }
+    window.addEventListener('popstate',onPop);
+    return()=>window.removeEventListener('popstate',onPop);
+  },[]);
+  // Parse initial URL after data loads (for direct-link support)
+  useEffect(()=>{
+    if(!me||!projects.length||initialParsed.current)return;
+    initialParsed.current=true;
+    const s=urlToState(window.location.pathname);
+    if(s.view!=='dashboard'||s.pid||s.client){
+      prevViewRef.current=s.view;
+      sv(s.view);sap(s.pid);sac(s.client);
+    }
+  },[me,projects]);
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -1628,6 +1710,12 @@ export default function App(){
             {canEdit&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
+        <Breadcrumb
+          view={view} activePid={activePid} activeClient={activeClient}
+          projects={accessibleProjects}
+          onDashboard={()=>{sv('dashboard');sap(null);sac(null);sst('');sfs('All');sfa('All');}}
+          onTasks={()=>{sv('list');sap(null);sac(null);}}
+        />
         {view==="dashboard"&&!isAdmin&&!isManager&&!isClient&&(
           <UserDashboard
             me={me} tasks={tasks} projects={projects} clients={clients} today={today}
