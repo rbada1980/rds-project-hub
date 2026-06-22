@@ -297,23 +297,35 @@ function EditProjectForm({project,onSave,onClose,saving,users,clients}){
     </div>
   );
 }
-function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
+function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}){
   const [tab,st]=useState("list");
-  const [f,sf]=useState({name:"",email:"",phone:"",address:""});
+  const [f,sf]=useState({name:"",email:"",phone:"",address:"",portal_username:"",portal_password:"Client@RDS2026"});
   const [editId,sei]=useState(null);
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [cq,scq]=useState("");
   const s=k=>v=>sf(p=>({...p,[k]:v}));
-  function startEdit(c){sei(c.id);sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||""});st("add");}
-  function reset(){sei(null);sf({name:"",email:"",phone:"",address:""});se("");}
+  function toUn(str){return(str||"").toLowerCase().trim().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");}
+  function startEdit(c){
+    sei(c.id);
+    const pu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===c.name.toLowerCase());
+    sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||"",portal_username:pu?.username||toUn(c.name),portal_password:""});
+    st("add");
+  }
+  function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",portal_username:"",portal_password:"Client@RDS2026"});se("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
+    if(!f.portal_username.trim()){se("Portal username is required.");return;}
     setSaving(true);
-    try{if(editId){await onEdit(editId,f);}else{await onAdd(f);}reset();st("list");}
-    catch(e){se("Error: "+e.message);}
+    try{
+      if(editId){await onEdit(editId,{name:f.name,email:f.email,phone:f.phone,address:f.address});}
+      else{await onAdd({name:f.name,email:f.email,phone:f.phone,address:f.address});}
+      await onSavePortal(f.name,f.portal_username,f.portal_password||null);
+      reset();st("list");
+    }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
+  function autoUsername(name){const un=toUn(name);sf(p=>({...p,portal_username:un}));}
   const shownClients=cq?clients.filter(c=>c.name.toLowerCase().includes(cq.toLowerCase())||(c.email||"").toLowerCase().includes(cq.toLowerCase())||(c.phone||"").includes(cq)||(c.address||"").toLowerCase().includes(cq.toLowerCase())):clients;
   return(
     <Modal title="Manage Clients" onClose={onClose} wide>
@@ -325,45 +337,71 @@ function ClientsModal({clients,onAdd,onEdit,onDelete,onClose}){
       {tab==="list"&&(
         <div>
           <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
-            <input autoFocus placeholder="🔍  Search clients by name, email, phone…" value={cq} onChange={e=>scq(e.target.value)}
+            <input autoFocus placeholder="🔍  Search clients…" value={cq} onChange={e=>scq(e.target.value)}
               style={{flex:1,background:C.surface,border:`1px solid ${cq?C.accent:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
             {cq&&<button onClick={()=>scq("")} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
             <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownClients.length}/{clients.length}</span>
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:420,overflowY:"auto"}}>
             {shownClients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients match your search.</div>}
-            {shownClients.map(c=>(
-              <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${cq&&c.name.toLowerCase().includes(cq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px"}}>
-                <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
-                  <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
-                    {c.email&&<span>✉ {c.email}</span>}
-                    {c.phone&&<span>📞 {c.phone}</span>}
-                    {c.address&&<span>📍 {c.address}</span>}
+            {shownClients.map(c=>{
+              const pu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===c.name.toLowerCase());
+              return(
+                <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${cq&&c.name.toLowerCase().includes(cq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px"}}>
+                  <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
+                    <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                      {c.email&&<span>✉ {c.email}</span>}
+                      {c.phone&&<span>📞 {c.phone}</span>}
+                      {c.address&&<span>📍 {c.address}</span>}
+                    </div>
+                    <div style={{marginTop:5,fontSize:11}}>
+                      {pu
+                        ?<span style={{color:C.green,fontWeight:600}}>🔐 Portal: @{pu.username}</span>
+                        :<span style={{color:C.yellow,fontWeight:600}}>⚠ No portal access — click ✏️ to set up</span>}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:4}}>
+                    <IBtn icon="✏️" title="Edit" onClick={()=>startEdit(c)} color={C.t2}/>
+                    <IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Delete client "${c.name}"?`))onDelete(c.id);}}/>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:4}}>
-                  <IBtn icon="✏️" title="Edit" onClick={()=>startEdit(c)} color={C.t2}/>
-                  <IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Delete client "${c.name}"?`))onDelete(c.id);}}/>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Client Name *" value={f.name} onChange={s("name")} placeholder="e.g. Formcrete"/></div>
+            <div style={{flex:1}}><FInput label="Client Name *" value={f.name} onChange={v=>{s("name")(v);if(!editId)autoUsername(v);}} placeholder="e.g. Formcrete"/></div>
             <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. info@formcrete.com" type="email"/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="Phone" value={f.phone} onChange={s("phone")} placeholder="e.g. +1 234 567 8900"/></div>
             <div style={{flex:1}}><FInput label="Address" value={f.address} onChange={s("address")} placeholder="e.g. Miami, FL"/></div>
           </div>
-          {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
-          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
+          {/* Portal Access */}
+          <div style={{marginTop:14,padding:"14px 16px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:10}}>
+            <p style={{margin:"0 0 12px",fontSize:13,color:C.teal,fontWeight:700}}>🔐 Client Portal Access</p>
+            <div style={{display:"flex",gap:16}}>
+              <div style={{flex:1}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Username</label>
+                <input value={f.portal_username} onChange={e=>sf(p=>({...p,portal_username:e.target.value.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}))}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+                  placeholder="auto-generated"/>
+              </div>
+              <div style={{flex:1}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>{editId?"New Password (blank = keep)":"Password"}</label>
+                <input type="password" value={f.portal_password} onChange={e=>sf(p=>({...p,portal_password:e.target.value}))}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+                  placeholder={editId?"Leave blank to keep":"Client@RDS2026"}/>
+              </div>
+            </div>
+          </div>
+          {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginTop:12,color:C.red,fontSize:13}}>⚠ {err}</div>}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
             <button onClick={()=>{reset();st("list");}} style={GBtn}>Cancel</button>
             <button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":editId?"Save Changes":"Add Client"}</button>
           </div>
@@ -1389,6 +1427,20 @@ export default function App(){
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
   async function deleteClient(id){await supabase.from("clients").delete().eq("id",id);scl(cl=>cl.filter(c=>c.id!==id));showToast("Client deleted ✓");}
+  async function savePortal(clientName,username,password){
+    const existing=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===clientName.toLowerCase());
+    if(existing){
+      const updates={username:username.toLowerCase(),client_name:clientName};
+      if(password&&password.trim())updates.password=password.trim();
+      const {data}=await supabase.from("users").update(updates).eq("id",existing.id).select().single();
+      if(data)su(us=>us.map(u=>u.id===existing.id?data:u));
+      showToast("Portal access updated ✓");
+    }else{
+      const {data}=await supabase.from("users").insert({name:clientName,username:username.toLowerCase(),password:password||"Client@RDS2026",role:"Client",client_name:clientName,email:""}).select().single();
+      if(data)su(us=>[...us,data]);
+      showToast("Portal account created ✓");
+    }
+  }
   const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
   const navs=[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
@@ -1681,7 +1733,7 @@ export default function App(){
         )}
       </main>
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onClose={()=>scm(false)}/>}
+      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
       {taskModal&&(<Modal title={editTask?"Edit Task":"New Task"} onClose={()=>{stm(false);set(null);}} wide><TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/></Modal>)}
