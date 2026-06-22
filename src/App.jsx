@@ -1547,12 +1547,12 @@ export default function App(){
           supabase.from("tasks").select("*").order("created_at").or(orFilter.join(",")),
         ]);
         su(u||[]);
-        // Filter projects to only those assigned to this user or containing their tasks
+        // Only load projects that contain tasks assigned to this user.
+        // assigned_users is intentionally NOT used — existing DB data has all users
+        // assigned to every project (corrupted by old auto-create). Task-level
+        // assignment is the sole source of truth.
         const taskPids=new Set((t||[]).map(tt=>tt.project_id));
-        const myProjects=(p||[]).filter(proj=>
-          (proj.assigned_users||[]).some(u=>u===myU||u.toLowerCase()===myName.toLowerCase())
-          ||taskPids.has(proj.id)
-        );
+        const myProjects=(p||[]).filter(proj=>taskPids.has(proj.id));
         sp(myProjects); st(t||[]); scl([]); // no client management for regular users
       }else{
         const [{data:u},{data:p},{data:t},{data:cl}]=await Promise.all([
@@ -1617,12 +1617,10 @@ export default function App(){
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-  const accessibleProjects=(isAdmin||isManager)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase()):projects.filter(p=>{
-    // Assigned at project level (username or full name match)
-    if((p.assigned_users||[]).some(u=>userMatchesStr(me,u)))return true;
-    // Assigned at task level (assignee / detailer / checker)
-    return tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker)));
-  });
+  const accessibleProjects=(isAdmin||isManager)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase())
+    // Regular users: ONLY projects where they have an assigned task.
+    // assigned_users is NOT used — DB data has all users assigned to every project.
+    :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))));
   const members=users.map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const isRegularUser=!isAdmin&&!isManager&&!isClient;
