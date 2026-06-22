@@ -799,41 +799,72 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
 }
 function ClientOverview({projects,tasks,onSelectClient,clients}){
   const clientNames=[...new Set(projects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c));
+  const today=new Date().toISOString().slice(0,10);
   return(
     <div style={{marginBottom:32}}>
-      <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
+      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18}}>
         {clientNames.map(client=>{
           const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
           const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
           const cDone=cTasks.filter(t=>isDone(t.status)).length;
           const cIP=cTasks.filter(t=>t.status==="In Progress").length;
           const cTodo=cTasks.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+          const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
           const pct=cTasks.length?Math.round(cDone/cTasks.length*100):0;
           const hue=client.charCodeAt(0)*23%360;
           const clr=`hsl(${hue},60%,50%)`;
+          const assignees=[...new Set(cTasks.map(t=>t.assignee).filter(Boolean))];
           return(
             <div key={client} onClick={()=>onSelectClient(client)}
-              style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+              style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:10,background:`hsl(${hue},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff"}}>{client[0]}</div>
-                  <div><div style={{fontWeight:700,fontSize:15,color:C.t1}}>{client}</div><div style={{fontSize:11,color:C.t3}}>{cProjects.length} project(s)</div></div>
+              {/* Title + % */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
+                  <div style={{width:42,height:42,borderRadius:10,background:`hsl(${hue},55%,28%)`,border:`2px solid ${clr}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:"#fff",flexShrink:0}}>{client[0]}</div>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:15,color:C.t1,lineHeight:1.2}}>{client}</div>
+                    <div style={{fontSize:11,color:C.t3,marginTop:2}}>{cProjects.length} project{cProjects.length!==1?"s":""} · {cTasks.length} tasks</div>
+                  </div>
                 </div>
-                <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:6,padding:"3px 10px",fontSize:13,fontWeight:700}}>{pct}%</span>
+                <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{pct}%</span>
               </div>
-              <Pb v={pct} color={clr} h={5}/>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                <span style={{fontSize:11,color:C.green}}>✓ {cDone}</span>
-                <span style={{fontSize:11,color:C.blue}}>⟳ {cIP}</span>
-                <span style={{fontSize:11,color:C.t3}}>◎ {cTodo}</span>
-                <span style={{fontSize:11,color:C.t3}}>{cTasks.length} total</span>
+              {/* Progress bar */}
+              <Pb v={pct} color={clr} h={7}/>
+              {/* 4-stat breakdown */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.green}}>{cDone}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
+                </div>
+                <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{cIP}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
+                </div>
+                <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{cTodo}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
+                </div>
+                <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:cOv>0?C.red:C.t3}}>{cOv}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
+                </div>
               </div>
+              {/* Team */}
+              {assignees.length>0&&(
+                <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,color:C.t3}}>Team:</span>
+                  {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
+                  {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
+                </div>
+              )}
+              {/* Projects */}
               <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:4}}>
                 {cProjects.map(p=><span key={p.id} style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}33`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:600}}>{p.name}</span>)}
               </div>
+              <div style={{marginTop:8,fontSize:11,color:C.t3,textAlign:"right"}}>click to view →</div>
             </div>
           );
         })}
@@ -1728,52 +1759,113 @@ export default function App(){
             </div>
             {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
+              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
                 {overdueTasks.map(t=>{
                   const pj=projects.find(p=>p.id===t.project_id);
                   const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
+                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
                   return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
+                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
                       onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
                       onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                      {/* Title + days-late badge */}
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.4}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,marginLeft:8,whiteSpace:"nowrap"}}>{daysOver}d late</span>
+                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
+                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
                       </div>
-                      <p style={{margin:"0 0 10px",fontSize:11,color:C.t3}}>{pj?.name}{t.client?` · 👤 ${t.client}`:""}</p>
+                      {/* Project + Client */}
+                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
+                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
+                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
+                      </div>
+                      {/* 4-box: Status / Priority / Due Date / Scope */}
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
+                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
+                        </div>
+                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
+                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
+                        </div>
+                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
+                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
+                        </div>
+                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
+                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
+                        </div>
+                      </div>
+                      {/* Team */}
+                      {team.length>0&&(
+                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
+                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
+                        </div>
+                      )}
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                        <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
-                        <span style={{fontSize:11,color:C.red,fontWeight:600}}>Due {t.due_date}</span>
-                        {t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}
+                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
+                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
             </>)}
-            <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
+            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
               {dashTasks.slice(-12).reverse().map(t=>{
                 const pj=projects.find(p=>p.id===t.project_id);
                 const clr=pj?.color||C.accent;
+                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
                 return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,cursor:"pointer",borderTop:`3px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
+                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
                     onClick={()=>{set(t);stm(true);}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px #00000060";}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                    {/* Title + project badge */}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.4}}>{t.title}</p>
-                      <Bdg color={clr} style={{marginLeft:8}}>{pj?.name||"—"}</Bdg>
+                      <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
+                      <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,marginLeft:10,whiteSpace:"nowrap"}}>{pj?.name||"—"}</span>
                     </div>
-                    {t.client&&<p style={{margin:"0 0 8px",fontSize:11,color:C.teal}}>👤 {t.client}</p>}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
-                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                      <Bdg color={PRI_CLR[t.priority]}>{t.priority}</Bdg>
-                      {t.due_date&&<span style={{fontSize:11,color:C.t3}}>Due {t.due_date}</span>}
-                      {t.assignee?<Av name={t.assignee} size={24}/>:<span style={{fontSize:11,color:C.yellow}}>Unassigned</span>}
+                    {/* Client + Due date */}
+                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
+                      {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
+                      {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
+                    </div>
+                    {/* 4-box: Status / Priority / Scope / Assignee */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                      <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
+                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
+                      </div>
+                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
+                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
+                      </div>
+                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
+                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
+                      </div>
+                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
+                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
+                      </div>
+                    </div>
+                    {/* Team */}
+                    {team.length>0&&(
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
+                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
+                      </div>
+                    )}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
+                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
                     </div>
                   </div>
                 );
