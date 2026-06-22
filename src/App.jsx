@@ -1585,6 +1585,10 @@ export default function App(){
     window.addEventListener('popstate',onPop);
     return()=>window.removeEventListener('popstate',onPop);
   },[]);
+  // Compute accessible projects (must be before useEffect that depends on it)
+  const accessibleProjects=(isAdmin||isManager)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me?.client_name||"").toLowerCase())
+    // Regular users: ONLY projects where they have an assigned task.
+    :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))));
   // Parse initial URL after data loads (for direct-link support)
   useEffect(()=>{
     if(!me||!projects.length||initialParsed.current)return;
@@ -1617,10 +1621,6 @@ export default function App(){
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-  const accessibleProjects=(isAdmin||isManager)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase())
-    // Regular users: ONLY projects where they have an assigned task.
-    // assigned_users is NOT used — DB data has all users assigned to every project.
-    :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))));
   const members=users.map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const isRegularUser=!isAdmin&&!isManager&&!isClient;
@@ -2164,7 +2164,4 @@ export default function App(){
           }
         </Modal>
       )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
-    </div>
-  );
-}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Mo
