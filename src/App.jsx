@@ -165,11 +165,11 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
         </div>
       </div>
       <div style={row}>
-        <div style={col}><FInput label="Task Title" value={f.title} onChange={s("title")} placeholder="Enter task title"/></div>
+        <div style={col}><FInput label="Task Title *" value={f.title} onChange={s("title")} placeholder="Enter task title"/></div>
         <div style={col}>
-                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client</label>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client *</label>
                 <select value={f.client} onChange={e=>s("client")(e.target.value)}
-                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="">— Select Client —</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
@@ -178,15 +178,15 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       <div style={row}>
         <div style={col}>
           <div style={{marginBottom:14}}>
-            <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Assignee</label>
+            <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Assignee *</label>
             <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <option value="">— Unassigned —</option>
+              style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <option value="">— Select Assignee —</option>
               {members.map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
         </div>
-        <div style={col}><FSelect label="Status" value={f.status} onChange={s("status")} options={ALL_STATUSES}/></div>
+        <div style={col}><FSelect label="Status *" value={f.status} onChange={s("status")} options={ALL_STATUSES}/></div>
       </div>
       <div style={row}>
         <div style={col}><FSelect label="Priority" value={f.priority} onChange={s("priority")} options={["High","Medium","Low"]}/></div>
@@ -202,10 +202,10 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           </select>
         </div>
         <div style={col}>
-          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Checker</label>
+          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Checker *</label>
           <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
-            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-            <option value="">— None —</option>
+            style={{width:"100%",background:C.surface,border:`1px solid ${f.checker?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            <option value="">— Select Checker —</option>
             {members.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
         </div>
@@ -218,27 +218,33 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
         <div style={col}><FileUp files={f.files} onChange={files=>sf(p=>({...p,files}))}/></div>
       </div>
+      {(!f.title.trim()||!f.client||!f.assignee||!f.checker)&&(
+        <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
+          ⚠ Required: {[!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.checker&&"Checker"].filter(Boolean).join(", ")}
+        </div>
+      )}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||!f.title.trim()} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:saving?0.7:1}}>
+        <button disabled={saving||!f.title.trim()||!f.client||!f.assignee||!f.checker} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||!f.title.trim()||!f.client||!f.assignee||!f.checker)?0.5:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
     </div>
   );
 }
-function ProjectFormFields({f,sf,users,clients,requireDates=false}){
+function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUsername=""}){
   function toggleUser(username){
+    if(username===narayanaUsername)return;// Narayana always stays assigned
     sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));
   }
   return(
     <>
       <div style={{display:"flex",gap:16}}>
-        <div style={{flex:1}}><FInput label="Project Name" value={f.name} onChange={v=>sf(p=>({...p,name:v}))}/></div>
+        <div style={{flex:1}}><FInput label="Project Name *" value={f.name} onChange={v=>sf(p=>({...p,name:v}))}/></div>
         <div style={{flex:1,marginBottom:14}}>
-          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client</label>
+          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client *</label>
           <select value={f.client} onChange={e=>sf(p=>({...p,client:e.target.value}))}
-            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
             <option value="">— Select Client —</option>
             {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
@@ -254,33 +260,37 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false}){
       <FInput label="Description" value={f.description} onChange={v=>sf(p=>({...p,description:v}))}/>
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Users <span style={{color:C.t3,fontWeight:400}}>(leave empty = unassigned)</span></label>
+          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Users * <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned — select at least 1 more)</span></label>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>sf(p=>({...p,assigned_users:users.map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
             <button onClick={()=>sf(p=>({...p,assigned_users:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:160,overflowY:"auto",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
-          {users.map(u=>(
+          {users.map(u=>{
+            const isLocked=u.username===narayanaUsername;
+            const checked=f.assigned_users.includes(u.username);
+            return(
             <div key={u.id} onClick={()=>toggleUser(u.username)}
-              style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:"pointer",background:f.assigned_users.includes(u.username)?C.accent+"22":C.card,border:`1px solid ${f.assigned_users.includes(u.username)?C.accent:C.border}`,transition:"all .15s"}}>
-              <div style={{width:16,height:16,borderRadius:4,background:f.assigned_users.includes(u.username)?C.accent:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                {f.assigned_users.includes(u.username)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+              style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:isLocked?"default":"pointer",background:checked?C.accent+"22":C.card,border:`1px solid ${checked?C.accent:C.border}`,transition:"all .15s",opacity:isLocked?0.85:1}}>
+              <div style={{width:16,height:16,borderRadius:4,background:checked?C.accent:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {isLocked?<span style={{color:"#fff",fontSize:9}}>🔒</span>:checked&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
               </div>
               <Av name={u.name} size={20}/>
               <div style={{flex:1}}>
-                <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{u.name}</div>
+                <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{u.name}{isLocked&&<span style={{fontSize:9,color:C.t3,marginLeft:4}}>(auto)</span>}</div>
                 <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
               </div>
-              {f.assigned_users.includes(u.username)&&(
+              {checked&&!isLocked&&(
                 <span style={{fontSize:10,color:C.red,fontWeight:700,padding:"1px 4px",borderRadius:3,border:`1px solid ${C.red}44`,background:C.red+"11"}}>✕</span>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
         <p style={{margin:"6px 0 0",fontSize:11,color:C.t3}}>
-          {f.assigned_users.length===0
-            ?<span style={{color:C.yellow}}>⚠ No users assigned — project will appear in Unassigned</span>
+          {f.assigned_users.filter(u=>u!==narayanaUsername).length===0
+            ?<span style={{color:C.yellow}}>⚠ Select at least one more team member (besides Narayana)</span>
             :`${f.assigned_users.length} user(s) assigned`}
         </p>
       </div>
@@ -288,18 +298,24 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false}){
   );
 }
 function ProjectForm({onSave,onClose,saving,users,clients,requireDates=false}){
-  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:[]});
+  const narayana=users.find(u=>(u.name||"").toLowerCase().includes("narayana"));
+  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:narayana?[narayana.username]:[]});
+  const otherUsers=f.assigned_users.filter(u=>u!==narayana?.username);
+  const canSave=f.name.trim()&&f.client&&otherUsers.length>0&&(!requireDates||f.deadline);
+  const missingMsg=!f.name.trim()?"Project Name is required.":!f.client?"Client is required.":otherUsers.length===0?"Select at least one more team member.":requireDates&&!f.deadline?"Deadline is required.":"";
   return(
     <div>
-      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates}/>
+      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username}/>
+      {missingMsg&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>⚠ {missingMsg}</div>}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create Project"}</button>
+        <button disabled={saving||!canSave} onClick={()=>onSave(f)} style={{...SBtn,opacity:(saving||!canSave)?0.5:1}}>{saving?"Creating…":"Create Project"}</button>
       </div>
     </div>
   );
 }
 function EditProjectForm({project,onSave,onClose,saving,users,clients,requireDates=false}){
+  const narayana=users.find(u=>(u.name||"").toLowerCase().includes("narayana"));
   const [f,sf]=useState({
     name:project.name||"",deadline:project.deadline||"",
     description:project.description||"",client:project.client||"",
@@ -307,7 +323,7 @@ function EditProjectForm({project,onSave,onClose,saving,users,clients,requireDat
   });
   return(
     <div>
-      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates}/>
+      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username}/>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
         <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Save Changes"}</button>
@@ -442,17 +458,16 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",assigned_projects:[]});st("edit");se("");}
   function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Engineer",client_name:"",email:"",assigned_projects:[]});se("");}
   async function addUser(){
-    if(!f.name.trim()||!f.username.trim()||!f.password.trim()){se("All fields are required.");return;}
+    if(!f.name.trim()){se("Full Name is required.");return;}
+    if(!f.role){se("Role is required.");return;}
+    if(f.role==="Client"&&!f.client_name){se("Client Name is required.");return;}
+    if(f.role!=="Client"&&!f.email.trim()){se("Email is required.");return;}
+    if(!f.username.trim()){se("Username is required.");return;}
+    if(!f.password.trim()){se("Password is required.");return;}
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
     try{
-      const newUser=await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||"",email:f.email.trim()||""});
-      if(f.role!=="Client"&&f.assigned_projects.length>0&&newUser){
-        for(const pid of f.assigned_projects){
-          const proj=projects.find(p=>p.id===pid);
-          if(proj){const updated=[...(proj.assigned_users||[]),f.username.trim().toLowerCase()];await supabase.from("projects").update({assigned_users:updated}).eq("id",pid);}
-        }
-      }
+      await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||"",email:f.email.trim()||""});
       resetForm();st("list");
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
@@ -522,12 +537,12 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
       {tab==="add"&&(
         <div>
           <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Full Name" value={f.name} onChange={s("name")} placeholder="e.g. Suresh Kumar"/></div>
-            <div style={{flex:1}}><FSelect label="Role" value={f.role} onChange={v=>{sf(p=>({...p,role:v,password:v==="Client"?"Client@RDS2026":"RDSTechserv@2026"}));}} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
+            <div style={{flex:1}}><FInput label="Full Name *" value={f.name} onChange={s("name")} placeholder="e.g. Suresh Kumar"/></div>
+            <div style={{flex:1}}><FSelect label="Role *" value={f.role} onChange={v=>{sf(p=>({...p,role:v,password:v==="Client"?"Client@RDS2026":"RDSTechserv@2026"}));}} options={isSuperAdmin?ROLES:ROLES.filter(r=>r!=="Admin")}/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
-            <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. suresh@company.com" type="email"/></div>
-            {f.role!=="Client"&&<div style={{flex:1}}><FInput label="Username" value={f.username} onChange={s("username")} placeholder="e.g. suresh"/></div>}
+            {f.role!=="Client"&&<div style={{flex:1}}><FInput label="Email *" value={f.email} onChange={s("email")} placeholder="e.g. suresh@company.com" type="email"/></div>}
+            {f.role!=="Client"&&<div style={{flex:1}}><FInput label="Username *" value={f.username} onChange={s("username")} placeholder="e.g. suresh"/></div>}
           </div>
           {f.role!=="Client"&&<div style={{display:"flex",gap:16,marginBottom:4}}>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
@@ -536,42 +551,21 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
               <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access</p>
               <div>
-                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
-                <select value={f.client_name} onChange={e=>{const cn=e.target.value;const au=cn.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");sf(p=>({...p,client_name:cn,username:au,name:cn||p.name}));}}
-                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name *</label>
+                <select value={f.client_name} onChange={e=>{const cn=e.target.value;sf(p=>({...p,client_name:cn,name:cn||p.name}));}}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${f.client_name?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client_name?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="">— Select Client —</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div style={{marginTop:10}}>
-                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Username (auto-generated, editable)</label>
+                <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Username *</label>
                 <input value={f.username} onChange={e=>sf(p=>({...p,username:e.target.value.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}))}
-                  style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
-                  placeholder="auto-filled from client name"/>
+                  style={{width:"100%",background:C.surface,border:`1px solid ${f.username?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+                  placeholder="Enter username manually"/>
               </div>
               <div style={{marginTop:10}}>
                 <FInput label="Password" value={f.password} onChange={s("password")} type="password"/>
-              </div>
-            </div>
-          ):(
-            <div style={{marginBottom:14}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign to Projects</label>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>sf(p=>({...p,assigned_projects:projects.map(p=>p.id)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
-                  <button onClick={()=>sf(p=>({...p,assigned_projects:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
-                {projects.map(p=>(
-                  <div key={p.id} onClick={()=>toggleProj(p.id)}
-                    style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,cursor:"pointer",background:f.assigned_projects.includes(p.id)?p.color+"22":C.card,border:`1px solid ${f.assigned_projects.includes(p.id)?p.color:C.border}`}}>
-                    <div style={{width:16,height:16,borderRadius:4,background:f.assigned_projects.includes(p.id)?p.color:C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      {f.assigned_projects.includes(p.id)&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
-                    </div>
-                    <div style={{fontSize:12,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -2223,251 +2217,4 @@ export default function App(){
                 </div>
                 <div>
                   <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Status</label>
-                  <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                    <option value="All">All Statuses</option>
-                    {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-              {hasDashFilter&&<p style={{margin:"10px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
-            </div>
-            {/* ── Stat Cards ── */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
-              <Stat label="Recent Tasks" value={Math.min(dashTasks.length,12)} sub="latest activity" color={"#a855f7"} onClick={()=>ssm({title:"Recent Tasks",tasks:[...dashTasks].slice(-12).reverse()})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
-            </div>
-            {/* ── 1. Projects Overview ── */}
-            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-              {accessibleProjects.map(p=>{
-                const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length;
-                const pip=pt.filter(t=>t.status==="In Progress").length;
-                const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
-                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
-                return(
-                  <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <h3 style={{margin:0,fontSize:15,fontWeight:800,flex:1,color:"#ffffff",lineHeight:1.3}}>{p.name}</h3>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:10,flexShrink:0}}>
-                        {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
-                        <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
-                      {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
-                    </div>
-                    <Pb v={pv} color={p.color} h={7}/>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
-                      <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
-                      </div>
-                      <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{ptd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
-                      </div>
-                      <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
-                      </div>
-                    </div>
-                    {assignees.length>0&&(
-                      <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
-                      </div>
-                    )}
-                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
-                  </div>
-                );
-              })}
-            </div>
-            {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
-            {/* ── 2. Recent Tasks ── */}
-            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const clr=pj?.color||C.accent;
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{set(t);stm(true);}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                      <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,marginLeft:10,whiteSpace:"nowrap"}}>{pj?.name||"—"}</span>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-                      <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                      </div>
-                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                      </div>
-                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* ── 3. Client-wise Overview ── */}
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
-            {/* ── 4. Overdue Tasks ── */}
-            {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-                {overdueTasks.map(t=>{
-                  const pj=projects.find(p=>p.id===t.project_id);
-                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                  return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
-                      onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
-                      </div>
-                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
-                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
-                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                        </div>
-                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
-                        </div>
-                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                        </div>
-                      </div>
-                      {team.length>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-              />))}
-            </div>
-          </>
-        )}
-        {view==="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              {/* Header + Back */}
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              {/* Search + Filter bar */}
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit}/>)}</tbody>
-            </table>
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+                  <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:
