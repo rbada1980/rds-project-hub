@@ -2228,7 +2228,6 @@ export default function App(){
                     {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-              </div>
               {hasDashFilter&&<p style={{margin:"10px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
             </div>
             {/* ── Stat Cards ── */}
