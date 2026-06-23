@@ -1,6 +1,6 @@
 // fix_unknown_users.cjs
-// 1. Reassigns tasks with TBD / Tekla team as assignee/detailer/checker → Narayana
-// 2. Deletes unknown user accounts (TBD, Tekla team) from the users table
+// 1. Reassigns tasks with TBD / Tekla / NNJ / Rds user as assignee/detailer/checker → Narayana
+// 2. Deletes those unknown user accounts from the users table
 
 const { createClient } = require("@supabase/supabase-js");
 
@@ -8,12 +8,16 @@ const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
 const supabase = createClient(SUPA_URL, SUPA_KEY);
 
-const UNKNOWN_PATTERNS = ["tbd", "tekla"];
+// Exact names / abbreviations to treat as unknown — reassign to Narayana and delete
+const UNKNOWN_EXACT = ["nnj", "rds user", "rds"];
+const UNKNOWN_CONTAINS = ["tbd", "tekla"];
 
 function isUnknown(name) {
   if (!name) return false;
-  const n = name.toLowerCase();
-  return UNKNOWN_PATTERNS.some(p => n.includes(p));
+  const n = name.toLowerCase().trim();
+  if (UNKNOWN_EXACT.includes(n)) return true;
+  if (UNKNOWN_CONTAINS.some(p => n.includes(p))) return true;
+  return false;
 }
 
 async function main() {
