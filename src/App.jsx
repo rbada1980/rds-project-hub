@@ -2065,7 +2065,7 @@ export default function App(){
                 const closeExport=()=>{setExportOpen(false);setExportSec(null);};
                 const allProjTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
                 const overdueTsk=allProjTasks.filter(t=>t.due_date&&t.due_date<today2&&!isDone(t.status));
-                const UNKNOWN_NAMES=["tbd","tekla","siva kumar","unknown"];
+                const UNKNOWN_NAMES=["tbd","tekla","siva kumar","unknown","nnj","rds user"];
                 const allUserNames=[...new Set(
                   tasks.flatMap(t=>[t.assignee,t.detailer,t.checker]).filter(Boolean)
                   .flatMap(n=>n.split(/[&\/,]+/).map(p=>p.trim()).filter(Boolean))
@@ -2470,14 +2470,4 @@ export default function App(){
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
       {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null
