@@ -553,7 +553,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           {f.role!=="Client"&&<div style={{display:"flex",gap:16,marginBottom:4}}>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
           </div>}
-          {f.role==="Client"?(
+          {f.role==="Client"&&(
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
               <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access</p>
               <div>
@@ -2469,4 +2469,3 @@ export default function App(){
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
     </div>
   );
-}
