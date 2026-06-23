@@ -726,7 +726,7 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
 }
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
-  const [statusFilter,ssf]=useState("All");
+  const [statusFilter,ssf]=useState(null);
   const matchesMe=v=>userMatchesStr(me,v);
   // My tasks = tasks in accessible projects where I'm assignee / detailer / checker
   const myTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&(matchesMe(t.assignee)||matchesMe(t.detailer)||matchesMe(t.checker)));
@@ -735,8 +735,11 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   const total=myTasks.length;
   const done=myTasks.filter(t=>isDone(t.status)).length;
   const inprog=myTasks.filter(t=>t.status==="In Progress").length;
-  const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const overdueList=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+  const overdue=overdueList.length;
   const notStarted=myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+  const filteredTasks=statusFilter===null?[]:statusFilter==="All"?myTasks:statusFilter==="Overdue"?overdueList:statusFilter==="Not Yet Started"?myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started"):myTasks.filter(t=>t.status===statusFilter);
+  const filterLabel=statusFilter==="All"?"All My Tasks":statusFilter==="Overdue"?"⚠ Overdue Tasks":statusFilter?`${statusFilter} Tasks`:"";
   const pct=total?Math.round(done/total*100):0;
   // Avatar colour palette for co-users
   const avatarColors=["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f97316"];
@@ -759,12 +762,46 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       <div style={{marginBottom:24}}><Pb v={pct} color={C.accent} h={8}/></div>
       {/* Stat cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:28}}>
-        <Stat label="Total Tasks" value={total} sub="assigned to me" color={C.accent} onClick={()=>ssf("All")}/>
-        <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf("Completed")}/>
-        <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf("In Progress")}/>
-        <Stat label="Not Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf("Not Yet Started")}/>
-        <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf("All")}/>
+        <Stat label="Total Tasks" value={total} sub="assigned to me" color={C.accent} onClick={()=>ssf(statusFilter==="All"?null:"All")}/>
+        <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf(statusFilter==="Completed"?null:"Completed")}/>
+        <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf(statusFilter==="In Progress"?null:"In Progress")}/>
+        <Stat label="Not Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf(statusFilter==="Not Yet Started"?null:"Not Yet Started")}/>
+        <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf(statusFilter==="Overdue"?null:"Overdue")}/>
       </div>
+      {/* Filtered task list */}
+      {statusFilter&&(
+        <div style={{marginBottom:28}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>{filterLabel} ({filteredTasks.length})</h2>
+            <button onClick={()=>ssf(null)} style={{...GBtn,fontSize:12,padding:"5px 12px"}}>✕ Close</button>
+          </div>
+          {filteredTasks.length===0
+            ?<p style={{color:C.t3,fontSize:13}}>No tasks in this category.</p>
+            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {filteredTasks.map(t=>{
+                const proj=projects.find(p=>p.id===t.project_id);
+                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                return(
+                  <div key={t.id} onClick={()=>onEditTask(t)}
+                    style={{background:C.card,border:`1px solid ${isOv?C.red+"66":C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .12s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.card}>
+                    <div style={{width:3,height:36,borderRadius:2,background:proj?.color||C.accent,flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</p>
+                      <p style={{margin:"3px 0 0",fontSize:11,color:C.t3}}>{proj?.name||"—"}{t.due_date?` · Due ${t.due_date}`:""}{isOv?" ⚠":""}</p>
+                    </div>
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                      {t.priority&&<Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority}</Bdg>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          }
+        </div>
+      )}
       {/* My Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
@@ -2136,35 +2173,4 @@ export default function App(){
                 projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
                 today={today} isAdmin={isAdmin} canEdit={canEdit}
                 onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit}/>)}</tbody>
-            </table>
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients}/></Modal>)}
-    </div>
-  );
-}
+                onEdit={p=>sep(p)} on
