@@ -156,9 +156,10 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
             </div>
           ):(
             <div>
-              <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Project</label>
+              <RLabel text="Project *"/>
               <select value={f.project_id} onChange={e=>onProjectChange(e.target.value)}
-                style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                style={{width:"100%",background:C.surface,border:`1px solid ${f.project_id?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.project_id?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <option value="">— Select Project —</option>
                 {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
@@ -224,14 +225,14 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
         <div style={col}><FileUp files={f.files} onChange={files=>sf(p=>({...p,files}))}/></div>
       </div>
-      {(!f.title.trim()||!f.client||!f.assignee||!f.checker)&&(
+      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker)&&(
         <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
-          ⚠ Required: {[!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.checker&&"Checker"].filter(Boolean).join(", ")}
+          ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status",!f.checker&&"Checker"].filter(Boolean).join(", ")}
         </div>
       )}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||!f.title.trim()||!f.client||!f.assignee||!f.checker} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||!f.title.trim()||!f.client||!f.assignee||!f.checker)?0.5:1}}>
+        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker)?0.5:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
@@ -2467,7 +2468,4 @@ export default function App(){
           }
         </Modal>
       )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+      {proj
