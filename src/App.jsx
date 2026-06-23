@@ -1547,6 +1547,7 @@ export default function App(){
   const [pwModal,spwm]      = useState(false);
   const [statModal,ssm]     = useState(null);
   const [exportOpen,setExportOpen] = useState(false);
+  const [exportSec,setExportSec] = useState(null);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -1909,59 +1910,103 @@ export default function App(){
               </>
             )}
             <div ref={exportRef} style={{position:"relative"}}>
-              <button onClick={()=>setExportOpen(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export ▾</button>
-              {exportOpen&&(
-                <div onMouseLeave={()=>setExportOpen(false)} style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 8px 32px #00000099",zIndex:999,minWidth:230,padding:"6px 0"}}>
-                  {/* ── All tasks ── */}
-                  <div style={{padding:"4px 14px 6px",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>Full Report</div>
-                  <button onClick={()=>{exportExcel(accessibleProjects,filtered,me.name);setExportOpen(false);}}
-                    style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",padding:"8px 18px",color:C.t1,fontSize:13,cursor:"pointer"}}
-                    onMouseEnter={e=>e.target.style.background=C.surface} onMouseLeave={e=>e.target.style.background="none"}>
-                    📋 All Tasks ({filtered.length})
+              <button onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export ▾</button>
+              {exportOpen&&(()=>{
+                const today2=new Date().toISOString().slice(0,10);
+                const closeExport=()=>{setExportOpen(false);setExportSec(null);};
+                const allProjTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
+                const overdueTsk=allProjTasks.filter(t=>t.due_date&&t.due_date<today2&&!isDone(t.status));
+                const allUserNames=[...new Set(tasks.flatMap(t=>[t.assignee,t.detailer,t.checker]).filter(Boolean))].sort();
+                const allClientNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
+                const SHdr=({id,icon,label})=>(
+                  <button onClick={()=>setExportSec(exportSec===id?null:id)}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:exportSec===id?C.surface:"none",border:"none",borderLeft:`3px solid ${exportSec===id?C.accent:"transparent"}`,padding:"10px 16px 10px 14px",color:exportSec===id?C.accent:C.t1,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",transition:"all .12s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}} onMouseLeave={e=>{e.currentTarget.style.background=exportSec===id?C.surface:"none";}}>
+                    <span style={{display:"flex",alignItems:"center",gap:8}}>{icon}<span>{label}</span></span>
+                    <span style={{fontSize:11,color:exportSec===id?C.accent:C.t3}}>{exportSec===id?"▲":"▶"}</span>
                   </button>
-                  {/* ── By Project ── */}
-                  <div style={{borderTop:`1px solid ${C.border}`,margin:"4px 0",padding:"4px 14px 4px",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>By Project</div>
-                  {activePid&&(()=>{const p=accessibleProjects.find(pr=>pr.id===activePid);const pt=filtered.filter(t=>t.project_id===activePid);return p?(<button key="cur" onClick={()=>{exportExcel([p],pt,p.name);setExportOpen(false);}}
-                    style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",padding:"8px 18px",color:C.accent,fontSize:13,cursor:"pointer",fontWeight:600}}
-                    onMouseEnter={e=>e.target.style.background=C.surface} onMouseLeave={e=>e.target.style.background="none"}>
-                    📌 {p.name} ({pt.length})
-                  </button>):null;})()}
-                  {accessibleProjects.filter(p=>p.id!==activePid).map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);return(
-                    <button key={p.id} onClick={()=>{exportExcel([p],pt,p.name);setExportOpen(false);}}
-                      style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",padding:"7px 18px",color:C.t1,fontSize:12,cursor:"pointer"}}
-                      onMouseEnter={e=>e.target.style.background=C.surface} onMouseLeave={e=>e.target.style.background="none"}>
-                      <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:p.color,marginRight:8}}/>
-                      {p.name} ({pt.length})
-                    </button>
-                  );})}
-                  {/* ── By User (admin/manager only) ── */}
-                  {canEdit&&(<>
-                    <div style={{borderTop:`1px solid ${C.border}`,margin:"4px 0",padding:"4px 14px 4px",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>By User</div>
-                    {[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort().map(u=>{
-                      const ut=tasks.filter(t=>t.assignee===u||t.detailer===u||t.checker===u);
-                      const up=accessibleProjects.filter(p=>ut.some(t=>t.project_id===p.id));
-                      return(<button key={u} onClick={()=>{exportExcel(up,ut,u);setExportOpen(false);}}
-                        style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",padding:"7px 18px",color:C.t1,fontSize:12,cursor:"pointer"}}
-                        onMouseEnter={e=>e.target.style.background=C.surface} onMouseLeave={e=>e.target.style.background="none"}>
-                        👤 {u} ({ut.length})
-                      </button>);
-                    })}
-                  </>)}
-                  {/* ── By Client (admin/manager only) ── */}
-                  {canEdit&&(<>
-                    <div style={{borderTop:`1px solid ${C.border}`,margin:"4px 0",padding:"4px 14px 4px",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>By Client</div>
-                    {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort().map(cl=>{
-                      const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);
-                      const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));
-                      return(<button key={cl} onClick={()=>{exportExcel(cp,ct,cl);setExportOpen(false);}}
-                        style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",padding:"7px 18px",color:C.t1,fontSize:12,cursor:"pointer"}}
-                        onMouseEnter={e=>e.target.style.background=C.surface} onMouseLeave={e=>e.target.style.background="none"}>
-                        🏢 {cl} ({ct.length})
-                      </button>);
-                    })}
-                  </>)}
-                </div>
-              )}
+                );
+                const SBtn2=({label,count,icon,color,onClick,indent=true})=>(
+                  <button onClick={onClick}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:`7px 16px 7px ${indent?36:16}px`,color:color||C.t2,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                    <span style={{display:"flex",alignItems:"center",gap:7}}>{icon}<span>{label}</span></span>
+                    {count!=null&&<span style={{background:C.surface,color:C.t3,borderRadius:10,padding:"1px 7px",fontSize:11}}>{count}</span>}
+                  </button>
+                );
+                return(
+                  <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 12px 40px #00000099",zIndex:999,width:280,paddingBottom:8,maxHeight:"85vh",overflowY:"auto"}}>
+                    {/* Header */}
+                    <div style={{padding:"10px 16px 8px",borderBottom:`1px solid ${C.border}`,fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em"}}>Export Report</div>
+
+                    {/* 1 — All Tasks */}
+                    <SBtn2 label="All Tasks" count={filtered.length} icon="📋" color={C.t1} indent={false}
+                      onClick={()=>{exportExcel(accessibleProjects,filtered,`${me.name} - All Tasks`);closeExport();}}/>
+
+                    <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+
+                    {/* 2 — By Tasks */}
+                    <SHdr id="tasks" icon="📄" label="By Tasks"/>
+                    {exportSec==="tasks"&&(
+                      <div style={{background:C.surface+"33",paddingBottom:4}}>
+                        <SBtn2 label="All Tasks Report" count={allProjTasks.length} icon="📋" color={C.teal}
+                          onClick={()=>{exportExcel(accessibleProjects,allProjTasks,`${me.name} - All Tasks Report`);closeExport();}}/>
+                        <SBtn2 label="Completed Tasks" count={allProjTasks.filter(t=>isDone(t.status)).length} icon="✅" color={C.green}
+                          onClick={()=>{const t=allProjTasks.filter(x=>isDone(x.status));exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - Completed Tasks`);closeExport();}}/>
+                        <SBtn2 label="In Progress Tasks" count={allProjTasks.filter(t=>t.status==="In Progress").length} icon="🔄" color={C.blue}
+                          onClick={()=>{const t=allProjTasks.filter(x=>x.status==="In Progress");exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - In Progress Tasks`);closeExport();}}/>
+                        <SBtn2 label="Not Yet Started" count={allProjTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} icon="⏳" color={C.t2}
+                          onClick={()=>{const t=allProjTasks.filter(x=>x.status==="To Do"||x.status==="Not Yet Started"||x.status==="To Be Started");exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - Not Started Tasks`);closeExport();}}/>
+                        <SBtn2 label="Overdue Tasks" count={overdueTsk.length} icon="⚠️" color={C.red}
+                          onClick={()=>{exportExcel(accessibleProjects.filter(p=>overdueTsk.some(x=>x.project_id===p.id)),overdueTsk,`${me.name} - Overdue Tasks`);closeExport();}}/>
+                      </div>
+                    )}
+
+                    <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+
+                    {/* 3 — By Projects */}
+                    <SHdr id="projects" icon="📁" label="By Projects"/>
+                    {exportSec==="projects"&&(
+                      <div style={{background:C.surface+"33",paddingBottom:4}}>
+                        <SBtn2 label="All Projects Report" count={allProjTasks.length} icon="📂" color={C.teal}
+                          onClick={()=>{exportExcel(accessibleProjects,allProjTasks,"All Projects Report");closeExport();}}/>
+                        {accessibleProjects.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);return(
+                          <SBtn2 key={p.id} label={p.name} count={pt.length} icon={<span style={{width:8,height:8,borderRadius:"50%",background:p.color,display:"inline-block",flexShrink:0}}/>}
+                            onClick={()=>{exportExcel([p],pt,`${p.name} - Project Report`);closeExport();}}/>
+                        );})}
+                      </div>
+                    )}
+
+                    {/* 4 — By Users (admin/manager only) */}
+                    {canEdit&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
+                    {canEdit&&<SHdr id="users" icon="👤" label="By Users"/>}
+                    {canEdit&&exportSec==="users"&&(
+                      <div style={{background:C.surface+"33",paddingBottom:4}}>
+                        <SBtn2 label="All Users Work Summary" count={tasks.length} icon="👥" color={C.teal}
+                          onClick={()=>{exportExcel(accessibleProjects,tasks,"All Users - Work Summary");closeExport();}}/>
+                        {allUserNames.map(u=>{const ut=tasks.filter(t=>t.assignee===u||t.detailer===u||t.checker===u);const up=accessibleProjects.filter(p=>ut.some(t=>t.project_id===p.id));return(
+                          <SBtn2 key={u} label={u} count={ut.length} icon="👤"
+                            onClick={()=>{exportExcel(up,ut,`${u} - Work Report`);closeExport();}}/>
+                        );})}
+                      </div>
+                    )}
+
+                    {/* 5 — By Clients (admin/manager only) */}
+                    {canEdit&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
+                    {canEdit&&<SHdr id="clients" icon="🏢" label="By Clients"/>}
+                    {canEdit&&exportSec==="clients"&&(
+                      <div style={{background:C.surface+"33",paddingBottom:4}}>
+                        <SBtn2 label="All Clients Report" count={allProjTasks.length} icon="🏛" color={C.teal}
+                          onClick={()=>{exportExcel(accessibleProjects,allProjTasks,"All Clients - Project Updates");closeExport();}}/>
+                        {allClientNames.map(cl=>{const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(
+                          <SBtn2 key={cl} label={cl} count={`${cp.length} proj · ${ct.length} tasks`} icon="🏢"
+                            onClick={()=>{exportExcel(cp,ct,`${cl} - Project Updates`);closeExport();}}/>
+                        );})}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
@@ -2119,152 +2164,4 @@ export default function App(){
                     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
                       <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                         <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                      </div>
-                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                      </div>
-                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* ── 3. Client-wise Overview ── */}
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
-            {/* ── 4. Overdue Tasks ── */}
-            {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-                {overdueTasks.map(t=>{
-                  const pj=projects.find(p=>p.id===t.project_id);
-                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                  return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
-                      onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
-                      </div>
-                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
-                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
-                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                        </div>
-                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
-                        </div>
-                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                        </div>
-                      </div>
-                      {team.length>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-              />))}
-            </div>
-          </>
-        )}
-        {view==="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              {/* Header + Back */}
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              {/* Search + Filter bar */}
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit}/>)}</tbody>
-            </table>
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status
