@@ -2228,6 +2228,7 @@ export default function App(){
                     {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
+              </div>
               {hasDashFilter&&<p style={{margin:"10px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
             </div>
             {/* ── Stat Cards ── */}
@@ -2466,7 +2467,4 @@ export default function App(){
           }
         </Modal>
       )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Moda
