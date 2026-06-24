@@ -2391,62 +2391,72 @@ ${overdueList.map((t,i)=>{const pj=projects.find(p=>p.id===t.project_id);const d
 // ─────────────────────────────────────────────────────────────────────────────
 function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const [period,setP]=useState("all");
+  const [modal,setModal]=useState(null); // {title, tasks}
 
   const pct=id=>{const pt=tasks.filter(t=>t.project_id===id);return pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;};
+  const openModal=(title,t)=>{if(t&&t.length>0)setModal({title,tasks:t});};
 
   // KPIs
   const totalProj=projects.length;
-  const activeProj=projects.filter(p=>pct(p.id)<100).length;
-  const compProj=projects.filter(p=>pct(p.id)>=100&&tasks.some(t=>t.project_id===p.id)).length;
+  const activeProjList=projects.filter(p=>pct(p.id)<100);
+  const activeProj=activeProjList.length;
+  const compProjList=projects.filter(p=>pct(p.id)>=100&&tasks.some(t=>t.project_id===p.id));
+  const compProj=compProjList.length;
   const totalCl=clients.length;
   const totalEmp=users.length;
-  const openTasks=tasks.filter(t=>!isDone(t.status)).length;
+  const openTasksList=tasks.filter(t=>!isDone(t.status));
+  const openTasks=openTasksList.length;
   const compTasks=tasks.filter(t=>isDone(t.status)).length;
   const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
   const inProg=tasks.filter(t=>t.status==="In Progress").length;
   const compRate=tasks.length?Math.round(compTasks/tasks.length*100):0;
 
   // Task status breakdown
-  const statusBD=ALL_STATUSES.map(s=>({label:s,value:tasks.filter(t=>t.status===s).length,color:getStatusColor(s)})).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
+  const statusBD=ALL_STATUSES.map(s=>({label:s,value:tasks.filter(t=>t.status===s).length,color:getStatusColor(s),tasks:tasks.filter(t=>t.status===s)})).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
 
   // Project health
+  const notStartedProj=projects.filter(p=>!tasks.some(t=>t.project_id===p.id));
   const projHealth=[
-    {label:"Active",value:activeProj,color:"#3b82f6"},
-    {label:"Completed",value:compProj,color:"#22c55e"},
-    {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:"#64748b"},
+    {label:"Active",value:activeProj,color:"#3b82f6",tasks:tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))},
+    {label:"Completed",value:compProj,color:"#22c55e",tasks:tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))},
+    {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:"#64748b",tasks:[]},
   ].filter(d=>d.value>0);
 
   // Team performance
   const teamPerf=members.map(name=>{
     const mt=tasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
     const done=mt.filter(t=>isDone(t.status)).length;
-    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-    return{name,total:mt.length,done,overdue:ov,pct:mt.length?Math.round(done/mt.length*100):0};
+    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+    return{name,total:mt.length,done,overdueTasks:ov,overdue:ov.length,allTasks:mt,pct:mt.length?Math.round(done/mt.length*100):0};
   }).filter(u=>u.total>0).sort((a,b)=>b.pct-a.pct);
 
   // Client portfolio
   const clientPortfolio=clients.map(c=>{
     const cp=projects.filter(p=>p.client===c.name);
     const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));
-    const done=ct.filter(t=>isDone(t.status)).length;
-    const ov=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-    return{name:c.name,projects:cp.length,tasks:ct.length,done,overdue:ov,pct:ct.length?Math.round(done/ct.length*100):0};
+    const doneTasks=ct.filter(t=>isDone(t.status));
+    const ovTasks=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+    return{name:c.name,projects:cp.length,tasks:ct.length,done:doneTasks.length,doneTasks,overdue:ovTasks.length,ovTasks,allTasks:ct,pct:ct.length?Math.round(doneTasks.length/ct.length*100):0};
   }).filter(c=>c.projects>0).sort((a,b)=>b.tasks-a.tasks);
 
   // Priority distribution
   const priColors={"Critical":C.red,"High":"#f97316","Medium":"#eab308","Low":C.green};
-  const priData=["Critical","High","Medium","Low"].map(p=>({label:p,value:tasks.filter(t=>t.priority===p).length,color:priColors[p]})).filter(d=>d.value>0);
+  const priData=["Critical","High","Medium","Low"].map(p=>({label:p,value:tasks.filter(t=>t.priority===p).length,color:priColors[p],tasks:tasks.filter(t=>t.priority===p)})).filter(d=>d.value>0);
 
   // Overdue by assignee
-  const overdueByA=members.map(name=>({name,count:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status)).length})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
+  const overdueByA=members.map(name=>({name,count:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status)).length,tasks:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status))})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
 
   // ── Sub-components ──────────────────────────────────────────────────────────
-  const ACard=({icon,label,value,sub,color})=>(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden"}}>
+  const ACard=({icon,label,value,sub,color,onClick,taskList})=>(
+    <div onClick={taskList&&taskList.length>0?()=>openModal(label,taskList):onClick||undefined}
+      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:(taskList&&taskList.length>0)||onClick?"pointer":"default",transition:"box-shadow .15s"}}
+      onMouseEnter={e=>{if((taskList&&taskList.length>0)||onClick)e.currentTarget.style.boxShadow=`0 0 0 2px ${color}55`;}}
+      onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";}}>
       <div style={{position:"absolute",top:10,right:12,fontSize:32,opacity:0.08,pointerEvents:"none"}}>{icon}</div>
       <div style={{fontSize:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
       <div style={{fontSize:11,color:C.t2,fontWeight:700,margin:"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
       {sub&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
+      {((taskList&&taskList.length>0)||onClick)&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
     </div>
   );
 
@@ -2477,9 +2487,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     return(
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {data.map((d,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,cursor:d.tasks&&d.tasks.length>0?"pointer":"default"}}
+            onClick={d.tasks&&d.tasks.length>0?()=>openModal(d.label,d.tasks):undefined}>
             <div style={{width:96,fontSize:11,color:C.t2,textAlign:"right",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={d.label}>{d.label}</div>
-            <div style={{flex:1,background:C.surface,borderRadius:4,height:20,overflow:"hidden",position:"relative"}}>
+            <div style={{flex:1,background:C.surface,borderRadius:4,height:20,overflow:"hidden",position:"relative",border:d.tasks&&d.tasks.length>0?`1px solid ${d.color||C.accent}33`:"none"}}>
               <div style={{width:`${d.value/mx*100}%`,height:"100%",background:d.color||C.accent,borderRadius:4,minWidth:d.value?3:0,transition:"width .5s"}}/>
               <span style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",fontSize:11,color:C.t1,fontWeight:700}}>{d.value}</span>
             </div>
@@ -2514,12 +2525,12 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
 
       {/* ── KPI Row ── */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:22}}>
-        <ACard icon="📁" label="Total Projects" value={totalProj} sub={`${activeProj} active · ${compProj} complete`} color={C.blue}/>
-        <ACard icon="⚡" label="Active Projects" value={activeProj} sub={`${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio`} color={C.accent}/>
-        <ACard icon="✅" label="Completed Projects" value={compProj} sub="fully delivered" color={C.green}/>
-        <ACard icon="🏢" label="Total Clients" value={totalCl} sub={`${clientPortfolio.length} with projects`} color={C.teal}/>
-        <ACard icon="👥" label="Team Members" value={totalEmp} sub={`${teamPerf.length} assigned`} color={"#a855f7"}/>
-        <ACard icon="📋" label="Open Tasks" value={openTasks} sub={overdue>0?`⚠ ${overdue} overdue`:`${compRate}% complete`} color={overdue>0?C.red:"#eab308"}/>
+        <ACard icon="📁" label="Total Projects" value={totalProj} sub={`${activeProj} active · ${compProj} complete`} color={C.blue} taskList={tasks}/>
+        <ACard icon="⚡" label="Active Projects" value={activeProj} sub={`${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio`} color={C.accent} taskList={tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))}/>
+        <ACard icon="✅" label="Completed Projects" value={compProj} sub="fully delivered" color={C.green} taskList={tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))}/>
+        <ACard icon="🏢" label="Total Clients" value={totalCl} sub={`${clientPortfolio.length} with projects`} color={C.teal} taskList={tasks}/>
+        <ACard icon="👥" label="Team Members" value={totalEmp} sub={`${teamPerf.length} assigned`} color={"#a855f7"} taskList={tasks.filter(t=>t.assignee||t.detailer||t.checker)}/>
+        <ACard icon="📋" label="Open Tasks" value={openTasks} sub={overdue>0?`⚠ ${overdue} overdue`:`${compRate}% complete`} color={overdue>0?C.red:"#eab308"} taskList={openTasksList}/>
       </div>
 
       {/* ── Row 1: Task Breakdown + Project Health ── */}
@@ -2539,7 +2550,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
             <Donut segs={projHealth} label={totalProj} sub="projects"/>
             <div style={{flex:1}}>
               {projHealth.map(s=>(
-                <div key={s.label} style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                <div key={s.label} onClick={s.tasks&&s.tasks.length>0?()=>openModal(`${s.label} Projects — Tasks`,s.tasks):undefined}
+                  style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:s.tasks&&s.tasks.length>0?"pointer":"default",borderRadius:6,padding:"4px 6px",transition:"background .15s"}}
+                  onMouseEnter={e=>{if(s.tasks&&s.tasks.length>0)e.currentTarget.style.background=s.color+"15";}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
                   <div style={{width:10,height:10,borderRadius:"50%",background:s.color,flexShrink:0}}/>
                   <span style={{fontSize:12,color:C.t2,flex:1}}>{s.label}</span>
                   <span style={{fontSize:18,fontWeight:800,color:s.color}}>{s.value}</span>
@@ -2556,13 +2570,16 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
         <Panel title="👥 Team Performance">
           <div style={{display:"flex",flexDirection:"column",gap:14,maxHeight:320,overflowY:"auto"}}>
             {teamPerf.map((u,i)=>(
-              <div key={u.name}>
+              <div key={u.name} onClick={()=>openModal(`${u.name} — All Tasks`,u.allTasks)}
+                style={{cursor:"pointer",borderRadius:8,padding:"6px 8px",transition:"background .15s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
+                onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:10,color:C.t3,width:16,textAlign:"right"}}>{i+1}.</span>
                     <Av name={u.name} size={20}/>
                     <span style={{fontSize:12,color:C.t1,fontWeight:600}}>{u.name.split(" ")[0]}</span>
-                    {u.overdue>0&&<span style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"15",padding:"1px 5px",borderRadius:4}}>⚠{u.overdue}</span>}
+                    {u.overdue>0&&<span onClick={e=>{e.stopPropagation();openModal(`${u.name} — Overdue Tasks`,u.overdueTasks);}} style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"15",padding:"1px 5px",borderRadius:4,cursor:"pointer"}}>⚠{u.overdue}</span>}
                   </div>
                   <span style={{fontSize:12,fontWeight:800,color:u.pct>=80?C.green:u.pct>=50?C.blue:C.accent}}>{u.pct}%</span>
                 </div>
@@ -2587,12 +2604,15 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
               </thead>
               <tbody>
                 {clientPortfolio.map(c=>(
-                  <tr key={c.name} style={{borderBottom:`1px solid ${C.border}`}}>
-                    <td style={{padding:"9px 10px",color:C.t1,fontWeight:600,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</td>
+                  <tr key={c.name} style={{borderBottom:`1px solid ${C.border}`,cursor:"pointer",transition:"background .12s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
+                    onClick={()=>openModal(`${c.name} — All Tasks`,c.allTasks)}>
+                    <td style={{padding:"9px 10px",color:C.accent,fontWeight:700,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</td>
                     <td style={{padding:"9px 10px",color:C.teal,textAlign:"center",fontWeight:700}}>{c.projects}</td>
                     <td style={{padding:"9px 10px",color:C.t2,textAlign:"center"}}>{c.tasks}</td>
-                    <td style={{padding:"9px 10px",color:C.green,textAlign:"center",fontWeight:700}}>{c.done}</td>
-                    <td style={{padding:"9px 10px",color:c.overdue>0?C.red:C.t3,textAlign:"center",fontWeight:c.overdue>0?700:400}}>{c.overdue||"—"}</td>
+                    <td onClick={e=>{e.stopPropagation();openModal(`${c.name} — Completed Tasks`,c.doneTasks);}} style={{padding:"9px 10px",color:C.green,textAlign:"center",fontWeight:700,cursor:"pointer",textDecoration:"underline dotted"}}>{c.done}</td>
+                    <td onClick={e=>{e.stopPropagation();if(c.overdue>0)openModal(`${c.name} — Overdue Tasks`,c.ovTasks);}} style={{padding:"9px 10px",color:c.overdue>0?C.red:C.t3,textAlign:"center",fontWeight:c.overdue>0?700:400,cursor:c.overdue>0?"pointer":"default",textDecoration:c.overdue>0?"underline dotted":"none"}}>{c.overdue||"—"}</td>
                     <td style={{padding:"9px 10px",minWidth:110}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <div style={{flex:1,height:5,background:C.surface,borderRadius:3,overflow:"hidden"}}>
@@ -2619,7 +2639,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
               <HBar data={priData}/>
               <div style={{marginTop:12,display:"flex",gap:6,flexWrap:"wrap"}}>
                 {priData.map(p=>(
-                  <span key={p.label} style={{fontSize:11,background:p.color+"18",color:p.color,border:`1px solid ${p.color}33`,borderRadius:6,padding:"2px 8px",fontWeight:600}}>{p.label}: {p.value}</span>
+                  <span key={p.label} onClick={()=>openModal(`${p.label} Priority Tasks`,p.tasks)} style={{fontSize:11,background:p.color+"18",color:p.color,border:`1px solid ${p.color}33`,borderRadius:6,padding:"2px 8px",fontWeight:600,cursor:"pointer"}}>{p.label}: {p.value}</span>
                 ))}
               </div>
             </div>
@@ -2637,11 +2657,12 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
               <div style={{marginBottom:14,padding:"8px 14px",background:C.red+"12",border:`1px solid ${C.red}30`,borderRadius:8,fontSize:12,color:C.red,fontWeight:600}}>
                 ⚠ {overdue} overdue task{overdue!==1?"s":""} — immediate attention needed
               </div>
-              <HBar data={overdueByA.map(u=>({label:u.name,value:u.count,color:C.red}))}/>
+              <HBar data={overdueByA.map(u=>({label:u.name,value:u.count,color:C.red,tasks:u.tasks}))}/>
             </>
           )}
         </Panel>
       </div>
+      {modal&&<StatTaskModal title={modal.title} tasks={modal.tasks} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)}/>}
     </div>
   );
 }
@@ -3438,56 +3459,4 @@ export default function App(){
               {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
                 onEdit={t=>{set(t);stm(true);}}
                 onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-              />))}
-            </div>
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit}/>)}</tbody>
-            </table>
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+                on
