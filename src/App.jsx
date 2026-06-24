@@ -1840,6 +1840,10 @@ export default function App(){
   const overdueTasks=activeDashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
   function navTo(v,pid=null,client=null){
+    // Access guard: clients can only access dashboard and list views (read-only)
+    if(isClient){
+      if(v==='kanban'||v==='clientprojects'){v='list';}
+    }
     // Access guard: regular users cannot access client view or unassigned projects
     if(isRegularUser){
       if(v==='clientprojects'){v='dashboard';pid=null;client=null;}
@@ -1854,6 +1858,8 @@ export default function App(){
   // keep for any residual internal callers
   function switchView(v){navTo(v,v==='list'?activePid:null,v==='clientprojects'?activeClient:null);}
   async function saveTask(f){
+    // ── Clients are read-only ──
+    if(isClient){showToast("Clients cannot modify tasks",false);return;}
     // ── Authorization: regular users can only update status/notes on their own tasks ──
     if(isRegularUser){
       if(!editTask){showToast("Not authorized to create tasks",false);return;}
@@ -1935,7 +1941,7 @@ export default function App(){
     ssv(false);
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const checkerUser=task.checker?users.find(u=>u.name===task.checker.split("/")[0].trim()):null;const emails=new Set(["Manager@hub-rdsprojects.com"]);if(assigneeUser?.email)emails.add(assigneeUser.email);if(checkerUser?.email)emails.add(checkerUser.email);if(ns==="Done"){emails.forEach(e=>notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:e}));}else{emails.forEach(e=>notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:e}));}}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const checkerUser=task.checker?users.find(u=>u.name===task.checker.split("/")[0].trim()):null;const emails=new Set(["Manager@hub-rdsprojects.com"]);if(assigneeUser?.email)emails.add(assigneeUser.email);if(checkerUser?.email)emails.add(checkerUser.email);if(ns==="Done"){emails.forEach(e=>notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:e}));}else{emails.forEach(e=>notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:e}));}}
   async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());const pce=pcu?.email||"";const pEmails=new Set(["Manager@hub-rdsprojects.com"]);if(pce)pEmails.add(pce);pEmails.forEach(em=>notify("project_created",{...projectCreatedPayload(data,me),recipientEmail:em}));}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
@@ -1960,7 +1966,7 @@ export default function App(){
     }
   }
   const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
-  const navs=[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"]];
+  const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
@@ -2052,13 +2058,13 @@ export default function App(){
                   <option value="All">All Status</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
-                {!isRegularUser&&<select value={filterAssignee} onChange={e=>sfa(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                {canEdit&&<select value={filterAssignee} onChange={e=>sfa(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Assignees</option>
                   {members.map(m=><option key={m} value={m}>{m}</option>)}
                 </select>}
               </>
             )}
-            <div ref={exportRef} style={{position:"relative"}}>
+            {!isClient&&<div ref={exportRef} style={{position:"relative"}}>
               <button onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export ▾</button>
               {exportOpen&&(()=>{
                 const today2=new Date().toISOString().slice(0,10);
@@ -2168,7 +2174,7 @@ export default function App(){
                   </div>
                 );
               })()}
-            </div>
+            </div>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
@@ -2473,11 +2479,4 @@ export default function App(){
         <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
           {(canEdit||!editTask)?
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+            <UserTaskEditForm t
