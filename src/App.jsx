@@ -746,6 +746,7 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
   const [statusFilter,ssf]=useState(null);
+  const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
   const matchesMe=v=>userMatchesStr(me,v);
   // My tasks = tasks in accessible projects where I'm assignee / detailer / checker
   const myTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&(matchesMe(t.assignee)||matchesMe(t.detailer)||matchesMe(t.checker)));
@@ -787,6 +788,65 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         <Stat label="Not Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf(statusFilter==="Not Yet Started"?null:"Not Yet Started")}/>
         <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf(statusFilter==="Overdue"?null:"Overdue")}/>
       </div>
+      {/* Filter bar */}
+      {(()=>{
+        const allA=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
+        const hasF=fSearch||fProject!=="All"||fAssignee!=="All"||fStatus!=="All";
+        const ft=myTasks.filter(t=>{
+          const pj=projects.find(p=>p.id===t.project_id);
+          if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
+          if(fProject!=="All"&&t.project_id!==fProject)return false;
+          if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
+          if(fStatus!=="All"){const ns=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!ns&&t.status!==fStatus)return false;}
+          return true;
+        });
+        const sel=a=>({background:C.surface,border:`1px solid ${a?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:a?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
+        return(<>
+          <div style={{background:C.card,border:`1px solid ${hasF?C.accent:C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:24,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <input placeholder="🔍 Search tasks or projects…" value={fSearch} onChange={e=>setFS(e.target.value)} style={{flex:1,minWidth:160,background:C.surface,border:`1px solid ${fSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            <select value={fProject} onChange={e=>{setFP(e.target.value);setSDT(true);}} style={sel(fProject!=="All")}>
+              <option value="All">All Projects</option>
+              {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select value={fAssignee} onChange={e=>{setFA(e.target.value);setSDT(true);}} style={sel(fAssignee!=="All")}>
+              <option value="All">All Assignees</option>
+              {allA.map(a=><option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={fStatus} onChange={e=>{setFSt(e.target.value);setSDT(true);}} style={sel(fStatus!=="All")}>
+              <option value="All">All Statuses</option>
+              {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            {hasF&&<button onClick={()=>{setFS("");setFP("All");setFA("All");setFSt("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+            <button onClick={()=>setSDT(v=>!v)} style={{...GBtn,padding:"8px 14px",fontSize:13,whiteSpace:"nowrap"}}>{showDT?"Hide Tasks ▲":"Show Tasks ▼"}</button>
+          </div>
+          {showDT&&(
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Tasks ({ft.length})</span>
+                {hasF&&<span style={{fontSize:12,color:C.accent}}>Filtered</span>}
+              </div>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date"].map(h=>(
+                  <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
+                ))}</tr></thead>
+                <tbody>{ft.length===0
+                  ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+                  :ft.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"—"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                  </tr>);})}</tbody>
+              </table>
+            </div>
+          )}
+        </>);
+      })()}
       {/* Filtered task list */}
       {statusFilter&&(
         <div style={{marginBottom:28}}>
@@ -913,6 +973,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
   const matchesMe=v=>userMatchesStr(me,v);
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
   const [statusF,setSF]=useState("All");
+  const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
 
   // Tasks where I'm detailer (my review work)
   const detailerTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&matchesMe(t.detailer));
@@ -961,6 +1022,65 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
         <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>{setTab("all");setSF("Overdue");}}/>
       </div>
 
+      {/* Filter bar */}
+      {(()=>{
+        const allA=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))].sort();
+        const hasF=fSearch||fProject!=="All"||fAssignee!=="All"||fStatus!=="All";
+        const ft=allTasks.filter(t=>{
+          const pj=projects.find(p=>p.id===t.project_id);
+          if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
+          if(fProject!=="All"&&t.project_id!==fProject)return false;
+          if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
+          if(fStatus!=="All"){const ns=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!ns&&t.status!==fStatus)return false;}
+          return true;
+        });
+        const sel=a=>({background:C.surface,border:`1px solid ${a?"#8b5cf6":C.border}`,borderRadius:8,padding:"8px 10px",color:a?"#8b5cf6":C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
+        return(<>
+          <div style={{background:C.card,border:`1px solid ${hasF?"#8b5cf6":C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:24,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <input placeholder="🔍 Search tasks or projects…" value={fSearch} onChange={e=>setFS(e.target.value)} style={{flex:1,minWidth:160,background:C.surface,border:`1px solid ${fSearch?"#8b5cf6":C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            <select value={fProject} onChange={e=>{setFP(e.target.value);setSDT(true);}} style={sel(fProject!=="All")}>
+              <option value="All">All Projects</option>
+              {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select value={fAssignee} onChange={e=>{setFA(e.target.value);setSDT(true);}} style={sel(fAssignee!=="All")}>
+              <option value="All">All Assignees</option>
+              {allA.map(a=><option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={fStatus} onChange={e=>{setFSt(e.target.value);setSDT(true);}} style={sel(fStatus!=="All")}>
+              <option value="All">All Statuses</option>
+              {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            {hasF&&<button onClick={()=>{setFS("");setFP("All");setFA("All");setFSt("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+            <button onClick={()=>setSDT(v=>!v)} style={{...GBtn,padding:"8px 14px",fontSize:13,whiteSpace:"nowrap"}}>{showDT?"Hide Tasks ▲":"Show Tasks ▼"}</button>
+          </div>
+          {showDT&&(
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",marginBottom:24}}>
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Tasks ({ft.length})</span>
+                {hasF&&<span style={{fontSize:12,color:"#8b5cf6"}}>Filtered</span>}
+              </div>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date"].map(h=>(
+                  <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
+                ))}</tr></thead>
+                <tbody>{ft.length===0
+                  ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+                  :ft.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"—"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                  </tr>);})}</tbody>
+              </table>
+            </div>
+          )}
+        </>);
+      })()}
       {/* Tabs */}
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",marginBottom:24}}>
         <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,padding:"0 8px"}}>
@@ -2287,233 +2407,23 @@ export default function App(){
         )}
         {view==="dashboard"&&(isAdmin||isManager)&&(
           <>
-            {/* ── Search + Always-visible Filters ── */}
-            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:20}}>
-              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
-                <input placeholder="🔍  Search tasks, projects, users…" value={dashSearch} onChange={e=>sdss(e.target.value)}
-                  style={{flex:1,background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red,whiteSpace:"nowrap"}}>✕ Clear All</button>}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
-                <div>
-                  <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                    <option value="All">All Users</option>
-                    {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Client</label>
-                  <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                    <option value="All">All Clients</option>
-                    {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Project</label>
-                  <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                    <option value="All">All Projects</option>
-                    {(dashClient!=="All"?accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient):accessibleProjects).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{display:"block",color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",marginBottom:5}}>By Status</label>
-                  <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                    <option value="All">All Statuses</option>
-                    {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-              {hasDashFilter&&<p style={{margin:"10px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
-            </div>
-            {/* ── Stat Cards ── */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
-              <Stat label="Recent Tasks" value={Math.min(dashTasks.length,12)} sub="latest activity" color={"#a855f7"} onClick={()=>ssm({title:"Recent Tasks",tasks:[...dashTasks].slice(-12).reverse()})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
-            </div>
-            {/* ── 1. Projects Overview ── */}
-            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-              {accessibleProjects.map(p=>{
-                const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length;
-                const pip=pt.filter(t=>t.status==="In Progress").length;
-                const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
-                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
-                return(
-                  <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <h3 style={{margin:0,fontSize:15,fontWeight:800,flex:1,color:"#ffffff",lineHeight:1.3}}>{p.name}</h3>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:10,flexShrink:0}}>
-                        {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
-                        <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
-                      {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
-                    </div>
-                    <Pb v={pv} color={p.color} h={7}/>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
-                      <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
-                      </div>
-                      <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{ptd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
-                      </div>
-                      <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
-                      </div>
-                    </div>
-                    {assignees.length>0&&(
-                      <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
-                      </div>
-                    )}
-                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
-                  </div>
-                );
-              })}
-            </div>
-            {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
-            {/* ── 2. Recent Tasks ── */}
-            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const clr=pj?.color||C.accent;
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{set(t);stm(true);}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                      <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,marginLeft:10,whiteSpace:"nowrap"}}>{pj?.name||"—"}</span>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-                      <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                      </div>
-                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                      </div>
-                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* ── 3. Client-wise Overview ── */}
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
-            {/* ── 4. Overdue Tasks ── */}
-            {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-                {overdueTasks.map(t=>{
-                  const pj=projects.find(p=>p.id===t.project_id);
-                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                  return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
-                      onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
-                      </div>
-                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
-                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
-                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                        </div>
-                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
-                        </div>
-                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                        </div>
-                      </div>
-                      {team.length>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-              />))}
+            {/* ── Clean Filter Bar ── */}
+            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:20,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+              <input placeholder="🔍 Search tasks or projects…" value={dashSearch} onChange={e=>sdss(e.target.value)}
+                style={{flex:1,minWidth:160,background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+              <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <option value="All">All Projects</option>
+                {accessibleProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <option value="All">All Assignees</option>
+                {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
+              </select>
+              <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <option value="All">All Statuses</option>
+                {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+              {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
             </div>
           </>
         )}
