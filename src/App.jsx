@@ -1931,7 +1931,7 @@ function exportAnalyticsReport(projects,tasks,users,clients,today){
 <tr><td>✅ Completed Projects</td><td class="num" style="color:#16a34a;font-size:13pt">${compProj}</td><td>${Math.round(compProj/Math.max(totalProj,1)*100)}% delivery rate</td><td style="background:#dcfce7;color:#15803d;font-weight:700;text-align:center">DELIVERED</td></tr>
 <tr class="alt"><td>🏢 Total Clients</td><td class="num" style="color:#0891b2;font-size:13pt">${clients.length}</td><td>${clientPortfolio.length} with active projects</td><td style="background:#cffafe;color:#0e7490;font-weight:700;text-align:center">ACTIVE</td></tr>
 <tr><td>👥 Team Members</td><td class="num" style="color:#a855f7;font-size:13pt">${users.length}</td><td>${teamPerf.length} members with assigned tasks</td><td style="background:#fae8ff;color:#86198f;font-weight:700;text-align:center">STAFFED</td></tr>
-<tr class="alt"><td>📋 Open Tasks</td><td class="num" style="color:#ea580c;font-size:13pt">${openTasks}</td><td>${overdue} overdue · ${inProg} in progress</td><td style="background:${overdue>0?"#fee2e2"};color:${overdue>0?"#dc2626":"#16a34a"};font-weight:700;text-align:center">${overdue>0?"⚠ OVERDUE":"ON TRACK"}</td></tr>
+<tr class="alt"><td>📋 Open Tasks</td><td class="num" style="color:#ea580c;font-size:13pt">${openTasks}</td><td>${overdue} overdue · ${inProg} in progress</td><td style="background:${overdue>0?"#fee2e2":"#dcfce7"};color:${overdue>0?"#dc2626":"#16a34a"};font-weight:700;text-align:center">${overdue>0?"⚠ OVERDUE":"ON TRACK"}</td></tr>
 <tr><td>✅ Completed Tasks</td><td class="num" style="color:#16a34a;font-size:13pt">${compTasks}</td><td>${compRate}% overall completion rate</td><td style="background:#dcfce7;color:#15803d;font-weight:700;text-align:center">${compRate}% DONE</td></tr>
 <tr class="alt"><td>📦 Total Tasks</td><td class="num" style="color:#1e3a5f;font-size:13pt">${tasks.length}</td><td>Across ${totalProj} projects · ${clients.length} clients</td><td style="background:#e2e8f0;color:#475569;font-weight:700;text-align:center">ALL</td></tr>
 </table>
@@ -3059,6 +3059,4 @@ export default function App(){
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+    </d
