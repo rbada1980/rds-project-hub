@@ -2604,6 +2604,20 @@ export default function App(){
             </>)}
           </>
         )}
+        {view==="kanban"&&(
+          <>
+            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
+            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
+              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
+                onEdit={t=>{set(t);stm(true);}}
+                onDelete={canEdit?delTask:()=>{}}
+                onDrop={dropTask}
+                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
+                canDelete={canEdit}
+              />))}
+            </div>
+          </>
+        )}
         {view=="clientprojects"&&canEdit&&(()=>{
           const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
           const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
