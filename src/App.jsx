@@ -1014,34 +1014,13 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
         </div>
       </div>
 
-      {/* KPI Cards */}
-      {(()=>{
-        const actP=projects.filter(p=>{const pt=tasks.filter(t=>t.project_id===p.id);return pt.length===0||pt.some(t=>!isDone(t.status));}).length;
-        const cmpP=projects.filter(p=>{const pt=tasks.filter(t=>t.project_id===p.id);return pt.length>0&&pt.every(t=>isDone(t.status));}).length;
-        const uniqClients=[...new Set(projects.map(p=>p.client).filter(Boolean))].length;
-        const teamCount=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))].length;
-        const openT=allTasks.filter(t=>!isDone(t.status)).length;
-        const KK=({icon,label,value,sub,color,onClick})=>(
-          <div onClick={onClick} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 18px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:onClick?"pointer":"default",transition:"transform .15s,box-shadow .15s"}}
-            onMouseEnter={e=>{if(onClick){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px #00000055";}}}
-            onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-            <div style={{position:"absolute",top:10,right:12,fontSize:28,opacity:0.08,pointerEvents:"none"}}>{icon}</div>
-            <div style={{fontSize:28,fontWeight:900,color,lineHeight:1}}>{value}</div>
-            <div style={{fontSize:10,color:C.t2,fontWeight:700,margin:"5px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
-            {sub&&<div style={{fontSize:10,color:C.t3}}>{sub}</div>}
-          </div>
-        );
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:14,marginBottom:24}}>
-            <KK icon="📁" label="Total Projects" value={projects.length} sub={`${actP} active · ${cmpP} done`} color={C.blue} onClick={()=>onViewProject(null)}/>
-            <KK icon="⚡" label="Active Projects" value={actP} sub={`${Math.round(actP/Math.max(projects.length,1)*100)}% running`} color={C.accent}/>
-            <KK icon="✅" label="Completed Projects" value={cmpP} sub="fully delivered" color={C.green}/>
-            <KK icon="🏢" label="Total Clients" value={uniqClients} sub="client accounts" color={C.teal}/>
-            <KK icon="👥" label="Team Members" value={teamCount} sub="assigned members" color={"#a855f7"}/>
-            <KK icon="📋" label="Open Tasks" value={openT} sub={`${overdueAll} overdue`} color={overdueAll>0?C.red:"#eab308"} onClick={()=>{setTab("all");setSF("All");}}/>
-          </div>
-        );
-      })()}
+      {/* Top stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+        <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>{setTab("all");setSF("All");}}/>
+        <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>{setTab("detailer");setSF("All");}}/>
+        <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>{setTab("checker");setSF("All");}}/>
+        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>{setTab("all");setSF("Overdue");}}/>
+      </div>
 
       {/* Filter bar */}
       {(()=>{
@@ -2711,32 +2690,15 @@ export default function App(){
               {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
-                        {/* ── KPI Cards ── */}
-            {(()=>{
-              const actP=accessibleProjects.filter(p=>prog(p.id)<100).length;
-              const cmpP=accessibleProjects.filter(p=>prog(p.id)>=100&&tasks.some(t=>t.project_id===p.id)).length;
-              const openT=activeDashTasks.filter(t=>!isDone(t.status)).length;
-              const KK=({icon,label,value,sub,color,onClick})=>(
-                <div onClick={onClick} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:onClick?"pointer":"default",transition:"transform .15s,box-shadow .15s"}}
-                  onMouseEnter={e=>{if(onClick){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px #00000055";}}}
-                  onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                  <div style={{position:"absolute",top:10,right:12,fontSize:30,opacity:0.08,pointerEvents:"none"}}>{icon}</div>
-                  <div style={{fontSize:30,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
-                  <div style={{fontSize:11,color:C.t2,fontWeight:700,margin:"5px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
-                  {sub&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
-                </div>
-              );
-              return(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-                  <KK icon="📁" label="Total Projects" value={accessibleProjects.length} sub={`${actP} active · ${cmpP} done`} color={C.blue} onClick={()=>navTo('list')}/>
-                  <KK icon="⚡" label="Active Projects" value={actP} sub={`${Math.round(actP/Math.max(accessibleProjects.length,1)*100)}% of portfolio`} color={C.accent}/>
-                  <KK icon="✅" label="Completed Projects" value={cmpP} sub="fully delivered" color={C.green}/>
-                  <KK icon="🏢" label="Total Clients" value={clients.length} sub={`${[...new Set(accessibleProjects.map(p=>p.client).filter(Boolean))].length} active`} color={C.teal}/>
-                  <KK icon="👥" label="Team Members" value={users.length} sub="active employees" color={"#a855f7"}/>
-                  <KK icon="📋" label="Open Tasks" value={openT} sub={overdueTasks.length>0?`⚠ ${overdueTasks.length} overdue`:`${activeDashTasks.length?Math.round((activeDashTasks.length-openT)/activeDashTasks.length*100):0}% complete`} color={overdueTasks.length>0?C.red:"#eab308"} onClick={()=>ssm({title:"Open Tasks",tasks:activeDashTasks.filter(t=>!isDone(t.status))})}/>
-                </div>
-              );
-            })()}
+                        {/* ── Stat Cards ── */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
+              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
+              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
+              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
+              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
+              <Stat label="Recent Tasks" value={Math.min(dashTasks.length,12)} sub="latest activity" color={"#a855f7"} onClick={()=>ssm({title:"Recent Tasks",tasks:[...dashTasks].slice(-12).reverse()})}/>
+              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
+            </div>
             {/* ── 1. Projects Overview ── */}
             <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
