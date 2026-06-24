@@ -1860,6 +1860,346 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+const NOTIF_META={
+  task_assigned:        {icon:"📋",color:"#2563eb",label:"Task Assigned"},
+  task_completed:       {icon:"✅",color:"#16a34a",label:"Task Completed"},
+  task_deadline:        {icon:"⏰",color:"#ea580c",label:"Deadline Updated"},
+  task_reviewed:        {icon:"🔍",color:"#7c3aed",label:"Task Reviewed"},
+  task_status:          {icon:"🔄",color:"#0891b2",label:"Status Updated"},
+  project_assigned:     {icon:"📁",color:"#0891b2",label:"Project Assigned"},
+  project_updated:      {icon:"📊",color:"#2563eb",label:"Project Updated"},
+  project_milestone:    {icon:"🏆",color:"#f59e0b",label:"Milestone"},
+  deliverable_uploaded: {icon:"📦",color:"#16a34a",label:"Deliverable Uploaded"},
+  file_uploaded:        {icon:"📎",color:"#7c3aed",label:"File Uploaded"},
+  client_assigned:      {icon:"🏢",color:"#0891b2",label:"Client Assigned"},
+  system_alert:         {icon:"⚠️",color:"#ef4444",label:"System Alert"},
+  announcement:         {icon:"📢",color:"#f59e0b",label:"Announcement"},
+};
+
+function timeAgo(dateStr){
+  const diff=Date.now()-new Date(dateStr).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1)return"just now";
+  if(m<60)return`${m}m ago`;
+  const h=Math.floor(m/60);
+  if(h<24)return`${h}h ago`;
+  const d=Math.floor(h/24);
+  if(d<7)return`${d}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+}
+
+async function createNotif(userIds,type,title,description,entityType=null,entityId=null,createdBy=null){
+  const ids=(Array.isArray(userIds)?userIds:[userIds]).filter(Boolean);
+  if(!ids.length)return;
+  const rows=ids.map(uid=>({user_id:uid,type,title,description,entity_type:entityType,entity_id:entityId,created_by:createdBy}));
+  await supabase.from("notifications").insert(rows);
+}
+
+function NotifCard({n,onRead,onUnread,onDelete,onPin}){
+  const meta=NOTIF_META[n.type]||{icon:"🔔",color:C.accent};
+  const [hov,setHov]=useState(false);
+  return(
+    <div
+      onMouseEnter={()=>{setHov(true);if(!n.is_read)onRead(n.id);}}
+      onMouseLeave={()=>setHov(false)}
+      style={{display:"flex",gap:10,padding:"10px 14px",
+        background:hov?C.surface:n.is_read?"transparent":meta.color+"0d",
+        borderLeft:`3px solid ${n.is_read&&!hov?"transparent":meta.color}`,
+        transition:"all .12s",cursor:"pointer",position:"relative"}}
+    >
+      <div style={{width:36,height:36,borderRadius:10,background:meta.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>
+        {meta.icon}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <span style={{fontSize:12,fontWeight:n.is_read?500:700,color:C.t1,lineHeight:1.35}}>{n.title}</span>
+          {!n.is_read&&<span style={{width:7,height:7,borderRadius:"50%",background:meta.color,flexShrink:0,marginTop:4}}/>}
+        </div>
+        {n.description&&<p style={{margin:"3px 0 0",fontSize:11,color:C.t2,lineHeight:1.45,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{n.description}</p>}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:5}}>
+          <span style={{fontSize:10,color:C.t3}}>{timeAgo(n.created_at)}</span>
+          {hov&&(
+            <div style={{display:"flex",gap:4}}>
+              <button onClick={e=>{e.stopPropagation();n.is_read?onUnread(n.id):onRead(n.id);}} title={n.is_read?"Mark unread":"Mark read"}
+                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 6px",fontSize:10,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
+                {n.is_read?"◯":"●"}
+              </button>
+              <button onClick={e=>{e.stopPropagation();onPin(n.id,!n.is_pinned);}} title={n.is_pinned?"Unpin":"Pin"}
+                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 6px",fontSize:10,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
+                {n.is_pinned?"📌":"📍"}
+              </button>
+              <button onClick={e=>{e.stopPropagation();onDelete(n.id);}} title="Delete"
+                style={{background:"none",border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 6px",fontSize:10,color:C.red,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotifSection({label,items,onRead,onUnread,onDelete,onPin}){
+  if(!items.length)return null;
+  return(
+    <>
+      <div style={{padding:"8px 14px 3px",fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.07em",background:C.surface+"88"}}>{label}</div>
+      {items.map(n=><NotifCard key={n.id} n={n} onRead={onRead} onUnread={onUnread} onDelete={onDelete} onPin={onPin}/>)}
+    </>
+  );
+}
+
+function NotificationCenter({me}){
+  const [open,setOpen]=useState(false);
+  const [notifs,setNotifs]=useState([]);
+  const [tab,setTab]=useState("all");
+  const [showSettings,setShowSettings]=useState(false);
+  const [soundOn,setSoundOn]=useState(()=>{try{return localStorage.getItem("rds_notif_sound")!=="off";}catch{return true;}});
+  const drawerRef=useRef();
+  const bellRef=useRef();
+  const userId=me?.id;
+
+  // ── CSS animations (injected once) ──
+  useEffect(()=>{
+    if(document.getElementById("notif-css"))return;
+    const s=document.createElement("style");
+    s.id="notif-css";
+    s.textContent=`
+      @keyframes notifSlideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+      @keyframes notifPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+      .notif-drawer{animation:notifSlideIn .22s cubic-bezier(.22,1,.36,1)}
+      .notif-badge{animation:notifPulse 2s ease-in-out infinite}
+    `;
+    document.head.appendChild(s);
+  },[]);
+
+  // ── Load + Realtime ──
+  useEffect(()=>{
+    if(!userId)return;
+    loadNotifs();
+    const channel=supabase.channel(`notifs-user-${userId}`)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`user_id=eq.${userId}`},payload=>{
+        setNotifs(prev=>[payload.new,...prev]);
+        if(soundOn)playNotifSound();
+        if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
+          const meta=NOTIF_META[payload.new.type]||{};
+          try{new Notification(payload.new.title,{body:payload.new.description||"",icon:"/favicon.svg"});}catch{}
+        }
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications',filter:`user_id=eq.${userId}`},payload=>{
+        setNotifs(prev=>prev.map(n=>n.id===payload.new.id?payload.new:n));
+      })
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'notifications',filter:`user_id=eq.${userId}`},payload=>{
+        setNotifs(prev=>prev.filter(n=>n.id!==payload.old.id));
+      })
+      .subscribe();
+    return()=>supabase.removeChannel(channel);
+  },[userId,soundOn]);
+
+  // ── Close drawer on outside click ──
+  useEffect(()=>{
+    if(!open)return;
+    function handle(e){
+      if(drawerRef.current&&!drawerRef.current.contains(e.target)&&bellRef.current&&!bellRef.current.contains(e.target))setOpen(false);
+    }
+    document.addEventListener("mousedown",handle);
+    return()=>document.removeEventListener("mousedown",handle);
+  },[open]);
+
+  async function loadNotifs(){
+    const cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
+    const{data}=await supabase.from("notifications").select("*").eq("user_id",userId).gte("created_at",cutoff).order("created_at",{ascending:false}).limit(150);
+    if(data)setNotifs(data);
+  }
+
+  function playNotifSound(){
+    try{
+      const ctx=new(window.AudioContext||window.webkitAudioContext)();
+      const osc=ctx.createOscillator();const gain=ctx.createGain();
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.frequency.value=880;osc.type="sine";
+      gain.gain.setValueAtTime(0,ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.25,ctx.currentTime+0.01);
+      gain.gain.linearRampToValueAtTime(0,ctx.currentTime+0.35);
+      osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.35);
+    }catch{}
+  }
+
+  async function markRead(id){
+    setNotifs(prev=>prev.map(n=>n.id===id?{...n,is_read:true}:n));
+    await supabase.from("notifications").update({is_read:true}).eq("id",id);
+  }
+  async function markUnread(id){
+    setNotifs(prev=>prev.map(n=>n.id===id?{...n,is_read:false}:n));
+    await supabase.from("notifications").update({is_read:false}).eq("id",id);
+  }
+  async function markAllRead(){
+    const ids=notifs.filter(n=>!n.is_read).map(n=>n.id);
+    if(!ids.length)return;
+    setNotifs(prev=>prev.map(n=>({...n,is_read:true})));
+    await supabase.from("notifications").update({is_read:true}).in("id",ids);
+  }
+  async function deleteNotif(id){
+    setNotifs(prev=>prev.filter(n=>n.id!==id));
+    await supabase.from("notifications").delete().eq("id",id);
+  }
+  async function pinNotif(id,pin){
+    setNotifs(prev=>prev.map(n=>n.id===id?{...n,is_pinned:pin}:n));
+    await supabase.from("notifications").update({is_pinned:pin}).eq("id",id);
+  }
+  function toggleSound(){const v=!soundOn;setSoundOn(v);localStorage.setItem("rds_notif_sound",v?"on":"off");}
+  async function requestBrowserPermission(){
+    if("Notification"in window){const p=await Notification.requestPermission();if(p==="granted")alert("Browser notifications enabled!");}
+  }
+
+  const unreadCount=notifs.filter(n=>!n.is_read).length;
+  const todayStr=new Date().toISOString().slice(0,10);
+  const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,10);
+
+  const base=tab==="unread"?notifs.filter(n=>!n.is_read):tab==="pinned"?notifs.filter(n=>n.is_pinned):notifs;
+  const pinned=base.filter(n=>n.is_pinned&&tab!=="pinned");
+  const unread=base.filter(n=>!n.is_read&&!n.is_pinned);
+  const todayRead=base.filter(n=>n.is_read&&!n.is_pinned&&n.created_at.slice(0,10)===todayStr);
+  const thisWeek=base.filter(n=>n.is_read&&!n.is_pinned&&n.created_at.slice(0,10)<todayStr&&n.created_at.slice(0,10)>=weekAgo);
+  const earlier=base.filter(n=>n.is_read&&!n.is_pinned&&n.created_at.slice(0,10)<weekAgo);
+
+  const ops={onRead:markRead,onUnread:markUnread,onDelete:deleteNotif,onPin:pinNotif};
+
+  return(
+    <>
+      {/* ── Bell Button ── */}
+      <div ref={bellRef} style={{position:"relative"}}>
+        <button onClick={()=>setOpen(v=>!v)}
+          style={{...GBtn,padding:"7px 11px",position:"relative",
+            background:open?C.accent+"22":"transparent",
+            borderColor:open?C.accent:C.border}}
+          title="Notifications"
+        >
+          <span style={{fontSize:18,lineHeight:1}}>🔔</span>
+          {unreadCount>0&&(
+            <span className="notif-badge" style={{
+              position:"absolute",top:1,right:1,
+              minWidth:17,height:17,borderRadius:9,
+              background:C.red,color:"#fff",
+              fontSize:9,fontWeight:800,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              padding:"0 3px",lineHeight:1,border:`2px solid ${C.bg}`
+            }}>
+              {unreadCount>99?"99+":unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Notification Drawer ── */}
+      {open&&(
+        <div ref={drawerRef} className="notif-drawer" style={{
+          position:"fixed",top:0,right:0,width:390,height:"100vh",
+          background:C.card,borderLeft:`1px solid ${C.border}`,
+          boxShadow:"-16px 0 60px #00000099",zIndex:1000,
+          display:"flex",flexDirection:"column",overflow:"hidden"
+        }}>
+          {/* Header */}
+          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.border}`,flexShrink:0,background:C.card}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:16,fontWeight:800,color:C.t1}}>🔔 Notifications</span>
+                {unreadCount>0&&<span style={{background:C.red,color:"#fff",borderRadius:10,padding:"2px 8px",fontSize:10,fontWeight:800}}>{unreadCount} unread</span>}
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                {unreadCount>0&&(
+                  <button onClick={markAllRead}
+                    style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.teal,borderColor:C.teal}}>✓ All read</button>
+                )}
+                <button onClick={()=>setShowSettings(v=>!v)}
+                  style={{...GBtn,padding:"5px 9px",fontSize:13,background:showSettings?C.accent+"22":"transparent",borderColor:showSettings?C.accent:C.border}}
+                  title="Settings">⚙</button>
+                <button onClick={()=>setOpen(false)}
+                  style={{...GBtn,padding:"5px 9px",fontSize:13}} title="Close">✕</button>
+              </div>
+            </div>
+            {/* Tabs */}
+            <div style={{display:"flex",gap:4}}>
+              {[["all","All"],["unread",`Unread${unreadCount>0?` (${unreadCount})`:""}`],["pinned","📌 Pinned"]].map(([v,l])=>(
+                <button key={v} onClick={()=>setTab(v)}
+                  style={{border:"none",borderRadius:7,padding:"5px 13px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all .12s",
+                    background:tab===v?C.accent:"transparent",color:tab===v?"#fff":C.t3}}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Settings panel */}
+          {showSettings&&(
+            <div style={{padding:"12px 16px",background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.07em"}}>Notification Settings</div>
+              <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,color:C.t2}}>🔊 Sound Alerts</span>
+                  <button onClick={toggleSound} style={{...GBtn,padding:"3px 10px",fontSize:11,
+                    background:soundOn?C.green+"22":"transparent",color:soundOn?C.green:C.t3,borderColor:soundOn?C.green:C.border}}>
+                    {soundOn?"ON":"OFF"}
+                  </button>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,color:C.t2}}>🌐 Browser Notifications</span>
+                  <button onClick={requestBrowserPermission} style={{...GBtn,padding:"3px 10px",fontSize:11,
+                    background:typeof Notification!=="undefined"&&Notification.permission==="granted"?C.green+"22":"transparent",
+                    color:typeof Notification!=="undefined"&&Notification.permission==="granted"?C.green:C.t3,
+                    borderColor:typeof Notification!=="undefined"&&Notification.permission==="granted"?C.green:C.border}}>
+                    {typeof Notification!=="undefined"&&Notification.permission==="granted"?"Enabled ✓":"Enable"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notification list */}
+          <div style={{flex:1,overflowY:"auto"}}>
+            {base.length===0?(
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60%",gap:14}}>
+                <span style={{fontSize:44}}>🔕</span>
+                <div style={{textAlign:"center"}}>
+                  <div style={{color:C.t2,fontSize:13,fontWeight:600,marginBottom:4}}>
+                    {tab==="unread"?"All caught up!":tab==="pinned"?"No pinned notifications":"No notifications yet"}
+                  </div>
+                  <div style={{color:C.t3,fontSize:11}}>
+                    {tab==="unread"?"No unread notifications":"Notifications will appear here"}
+                  </div>
+                </div>
+              </div>
+            ):(
+              <div style={{paddingBottom:16}}>
+                {tab==="pinned"&&<NotifSection label="📌 Pinned" items={base} {...ops}/>}
+                {tab!=="pinned"&&(
+                  <>
+                    {pinned.length>0&&<NotifSection label="📌 Pinned" items={pinned} {...ops}/>}
+                    {unread.length>0&&<NotifSection label="Unread" items={unread} {...ops}/>}
+                    {todayRead.length>0&&<NotifSection label="Today" items={todayRead} {...ops}/>}
+                    {thisWeek.length>0&&<NotifSection label="This Week" items={thisWeek} {...ops}/>}
+                    {earlier.length>0&&<NotifSection label="Earlier" items={earlier} {...ops}/>}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,background:C.surface+"88"}}>
+            <div style={{fontSize:10,color:C.t3,textAlign:"center"}}>
+              Showing last 30 days · {notifs.length} notification{notifs.length!==1?"s":""}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS EXCEL EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 function exportAnalyticsReport(projects,tasks,users,clients,today){
@@ -2447,8 +2787,10 @@ export default function App(){
         if(f.status!==editTask.status){
           const proj=projects.find(p=>p.id===editTask.project_id);
           const assigneeUser=users.find(u=>u.name===editTask.assignee||u.username===editTask.assignee);
-          if(f.status==="Done"){notify("task_completed",{...taskCompletedPayload(data||{...editTask,...updates},proj,me),recipientEmail:assigneeUser?.email||""});}
-          else{notify("status_change",{...statusChangePayload(data||{...editTask,...updates},proj,editTask.status,f.status,me),recipientEmail:"Manager@hub-rdsprojects.com"});}
+          if(f.status==="Done"){notify("task_completed",{...taskCompletedPayload(data||{...editTask,...updates},proj,me),recipientEmail:assigneeUser?.email||""});
+            const mgrs=users.filter(u=>(u.role==="Admin"||u.role==="Manager")&&u.id!==me.id).map(u=>u.id);
+            if(mgrs.length)await createNotif(mgrs,"task_completed",`Task completed: ${editTask.title}`,`Marked done by ${me.name}${proj?` · ${proj.name}`:""}`, "task",editTask.id,me.id);
+          }else{notify("status_change",{...statusChangePayload(data||{...editTask,...updates},proj,editTask.status,f.status,me),recipientEmail:"Manager@hub-rdsprojects.com"});}
         }
       }catch(e){showToast("Error: "+e.message,false);}
       ssv(false);stm(false);set(null);
@@ -2498,15 +2840,27 @@ export default function App(){
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
         showToast("Task updated ✓");
         if(f.status!==editTask.status){
-          if(f.status==="Done"){notifyAll("task_completed",taskCompletedPayload(data||{...editTask,...payload},proj,me));}
-          else{notifyAll("status_change",statusChangePayload(data||{...editTask,...payload},proj,editTask.status,f.status,me));}
+          if(f.status==="Done"){notifyAll("task_completed",taskCompletedPayload(data||{...editTask,...payload},proj,me));
+            // In-app: notify admins/managers on completion
+            const mgrs=users.filter(u=>(u.role==="Admin"||u.role==="Manager")&&u.id!==me.id).map(u=>u.id);
+            if(mgrs.length)await createNotif(mgrs,"task_completed",`Task completed: ${f.title}`,`Marked done by ${me.name}${proj?` · ${proj.name}`:""}`, "task",editTask.id,me.id);
+          }else{notifyAll("status_change",statusChangePayload(data||{...editTask,...payload},proj,editTask.status,f.status,me));
+            // In-app: notify assignee of status change
+            if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_status",`Task status updated: ${f.title}`,`Status changed to ${f.status} by ${me.name}`, "task",editTask.id,me.id);
+          }
         }
-        if(f.assignee&&f.assignee!==editTask.assignee){notify("task_assigned",taskAssignedPayload(data||{...editTask,...payload},proj,assigneeUser?.name||f.assignee,assigneeEmail||managerEmail,me));}
+        if(f.assignee&&f.assignee!==editTask.assignee){notify("task_assigned",taskAssignedPayload(data||{...editTask,...payload},proj,assigneeUser?.name||f.assignee,assigneeEmail||managerEmail,me));
+          if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_assigned",`You've been assigned: ${f.title}`,`Reassigned by ${me.name}${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",editTask.id,me.id);
+        }
       }else{
         const {data}=await supabase.from("tasks").insert(payload).select().single();
         if(data)st(ts=>[...ts,data]);
         showToast("Task created ✓");
         if(f.assignee){notify("task_assigned",taskAssignedPayload(data||payload,proj,assigneeUser?.name||f.assignee,assigneeEmail||managerEmail,me));}
+        // ── In-app notifications ──
+        if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_assigned",`New task assigned: ${f.title}`,`Assigned by ${me.name}${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
+        if(detailerUser?.id&&detailerUser.id!==me.id)await createNotif([detailerUser.id],"task_assigned",`Detailing assigned: ${f.title}`,`You are the detailer${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
+        if(checkerUser?.id&&checkerUser.id!==me.id)await createNotif([checkerUser.id],"task_assigned",`QC assigned: ${f.title}`,`You are the checker${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
       }
       stm(false);set(null);
     }catch(e){showToast("Error: "+e.message,false);}
@@ -2514,7 +2868,13 @@ export default function App(){
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
   async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);const checkerUser=task.checker?users.find(u=>u.name===task.checker.split("/")[0].trim()):null;const emails=new Set(["Manager@hub-rdsprojects.com"]);if(assigneeUser?.email)emails.add(assigneeUser.email);if(checkerUser?.email)emails.add(checkerUser.email);if(ns==="Done"){emails.forEach(e=>notify("task_completed",{...taskCompletedPayload({...task,status:ns},proj,me),recipientEmail:e}));}else{emails.forEach(e=>notify("status_change",{...statusChangePayload({...task,status:ns},proj,task.status,ns,me),recipientEmail:e}));}}
-  async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());const pce=pcu?.email||"";const pEmails=new Set(["Manager@hub-rdsprojects.com"]);if(pce)pEmails.add(pce);pEmails.forEach(em=>notify("project_created",{...projectCreatedPayload(data,me),recipientEmail:em}));}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());const pce=pcu?.email||"";const pEmails=new Set(["Manager@hub-rdsprojects.com"]);if(pce)pEmails.add(pce);pEmails.forEach(em=>notify("project_created",{...projectCreatedPayload(data,me),recipientEmail:em}));
+    // In-app: notify assigned users
+    const assignedIds=(f.assigned_users||[]).map(uname=>users.find(u=>u.username===uname||u.name===uname)?.id).filter(id=>id&&id!==me.id);
+    if(assignedIds.length)await createNotif(assignedIds,"project_assigned",`New project assigned: ${f.name}`,`You've been added to ${f.name}${f.client?` · Client: ${f.client}`:""}${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
+    // Notify client
+    if(pcu?.id&&pcu.id!==me.id)await createNotif([pcu.id],"project_assigned",`Project created: ${f.name}`,`A new project has been set up for your account${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
+  }spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
@@ -2636,6 +2996,7 @@ export default function App(){
             )}
           </div>
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
+            <NotificationCenter me={me}/>
             {view!=="dashboard"&&(
               <>
                 <input placeholder="Search tasks…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
