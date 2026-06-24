@@ -1860,6 +1860,130 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
+// ANALYTICS EXCEL EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+function exportAnalyticsReport(projects,tasks,users,clients,today){
+  const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+
+  // Computed data
+  const pct=id=>{const pt=tasks.filter(t=>t.project_id===id);return pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;};
+  const totalProj=projects.length;
+  const activeProj=projects.filter(p=>pct(p.id)<100).length;
+  const compProj=projects.filter(p=>pct(p.id)>=100&&tasks.some(t=>t.project_id===p.id)).length;
+  const openTasks=tasks.filter(t=>!isDone(t.status)).length;
+  const compTasks=tasks.filter(t=>isDone(t.status)).length;
+  const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const inProg=tasks.filter(t=>t.status==="In Progress").length;
+  const compRate=tasks.length?Math.round(compTasks/tasks.length*100):0;
+  const statusBD=ALL_STATUSES.map(s=>({label:s,count:tasks.filter(t=>t.status===s).length})).filter(d=>d.count>0).sort((a,b)=>b.count-a.count);
+  const members=[...new Set(tasks.flatMap(t=>[t.assignee,t.detailer,t.checker]).filter(Boolean))].sort();
+  const teamPerf=members.map(name=>{
+    const mt=tasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
+    const done=mt.filter(t=>isDone(t.status)).length;
+    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+    return{name,total:mt.length,done,overdue:ov,pct:mt.length?Math.round(done/mt.length*100):0};
+  }).filter(u=>u.total>0).sort((a,b)=>b.pct-a.pct);
+  const clientPortfolio=clients.map(c=>{
+    const cp=projects.filter(p=>p.client===c.name);
+    const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));
+    const done=ct.filter(t=>isDone(t.status)).length;
+    const ov=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+    return{name:c.name,projects:cp.length,tasks:ct.length,done,overdue:ov,pct:ct.length?Math.round(done/ct.length*100):0};
+  }).filter(c=>c.projects>0).sort((a,b)=>b.tasks-a.tasks);
+  const priColors={"Critical":"#dc2626","High":"#ea580c","Medium":"#ca8a04","Low":"#16a34a"};
+  const priData=["Critical","High","Medium","Low"].map(p=>({label:p,count:tasks.filter(t=>t.priority===p).length,color:priColors[p]})).filter(d=>d.count>0);
+  const overdueList=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).sort((a,b)=>a.due_date>b.due_date?1:-1);
+
+  // Status color map
+  const statusColors={"Done":"#16a34a","Completed":"#16a34a","Review":"#2563eb","In Progress":"#7c3aed","To Do":"#64748b","Not Yet Started":"#94a3b8","To Be Started":"#94a3b8","On Hold":"#dc2626"};
+
+  // Percent bar helper (text-based)
+  const pBar=p=>`${"█".repeat(Math.round(p/10))}${"░".repeat(10-Math.round(p/10))} ${p}%`;
+
+  // Completion color
+  const compColor=p=>p>=80?"#16a34a":p>=50?"#2563eb":p>=25?"#ea580c":"#dc2626";
+
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head><meta charset="UTF-8"><style>
+  body{font-family:Calibri,Arial,sans-serif;font-size:10pt;color:#1e293b;background:#fff}
+  h1{background:#0f172a;color:#fff;padding:14px 20px;margin:0 0 4px;font-size:16pt;letter-spacing:.03em}
+  h2{background:#1e3a5f;color:#fff;padding:7px 14px;margin:20px 0 0;font-size:11pt;font-weight:700;letter-spacing:.04em}
+  .meta{background:#e2e8f0;padding:6px 14px;font-size:9pt;color:#475569;margin-bottom:4px}
+  table{border-collapse:collapse;width:100%;margin-bottom:4px}
+  th{background:#1e3a5f;color:#fff;padding:7px 12px;border:1px solid #1e3a5f;font-weight:700;text-align:left;font-size:9pt;letter-spacing:.03em;white-space:nowrap}
+  td{padding:6px 12px;border:1px solid #cbd5e1;font-size:9pt;vertical-align:middle}
+  .alt{background:#f1f5f9}
+  .num{font-weight:700;text-align:center}
+  .pct-high{color:#16a34a;font-weight:700}
+  .pct-mid{color:#2563eb;font-weight:700}
+  .pct-low{color:#ea580c;font-weight:700}
+  .pct-crit{color:#dc2626;font-weight:700}
+  .badge{border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700;display:inline-block}
+</style></head><body>
+<h1>📊 RDS TechServ — Business Analytics Report</h1>
+<div class="meta">Generated: ${dateStr} &nbsp;·&nbsp; Total Projects: ${totalProj} &nbsp;·&nbsp; Total Tasks: ${tasks.length} &nbsp;·&nbsp; Completion Rate: ${compRate}%</div>
+
+<h2>▌ KPI SUMMARY</h2>
+<table>
+<tr><th>Metric</th><th>Value</th><th>Trend / Details</th><th>Status</th></tr>
+<tr><td>📁 Total Projects</td><td class="num" style="color:#2563eb;font-size:13pt">${totalProj}</td><td>${activeProj} active · ${compProj} completed</td><td style="background:#dbeafe;color:#1d4ed8;font-weight:700;text-align:center">ACTIVE</td></tr>
+<tr class="alt"><td>⚡ Active Projects</td><td class="num" style="color:#7c3aed;font-size:13pt">${activeProj}</td><td>${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio in progress</td><td style="background:#ede9fe;color:#6d28d9;font-weight:700;text-align:center">IN PROGRESS</td></tr>
+<tr><td>✅ Completed Projects</td><td class="num" style="color:#16a34a;font-size:13pt">${compProj}</td><td>${Math.round(compProj/Math.max(totalProj,1)*100)}% delivery rate</td><td style="background:#dcfce7;color:#15803d;font-weight:700;text-align:center">DELIVERED</td></tr>
+<tr class="alt"><td>🏢 Total Clients</td><td class="num" style="color:#0891b2;font-size:13pt">${clients.length}</td><td>${clientPortfolio.length} with active projects</td><td style="background:#cffafe;color:#0e7490;font-weight:700;text-align:center">ACTIVE</td></tr>
+<tr><td>👥 Team Members</td><td class="num" style="color:#a855f7;font-size:13pt">${users.length}</td><td>${teamPerf.length} members with assigned tasks</td><td style="background:#fae8ff;color:#86198f;font-weight:700;text-align:center">STAFFED</td></tr>
+<tr class="alt"><td>📋 Open Tasks</td><td class="num" style="color:#ea580c;font-size:13pt">${openTasks}</td><td>${overdue} overdue · ${inProg} in progress</td><td style="background:${overdue>0?"#fee2e2"};color:${overdue>0?"#dc2626":"#16a34a"};font-weight:700;text-align:center">${overdue>0?"⚠ OVERDUE":"ON TRACK"}</td></tr>
+<tr><td>✅ Completed Tasks</td><td class="num" style="color:#16a34a;font-size:13pt">${compTasks}</td><td>${compRate}% overall completion rate</td><td style="background:#dcfce7;color:#15803d;font-weight:700;text-align:center">${compRate}% DONE</td></tr>
+<tr class="alt"><td>📦 Total Tasks</td><td class="num" style="color:#1e3a5f;font-size:13pt">${tasks.length}</td><td>Across ${totalProj} projects · ${clients.length} clients</td><td style="background:#e2e8f0;color:#475569;font-weight:700;text-align:center">ALL</td></tr>
+</table>
+
+<h2>▌ TASK STATUS BREAKDOWN</h2>
+<table>
+<tr><th>Status</th><th>Count</th><th>% of Total</th><th>Visual</th></tr>
+${statusBD.map((s,i)=>{const p=tasks.length?Math.round(s.count/tasks.length*100):0;const bg=statusColors[s.label]||"#64748b";return`<tr${i%2?" class='alt'":""}><td><span class="badge" style="background:${bg}22;color:${bg};border:1px solid ${bg}55">${s.label}</span></td><td class="num" style="color:${bg}">${s.count}</td><td class="num">${p}%</td><td style="color:${bg};font-family:monospace;letter-spacing:-.05em">${"█".repeat(Math.max(1,Math.round(p/5)))}${"░".repeat(20-Math.max(1,Math.round(p/5)))} ${p}%</td></tr>`;}).join("")}
+</table>
+
+<h2>▌ TEAM PERFORMANCE</h2>
+<table>
+<tr><th>#</th><th>Team Member</th><th>Total Tasks</th><th>Completed</th><th>Open</th><th>Overdue</th><th>Completion %</th><th>Performance</th></tr>
+${teamPerf.map((u,i)=>{const pClass=u.pct>=80?"pct-high":u.pct>=50?"pct-mid":u.pct>=25?"pct-low":"pct-crit";const bg=i%2?" class='alt'":"";return`<tr${bg}><td class="num" style="color:#94a3b8">${i+1}</td><td style="font-weight:600">${u.name}</td><td class="num">${u.total}</td><td class="num" style="color:#16a34a;font-weight:700">${u.done}</td><td class="num" style="color:#ea580c">${u.total-u.done}</td><td class="num" style="color:${u.overdue>0?"#dc2626":"#94a3b8"};font-weight:${u.overdue>0?700:400}">${u.overdue>0?"⚠ "+u.overdue:"—"}</td><td class="${pClass}" style="font-size:11pt">${u.pct}%</td><td style="font-family:monospace;color:${compColor(u.pct)};letter-spacing:-.05em">${"█".repeat(Math.round(u.pct/10))}${"░".repeat(10-Math.round(u.pct/10))}</td></tr>`;}).join("")}
+${teamPerf.length===0?"<tr><td colspan='8' style='text-align:center;color:#94a3b8;padding:16px'>No team data available</td></tr>":""}
+</table>
+
+<h2>▌ CLIENT PORTFOLIO</h2>
+<table>
+<tr><th>Client</th><th>Projects</th><th>Total Tasks</th><th>Completed</th><th>Open</th><th>Overdue</th><th>Progress %</th><th>Health</th></tr>
+${clientPortfolio.map((c,i)=>{const bg=i%2?" class='alt'":"";const pClass=c.pct>=80?"pct-high":c.pct>=50?"pct-mid":c.pct>=25?"pct-low":"pct-crit";const health=c.pct>=80?"🟢 HEALTHY":c.pct>=50?"🟡 PROGRESSING":c.overdue>0?"🔴 AT RISK":"🟠 SLOW";return`<tr${bg}><td style="font-weight:700">${c.name}</td><td class="num" style="color:#2563eb">${c.projects}</td><td class="num">${c.tasks}</td><td class="num" style="color:#16a34a;font-weight:700">${c.done}</td><td class="num" style="color:#ea580c">${c.tasks-c.done}</td><td class="num" style="color:${c.overdue>0?"#dc2626":"#94a3b8"};font-weight:${c.overdue>0?700:400}">${c.overdue>0?"⚠ "+c.overdue:"—"}</td><td class="${pClass}">${c.pct}%</td><td>${health}</td></tr>`;}).join("")}
+${clientPortfolio.length===0?"<tr><td colspan='8' style='text-align:center;color:#94a3b8;padding:16px'>No client data</td></tr>":""}
+</table>
+
+<h2>▌ PRIORITY DISTRIBUTION</h2>
+<table>
+<tr><th>Priority</th><th>Count</th><th>% of Total</th><th>Visual</th></tr>
+${priData.map((p,i)=>{const pct2=tasks.length?Math.round(p.count/tasks.length*100):0;return`<tr${i%2?" class='alt'":""}><td><span class="badge" style="background:${p.color}22;color:${p.color};border:1px solid ${p.color}55">${p.label}</span></td><td class="num" style="color:${p.color};font-weight:700">${p.count}</td><td class="num">${pct2}%</td><td style="color:${p.color};font-family:monospace;letter-spacing:-.05em">${"█".repeat(Math.max(1,Math.round(pct2/5)))}${"░".repeat(20-Math.max(1,Math.round(pct2/5)))} ${pct2}%</td></tr>`;}).join("")}
+${priData.length===0?"<tr><td colspan='4' style='text-align:center;color:#94a3b8;padding:16px'>No priority data</td></tr>":""}
+</table>
+
+${overdueList.length>0?`<h2>▌ OVERDUE TASKS — ACTION REQUIRED (${overdueList.length})</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Days Overdue</th><th>Status</th><th>Priority</th></tr>
+${overdueList.map((t,i)=>{const pj=projects.find(p=>p.id===t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"—"}</td><td style="color:#7c3aed">${t.assignee||"—"}</td><td style="color:#dc2626;font-weight:600">${t.due_date}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"—"}</span></td></tr>`;}).join("")}
+</table>`:""}
+
+<div style="margin-top:20px;padding:10px 14px;background:#f1f5f9;border-top:2px solid #1e3a5f;font-size:8pt;color:#64748b">
+  RDS TechServ Project Hub &nbsp;·&nbsp; Analytics Report &nbsp;·&nbsp; ${dateStr} &nbsp;·&nbsp; Confidential
+</div>
+</body></html>`;
+
+  const blob=new Blob([html],{type:"application/vnd.ms-excel"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`RDS_Analytics_Report_${today}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS CENTER
 // ─────────────────────────────────────────────────────────────────────────────
 function AnalyticsCenter({projects,tasks,users,clients,today,members}){
@@ -1970,74 +2094,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     </div>
   );
 
-  // ── Export analytics to Excel ─────────────────────────────────────────────
-  function exportAnalytics(){
-    const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-    const overdueList=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
-    let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><style>
-      body{font-family:Calibri,Arial,sans-serif;font-size:11pt}
-      h2{color:#1e3a5f;font-size:13pt;margin:18px 0 6px}
-      table{border-collapse:collapse;width:100%;margin-bottom:18px}
-      th{background:#1e3a5f;color:#fff;padding:7px 12px;border:1px solid #999;font-weight:bold;text-align:left}
-      td{padding:6px 12px;border:1px solid #ddd}
-      tr:nth-child(even) td{background:#f0f4f8}
-      .kpi-num{font-size:14pt;font-weight:bold;color:#2563eb}
-    </style></head><body>
-    <h1 style="color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:6px">📊 RDS TechServ — Analytics Report</h1>
-    <p style="color:#666">Generated: ${dateStr} &nbsp;|&nbsp; Period: ${period==="all"?"All Time":period==="quarter"?"This Quarter":period==="month"?"This Month":"This Week"}</p>
-
-    <h2>KPI Summary</h2>
-    <table><tr><th>Metric</th><th>Value</th><th>Details</th></tr>
-      <tr><td>Total Projects</td><td class="kpi-num">${totalProj}</td><td>${activeProj} active, ${compProj} completed</td></tr>
-      <tr><td>Active Projects</td><td class="kpi-num">${activeProj}</td><td>${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio</td></tr>
-      <tr><td>Completed Projects</td><td class="kpi-num">${compProj}</td><td>Fully delivered</td></tr>
-      <tr><td>Total Clients</td><td class="kpi-num">${totalCl}</td><td>${clientPortfolio.length} with active projects</td></tr>
-      <tr><td>Team Members</td><td class="kpi-num">${totalEmp}</td><td>${teamPerf.length} have assigned tasks</td></tr>
-      <tr><td>Open Tasks</td><td class="kpi-num">${openTasks}</td><td>${overdue} overdue</td></tr>
-      <tr><td>Completed Tasks</td><td class="kpi-num">${compTasks}</td><td>${compRate}% completion rate</td></tr>
-      <tr><td>Total Tasks</td><td class="kpi-num">${tasks.length}</td><td>Across all projects</td></tr>
-    </table>
-
-    <h2>Task Status Breakdown</h2>
-    <table><tr><th>Status</th><th>Count</th><th>% of Total</th></tr>
-      ${statusBD.map(s=>`<tr><td>${s.label}</td><td>${s.value}</td><td>${tasks.length?Math.round(s.value/tasks.length*100):0}%</td></tr>`).join("")}
-    </table>
-
-    <h2>Team Performance</h2>
-    <table><tr><th>#</th><th>Team Member</th><th>Total Tasks</th><th>Completed</th><th>Overdue</th><th>Completion %</th></tr>
-      ${teamPerf.map((u,i)=>`<tr><td>${i+1}</td><td>${u.name}</td><td>${u.total}</td><td>${u.done}</td><td>${u.overdue||0}</td><td>${u.pct}%</td></tr>`).join("")}
-      ${teamPerf.length===0?"<tr><td colspan='6' style='text-align:center;color:#999'>No data</td></tr>":""}
-    </table>
-
-    <h2>Client Portfolio</h2>
-    <table><tr><th>Client</th><th>Projects</th><th>Total Tasks</th><th>Done</th><th>Overdue</th><th>Progress %</th></tr>
-      ${clientPortfolio.map(c=>`<tr><td>${c.name}</td><td>${c.projects}</td><td>${c.tasks}</td><td>${c.done}</td><td>${c.overdue||0}</td><td>${c.pct}%</td></tr>`).join("")}
-      ${clientPortfolio.length===0?"<tr><td colspan='6' style='text-align:center;color:#999'>No data</td></tr>":""}
-    </table>
-
-    <h2>Priority Distribution</h2>
-    <table><tr><th>Priority</th><th>Count</th><th>% of Total</th></tr>
-      ${priData.map(p=>`<tr><td>${p.label}</td><td>${p.value}</td><td>${tasks.length?Math.round(p.value/tasks.length*100):0}%</td></tr>`).join("")}
-      ${priData.length===0?"<tr><td colspan='3' style='text-align:center;color:#999'>No data</td></tr>":""}
-    </table>
-
-    ${overdueList.length>0?`<h2>Overdue Tasks Detail (${overdueList.length})</h2>
-    <table><tr><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Days Overdue</th><th>Status</th><th>Priority</th></tr>
-      ${overdueList.sort((a,b)=>a.due_date>b.due_date?1:-1).map(t=>{
-        const pj=projects.find(p=>p.id===t.project_id);
-        const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-        return`<tr><td>${t.title}</td><td>${pj?.name||"—"}</td><td>${t.assignee||"—"}</td><td>${t.due_date}</td><td style="color:red;font-weight:bold">${days}d</td><td>${t.status}</td><td>${t.priority||"—"}</td></tr>`;
-      }).join("")}
-    </table>`:""}
-    </body></html>`;
-
-    const blob=new Blob([html],{type:"application/vnd.ms-excel"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=`RDS_Analytics_${today}.xls`; a.click();
-    URL.revokeObjectURL(url);
-  }
-
   return(
     <div>
       {/* ── Header ── */}
@@ -2046,13 +2102,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
           <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>Business Analytics & Reporting</h2>
           <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3}}>
-            {[["all","All Time"],["quarter","Quarter"],["month","Month"],["week","Week"]].map(([v,l])=>(
-              <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
-            ))}
-          </div>
-          <button onClick={exportAnalytics} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"8px 16px",fontSize:13,background:C.green+"18",color:C.green,borderColor:C.green}}>📥 Export Excel</button>
+        <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3}}>
+          {[["all","All Time"],["quarter","Quarter"],["month","Month"],["week","Week"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+          ))}
         </div>
       </div>
 
@@ -2703,6 +2756,13 @@ export default function App(){
                             onClick={()=>{exportExcel(cp,ct,`${cl} - Project Updates`);closeExport();}}/>
                         );})}
                       </div>
+                    )}
+
+                    {/* 6 — Analytics Report (admin/manager/TL) */}
+                    {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
+                    {(isAdmin||isManager||isTeamLeader)&&(
+                      <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
+                        onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
                     )}
                   </div>
                 );
