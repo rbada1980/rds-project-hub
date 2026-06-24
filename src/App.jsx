@@ -1970,6 +1970,74 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     </div>
   );
 
+  // ── Export analytics to Excel ─────────────────────────────────────────────
+  function exportAnalytics(){
+    const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+    const overdueList=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+    let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><style>
+      body{font-family:Calibri,Arial,sans-serif;font-size:11pt}
+      h2{color:#1e3a5f;font-size:13pt;margin:18px 0 6px}
+      table{border-collapse:collapse;width:100%;margin-bottom:18px}
+      th{background:#1e3a5f;color:#fff;padding:7px 12px;border:1px solid #999;font-weight:bold;text-align:left}
+      td{padding:6px 12px;border:1px solid #ddd}
+      tr:nth-child(even) td{background:#f0f4f8}
+      .kpi-num{font-size:14pt;font-weight:bold;color:#2563eb}
+    </style></head><body>
+    <h1 style="color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:6px">📊 RDS TechServ — Analytics Report</h1>
+    <p style="color:#666">Generated: ${dateStr} &nbsp;|&nbsp; Period: ${period==="all"?"All Time":period==="quarter"?"This Quarter":period==="month"?"This Month":"This Week"}</p>
+
+    <h2>KPI Summary</h2>
+    <table><tr><th>Metric</th><th>Value</th><th>Details</th></tr>
+      <tr><td>Total Projects</td><td class="kpi-num">${totalProj}</td><td>${activeProj} active, ${compProj} completed</td></tr>
+      <tr><td>Active Projects</td><td class="kpi-num">${activeProj}</td><td>${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio</td></tr>
+      <tr><td>Completed Projects</td><td class="kpi-num">${compProj}</td><td>Fully delivered</td></tr>
+      <tr><td>Total Clients</td><td class="kpi-num">${totalCl}</td><td>${clientPortfolio.length} with active projects</td></tr>
+      <tr><td>Team Members</td><td class="kpi-num">${totalEmp}</td><td>${teamPerf.length} have assigned tasks</td></tr>
+      <tr><td>Open Tasks</td><td class="kpi-num">${openTasks}</td><td>${overdue} overdue</td></tr>
+      <tr><td>Completed Tasks</td><td class="kpi-num">${compTasks}</td><td>${compRate}% completion rate</td></tr>
+      <tr><td>Total Tasks</td><td class="kpi-num">${tasks.length}</td><td>Across all projects</td></tr>
+    </table>
+
+    <h2>Task Status Breakdown</h2>
+    <table><tr><th>Status</th><th>Count</th><th>% of Total</th></tr>
+      ${statusBD.map(s=>`<tr><td>${s.label}</td><td>${s.value}</td><td>${tasks.length?Math.round(s.value/tasks.length*100):0}%</td></tr>`).join("")}
+    </table>
+
+    <h2>Team Performance</h2>
+    <table><tr><th>#</th><th>Team Member</th><th>Total Tasks</th><th>Completed</th><th>Overdue</th><th>Completion %</th></tr>
+      ${teamPerf.map((u,i)=>`<tr><td>${i+1}</td><td>${u.name}</td><td>${u.total}</td><td>${u.done}</td><td>${u.overdue||0}</td><td>${u.pct}%</td></tr>`).join("")}
+      ${teamPerf.length===0?"<tr><td colspan='6' style='text-align:center;color:#999'>No data</td></tr>":""}
+    </table>
+
+    <h2>Client Portfolio</h2>
+    <table><tr><th>Client</th><th>Projects</th><th>Total Tasks</th><th>Done</th><th>Overdue</th><th>Progress %</th></tr>
+      ${clientPortfolio.map(c=>`<tr><td>${c.name}</td><td>${c.projects}</td><td>${c.tasks}</td><td>${c.done}</td><td>${c.overdue||0}</td><td>${c.pct}%</td></tr>`).join("")}
+      ${clientPortfolio.length===0?"<tr><td colspan='6' style='text-align:center;color:#999'>No data</td></tr>":""}
+    </table>
+
+    <h2>Priority Distribution</h2>
+    <table><tr><th>Priority</th><th>Count</th><th>% of Total</th></tr>
+      ${priData.map(p=>`<tr><td>${p.label}</td><td>${p.value}</td><td>${tasks.length?Math.round(p.value/tasks.length*100):0}%</td></tr>`).join("")}
+      ${priData.length===0?"<tr><td colspan='3' style='text-align:center;color:#999'>No data</td></tr>":""}
+    </table>
+
+    ${overdueList.length>0?`<h2>Overdue Tasks Detail (${overdueList.length})</h2>
+    <table><tr><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Days Overdue</th><th>Status</th><th>Priority</th></tr>
+      ${overdueList.sort((a,b)=>a.due_date>b.due_date?1:-1).map(t=>{
+        const pj=projects.find(p=>p.id===t.project_id);
+        const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
+        return`<tr><td>${t.title}</td><td>${pj?.name||"—"}</td><td>${t.assignee||"—"}</td><td>${t.due_date}</td><td style="color:red;font-weight:bold">${days}d</td><td>${t.status}</td><td>${t.priority||"—"}</td></tr>`;
+      }).join("")}
+    </table>`:""}
+    </body></html>`;
+
+    const blob=new Blob([html],{type:"application/vnd.ms-excel"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`RDS_Analytics_${today}.xls`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return(
     <div>
       {/* ── Header ── */}
@@ -1978,10 +2046,13 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
           <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>Business Analytics & Reporting</h2>
           <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>
         </div>
-        <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3}}>
-          {[["all","All Time"],["quarter","Quarter"],["month","Month"],["week","Week"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
-          ))}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3}}>
+            {[["all","All Time"],["quarter","Quarter"],["month","Month"],["week","Week"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+            ))}
+          </div>
+          <button onClick={exportAnalytics} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"8px 16px",fontSize:13,background:C.green+"18",color:C.green,borderColor:C.green}}>📥 Export Excel</button>
         </div>
       </div>
 
@@ -2891,12 +2962,10 @@ export default function App(){
           const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
           return(
             <div>
-              {/* Header + Back */}
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                 <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
                 <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
               </div>
-              {/* Search + Filter bar */}
               <ClientProjectSearch
                 projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
                 today={today} isAdmin={isAdmin} canEdit={canEdit}
