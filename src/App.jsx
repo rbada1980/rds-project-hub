@@ -1961,18 +1961,32 @@ function NotificationCenter({me}){
   const userId=me?.id;
 
   // ── CSS animations (injected once) ──
+  const [popups,setPopups]=useState([]); // in-app toast popups
   useEffect(()=>{
     if(document.getElementById("notif-css"))return;
     const s=document.createElement("style");
     s.id="notif-css";
     s.textContent=`
       @keyframes notifSlideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-      @keyframes notifPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+      @keyframes notifSlideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(110%);opacity:0}}
+      @keyframes notifPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+      @keyframes notifPopIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
       .notif-drawer{animation:notifSlideIn .22s cubic-bezier(.22,1,.36,1)}
       .notif-badge{animation:notifPulse 2s ease-in-out infinite}
+      .notif-popup{animation:notifPopIn .28s cubic-bezier(.22,1,.36,1)}
+      .notif-popup-out{animation:notifSlideOut .22s ease-in forwards}
     `;
     document.head.appendChild(s);
   },[]);
+
+  function showPopup(n){
+    const pid=Date.now();
+    setPopups(prev=>[{...n,_pid:pid},...prev.slice(0,3)]);
+    setTimeout(()=>dismissPopup(pid),5000);
+  }
+  function dismissPopup(pid){
+    setPopups(prev=>prev.filter(p=>p._pid!==pid));
+  }
 
   // ── soundOn ref so channel doesn't recreate on toggle ──
   const soundOnRef=useRef(soundOn);
@@ -1992,8 +2006,10 @@ function NotificationCenter({me}){
         if(!payload.new||String(payload.new.user_id)!==uid)return;
         setNotifs(prev=>[payload.new,...prev]);
         if(soundOnRef.current)playNotifSound();
+        showPopup(payload.new);
+        // Browser OS notification (works only when page is in background)
         if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
-          try{new Notification(payload.new.title,{body:payload.new.description||"",icon:"/favicon.svg"});}catch{}
+          try{new Notification(payload.new.title,{body:payload.new.description||"",icon:"/favicon.svg"});}catch(e){console.warn("[Notif] Browser notification failed:",e);}
         }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications'},payload=>{
@@ -2114,6 +2130,30 @@ function NotificationCenter({me}){
           )}
         </button>
       </div>
+
+      {/* ── In-app popup toasts (bottom-right, stacked) ── */}
+      {popups.map((p,i)=>{
+        const meta=NOTIF_META[p.type]||{icon:"🔔",color:C.accent};
+        return(
+          <div key={p._pid} className="notif-popup" style={{
+            position:"fixed",bottom:24+(i*90),right:24,width:320,zIndex:1100,
+            background:C.card,border:`1px solid ${meta.color}55`,borderLeft:`4px solid ${meta.color}`,
+            borderRadius:12,boxShadow:"0 8px 32px #00000099",
+            display:"flex",gap:10,padding:"12px 14px",alignItems:"flex-start",
+            cursor:"pointer"
+          }} onClick={()=>{dismissPopup(p._pid);markRead(p.id);setOpen(true);}}>
+            <div style={{width:34,height:34,borderRadius:9,background:meta.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>
+              {meta.icon}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.t1,lineHeight:1.3,marginBottom:2}}>{p.title}</div>
+              {p.description&&<div style={{fontSize:11,color:C.t2,lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.description}</div>}
+              <div style={{fontSize:10,color:meta.color,marginTop:3,fontWeight:600}}>just now · click to view</div>
+            </div>
+            <button onClick={e=>{e.stopPropagation();dismissPopup(p._pid);}} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:14,padding:0,lineHeight:1,flexShrink:0}}>✕</button>
+          </div>
+        );
+      })}
 
       {/* ── Notification Drawer ── */}
       {open&&(
