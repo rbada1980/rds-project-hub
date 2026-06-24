@@ -67,7 +67,7 @@ async function main(){
   }
 
   // ── STEP 4: Create missing users ──
-  const SKIP=new Set(["nnj","rds","rds user","nanaji","narayana","n/a","na","eswar/siav kumar","balaram/jagadeesh","lokesh reddy/nanaji","eswar/nanaji","sridevi / vaishnavi","allu sai/nanaji"]);
+  const SKIP=new Set(["nnj","rds","rds user","nanaji","narayana","n/a","na","tbd","tekla","unknown","pdf check only","asap","high priority","eswar/siav kumar","balaram/jagadeesh","lokesh reddy/nanaji","eswar/nanaji","sridevi / vaishnavi","allu sai/nanaji"]);
   const allNames=new Set();
   for(const row of ALL_ROWS){
     for(const field of [row.detailer,row.checker]){
