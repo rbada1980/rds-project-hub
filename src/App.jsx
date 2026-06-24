@@ -3081,11 +3081,16 @@ export default function App(){
                 const closeExport=()=>{setExportOpen(false);setExportSec(null);};
                 const allProjTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
                 const overdueTsk=allProjTasks.filter(t=>t.due_date&&t.due_date<today2&&!isDone(t.status));
-                const UNKNOWN_NAMES=["tbd","tekla","siva kumar","unknown","nnj","rds user"];
+                const UNKNOWN_NAMES=["tbd","tekla","siva kumar","unknown","nnj","rds user","nanaji","narayana","rds"];
+                const NAME_ALIAS={"danush":"Dhanush","lokesh":"Lokesh Reddy","eswar/nanaji":"Eswar","allu sai/nanaji":"Allu Sai","lokesh reddy/nanaji":"Lokesh Reddy","balaram/jagadeesh":"Balaram","sridevi / vaishnavi":"Sridevi","siav kumar":"Siva Kumar"};
+                function canonicalName(raw){
+                  const t=raw.trim().toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+                  return NAME_ALIAS[raw.trim().toLowerCase()]||NAME_ALIAS[t.toLowerCase()]||t;
+                }
                 const allUserNames=[...new Set(
                   tasks.flatMap(t=>[t.assignee,t.detailer,t.checker]).filter(Boolean)
-                  .flatMap(n=>n.split(/[&\/,]+/).map(p=>p.trim().replace(/\b\w/g,c=>c.toUpperCase())).filter(Boolean))
-                )].filter(n=>n&&!UNKNOWN_NAMES.some(u=>n.toLowerCase().includes(u))).sort();
+                  .flatMap(n=>n.split(/[&\/,]+/).map(p=>canonicalName(p)).filter(Boolean))
+                )].filter(n=>n&&!UNKNOWN_NAMES.some(u=>n.toLowerCase()===u||n.toLowerCase().includes(u))).sort();
                 const allClientNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
                 const SHdr=({id,icon,label})=>(
                   <button onClick={()=>setExportSec(exportSec===id?null:id)}
@@ -3158,7 +3163,7 @@ export default function App(){
                           onClick={()=>{exportExcel(accessibleProjects,tasks,"All Users - Work Summary");closeExport();}}/>
                         {allUserNames.map(u=>{
                           const uLow=u.toLowerCase();
-                          const ut=tasks.filter(t=>[t.assignee,t.detailer,t.checker].filter(Boolean).some(f=>f.toLowerCase().split(/[&\/,]+/).map(p=>p.trim()).includes(uLow)));
+                          const ut=tasks.filter(t=>[t.assignee,t.detailer,t.checker].filter(Boolean).some(f=>f.split(/[&\/,]+/).map(p=>canonicalName(p).toLowerCase()).includes(uLow)));
                           const up=accessibleProjects.filter(p=>ut.some(t=>t.project_id===p.id));
                           return(
                             <SBtn2 key={u} label={u} count={ut.length} icon="👤"
@@ -3477,12 +3482,4 @@ export default function App(){
       {taskModal&&(
         <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
           {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={memb
