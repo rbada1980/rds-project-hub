@@ -3084,7 +3084,7 @@ export default function App(){
                 const UNKNOWN_NAMES=["tbd","tekla","siva kumar","unknown","nnj","rds user"];
                 const allUserNames=[...new Set(
                   tasks.flatMap(t=>[t.assignee,t.detailer,t.checker]).filter(Boolean)
-                  .flatMap(n=>n.split(/[&\/,]+/).map(p=>p.trim()).filter(Boolean))
+                  .flatMap(n=>n.split(/[&\/,]+/).map(p=>p.trim().replace(/\b\w/g,c=>c.toUpperCase())).filter(Boolean))
                 )].filter(n=>n&&!UNKNOWN_NAMES.some(u=>n.toLowerCase().includes(u))).sort();
                 const allClientNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
                 const SHdr=({id,icon,label})=>(
@@ -3482,7 +3482,4 @@ export default function App(){
           }
         </Modal>
       )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={can
