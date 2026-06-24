@@ -1304,6 +1304,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
           <div style={{fontSize:28,fontWeight:800,color:C.teal}}>{pct}%</div>
           <div style={{fontSize:11,color:C.t3}}>overall complete</div>
         </div>
+        <button onClick={doExport} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>
       </div>
       {/* Progress bar */}
       <div style={{marginBottom:24}}><Pb v={pct} color={C.teal} h={8}/></div>
@@ -1332,7 +1333,6 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
           {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
         {hasFilter&&<button onClick={()=>{ssf("All");sfp("All");sfa("All");ss("");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
-        <button onClick={doExport} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",fontSize:13,color:C.teal,borderColor:C.teal}}>📊 Export</button>
         <button onClick={()=>sst(v=>!v)} style={{...GBtn,padding:"8px 14px",fontSize:13}}>{showTasks?"Hide Tasks ▲":"Show Tasks ▼"}</button>
       </div>
       {/* Task table (toggled) */}
@@ -2551,4 +2551,4 @@ export default function App(){
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
     </div>
   );
-}
+}                                
