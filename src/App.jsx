@@ -1974,28 +1974,43 @@ function NotificationCenter({me}){
     document.head.appendChild(s);
   },[]);
 
-  // ── Load + Realtime ──
+  // ── soundOn ref so channel doesn't recreate on toggle ──
+  const soundOnRef=useRef(soundOn);
+  useEffect(()=>{soundOnRef.current=soundOn;},[soundOn]);
+
+  // ── Load notifications ──
+  useEffect(()=>{if(userId)loadNotifs();},[userId]);
+
+  // ── Realtime subscription — NO server-side filter (custom auth doesn't support it)
+  //    Filter client-side by comparing user_id ──
   useEffect(()=>{
     if(!userId)return;
-    loadNotifs();
-    const channel=supabase.channel(`notifs-user-${userId}`)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`user_id=eq.${userId}`},payload=>{
+    const uid=String(userId);
+    const channel=supabase
+      .channel(`notifs-${uid}-${Date.now()}`)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},payload=>{
+        if(!payload.new||String(payload.new.user_id)!==uid)return;
         setNotifs(prev=>[payload.new,...prev]);
-        if(soundOn)playNotifSound();
+        if(soundOnRef.current)playNotifSound();
         if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
-          const meta=NOTIF_META[payload.new.type]||{};
           try{new Notification(payload.new.title,{body:payload.new.description||"",icon:"/favicon.svg"});}catch{}
         }
       })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications',filter:`user_id=eq.${userId}`},payload=>{
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications'},payload=>{
+        if(!payload.new||String(payload.new.user_id)!==uid)return;
         setNotifs(prev=>prev.map(n=>n.id===payload.new.id?payload.new:n));
       })
-      .on('postgres_changes',{event:'DELETE',schema:'public',table:'notifications',filter:`user_id=eq.${userId}`},payload=>{
-        setNotifs(prev=>prev.filter(n=>n.id!==payload.old.id));
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'notifications'},payload=>{
+        // DELETE only has payload.old.id (no user_id without REPLICA IDENTITY FULL)
+        // safe to filter by id — we only store current user's notifs in state
+        if(payload.old?.id)setNotifs(prev=>prev.filter(n=>n.id!==payload.old.id));
       })
-      .subscribe();
-    return()=>supabase.removeChannel(channel);
-  },[userId,soundOn]);
+      .subscribe((status,err)=>{
+        if(err)console.error("[Notif] Realtime error:",err);
+        else console.log("[Notif] Realtime status:",status);
+      });
+    return()=>{ try{supabase.removeChannel(channel);}catch{} };
+  },[userId]);
 
   // ── Close drawer on outside click ──
   useEffect(()=>{
@@ -2008,8 +2023,16 @@ function NotificationCenter({me}){
   },[open]);
 
   async function loadNotifs(){
+    if(!userId)return;
     const cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-    const{data}=await supabase.from("notifications").select("*").eq("user_id",userId).gte("created_at",cutoff).order("created_at",{ascending:false}).limit(150);
+    const{data,error}=await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id",userId)
+      .gte("created_at",cutoff)
+      .order("created_at",{ascending:false})
+      .limit(150);
+    if(error){console.error("[Notif] Load error:",error.message,"— Did you run notifications_migration.sql in Supabase?");return;}
     if(data)setNotifs(data);
   }
 
