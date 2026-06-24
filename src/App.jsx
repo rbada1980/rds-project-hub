@@ -1264,6 +1264,9 @@ function Login({onLogin}){
 function ClientDashboard({me,tasks,projects,today,onViewProject}){
   const [statusFilter,ssf]=useState("All");
   const [search,ss]=useState("");
+  const [filterProject,sfp]=useState("All");
+  const [filterAssignee,sfa]=useState("All");
+  const [showTasks,sst]=useState(false);
   const myProjects=projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase());
   const myPids=new Set(myProjects.map(p=>p.id));
   const myTasks=tasks.filter(t=>myPids.has(t.project_id));
@@ -1273,12 +1276,21 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
   const notStarted=myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const pct=total?Math.round(done/total*100):0;
+  const allAssignees=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
+  const hasFilter=statusFilter!=="All"||filterProject!=="All"||filterAssignee!=="All"||search;
   const filtered=myTasks.filter(t=>{
     const pj=projects.find(p=>p.id===t.project_id);
     if(search&&!t.title.toLowerCase().includes(search.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(search.toLowerCase()))return false;
     if(statusFilter!=="All"){const nsMatch=statusFilter==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==statusFilter)return false;}
+    if(filterProject!=="All"&&t.project_id!==filterProject)return false;
+    if(filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
   });
+  const selStyle=active=>({background:C.surface,border:`1px solid ${active?C.teal:C.border}`,borderRadius:8,padding:"8px 10px",color:active?C.teal:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
+  function doExport(){
+    const exportProjs=myProjects.filter(p=>filtered.some(t=>t.project_id===p.id));
+    exportExcel(exportProjs,filtered,`${me.client_name||me.name} - Project Report`);
+  }
   return(
     <div>
       {/* Header */}
@@ -1296,13 +1308,66 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
       {/* Progress bar */}
       <div style={{marginBottom:24}}><Pb v={pct} color={C.teal} h={8}/></div>
       {/* Stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:28}}>
-        <Stat label="Total Tasks" value={total} sub="all projects" color={C.teal} onClick={()=>{ssf("All");ss("");}}/>
-        <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf("Completed")}/>
-        <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf("In Progress")}/>
-        <Stat label="Not Yet Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf("Not Yet Started")}/>
-        <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf("All")}/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:24}}>
+        <Stat label="Total Tasks" value={total} sub="all projects" color={C.teal} onClick={()=>{ssf("All");sfp("All");sfa("All");ss("");sst(true);}}/>
+        <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>{ssf("Completed");sst(true);}}/>
+        <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>{ssf("In Progress");sst(true);}}/>
+        <Stat label="Not Yet Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>{ssf("Not Yet Started");sst(true);}}/>
+        <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>{ssf("All");sst(true);}}/>
       </div>
+      {/* Filter bar */}
+      <div style={{background:C.card,border:`1px solid ${hasFilter?C.teal:C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:24,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <input placeholder="🔍 Search tasks or projects…" value={search} onChange={e=>ss(e.target.value)}
+          style={{flex:1,minWidth:160,background:C.surface,border:`1px solid ${search?C.teal:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+        <select value={filterProject} onChange={e=>{sfp(e.target.value);sst(true);}} style={selStyle(filterProject!=="All")}>
+          <option value="All">All Projects</option>
+          {myProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select value={filterAssignee} onChange={e=>{sfa(e.target.value);sst(true);}} style={selStyle(filterAssignee!=="All")}>
+          <option value="All">All Assignees</option>
+          {allAssignees.map(a=><option key={a} value={a}>{a}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e=>{ssf(e.target.value);sst(true);}} style={selStyle(statusFilter!=="All")}>
+          <option value="All">All Statuses</option>
+          {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+        {hasFilter&&<button onClick={()=>{ssf("All");sfp("All");sfa("All");ss("");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+        <button onClick={doExport} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",fontSize:13,color:C.teal,borderColor:C.teal}}>📊 Export</button>
+        <button onClick={()=>sst(v=>!v)} style={{...GBtn,padding:"8px 14px",fontSize:13}}>{showTasks?"Hide Tasks ▲":"Show Tasks ▼"}</button>
+      </div>
+      {/* Task table (toggled) */}
+      {showTasks&&(
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
+          <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Tasks ({filtered.length})</span>
+            {hasFilter&&<span style={{fontSize:12,color:C.teal}}>Filtered</span>}
+          </div>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date"].map(h=>(
+              <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
+            ))}</tr></thead>
+            <tbody>{filtered.length===0
+              ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+              :filtered.map(t=>{
+                const pj=projects.find(p=>p.id===t.project_id);
+                const tdy=new Date().toISOString().slice(0,10);
+                const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);
+                return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
+                  <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                  <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"—"}</Bdg></td>
+                  <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                </tr>);
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
       {/* Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
@@ -2479,11 +2544,4 @@ export default function App(){
         <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
           {(canEdit||!editTask)?
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+            <UserTaskEditForm t
