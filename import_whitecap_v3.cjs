@@ -9,22 +9,19 @@ const COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec
 
 const NAME_MAP = {
   "siav kumar":"Siva Kumar","eswar/siav kumar":"Eswar",
-  "allu sai/nanaji":"Allu Sai","lokesh reddy/nanaji":"Lokesh Reddy",
+  "allu sai":"Sai","allu sai/nanaji":"Sai",
+  "lokesh reddy/nanaji":"Lokesh Reddy","lokesh":"Lokesh Reddy",
   "eswar/nanaji":"Eswar","balaram/jagadeesh":"Balaram",
-  "sridevi / vaishnavi":"Sridevi",
+  "sridevi / vaishnavi":"Sridevi","danush":"Dhanush",
 };
-// Always returns proper Title Case — prevents case-duplicate users
+// Proper Title Case — lowercases first so "NANAJI"→"Nanaji", "CHANDRA MOULI"→"Chandra Mouli"
 function toTitleCase(str){
-  return str.replace(/\b\w/g,c=>c.toUpperCase());
+  return str.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
 }
 function normName(n){
   if(!n)return"";
   const k=n.trim();
-  // Check explicit overrides first (for typos like "siav kumar")
-  const mapped=NAME_MAP[k]||NAME_MAP[k.toLowerCase()];
-  if(mapped)return mapped;
-  // Default: title case every word
-  return toTitleCase(k);
+  return NAME_MAP[k.toLowerCase()]||toTitleCase(k);
 }
 function normField(f){
   if(!f)return"";
@@ -85,10 +82,11 @@ async function main(){
   console.log(`\n--- Users to process: ${allNames.size} ---`);
   for(const name of allNames){
     const key=name.toLowerCase();
+    // Exact case-insensitive match on name or username
     if(byName[key]){console.log(`  ✓ EXISTS: ${name}`);continue;}
-    // fuzzy match
-    const found=Object.entries(byName).find(([k])=>k.includes(key.split(" ")[0])||key.includes(k.split(" ")[0]));
-    if(found){byName[key]=found[1];console.log(`  ~ MATCH: "${name}" → "${found[1].name}"`);continue;}
+    // Also check if any existing user's name matches after title-case normalization
+    const existingMatch=Object.values(byName).find(u=>toTitleCase(u.name)===name);
+    if(existingMatch){byName[key]=existingMatch;console.log(`  ~ NORMALIZED MATCH: "${name}" → "${existingMatch.name}"`);continue;}
     const username=name.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
     const {data:nu,error:ne}=await supabase.from("users")
       .insert({name,username,password:"Rds@2025",role:"User",client_name:"",email:""})
