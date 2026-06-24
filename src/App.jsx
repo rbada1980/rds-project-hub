@@ -1304,7 +1304,6 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
           <div style={{fontSize:28,fontWeight:800,color:C.teal}}>{pct}%</div>
           <div style={{fontSize:11,color:C.t3}}>overall complete</div>
         </div>
-        <button onClick={doExport} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>
       </div>
       {/* Progress bar */}
       <div style={{marginBottom:24}}><Pb v={pct} color={C.teal} h={8}/></div>
@@ -2129,6 +2128,7 @@ export default function App(){
                 </select>}
               </>
             )}
+            {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>);})()}
             {!isClient&&<div ref={exportRef} style={{position:"relative"}}>
               <button onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export ▾</button>
               {exportOpen&&(()=>{
@@ -2548,7 +2548,4 @@ export default function App(){
           }
         </Modal>
       )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectFo
