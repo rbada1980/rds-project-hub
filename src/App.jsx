@@ -633,15 +633,17 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     </Modal>
   );
 }
-function KCard({task,project,onEdit,onDelete,readonly,canDelete=true}){
+function KCard({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
-    <div draggable={!readonly} onDragStart={e=>{sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
+    <div draggable={!readonly&&!selectMode} onDragStart={e=>{if(selectMode)return;sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
       onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-      style={{background:C.card,border:`1px solid ${h?C.border:C.surface}`,borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:readonly?"default":"grab",opacity:d?.4:1,boxShadow:h?"0 4px 16px #00000050":"none",borderLeft:`3px solid ${project?.color||C.accent}`,transition:"all .15s"}}>
+      onClick={selectMode&&onSelect?e=>{e.stopPropagation();onSelect(task.id);}:undefined}
+      style={{background:selected?C.accent+"18":C.card,border:`1px solid ${selected?C.accent:h?C.border:C.surface}`,borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:selectMode?"pointer":readonly?"default":"grab",opacity:d?.4:1,boxShadow:h?"0 4px 16px #00000050":"none",borderLeft:`3px solid ${selected?C.accent:project?.color||C.accent}`,transition:"all .15s",position:"relative"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4}}>{task.title}</p>
-        {!readonly&&<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
+        <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4,paddingRight:selectMode?26:0}}>{task.title}</p>
+        {selectMode&&onSelect&&<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{position:"absolute",top:12,right:12,width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>}
+        {!readonly&&!selectMode&&<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
           <IBtn icon="✏️" onClick={()=>onEdit(task)}/>
           {canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
         </div>}
@@ -661,28 +663,34 @@ function KCard({task,project,onEdit,onDelete,readonly,canDelete=true}){
     </div>
   );
 }
-function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true}){
+function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null}){
   const [ov,so]=useState(false);
+  const selectMode=!!onToggleTask;
   return(
-    <div onDragOver={e=>{e.preventDefault();so(true);}} onDragLeave={()=>so(false)}
-      onDrop={e=>{e.preventDefault();so(false);onDrop(e.dataTransfer.getData("tid"),status);}}
+    <div onDragOver={e=>{if(selectMode)return;e.preventDefault();so(true);}} onDragLeave={()=>so(false)}
+      onDrop={e=>{if(selectMode)return;e.preventDefault();so(false);onDrop(e.dataTransfer.getData("tid"),status);}}
       style={{minWidth:220,flex:1,background:ov?C.surface+"88":"transparent",border:`2px dashed ${ov?getStatusColor(status):C.border}`,borderRadius:12,padding:12,transition:"all .15s"}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
         <div style={{width:8,height:8,borderRadius:"50%",background:getStatusColor(status)}}/>
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} readonly={!canEditFn(t)} canDelete={canDelete}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
     </div>
   );
 }
-function TRow({task,project,onEdit,onDelete,readonly,canDelete=true}){
+function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false}){
   const [h,sh]=useState(false);
   const td={padding:"10px 16px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
   const overdue=task.due_date&&task.due_date<today&&!isDone(task.status);
   return(
-    <tr onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)} style={{background:h?C.surface:"transparent",transition:"background .12s"}}>
+    <tr onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
+      onClick={selectMode&&onSelect?()=>onSelect(task.id):undefined}
+      style={{background:selected?C.accent+"14":h?C.surface:"transparent",transition:"background .12s",cursor:selectMode?"pointer":"default"}}>
+      {selectMode&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect&&onSelect(task.id);}}>
+        <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
+      </td>}
       <td style={td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:13}}>{task.title}</span></div></td>
       <td style={td}><span style={{color:C.t2,fontSize:12}}>{project?.name}</span></td>
       <td style={td}><span style={{color:C.teal,fontSize:12}}>{task.client||"—"}</span></td>
@@ -694,11 +702,44 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true}){
       <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.checker||"—"}</span></td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
       <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.client_sub_date||"—"}</span></td>
-      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&<div style={{display:"flex",gap:4}}>
-        <IBtn icon="✏️" onClick={()=>onEdit(task)} title="Edit"/>
-        {canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red} title="Delete"/>}
+      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&!selectMode&&<div style={{display:"flex",gap:4}}>
+        <IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>
+        {canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
       </div>}</td>
     </tr>
+  );
+}
+// ── Bulk Action Bar ─────────────────────────────────────────────────────────
+function BulkBar({selTasks,selProjects,onClear,onBulkDelete,onBulkAction}){
+  const tc=selTasks.size,pc=selProjects.size,total=tc+pc;
+  if(total===0)return null;
+  return(
+    <div style={{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",zIndex:300,background:C.card,border:`2px solid ${C.accent}`,borderRadius:14,padding:"12px 20px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 8px 40px #00000090",flexWrap:"wrap"}}>
+      <div style={{background:C.accent,color:"#fff",borderRadius:8,padding:"4px 14px",fontWeight:800,fontSize:13,flexShrink:0}}>{total} selected{tc>0&&pc>0?` (${tc} task${tc>1?"s":""},${pc} proj)`:(tc>0?` task${tc>1?"s":""}`:` project${pc>1?"s":""}`)}</div>
+      {tc>0&&<>
+        <button onClick={()=>onBulkAction("status")} style={{background:C.blue+"22",color:C.blue,border:`1px solid ${C.blue}44`,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>⬤ Change Status</button>
+        <button onClick={()=>onBulkAction("reassign")} style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>👤 Reassign</button>
+        <button onClick={()=>onBulkAction("priority")} style={{background:C.yellow+"22",color:C.yellow,border:`1px solid ${C.yellow}44`,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔺 Priority</button>
+      </>}
+      <button onClick={onBulkDelete} style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete ({total})</button>
+      <button onClick={onClear} style={{background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕ Clear</button>
+    </div>
+  );
+}
+// ── Bulk Action Modal ────────────────────────────────────────────────────────
+function BulkActionModal({type,count,members,onApply,onClose}){
+  const [val,sv]=useState(type==="status"?"In Progress":type==="priority"?"High":members[0]||"");
+  const labels={status:"New Status for all selected tasks",reassign:"Reassign all selected tasks to",priority:"Set Priority for all selected tasks"};
+  const opts={status:ALL_STATUSES,reassign:members,priority:["Critical","High","Medium","Low"]};
+  return(
+    <Modal title={`Bulk ${type==="status"?"Status Change":type==="reassign"?"Reassign":"Priority Change"}`} onClose={onClose}>
+      <p style={{color:C.t2,fontSize:13,margin:"0 0 16px"}}>Applying to <strong style={{color:C.accent}}>{count} task{count>1?"s":""}</strong></p>
+      <FSelect label={labels[type]} value={val} onChange={sv} options={opts[type]}/>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+        <button onClick={onClose} style={GBtn}>Cancel</button>
+        <button onClick={()=>onApply(val)} style={SBtn}>Apply to All</button>
+      </div>
+    </Modal>
   );
 }
 // ── Limited task edit form for regular users (status + notes only) ──────────
@@ -2862,6 +2903,10 @@ export default function App(){
   const [dashStatus,sdsst]  = useState("All");
   const [toast,sToast]      = useState(null);
   const [logo,sLogo]        = useState(null);
+  const [selTasks,setSelTasks]   = useState(new Set());
+  const [selProjects,setSelProjs]= useState(new Set());
+  const [bulkSelectOn,setBSO]    = useState(false);
+  const [bulkModal,setBM]        = useState(null); // "status"|"reassign"|"priority"
   const logoRef             = useRef();
   const prevViewRef         = useRef('dashboard');
   const initialParsed       = useRef(false);
@@ -2872,6 +2917,24 @@ export default function App(){
   const isTeamLeader=me?.role==="Team Leader";
   const canEdit=isAdmin||isManager||isTeamLeader;
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
+  function toggleTask(id){setSelTasks(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function toggleProject(id){setSelProjs(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
+  function clearSel(){setSelTasks(new Set());setSelProjs(new Set());}
+  function toggleBulkSelect(){setBSO(v=>{if(v){clearSel();}return!v;});}
+  async function bulkDelete(){
+    const tc=selTasks.size,pc=selProjects.size;
+    if(!window.confirm(`Delete ${tc>0?tc+" task(s)":""}${tc>0&&pc>0?" and ":""}${pc>0?pc+" project(s)":""}? This cannot be undone.`))return;
+    if(tc>0)await supabase.from("tasks").delete().in("id",[...selTasks]);
+    if(pc>0){await supabase.from("tasks").delete().in("project_id",[...selProjects]);await supabase.from("projects").delete().in("id",[...selProjects]);}
+    clearSel();setBSO(false);await loadAll();showToast("Deleted successfully ✓");
+  }
+  async function applyBulkAction(val){
+    const ids=[...selTasks];
+    if(bulkModal==="status")await supabase.from("tasks").update({status:val}).in("id",ids);
+    else if(bulkModal==="reassign")await supabase.from("tasks").update({assignee:val}).in("id",ids);
+    else if(bulkModal==="priority")await supabase.from("tasks").update({priority:val}).in("id",ids);
+    setBM(null);clearSel();setBSO(false);await loadAll();showToast("Updated successfully ✓");
+  }
   async function loadAll(){
     sl(true);
     try{
@@ -3357,6 +3420,7 @@ export default function App(){
                 );
               })()}
             </div>}
+            {canEdit&&<button onClick={toggleBulkSelect} style={{...GBtn,padding:"9px 14px",fontSize:13,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
@@ -3429,15 +3493,17 @@ export default function App(){
                 const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
                 const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
                 const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
+                const projSelected=selProjects.has(p.id);
                 return(
-                  <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
+                  <div key={p.id} style={{background:projSelected?C.accent+"18":C.card,border:`1px solid ${projSelected?C.accent:C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative"}}
+                    onClick={bulkSelectOn?e=>{e.stopPropagation();toggleProject(p.id);}:()=>navTo('list',p.id)}
+                    onMouseEnter={e=>{if(!bulkSelectOn){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                    {bulkSelectOn&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} style={{position:"absolute",top:14,right:14,width:20,height:20,borderRadius:5,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,cursor:"pointer",transition:"all .15s",zIndex:2}}>{projSelected?"✓":""}</div>}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <h3 style={{margin:0,fontSize:15,fontWeight:800,flex:1,color:"#ffffff",lineHeight:1.3}}>{p.name}</h3>
+                      <h3 style={{margin:0,fontSize:15,fontWeight:800,flex:1,color:"#ffffff",lineHeight:1.3,paddingRight:bulkSelectOn?28:0}}>{p.name}</h3>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:10,flexShrink:0}}>
-                        {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
+                        {canEdit&&!bulkSelectOn&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
                         <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
                       </div>
                     </div>
@@ -3471,7 +3537,7 @@ export default function App(){
                         {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
                       </div>
                     )}
-                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
+                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · {bulkSelectOn?"click to select →":"click to view →"}</div>
                   </div>
                 );
               })}
@@ -3612,6 +3678,8 @@ export default function App(){
                 onDrop={dropTask}
                 canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
                 canDelete={canEdit}
+                selTasks={selTasks}
+                onToggleTask={canEdit&&bulkSelectOn?toggleTask:null}
               />))}
             </div>
           </>
@@ -3639,8 +3707,16 @@ export default function App(){
         {view==="list"&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit}/>)}</tbody>
+              <thead><tr style={{background:C.surface}}>
+                {canEdit&&bulkSelectOn&&<th style={{padding:"11px 12px",width:36}}>
+                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
+                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
+                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
+                  </div>
+                </th>}
+                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
+              </tr></thead>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit&&bulkSelectOn?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit&&bulkSelectOn?toggleTask:null} selectMode={canEdit&&bulkSelectOn}/>)}</tbody>
             </table>
           </div>
         )}
@@ -3659,6 +3735,8 @@ export default function App(){
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
+      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
     </div>
   );
 }
