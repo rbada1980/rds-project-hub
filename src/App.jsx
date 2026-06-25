@@ -743,7 +743,6 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
 // ── Gmail-style Select Dropdown ──────────────────────────────────────────────
 function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=[],label="Select"}){
   const [open,setOpen]=useState(false);
-  const [hoverMain,setHM]=useState(false);
   const ref=useRef(null);
   useEffect(()=>{
     if(!open)return;
@@ -754,43 +753,52 @@ function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=
   const isAll=total>0&&selectedCount===total;
   const isSome=selectedCount>0&&selectedCount<total;
   const active=selectedCount>0;
+  const accentCol=active?C.accent:"#6b7280";
   return(
     <div ref={ref} style={{position:"relative",display:"inline-flex",alignItems:"center",userSelect:"none"}}>
-      <div style={{display:"flex",alignItems:"center",background:active?C.accent+"18":hoverMain?C.surface:"transparent",border:`1.5px solid ${active?C.accent:hoverMain?C.border:"transparent"}`,borderRadius:20,overflow:"hidden",transition:"all .2s",cursor:"pointer"}}
-        onMouseEnter={()=>setHM(true)} onMouseLeave={()=>setHM(false)}>
+      <div style={{display:"flex",alignItems:"center",background:active?C.accent+"22":C.surface,border:`1.5px solid ${active?C.accent:C.border}`,borderRadius:8,overflow:"hidden",transition:"all .2s",boxShadow:active?`0 0 0 3px ${C.accent}22`:"none"}}>
         {/* checkbox + label */}
-        <div onClick={()=>isAll?onSelectNone():onSelectAll()} style={{padding:"5px 8px 5px 12px",display:"flex",alignItems:"center",gap:7}} title={isAll?"Deselect all":"Select all"}>
-          <div style={{width:15,height:15,borderRadius:3,border:`2px solid ${active?C.accent:C.t3}`,background:isAll?C.accent:isSome?C.accent+"66":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",flexShrink:0,transition:"all .15s"}}>
-            {isAll?"✓":isSome?"—":""}
+        <div onClick={()=>isAll?onSelectNone():onSelectAll()} style={{padding:"6px 8px 6px 10px",display:"flex",alignItems:"center",gap:7,cursor:"pointer"}} title={isAll?"Deselect all":"Select all"}>
+          <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${accentCol}`,background:isAll?accentCol:isSome?accentCol+"55":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",flexShrink:0,transition:"all .15s",boxShadow:active?`0 0 0 2px ${C.accent}33`:"none"}}>
+            {isAll?"✓":isSome?"−":""}
           </div>
-          <span style={{fontSize:12,fontWeight:600,color:active?C.accent:C.t2,whiteSpace:"nowrap",letterSpacing:".01em"}}>
-            {active?`${selectedCount} / ${total}`:label}
+          <span style={{fontSize:12,fontWeight:700,color:active?C.accent:C.t1,whiteSpace:"nowrap"}}>
+            {active?<>{selectedCount}<span style={{fontWeight:400,color:C.t3}}> / {total}</span></>:label}
           </span>
         </div>
         {/* divider */}
-        <div style={{width:1,height:20,background:active?C.accent+"44":C.border,flexShrink:0}}/>
+        <div style={{width:1,alignSelf:"stretch",background:active?C.accent+"44":C.border}}/>
         {/* chevron */}
-        <div onClick={()=>setOpen(v=>!v)} style={{padding:"5px 10px 5px 7px",display:"flex",alignItems:"center",color:active?C.accent:C.t2}}>
-          <span style={{fontSize:8,display:"inline-block",transition:"transform .15s",transform:open?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
+        <div onClick={()=>setOpen(v=>!v)} style={{padding:"6px 10px",display:"flex",alignItems:"center",cursor:"pointer",color:active?C.accent:C.t2,background:open?(active?C.accent+"18":C.border+"44"):"transparent",transition:"background .15s"}}>
+          <span style={{fontSize:9,display:"inline-block",transition:"transform .2s",transform:open?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
         </div>
       </div>
       {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,zIndex:400,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 12px 40px #00000099",minWidth:160,overflow:"hidden"}}>
-          <div style={{padding:"8px 14px 4px",borderBottom:`1px solid ${C.border}`}}>
-            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>Quick Select</span>
+        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:400,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 12px 40px #00000099",minWidth:170,overflow:"hidden"}}>
+          <div style={{padding:"10px 14px 6px",borderBottom:`1px solid ${C.border}`}}>
+            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>Select</span>
           </div>
-          <div onClick={()=>{onSelectAll();setOpen(false);}} style={{padding:"9px 14px",fontSize:13,color:C.t1,cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
-            <span style={{fontSize:11}}>☑</span> All <span style={{marginLeft:"auto",fontSize:11,color:C.t3}}>{total}</span>
+          <div onClick={()=>{onSelectAll();setOpen(false);}} style={{padding:"9px 14px",fontSize:13,color:C.t1,cursor:"pointer",display:"flex",alignItems:"center",gap:9}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
+            <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${C.accent}`,background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff"}}>✓</div>
+            All <span style={{marginLeft:"auto",background:C.border,borderRadius:4,padding:"1px 7px",fontSize:11,color:C.t2,fontWeight:600}}>{total}</span>
           </div>
-          <div onClick={()=>{onSelectNone();setOpen(false);}} style={{padding:"9px 14px",fontSize:13,color:C.t1,cursor:"pointer",display:"flex",alignItems:"center",gap:8,borderBottom:extraOptions.length?`1px solid ${C.border}`:"none"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
-            <span style={{fontSize:11}}>☐</span> None
+          <div onClick={()=>{onSelectNone();setOpen(false);}} style={{padding:"9px 14px",fontSize:13,color:C.t1,cursor:"pointer",display:"flex",alignItems:"center",gap:9,borderBottom:extraOptions.length?`1px solid ${C.border}`:"none"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
+            <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${C.t3}`,background:"transparent"}}/>
+            None
           </div>
-          {extraOptions.length>0&&<div style={{padding:"6px 14px 2px",borderTop:`1px solid ${C.border}`}}>
-            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>By Status</span>
-          </div>}
-          {extraOptions.map(o=>(
-            <div key={o.label} onClick={()=>{o.action();setOpen(false);}} style={{padding:"8px 14px 8px 22px",fontSize:12,color:C.t2,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>· {o.label}</div>
-          ))}
+          {extraOptions.length>0&&(
+            <>
+              <div style={{padding:"8px 14px 4px",borderTop:`1px solid ${C.border}`}}>
+                <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>By Status</span>
+              </div>
+              {extraOptions.map(o=>(
+                <div key={o.label} onClick={()=>{o.action();setOpen(false);}} style={{padding:"8px 14px 8px 20px",fontSize:12,color:C.t2,cursor:"pointer",display:"flex",alignItems:"center",gap:6}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                  <span style={{width:5,height:5,borderRadius:"50%",background:C.t3,flexShrink:0,display:"inline-block"}}/>
+                  {o.label}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
