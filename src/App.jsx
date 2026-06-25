@@ -2389,6 +2389,42 @@ ${overdueList.map((t,i)=>{const pj=projects.find(p=>p.id===t.project_id);const d
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SUBMISSION LIST EXCEL EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+function exportSubmissionList(projects,tasks,today){
+  const ws=new Date(today);ws.setDate(ws.getDate()-ws.getDay());
+  const we=new Date(today);we.setDate(we.getDate()+(6-we.getDay()));
+  const wsStr=ws.toISOString().slice(0,10);
+  const weStr=we.toISOString().slice(0,10);
+  const inRange=(t,from,to)=>{const d1=t.client_sub_date;const d2=t.due_date;return(d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to);};
+  const todayTasks=tasks.filter(t=>inRange(t,today,today));
+  const weekTasks=tasks.filter(t=>inRange(t,wsStr,weStr)&&!inRange(t,today,today));
+  const safe=`Submission List - ${today}`;
+  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;text-align:center;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;text-align:center;}.sec{background:#1d4ed8;color:#fff;font-weight:bold;font-size:13px;}.client{background:#f97316;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.notstarted{background:#f3f4f6;color:#374151;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
+  html+=`<table><tr><td colspan="10" class="hdr" style="font-size:16px;">RDS TechServ — Submission List (${today})</td></tr><tr><td colspan="10"></td></tr>`;
+  const writeSection=(label,list)=>{
+    html+=`<tr><td colspan="10" class="sec">📅 ${label} — ${list.length} submission(s)</td></tr>`;
+    if(!list.length){html+=`<tr><td colspan="10" style="text-align:center;color:#666;font-style:italic;">No submissions</td></tr><tr><td colspan="10"></td></tr>`;return;}
+    html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Client</th><th class="hdr">Status</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Client Sub Date</th><th class="hdr">Due Date</th></tr>`;
+    list.forEach((t,i)=>{
+      const proj=projects.find(p=>p.id===t.project_id);
+      const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+      const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
+      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${t.client_sub_date||"—"}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td></tr>`;
+    });
+    html+=`<tr><td colspan="10"></td></tr>`;
+  };
+  writeSection(`Today's Submissions — ${today}`,todayTasks);
+  writeSection(`This Week (${wsStr} → ${weStr})`,weekTasks);
+  html+=`</table></body></html>`;
+  const b64=btoa(unescape(encodeURIComponent(html)));
+  const a=document.createElement("a");
+  a.href="data:application/vnd.ms-excel;base64,"+b64;
+  a.download=`RDS_Submission_List_${today}.xls`;
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SUBMISSIONS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
@@ -2480,7 +2516,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   return(
     <div>
       <div style={{marginBottom:24}}>
-        <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📬 Submissions</h2>
+        <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📬 Submission List</h2>
         <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>All clients — tasks due for submission today and this week</p>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
@@ -3100,7 +3136,7 @@ export default function App(){
     }
   }
   const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
-  const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submissions"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submissions"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submissions"]];
+  const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submission List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
@@ -3192,7 +3228,7 @@ export default function App(){
               </>);
             })():(
               <>
-                <h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="submissions"?"📬 Submissions":view==="clientprojects"?`${activeClient} — Projects`:"Task List"}</h1>
+                <h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:"Task List"}</h1>
                 <p style={{margin:"3px 0 0",color:C.t3,fontSize:13}}>{activeClient?`Client: ${activeClient}`:activePid?projects.find(p=>p.id===activePid)?.name:"All Projects"}</p>
               </>
             )}
@@ -3332,6 +3368,10 @@ export default function App(){
                       <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
                         onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
                     )}
+                    {/* 7 — Submission List */}
+                    <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+                    <SBtn2 label="Submission List" count={null} icon="📬" color={"#0891b2"} indent={false}
+                      onClick={()=>{exportSubmissionList(accessibleProjects,tasks,today2);closeExport();}}/>
                   </div>
                 );
               })()}
@@ -3492,152 +3532,4 @@ export default function App(){
                       </div>
                       <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                         <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* ── 3. Client-wise Overview ── */}
-            {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
-            {/* ── 4. Overdue Tasks ── */}
-            {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
-                {overdueTasks.map(t=>{
-                  const pj=projects.find(p=>p.id===t.project_id);
-                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                  return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
-                      onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
-                      </div>
-                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
-                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
-                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                        </div>
-                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
-                        </div>
-                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                        </div>
-                      </div>
-                      {team.length>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
-          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
-        )}
-        {view==="submissions"&&(
-          <SubmissionsPage
-            projects={accessibleProjects}
-            tasks={tasks}
-            today={today}
-            isClient={isClient}
-            clientName={me?.client_name||""}
-            canEdit={canEdit}
-            onEdit={t=>{set(t);stm(true);}}
-          />
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-              />))}
-            </div>
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>{["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit}/>)}</tbody>
-            </table>
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-    </div>
-  );
-}
+                        {t.assignee?<div style={{dis
