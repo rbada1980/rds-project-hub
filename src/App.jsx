@@ -1184,6 +1184,8 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
   const [statusF,setSF]=useState("All");
   const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
+  const [selMember,setSM]=useState(null); // selected team member for drill-down
+  const [memberSF,setMSF]=useState("All"); // status filter for member tasks
 
   // Tasks where I'm detailer (my review work)
   const detailerTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&matchesMe(t.detailer));
@@ -1337,32 +1339,111 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
         }
       </div>
 
-      {/* Team member progress */}
+      {/* Team member progress — clickable drill-down */}
       {teamMembers.length>0&&(
         <div>
-          <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.t1}}>👥 Team Progress</h2>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+          <h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.t1}}>👥 Team Progress <span style={{fontSize:12,color:C.t3,fontWeight:400}}>· click a member to view their tasks</span></h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14,marginBottom:selMember?20:0}}>
             {teamMembers.map(name=>{
               const mt=allTasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
               const md=mt.filter(t=>isDone(t.status)).length;
               const mov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
               const mpct=mt.length?Math.round(md/mt.length*100):0;
+              const isSel=selMember===name;
               return(
-                <div key={name} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 18px"}}>
+                <div key={name} onClick={()=>{setSM(isSel?null:name);setMSF("All");}}
+                  style={{background:C.card,border:`2px solid ${isSel?"#8b5cf6":C.border}`,borderRadius:12,padding:"14px 18px",cursor:"pointer",transition:"border-color .15s",boxShadow:isSel?"0 0 0 3px #8b5cf622":"none"}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                     <Av name={name} size={34}/>
                     <div style={{flex:1}}>
-                      <div style={{fontWeight:700,fontSize:14,color:C.t1}}>{name}</div>
+                      <div style={{fontWeight:700,fontSize:14,color:isSel?"#8b5cf6":C.t1}}>{name}</div>
                       <div style={{fontSize:11,color:C.t3}}>{mt.length} tasks · {md} done{mov>0?` · ${mov} overdue`:""}</div>
                     </div>
-                    <span style={{fontWeight:800,fontSize:16,color:mpct>=80?C.green:mpct>=50?C.blue:C.t2}}>{mpct}%</span>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+                      <span style={{fontWeight:800,fontSize:16,color:mpct>=80?C.green:mpct>=50?C.blue:C.t2}}>{mpct}%</span>
+                      <span style={{fontSize:10,color:isSel?"#8b5cf6":C.t3}}>{isSel?"▲ hide":"▼ view"}</span>
+                    </div>
                   </div>
-                  <Pb v={mpct} color={mpct>=80?C.green:mpct>=50?C.blue:C.accent} h={6}/>
+                  <Pb v={mpct} color={isSel?"#8b5cf6":mpct>=80?C.green:mpct>=50?C.blue:C.accent} h={6}/>
                   {mov>0&&<div style={{marginTop:8,fontSize:11,color:C.red,fontWeight:600}}>⚠ {mov} overdue task{mov!==1?"s":""}</div>}
                 </div>
               );
             })}
           </div>
+
+          {/* Drill-down task view for selected member */}
+          {selMember&&(()=>{
+            const mt=allTasks.filter(t=>t.assignee===selMember||t.detailer===selMember||t.checker===selMember);
+            const mFiltered=memberSF==="All"?mt:memberSF==="Overdue"?mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)):mt.filter(t=>t.status===memberSF);
+            const md=mt.filter(t=>isDone(t.status)).length;
+            const mip=mt.filter(t=>t.status==="In Progress").length;
+            const mov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+            return(
+              <div style={{background:C.card,border:`2px solid #8b5cf6`,borderRadius:14,overflow:"hidden"}}>
+                {/* Header */}
+                <div style={{background:"#8b5cf611",borderBottom:`1px solid #8b5cf633`,padding:"14px 18px",display:"flex",alignItems:"center",gap:12}}>
+                  <Av name={selMember} size={38}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:16,fontWeight:800,color:C.t1}}>{selMember}</div>
+                    <div style={{fontSize:12,color:C.t3,marginTop:2}}>
+                      {mt.length} total · {md} done · {mip} in progress{mov>0?<span style={{color:C.red}}> · {mov} overdue</span>:""}
+                    </div>
+                  </div>
+                  {/* Mini stat pills */}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {[
+                      {l:"Done",v:md,c:C.green},
+                      {l:"In Progress",v:mip,c:C.blue},
+                      {l:"Overdue",v:mov,c:C.red},
+                    ].map(s=>(
+                      <div key={s.l} style={{background:s.c+"18",border:`1px solid ${s.c}44`,borderRadius:8,padding:"4px 10px",textAlign:"center"}}>
+                        <div style={{fontSize:15,fontWeight:800,color:s.c}}>{s.v}</div>
+                        <div style={{fontSize:10,color:C.t3}}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Status filter + close */}
+                  <select value={memberSF} onChange={e=>setMSF(e.target.value)}
+                    style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 10px",color:C.t1,fontSize:12,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    <option value="All">All Status</option>
+                    {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                    <option value="Overdue">Overdue ⚠</option>
+                  </select>
+                  <button onClick={()=>setSM(null)}
+                    style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 10px",color:C.t3,fontSize:14,cursor:"pointer",lineHeight:1}}>✕</button>
+                </div>
+                {/* Task cards */}
+                {mFiltered.length===0
+                  ?<p style={{color:C.t3,fontSize:13,padding:"20px 18px",margin:0}}>No tasks{memberSF!=="All"?` with status "${memberSF}"`:""}.</p>
+                  :<div style={{padding:"16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
+                    {mFiltered.map(t=>{
+                      const proj=projects.find(p=>p.id===t.project_id);
+                      const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                      const role=t.assignee===selMember?"Assignee":t.detailer===selMember?"Detailer":t.checker===selMember?"QC Check":"—";
+                      return(
+                        <div key={t.id} onClick={()=>onEditTask(t)}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${proj?.color||"#8b5cf6"}`,transition:"border-color .15s"}}
+                          onMouseEnter={e=>e.currentTarget.style.borderColor="#8b5cf6"}
+                          onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,gap:6}}>
+                            <span style={{fontSize:13,fontWeight:700,color:C.t1,lineHeight:1.3,flex:1}}>{t.title}</span>
+                            <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                          </div>
+                          <div style={{fontSize:11,color:C.teal,marginBottom:6,fontWeight:600}}>📁 {proj?.name||"—"}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",borderTop:`1px solid ${C.border}`,paddingTop:6}}>
+                            <Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg>
+                            <span style={{fontSize:11,fontWeight:600,color:"#8b5cf6",background:"#8b5cf622",padding:"2px 7px",borderRadius:20}}>{role}</span>
+                            <span style={{flex:1}}/>
+                            <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{t.due_date||"—"}{isOv?" ⚠":""}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                }
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
