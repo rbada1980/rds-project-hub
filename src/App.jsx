@@ -345,6 +345,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [cq,scq]=useState("");
+  const [selClients,setSC]=useState(new Set());
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function toUn(str){return(str||"").toLowerCase().trim().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");}
   function startEdit(c){
@@ -378,17 +379,29 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
       {tab==="list"&&(
         <div>
           <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+            <GmailSelect selectedCount={selClients.size} total={shownClients.length}
+              onSelectAll={()=>setSC(new Set(shownClients.map(c=>c.id)))}
+              onSelectNone={()=>setSC(new Set())}/>
             <input autoFocus placeholder="🔍  Search clients…" value={cq} onChange={e=>scq(e.target.value)}
               style={{flex:1,background:C.surface,border:`1px solid ${cq?C.accent:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
             {cq&&<button onClick={()=>scq("")} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
             <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownClients.length}/{clients.length}</span>
           </div>
+          {selClients.size>0&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 14px",background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:C.accent}}>{selClients.size} selected</span>
+              <button onClick={async()=>{if(!window.confirm(`Delete ${selClients.size} client(s)? This cannot be undone.`))return;for(const id of selClients)await onDelete(id);setSC(new Set());}} style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete ({selClients.size})</button>
+              <button onClick={()=>setSC(new Set())} style={{background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕ Clear</button>
+            </div>
+          )}
           <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:420,overflowY:"auto"}}>
             {shownClients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No clients match your search.</div>}
             {shownClients.map(c=>{
               const pu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===c.name.toLowerCase());
+              const cSelected=selClients.has(c.id);
               return(
-                <div key={c.id} style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${cq&&c.name.toLowerCase().includes(cq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px"}}>
+                <div key={c.id} onClick={()=>setSC(s=>{const n=new Set(s);n.has(c.id)?n.delete(c.id):n.add(c.id);return n;})} style={{display:"flex",alignItems:"center",gap:12,background:cSelected?C.accent+"12":C.surface,border:`1px solid ${cSelected?C.accent:cq&&c.name.toLowerCase().includes(cq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",transition:"background .1s"}}>
+                  <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${cSelected?C.accent:C.t3}`,background:cSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",flexShrink:0}}>{cSelected?"✓":""}</div>
                   <div style={{width:40,height:40,borderRadius:10,background:`hsl(${c.name.charCodeAt(0)*23%360},55%,30%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
@@ -403,7 +416,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
                         :<span style={{color:C.yellow,fontWeight:600}}>⚠ No portal access — click ✏️ to set up</span>}
                     </div>
                   </div>
-                  <div style={{display:"flex",gap:4}}>
+                  <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
                     <IBtn icon="✏️" title="Edit" onClick={()=>startEdit(c)} color={C.t2}/>
                     <IBtn icon="🗑" title="Delete" color={C.red} onClick={()=>{if(window.confirm(`Delete client "${c.name}"?`))onDelete(c.id);}}/>
                   </div>
@@ -459,6 +472,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
   const [uRole,sur]=useState("All");
+  const [selUsers,setSU]=useState(new Set());
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
@@ -506,6 +520,10 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         return(
           <div>
             <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+              <GmailSelect selectedCount={selUsers.size} total={shownUsers.filter(u=>u.id!==currentUser.id&&u.username!==SUPER_ADMIN).length}
+                onSelectAll={()=>setSU(new Set(shownUsers.filter(u=>u.id!==currentUser.id&&u.username!==SUPER_ADMIN).map(u=>u.id)))}
+                onSelectNone={()=>setSU(new Set())}
+                extraOptions={ROLES.filter(r=>shownUsers.some(u=>u.role===r)).map(r=>({label:r,action:()=>setSU(new Set(shownUsers.filter(u=>u.role===r&&u.id!==currentUser.id&&u.username!==SUPER_ADMIN).map(u=>u.id)))}))}/>
               <input autoFocus placeholder="🔍  Search by name, username, email…" value={uq} onChange={e=>suq(e.target.value)}
                 style={{flex:1,background:C.surface,border:`1px solid ${uq?C.accent:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
               <select value={uRole} onChange={e=>sur(e.target.value)} style={{background:C.surface,border:`1px solid ${uRole!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
@@ -515,10 +533,21 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
               {(uq||uRole!=="All")&&<button onClick={()=>{suq("");sur("All");}} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
               <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownUsers.length}/{users.length}</span>
             </div>
+            {selUsers.size>0&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 14px",background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8}}>
+                <span style={{fontSize:13,fontWeight:700,color:C.accent}}>{selUsers.size} selected</span>
+                <button onClick={async()=>{if(!window.confirm(`Delete ${selUsers.size} user(s)? This cannot be undone.`))return;for(const id of selUsers)await onDelete(id);setSU(new Set());}} style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete ({selUsers.size})</button>
+                <button onClick={()=>setSU(new Set())} style={{background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕ Clear</button>
+              </div>
+            )}
             <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"52vh",overflowY:"auto"}}>
               {shownUsers.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No users match your search.</div>}
-              {shownUsers.map(u=>(
-                <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr auto auto auto",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${uq&&u.name.toLowerCase().includes(uq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px"}}>
+              {shownUsers.map(u=>{
+              const uSelectable=u.id!==currentUser.id&&u.username!==SUPER_ADMIN;
+              const uSelected=selUsers.has(u.id);
+              return(
+                <div key={u.id} onClick={uSelectable?e=>{e.stopPropagation();setSU(s=>{const n=new Set(s);n.has(u.id)?n.delete(u.id):n.add(u.id);return n;}):undefined} style={{display:"grid",gridTemplateColumns:"24px 40px 1fr auto auto auto",alignItems:"center",gap:12,background:uSelected?C.accent+"12":C.surface,border:`1px solid ${uSelected?C.accent:uq&&u.name.toLowerCase().includes(uq.toLowerCase())?C.accent:C.border}`,borderRadius:10,padding:"12px 16px",cursor:uSelectable?"pointer":"default",transition:"background .1s"}}>
+                  <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${uSelected?C.accent:uSelectable?C.t3:"transparent"}`,background:uSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",flexShrink:0}}>{uSelected?"✓":""}</div>
                   <Av name={u.name} size={32}/>
                   <div>
                     <div style={{fontSize:13,fontWeight:700,color:C.t1}}>
@@ -529,14 +558,14 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                   <Bdg color={u.role==="Admin"?C.accent:u.role==="Manager"?"#f59e0b":u.role==="Team Leader"?"#8b5cf6":u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
                   {u.id===currentUser.id
                     ?<span style={{fontSize:18,opacity:0.3}} title="This is you">👤</span>
-                    :<button onClick={()=>startEdit(u)} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
+                    :<button onClick={e=>{e.stopPropagation();startEdit(u);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
                   }
                   {u.id===currentUser.id||u.username===SUPER_ADMIN
                     ?<span style={{fontSize:18,opacity:0.3}} title="Protected">🔒</span>
-                    :<button onClick={()=>{if(window.confirm("Delete "+u.name+"?"))onDelete(u.id);}} style={{background:C.red,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit"}}>🗑</button>
+                    :<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+u.name+"?"))onDelete(u.id);}} style={{background:C.red,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit"}}>🗑</button>
                   }
                 </div>
-              ))}
+              );})
             </div>
           </div>
         );
@@ -710,6 +739,40 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
   );
 }
 // ── Bulk Action Bar ─────────────────────────────────────────────────────────
+// ── Gmail-style Select Dropdown ──────────────────────────────────────────────
+function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=[]}){
+  const [open,setOpen]=useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{
+    if(!open)return;
+    function outside(e){if(ref.current&&!ref.current.contains(e.target))setOpen(false);}
+    document.addEventListener("mousedown",outside);
+    return()=>document.removeEventListener("mousedown",outside);
+  },[open]);
+  const isAll=total>0&&selectedCount===total;
+  const isSome=selectedCount>0&&selectedCount<total;
+  const boxStyle={width:16,height:16,borderRadius:3,border:`2px solid ${isAll||isSome?C.accent:C.t3}`,background:isAll?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",cursor:"pointer",flexShrink:0,transition:"all .15s"};
+  return(
+    <div ref={ref} style={{position:"relative",display:"inline-flex",alignItems:"center",userSelect:"none"}}>
+      <div style={{display:"flex",alignItems:"center",background:C.surface,border:`1px solid ${selectedCount>0?C.accent:C.border}`,borderRadius:7,overflow:"hidden"}}>
+        <div onClick={()=>isAll?onSelectNone():onSelectAll()} style={{padding:"6px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:1}} title={isAll?"Deselect all":"Select all"}>
+          <div style={boxStyle}>{isAll?"✓":isSome?"—":""}</div>
+        </div>
+        <div style={{width:1,height:20,background:C.border}}/>
+        <div onClick={()=>setOpen(v=>!v)} style={{padding:"6px 6px",cursor:"pointer",fontSize:10,color:C.t2,display:"flex",alignItems:"center"}}>▾</div>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:400,background:C.card,border:`1px solid ${C.border}`,borderRadius:9,boxShadow:"0 8px 32px #00000080",minWidth:130,overflow:"hidden"}}>
+          <div onClick={()=>{onSelectAll();setOpen(false);}} style={{padding:"9px 16px",fontSize:13,color:C.t1,cursor:"pointer",fontFamily:"inherit",borderBottom:`1px solid ${C.border}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>All</div>
+          <div onClick={()=>{onSelectNone();setOpen(false);}} style={{padding:"9px 16px",fontSize:13,color:C.t1,cursor:"pointer",fontFamily:"inherit",borderBottom:extraOptions.length?`1px solid ${C.border}`:"none"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>None</div>
+          {extraOptions.map(o=>(
+            <div key={o.label} onClick={()=>{o.action();setOpen(false);}} style={{padding:"9px 16px",fontSize:13,color:C.t1,cursor:"pointer",fontFamily:"inherit",borderBottom:`1px solid ${C.border}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>{o.label}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function BulkBar({selTasks,selProjects,onClear,onBulkDelete,onBulkAction}){
   const tc=selTasks.size,pc=selProjects.size,total=tc+pc;
   if(total===0)return null;
@@ -3485,7 +3548,9 @@ export default function App(){
             {/* ── 1. Projects Overview ── */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-              {canEdit&&<button onClick={toggleBulkSelect} style={{...GBtn,padding:"6px 14px",fontSize:12,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>}
+              {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length}
+                onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
+                onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
               {accessibleProjects.map(p=>{
@@ -3646,107 +3711,4 @@ export default function App(){
                         </div>
                       )}
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
-          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
-        )}
-        {view==="submissions"&&(
-          <SubmissionsPage
-            projects={accessibleProjects}
-            tasks={tasks}
-            today={today}
-            isClient={isClient}
-            clientName={me?.client_name||""}
-            canEdit={canEdit}
-            onEdit={t=>{set(t);stm(true);}}
-          />
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-              <button onClick={toggleBulkSelect} style={{...GBtn,padding:"6px 14px",fontSize:12,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>
-            </div>}
-            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-                selTasks={selTasks}
-                onToggleTask={canEdit&&bulkSelectOn?toggleTask:null}
-              />))}
-            </div>
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div>
-          {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-            <button onClick={toggleBulkSelect} style={{...GBtn,padding:"6px 14px",fontSize:12,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>
-          </div>}
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>
-                {canEdit&&bulkSelectOn&&<th style={{padding:"11px 12px",width:36}}>
-                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
-                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
-                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
-                  </div>
-                </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit&&bulkSelectOn?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit&&bulkSelectOn?toggleTask:null} selectMode={canEdit&&bulkSelectOn}/>)}</tbody>
-            </table>
-          </div>
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-  );
-}
+                        {canEdit&&<
