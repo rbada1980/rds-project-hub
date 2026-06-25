@@ -8,7 +8,7 @@ const supabase = createClient(SUPA_URL, SUPA_KEY);
 const COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316","#3b82f6","#84cc16","#f43f5e","#0ea5e9","#d946ef","#fb923c"];
 
 const NAME_MAP = {
-  "siav kumar":"Siva Kumar","eswar/siav kumar":"Eswar",
+  "siav kumar":"Siva Kumar","shiva":"Siva Kumar","shiva kumar":"Siva Kumar","eswar/siav kumar":"Eswar",
   "allu sai":"Sai","allu sai/nanaji":"Sai",
   "lokesh reddy/nanaji":"Lokesh Reddy","lokesh":"Lokesh Reddy",
   "eswar/nanaji":"Eswar","balaram/jagadeesh":"Balaram",
