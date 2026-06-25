@@ -2834,12 +2834,180 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS CENTER
 // ─────────────────────────────────────────────────────────────────────────────
+
+function AnalyticsProjModal({title,projList,tasks,today,onClose}){
+  const [q,sq]=useState("");
+  const [fClient,sfc]=useState("All");
+  const pctP=id=>{const pt=tasks.filter(t=>t.project_id===id);return pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;};
+  const allClients=[...new Set(projList.map(p=>p.client||"Unassigned"))].sort();
+  const shown=projList.filter(p=>{
+    if(q&&!p.name.toLowerCase().includes(q.toLowerCase())&&!(p.client||"").toLowerCase().includes(q.toLowerCase()))return false;
+    if(fClient!=="All"&&(p.client||"Unassigned")!==fClient)return false;
+    return true;
+  });
+  const inp={background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",cursor:"pointer"};
+  return(
+    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"94vw",maxWidth:1100,maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div><h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3><p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{shown.length} of {projList.length} projects</p></div>
+          <IBtn icon="✕" onClick={onClose}/>
+        </div>
+        <div style={{display:"flex",gap:10,marginBottom:12}}>
+          <input autoFocus placeholder="🔍 Search project or client…" value={q} onChange={e=>sq(e.target.value)}
+            style={{flex:1,background:C.surface,border:`1px solid ${q?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+          <select value={fClient} onChange={e=>sfc(e.target.value)} style={{...inp,borderColor:fClient!=="All"?C.accent:C.border,minWidth:160}}>
+            <option value="All">All Clients</option>
+            {allClients.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
+              <tr>{["#","Project","Client","Tasks","Done","In Progress","Overdue","Progress","Deadline"].map(h=>(
+                <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {shown.map((p,i)=>{
+                const pt=tasks.filter(t=>t.project_id===p.id);
+                const done=pt.filter(t=>isDone(t.status)).length;
+                const ip=pt.filter(t=>t.status==="In Progress").length;
+                const ov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                const pc=pctP(p.id);
+                const ovDL=p.deadline&&p.deadline<today&&pc<100;
+                return(
+                  <tr key={p.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:"10px 12px",color:C.t3,fontSize:12}}>{i+1}</td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:4,height:20,borderRadius:2,background:p.color||C.accent,flexShrink:0}}/>
+                        <span style={{color:C.t1,fontSize:13,fontWeight:600}}>{p.name}</span>
+                      </div>
+                    </td>
+                    <td style={{padding:"10px 12px"}}><span style={{color:C.teal,fontSize:12}}>{p.client||"—"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.t2,fontWeight:700}}>{pt.length}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.green,fontWeight:700}}>{done}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700}}>{ip||"—"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:ov>0?C.red:C.t3,fontWeight:ov>0?700:400}}>{ov>0?`⚠ ${ov}`:"—"}</span></td>
+                    <td style={{padding:"10px 12px",minWidth:130}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pc}%`,background:pc>=100?C.green:pc>=50?C.blue:C.accent,borderRadius:3}}/>
+                        </div>
+                        <span style={{fontSize:11,color:pc>=100?C.green:C.t2,fontWeight:700,width:32,flexShrink:0}}>{pc}%</span>
+                      </div>
+                    </td>
+                    <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}><span style={{color:ovDL?C.red:C.t3,fontSize:12,fontWeight:ovDL?700:400}}>{p.deadline||"—"}{ovDL?" ⚠":""}</span></td>
+                  </tr>
+                );
+              })}
+              {shown.length===0&&<tr><td colSpan={9} style={{padding:32,textAlign:"center",color:C.t3}}>No projects found.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+function AnalyticsClientModal({title,clientList,onClose}){
+  return(
+    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"80vw",maxWidth:820,maxHeight:"85vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div><h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3><p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{clientList.length} clients with active projects</p></div>
+          <IBtn icon="✕" onClick={onClose}/>
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
+              <tr>{["#","Client","Projects","Total Tasks","Done","Overdue","Progress"].map(h=>(
+                <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {clientList.map((c,i)=>(
+                <tr key={c.name} style={{borderBottom:`1px solid ${C.border}`}}>
+                  <td style={{padding:"10px 12px",color:C.t3,fontSize:12}}>{i+1}</td>
+                  <td style={{padding:"10px 12px"}}><span style={{color:C.teal,fontSize:14,fontWeight:700}}>{c.name}</span></td>
+                  <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700,fontSize:14}}>{c.projects}</span></td>
+                  <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.t2,fontWeight:600}}>{c.tasks}</span></td>
+                  <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.green,fontWeight:700}}>{c.done}</span></td>
+                  <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:c.overdue>0?C.red:C.t3,fontWeight:c.overdue>0?700:400}}>{c.overdue>0?`⚠ ${c.overdue}`:"—"}</span></td>
+                  <td style={{padding:"10px 12px",minWidth:140}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${c.pct}%`,background:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,borderRadius:3}}/>
+                      </div>
+                      <span style={{fontSize:11,color:C.t2,fontWeight:700,width:32}}>{c.pct}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {clientList.length===0&&<tr><td colSpan={7} style={{padding:24,textAlign:"center",color:C.t3}}>No client data.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+function AnalyticsMemberModal({title,memberList,tasks,onClose}){
+  return(
+    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"75vw",maxWidth:780,maxHeight:"85vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div><h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3><p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{memberList.length} team members</p></div>
+          <IBtn icon="✕" onClick={onClose}/>
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
+              <tr>{["#","Member","Total Tasks","Done","In Progress","Overdue","Completion"].map(h=>(
+                <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {memberList.map((u,i)=>{
+                const ip=(u.allTasks||[]).filter(t=>t.status==="In Progress").length;
+                return(
+                  <tr key={u.name} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:"10px 12px",color:C.t3,fontSize:12}}>{i+1}</td>
+                    <td style={{padding:"10px 12px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}><Av name={u.name} size={28}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{u.name}</span></div>
+                    </td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.t2,fontWeight:700}}>{u.total}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.green,fontWeight:700}}>{u.done}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700}}>{ip||"—"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:u.overdue>0?C.red:C.t3,fontWeight:u.overdue>0?700:400}}>{u.overdue>0?`⚠ ${u.overdue}`:"—"}</span></td>
+                    <td style={{padding:"10px 12px",minWidth:140}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${u.pct}%`,background:u.pct>=80?C.green:u.pct>=50?C.blue:C.accent,borderRadius:3}}/>
+                        </div>
+                        <span style={{fontSize:11,color:u.pct>=80?C.green:C.t2,fontWeight:700,width:32}}>{u.pct}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {memberList.length===0&&<tr><td colSpan={7} style={{padding:24,textAlign:"center",color:C.t3}}>No team data.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const [period,setP]=useState("all");
-  const [modal,setModal]=useState(null); // {title, tasks}
+  const [modal,setModal]=useState(null); // {title, type, list}
 
   const pct=id=>{const pt=tasks.filter(t=>t.project_id===id);return pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;};
-  const openModal=(title,t)=>{if(t&&t.length>0)setModal({title,tasks:t});};
+  const openModal=(title,list,type="tasks")=>{if(list&&list.length>0)setModal({title,type,list});};
+  const openProj=(title,list)=>openModal(title,list,"projects");
+  const openClients=(title,list)=>openModal(title,list,"clients");
+  const openMembers=(title,list)=>openModal(title,list,"members");
 
   // KPIs
   const totalProj=projects.length;
@@ -2862,9 +3030,9 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   // Project health
   const notStartedProj=projects.filter(p=>!tasks.some(t=>t.project_id===p.id));
   const projHealth=[
-    {label:"Active",value:activeProj,color:"#3b82f6",tasks:tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))},
-    {label:"Completed",value:compProj,color:"#22c55e",tasks:tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))},
-    {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:"#64748b",tasks:[]},
+    {label:"Active",value:activeProj,color:"#3b82f6",projects:activeProjList,tasks:tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))},
+    {label:"Completed",value:compProj,color:"#22c55e",projects:compProjList,tasks:tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))},
+    {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:"#64748b",projects:notStartedProj,tasks:[]},
   ].filter(d=>d.value>0);
 
   // Team performance
@@ -2892,18 +3060,22 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const overdueByA=members.map(name=>({name,count:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status)).length,tasks:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status))})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
 
   // ── Sub-components ──────────────────────────────────────────────────────────
-  const ACard=({icon,label,value,sub,color,onClick,taskList})=>(
-    <div onClick={taskList&&taskList.length>0?()=>openModal(label,taskList):onClick||undefined}
-      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:(taskList&&taskList.length>0)||onClick?"pointer":"default",transition:"box-shadow .15s"}}
-      onMouseEnter={e=>{if((taskList&&taskList.length>0)||onClick)e.currentTarget.style.boxShadow=`0 0 0 2px ${color}55`;}}
+  const ACard=({icon,label,value,sub,color,onClick,taskList,projList,clientList,memberList})=>{
+    const handleClick=projList&&projList.length>0?()=>openProj(label,projList):clientList&&clientList.length>0?()=>openClients(label,clientList):memberList&&memberList.length>0?()=>openMembers(label,memberList):taskList&&taskList.length>0?()=>openModal(label,taskList):onClick;
+    const hasAction=!!(projList&&projList.length>0||(taskList&&taskList.length>0)||(clientList&&clientList.length>0)||(memberList&&memberList.length>0)||onClick);
+    return(
+    <div onClick={hasAction?handleClick:undefined}
+      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:hasAction?"pointer":"default",transition:"box-shadow .15s"}}
+      onMouseEnter={e=>{if(hasAction)e.currentTarget.style.boxShadow=`0 0 0 2px ${color}55`;}}
       onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";}}>
       <div style={{position:"absolute",top:10,right:12,fontSize:32,opacity:0.08,pointerEvents:"none"}}>{icon}</div>
       <div style={{fontSize:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
       <div style={{fontSize:11,color:C.t2,fontWeight:700,margin:"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
       {sub&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
-      {((taskList&&taskList.length>0)||onClick)&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
+      {hasAction&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
     </div>
-  );
+    );
+  };
 
   const Donut=({segs,size=150,sw=24,label,sub})=>{
     const r=(size-sw)/2,cx=size/2,cy=size/2,circ=2*Math.PI*r;
@@ -2970,11 +3142,11 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
 
       {/* ── KPI Row ── */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:22}}>
-        <ACard icon="📁" label="Total Projects" value={totalProj} sub={`${activeProj} active · ${compProj} complete`} color={C.blue} taskList={tasks}/>
-        <ACard icon="⚡" label="Active Projects" value={activeProj} sub={`${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio`} color={C.accent} taskList={tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))}/>
-        <ACard icon="✅" label="Completed Projects" value={compProj} sub="fully delivered" color={C.green} taskList={tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))}/>
-        <ACard icon="🏢" label="Total Clients" value={totalCl} sub={`${clientPortfolio.length} with projects`} color={C.teal} taskList={tasks}/>
-        <ACard icon="👥" label="Team Members" value={totalEmp} sub={`${teamPerf.length} assigned`} color={"#a855f7"} taskList={tasks.filter(t=>t.assignee||t.detailer||t.checker)}/>
+        <ACard icon="📁" label="Total Projects" value={totalProj} sub={`${activeProj} active · ${compProj} complete`} color={C.blue} projList={projects}/>
+        <ACard icon="⚡" label="Active Projects" value={activeProj} sub={`${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio`} color={C.accent} projList={activeProjList}/>
+        <ACard icon="✅" label="Completed Projects" value={compProj} sub="fully delivered" color={C.green} projList={compProjList}/>
+        <ACard icon="🏢" label="Total Clients" value={totalCl} sub={`${clientPortfolio.length} with projects`} color={C.teal} clientList={clientPortfolio}/>
+        <ACard icon="👥" label="Team Members" value={totalEmp} sub={`${teamPerf.length} assigned`} color={"#a855f7"} memberList={teamPerf}/>
         <ACard icon="📋" label="Open Tasks" value={openTasks} sub={overdue>0?`⚠ ${overdue} overdue`:`${compRate}% complete`} color={overdue>0?C.red:"#eab308"} taskList={openTasksList}/>
       </div>
 
@@ -2995,9 +3167,9 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
             <Donut segs={projHealth} label={totalProj} sub="projects"/>
             <div style={{flex:1}}>
               {projHealth.map(s=>(
-                <div key={s.label} onClick={s.tasks&&s.tasks.length>0?()=>openModal(`${s.label} Projects — Tasks`,s.tasks):undefined}
-                  style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:s.tasks&&s.tasks.length>0?"pointer":"default",borderRadius:6,padding:"4px 6px",transition:"background .15s"}}
-                  onMouseEnter={e=>{if(s.tasks&&s.tasks.length>0)e.currentTarget.style.background=s.color+"15";}}
+                <div key={s.label} onClick={s.projects&&s.projects.length>0?()=>openProj(`${s.label} Projects`,s.projects):undefined}
+                  style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:s.projects&&s.projects.length>0?"pointer":"default",borderRadius:6,padding:"4px 6px",transition:"background .15s"}}
+                  onMouseEnter={e=>{if(s.projects&&s.projects.length>0)e.currentTarget.style.background=s.color+"15";}}
                   onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
                   <div style={{width:10,height:10,borderRadius:"50%",background:s.color,flexShrink:0}}/>
                   <span style={{fontSize:12,color:C.t2,flex:1}}>{s.label}</span>
@@ -3107,7 +3279,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
           )}
         </Panel>
       </div>
-      {modal&&<StatTaskModal title={modal.title} tasks={modal.tasks} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)}/>}
+      {modal&&modal.type==="tasks"&&<StatTaskModal title={modal.title} tasks={modal.list} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)}/>}
+      {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={tasks} today={today} onClose={()=>setModal(null)}/>}
+      {modal&&modal.type==="clients"&&<AnalyticsClientModal title={modal.title} clientList={modal.list} onClose={()=>setModal(null)}/>}
+      {modal&&modal.type==="members"&&<AnalyticsMemberModal title={modal.title} memberList={modal.list} tasks={tasks} onClose={()=>setModal(null)}/>}
     </div>
   );
 }
