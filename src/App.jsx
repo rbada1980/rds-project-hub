@@ -741,8 +741,9 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
 }
 // ── Bulk Action Bar ─────────────────────────────────────────────────────────
 // ── Gmail-style Select Dropdown ──────────────────────────────────────────────
-function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=[]}){
+function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=[],label="Select"}){
   const [open,setOpen]=useState(false);
+  const [hoverMain,setHM]=useState(false);
   const ref=useRef(null);
   useEffect(()=>{
     if(!open)return;
@@ -752,22 +753,43 @@ function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=
   },[open]);
   const isAll=total>0&&selectedCount===total;
   const isSome=selectedCount>0&&selectedCount<total;
-  const boxStyle={width:16,height:16,borderRadius:3,border:`2px solid ${isAll||isSome?C.accent:C.t3}`,background:isAll?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",cursor:"pointer",flexShrink:0,transition:"all .15s"};
+  const active=selectedCount>0;
   return(
     <div ref={ref} style={{position:"relative",display:"inline-flex",alignItems:"center",userSelect:"none"}}>
-      <div style={{display:"flex",alignItems:"center",background:C.surface,border:`1px solid ${selectedCount>0?C.accent:C.border}`,borderRadius:7,overflow:"hidden"}}>
-        <div onClick={()=>isAll?onSelectNone():onSelectAll()} style={{padding:"6px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:1}} title={isAll?"Deselect all":"Select all"}>
-          <div style={boxStyle}>{isAll?"✓":isSome?"—":""}</div>
+      <div style={{display:"flex",alignItems:"center",background:active?C.accent+"18":hoverMain?C.surface:"transparent",border:`1.5px solid ${active?C.accent:hoverMain?C.border:"transparent"}`,borderRadius:20,overflow:"hidden",transition:"all .2s",cursor:"pointer"}}
+        onMouseEnter={()=>setHM(true)} onMouseLeave={()=>setHM(false)}>
+        {/* checkbox + label */}
+        <div onClick={()=>isAll?onSelectNone():onSelectAll()} style={{padding:"5px 8px 5px 12px",display:"flex",alignItems:"center",gap:7}} title={isAll?"Deselect all":"Select all"}>
+          <div style={{width:15,height:15,borderRadius:3,border:`2px solid ${active?C.accent:C.t3}`,background:isAll?C.accent:isSome?C.accent+"66":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",flexShrink:0,transition:"all .15s"}}>
+            {isAll?"✓":isSome?"—":""}
+          </div>
+          <span style={{fontSize:12,fontWeight:600,color:active?C.accent:C.t2,whiteSpace:"nowrap",letterSpacing:".01em"}}>
+            {active?`${selectedCount} / ${total}`:label}
+          </span>
         </div>
-        <div style={{width:1,height:20,background:C.border}}/>
-        <div onClick={()=>setOpen(v=>!v)} style={{padding:"6px 6px",cursor:"pointer",fontSize:10,color:C.t2,display:"flex",alignItems:"center"}}>▾</div>
+        {/* divider */}
+        <div style={{width:1,height:20,background:active?C.accent+"44":C.border,flexShrink:0}}/>
+        {/* chevron */}
+        <div onClick={()=>setOpen(v=>!v)} style={{padding:"5px 10px 5px 7px",display:"flex",alignItems:"center",color:active?C.accent:C.t2}}>
+          <span style={{fontSize:8,display:"inline-block",transition:"transform .15s",transform:open?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
+        </div>
       </div>
       {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:400,background:C.card,border:`1px solid ${C.border}`,borderRadius:9,boxShadow:"0 8px 32px #00000080",minWidth:130,overflow:"hidden"}}>
-          <div onClick={()=>{onSelectAll();setOpen(false);}} style={{padding:"9px 16px",fontSize:13,color:C.t1,cursor:"pointer",fontFamily:"inherit",borderBottom:`1px solid ${C.border}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>All</div>
-          <div onClick={()=>{onSelectNone();setOpen(false);}} style={{padding:"9px 16px",fontSize:13,color:C.t1,cursor:"pointer",fontFamily:"inherit",borderBottom:extraOptions.length?`1px solid ${C.border}`:"none"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>None</div>
+        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,zIndex:400,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 12px 40px #00000099",minWidth:160,overflow:"hidden"}}>
+          <div style={{padding:"8px 14px 4px",borderBottom:`1px solid ${C.border}`}}>
+            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>Quick Select</span>
+          </div>
+          <div onClick={()=>{onSelectAll();setOpen(false);}} style={{padding:"9px 14px",fontSize:13,color:C.t1,cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
+            <span style={{fontSize:11}}>☑</span> All <span style={{marginLeft:"auto",fontSize:11,color:C.t3}}>{total}</span>
+          </div>
+          <div onClick={()=>{onSelectNone();setOpen(false);}} style={{padding:"9px 14px",fontSize:13,color:C.t1,cursor:"pointer",display:"flex",alignItems:"center",gap:8,borderBottom:extraOptions.length?`1px solid ${C.border}`:"none"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>
+            <span style={{fontSize:11}}>☐</span> None
+          </div>
+          {extraOptions.length>0&&<div style={{padding:"6px 14px 2px",borderTop:`1px solid ${C.border}`}}>
+            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>By Status</span>
+          </div>}
           {extraOptions.map(o=>(
-            <div key={o.label} onClick={()=>{o.action();setOpen(false);}} style={{padding:"9px 16px",fontSize:13,color:C.t1,cursor:"pointer",fontFamily:"inherit",borderBottom:`1px solid ${C.border}`}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>{o.label}</div>
+            <div key={o.label} onClick={()=>{o.action();setOpen(false);}} style={{padding:"8px 14px 8px 22px",fontSize:12,color:C.t2,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background=""}>· {o.label}</div>
           ))}
         </div>
       )}
@@ -3549,7 +3571,7 @@ export default function App(){
             {/* ── 1. Projects Overview ── */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-              {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length}
+              {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
                 onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
                 onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
             </div>
