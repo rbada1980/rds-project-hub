@@ -2639,17 +2639,17 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.checker||"—"}</td>
         <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{t.client_sub_date||"—"}</td>
         <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{t.due_date||"—"}{isOverdue?" ⚠":""}</td>
-        <td style={{...tdC}}>
+        {!isClient&&<td style={{...tdC}}>
           <button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             ✏ Edit
           </button>
-        </td>
+        </td>}
       </tr>
     );
   };
 
-  const HEADERS=["Task","Project",...(!isClient?["Client"]:[]),"Status","Assignee","Detailer","Checker","Client Sub Date","Due Date",""];
+  const HEADERS=["Task","Project",...(!isClient?["Client"]:[]),"Status","Assignee","Detailer","Checker","Client Sub Date","Due Date",...(!isClient?[""]:[])];
 
   const Section=({title,icon,color,taskList,empty})=>(
     <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",marginBottom:22}}>
