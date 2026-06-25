@@ -1266,49 +1266,33 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
         </div>
         {shown.length===0
           ?<p style={{color:C.t3,fontSize:13,margin:"12px 16px",padding:"12px 0"}}>No tasks in this category.</p>
-          :<div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead>
-                <tr style={{background:C.surface}}>
-                  {["Task","Project","Assignee","Status","Priority","My Role","Due Date"].map(h=>(
-                    <th key={h} style={{padding:"9px 14px",textAlign:"left",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap",borderBottom:`1px solid ${C.border}`}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map(t=>{
-                  const proj=projects.find(p=>p.id===t.project_id);
-                  const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                  const iAmDetailer=matchesMe(t.detailer);
-                  const iAmChecker=matchesMe(t.checker);
-                  const myRole=iAmDetailer&&iAmChecker?"Detailer · QC":iAmDetailer?"Detailer":iAmChecker?"QC Check":"—";
-                  return(
-                    <tr key={t.id} onClick={()=>onEditTask(t)} style={{borderBottom:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                      onMouseLeave={e=>e.currentTarget.style.background=""}>
-                      <td style={{padding:"10px 14px",maxWidth:220}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <div style={{width:3,height:28,borderRadius:2,background:proj?.color||"#8b5cf6",flexShrink:0}}/>
-                          <span style={{fontSize:13,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
-                        </div>
-                      </td>
-                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><span style={{fontSize:12,color:C.teal}}>{proj?.name||"—"}</span></td>
-                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                        {t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{fontSize:12,color:C.t3}}>—</span>}
-                      </td>
-                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
-                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                        <span style={{fontSize:11,fontWeight:600,color:iAmDetailer||iAmChecker?"#8b5cf6":C.t3}}>{myRole}</span>
-                      </td>
-                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                        <span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{t.due_date||"—"}{isOv?" ⚠":""}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          :<div style={{padding:"16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
+            {shown.map(t=>{
+              const proj=projects.find(p=>p.id===t.project_id);
+              const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+              const iAmDetailer=matchesMe(t.detailer);
+              const iAmChecker=matchesMe(t.checker);
+              const myRole=iAmDetailer&&iAmChecker?"Detailer · QC":iAmDetailer?"Detailer":iAmChecker?"QC Check":"—";
+              return(
+                <div key={t.id} onClick={()=>onEditTask(t)}
+                  style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"border-color .15s",borderLeft:`4px solid ${proj?.color||"#8b5cf6"}`}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor="#8b5cf6"}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
+                    <span style={{fontSize:14,fontWeight:700,color:C.t1,lineHeight:1.3,flex:1}}>{t.title}</span>
+                    <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
+                  </div>
+                  <div style={{fontSize:12,color:C.teal,marginBottom:8,fontWeight:600}}>📁 {proj?.name||"—"}</div>
+                  {t.assignee&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><Av name={t.assignee} size={22}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>}
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",borderTop:`1px solid ${C.border}`,paddingTop:8,marginTop:4}}>
+                    <Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg>
+                    {(iAmDetailer||iAmChecker)&&<span style={{fontSize:11,fontWeight:600,color:"#8b5cf6",background:"#8b5cf622",padding:"2px 8px",borderRadius:20}}>{myRole}</span>}
+                    <span style={{flex:1}}/>
+                    <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{t.due_date||"—"}{isOv?" ⚠":""}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         }
       </div>
