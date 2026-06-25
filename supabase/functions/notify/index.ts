@@ -47,31 +47,37 @@ serve(async (req) => {
     let html    = "";
     const to    = data.recipientEmail || ADMIN_EMAIL;
 
-    switch (type) {
-      case "task_completed":
-        subject = `✅ Task Completed: ${data.taskName}`;
-        html    = templateTaskCompleted(data);
-        break;
-      case "status_change":
-        subject = `🔄 Status Update: ${data.taskName} → ${data.newStatus}`;
-        html    = templateStatusChange(data);
-        break;
-      case "deadline":
-        subject = `⏰ Deadline Alert: "${data.taskName}" due in ${data.daysRemaining} day(s)`;
-        html    = templateDeadline(data);
-        break;
-      case "task_assigned":
-        subject = `📋 New Task Assigned: ${data.taskName}`;
-        html    = templateTaskAssigned(data);
-        break;
-      case "project_created":
-        subject = `🚀 New Project Created: ${data.projectName}`;
-        html    = templateProjectCreated(data);
-        break;
-      default:
-        return new Response(JSON.stringify({ error: `Unknown type: ${type}` }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    // If a fully-rendered HTML body and subject are provided, use them directly
+    if (data.htmlBody && data.subject) {
+      subject = data.subject;
+      html    = data.htmlBody;
+    } else {
+      switch (type) {
+        case "task_completed":
+          subject = `✅ Task Completed: ${data.taskName}`;
+          html    = templateTaskCompleted(data);
+          break;
+        case "status_change":
+          subject = `🔄 Status Update: ${data.taskName} → ${data.newStatus}`;
+          html    = templateStatusChange(data);
+          break;
+        case "deadline":
+          subject = `⏰ Deadline Alert: "${data.taskName}" due in ${data.daysRemaining} day(s)`;
+          html    = templateDeadline(data);
+          break;
+        case "task_assigned":
+          subject = `📋 New Task Assigned: ${data.taskName}`;
+          html    = templateTaskAssigned(data);
+          break;
+        case "project_created":
+          subject = `🚀 New Project Created: ${data.projectName}`;
+          html    = templateProjectCreated(data);
+          break;
+        default:
+          return new Response(JSON.stringify({ error: `Unknown type: ${type}` }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+      }
     }
 
     const res = await fetch("https://api.resend.com/emails", {
@@ -205,7 +211,4 @@ function templateTaskAssigned(d: Record<string,string>): string {
     <div class="row"><span class="lbl">Project</span><span class="val">${d.projectName}</span></div>
     <div class="row"><span class="lbl">Assigned by</span><span class="val">${d.assignedBy||"—"}</span></div>
     ${d.dueDate?`<div class="row"><span class="lbl">Due date</span><span class="val">${d.dueDate}</span></div>`:""}
-    ${d.description?`<hr/><p style="background:#f9fafb;border-left:3px solid ${PRIMARY_COLOR};padding:10px 14px;margin:0;font-size:13px;color:#374151;">${d.description}</p>`:""}
-    ${d.taskUrl?`<a href="${d.taskUrl}" class="btn">Open Task →</a>`:""}
-  `);
-}
+    ${d
