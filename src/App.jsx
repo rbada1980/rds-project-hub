@@ -743,8 +743,8 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
 // ── Gmail-style Select Dropdown ──────────────────────────────────────────────
 function GmailSelect({selectedCount,total,onSelectAll,onSelectNone,extraOptions=[]}){
   const [open,setOpen]=useState(false);
-  const ref=React.useRef(null);
-  React.useEffect(()=>{
+  const ref=useRef(null);
+  useEffect(()=>{
     if(!open)return;
     function outside(e){if(ref.current&&!ref.current.contains(e.target))setOpen(false);}
     document.addEventListener("mousedown",outside);
