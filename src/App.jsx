@@ -3420,7 +3420,6 @@ export default function App(){
                 );
               })()}
             </div>}
-            {canEdit&&<button onClick={toggleBulkSelect} style={{...GBtn,padding:"9px 14px",fontSize:13,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
@@ -3484,7 +3483,10 @@ export default function App(){
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
-            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
+              {canEdit&&<button onClick={toggleBulkSelect} style={{...GBtn,padding:"6px 14px",fontSize:12,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>}
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
@@ -3671,6 +3673,9 @@ export default function App(){
         {view==="kanban"&&(
           <>
             {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
+            {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+              <button onClick={toggleBulkSelect} style={{...GBtn,padding:"6px 14px",fontSize:12,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>
+            </div>}
             <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
               {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
                 onEdit={t=>{set(t);stm(true);}}
@@ -3705,6 +3710,10 @@ export default function App(){
           );
         })()}
         {view==="list"&&(
+          <div>
+          {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+            <button onClick={toggleBulkSelect} style={{...GBtn,padding:"6px 14px",fontSize:12,color:bulkSelectOn?C.accent:C.t2,borderColor:bulkSelectOn?C.accent:C.border,background:bulkSelectOn?C.accent+"18":"transparent"}}>{bulkSelectOn?"✓ Selecting":"☐ Select"}</button>
+          </div>}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.surface}}>
@@ -3719,6 +3728,7 @@ export default function App(){
               <tbody>{filtered.length===0?<tr><td colSpan={canEdit&&bulkSelectOn?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit&&bulkSelectOn?toggleTask:null} selectMode={canEdit&&bulkSelectOn}/>)}</tbody>
             </table>
           </div>
+          </div>
         )}
       </main>
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
@@ -3729,14 +3739,4 @@ export default function App(){
       {taskModal&&(
         <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
           {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-  );
-}
+            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} pr
