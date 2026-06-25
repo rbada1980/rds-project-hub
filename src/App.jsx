@@ -606,6 +606,26 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
               </div>
             </div>
           )}
+          {f.role==="Team Leader"&&clients.length>0&&(
+            <div style={{marginBottom:14,padding:"12px 14px",background:"#8b5cf611",border:`1px solid #8b5cf644`,borderRadius:8}}>
+              <p style={{margin:"0 0 10px",fontSize:12,color:"#8b5cf6",fontWeight:700}}>🏢 Assigned Clients</p>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {clients.map(c=>{
+                  const asgn=(f.client_name||"").split(",").map(x=>x.trim().toLowerCase()).includes(c.name.toLowerCase());
+                  return(
+                    <label key={c.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"7px 10px",borderRadius:6,background:asgn?"#8b5cf622":C.surface,border:`1px solid ${asgn?"#8b5cf6":C.border}`}}>
+                      <input type="checkbox" checked={asgn} onChange={()=>{
+                        const cur=(f.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
+                        const next=asgn?cur.filter(x=>x.toLowerCase()!==c.name.toLowerCase()):[...cur,c.name];
+                        sf(p=>({...p,client_name:next.join(",")}));
+                      }} style={{accentColor:"#8b5cf6",width:15,height:15}}/>
+                      <span style={{fontSize:13,color:asgn?"#8b5cf6":C.t1,fontWeight:asgn?600:400}}>{c.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
             <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
@@ -645,6 +665,26 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
               </div>
               <div style={{flex:1}}>
                 <FInput label="Username" value={f.username} onChange={v=>sf(p=>({...p,username:v.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}))} placeholder="e.g. white_cap"/>
+              </div>
+            </div>
+          )}
+          {f.role==="Team Leader"&&clients.length>0&&(
+            <div style={{marginBottom:14,padding:"12px 14px",background:"#8b5cf611",border:`1px solid #8b5cf644`,borderRadius:8}}>
+              <p style={{margin:"0 0 10px",fontSize:12,color:"#8b5cf6",fontWeight:700}}>🏢 Assigned Clients</p>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {clients.map(c=>{
+                  const asgn=(f.client_name||"").split(",").map(x=>x.trim().toLowerCase()).includes(c.name.toLowerCase());
+                  return(
+                    <label key={c.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"7px 10px",borderRadius:6,background:asgn?"#8b5cf622":C.surface,border:`1px solid ${asgn?"#8b5cf6":C.border}`}}>
+                      <input type="checkbox" checked={asgn} onChange={()=>{
+                        const cur=(f.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
+                        const next=asgn?cur.filter(x=>x.toLowerCase()!==c.name.toLowerCase()):[...cur,c.name];
+                        sf(p=>({...p,client_name:next.join(",")}));
+                      }} style={{accentColor:"#8b5cf6",width:15,height:15}}/>
+                      <span style={{fontSize:13,color:asgn?"#8b5cf6":C.t1,fontWeight:asgn?600:400}}>{c.name}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -3119,7 +3159,11 @@ export default function App(){
     return()=>window.removeEventListener('popstate',onPop);
   },[]);
   // Compute accessible projects (must be before useEffect that depends on it)
-  const accessibleProjects=(isAdmin||isManager||isTeamLeader)?projects:isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me?.client_name||"").toLowerCase())
+  // Team Leader: parse comma-separated client_name to restrict their view
+  const tlClients=isTeamLeader&&me?.client_name?me.client_name.split(",").map(c=>c.trim().toLowerCase()).filter(Boolean):[];
+  const accessibleProjects=isAdmin||isManager?projects
+    :isTeamLeader?(tlClients.length>0?projects.filter(p=>tlClients.includes((p.client||"").toLowerCase())):projects)
+    :isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me?.client_name||"").toLowerCase())
     // Regular users: ONLY projects where they have an assigned task.
     :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))));
   // Parse initial URL after data loads (for direct-link support)
