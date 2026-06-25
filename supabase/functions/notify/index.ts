@@ -211,4 +211,7 @@ function templateTaskAssigned(d: Record<string,string>): string {
     <div class="row"><span class="lbl">Project</span><span class="val">${d.projectName}</span></div>
     <div class="row"><span class="lbl">Assigned by</span><span class="val">${d.assignedBy||"—"}</span></div>
     ${d.dueDate?`<div class="row"><span class="lbl">Due date</span><span class="val">${d.dueDate}</span></div>`:""}
-    ${d
+    ${d.description?`<hr/><p style="background:#f9fafb;border-left:3px solid ${PRIMARY_COLOR};padding:10px 14px;margin:0;font-size:13px;color:#374151;">${d.description}</p>`:""}
+    ${d.taskUrl?`<a href="${d.taskUrl}" class="btn">Open Task →</a>`:""}
+  `);
+}
