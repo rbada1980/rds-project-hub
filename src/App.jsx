@@ -3641,9 +3641,9 @@ export default function App(){
             <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
             {canEdit&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
           </div>
-          <button onClick={()=>{sap(null);sac(null);}} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
+          <button onClick={()=>view==="kanban"?(sap(null),sac(null)):navTo("list",null)} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
           {visibleProjects.map(p=>(
-            <button key={p.id} onClick={()=>{sap(p.id);sac(null);}} style={sel(activePid===p.id)}>
+            <button key={p.id} onClick={()=>view==="kanban"?(sap(p.id),sac(null)):navTo("list",p.id)} style={sel(activePid===p.id)}>
               <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
               <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{p.name}</span>
               {canEdit&&activePid===p.id&&(
