@@ -1192,37 +1192,6 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
         <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>{setTab("all");setSF("Overdue");}}/>
       </div>
 
-      {/* ── My Team Workload ── */}
-      {teamMembers.length>0&&(
-        <div style={{background:C.card,border:"1px solid #8b5cf633",borderRadius:12,padding:"16px 20px",marginBottom:20}}>
-          <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:"#8b5cf6"}}>👥 My Team ({teamMembers.length} members)</h3>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-            {teamMembers.map(m=>{
-              const mt=allTasks.filter(t=>t.assignee===m);
-              const md=mt.filter(t=>isDone(t.status)).length;
-              const mp=mt.length?Math.round(md/mt.length*100):0;
-              const mov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-              const mip=mt.filter(t=>t.status==="In Progress").length;
-              return(
-                <div key={m} style={{background:C.surface,borderRadius:9,padding:"10px 12px"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                    <Av name={m} size={24}/>
-                    <span style={{fontSize:12,fontWeight:700,color:C.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m}</span>
-                    {mov>0&&<span style={{fontSize:10,background:C.red+"22",color:C.red,borderRadius:4,padding:"1px 5px",fontWeight:700}}>{mov}⚠</span>}
-                  </div>
-                  <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden",marginBottom:5}}>
-                    <div style={{height:"100%",width:`${mp}%`,background:mp>=80?"#8b5cf6":mp>=50?C.blue:C.teal,borderRadius:3}}/>
-                  </div>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}>
-                    <span>{mt.length} tasks · {mip} active</span>
-                    <span style={{color:mp>=80?"#8b5cf6":C.t3,fontWeight:mp>=80?700:400}}>{mp}%</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
       {/* Filter bar */}
       {(()=>{
         const allA=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -1628,32 +1597,6 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
       </div>
       {/* Progress bar */}
       <div style={{marginBottom:18}}><Pb v={pct} color={C.teal} h={8}/></div>
-      {/* ── Project Health Strip ── */}
-      {myProjects.length>0&&(
-        <div style={{background:C.card,border:`1px solid ${C.teal}33`,borderRadius:12,padding:"14px 18px",marginBottom:18}}>
-          <h3 style={{margin:"0 0 12px",fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:".05em"}}>📊 Project Progress</h3>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {myProjects.map(p=>{
-              const pt=myTasks.filter(t=>t.project_id===p.id);
-              const pd=pt.filter(t=>isDone(t.status)).length;
-              const pp=pt.length?Math.round(pd/pt.length*100):0;
-              const ov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-              return(
-                <div key={p.id} style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:10,height:10,borderRadius:"50%",background:p.color,flexShrink:0}}/>
-                  <span style={{fontSize:12,color:C.t1,minWidth:140,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:600}}>{p.name}</span>
-                  <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${pp}%`,background:p.color,borderRadius:3,transition:"width .4s"}}/>
-                  </div>
-                  <span style={{fontSize:11,color:p.color,fontWeight:700,minWidth:34,textAlign:"right"}}>{pp}%</span>
-                  {ov>0&&<span style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px"}}>{ov}⚠</span>}
-                  <span style={{fontSize:10,color:C.t3,minWidth:40,textAlign:"right"}}>{pt.length} tasks</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
       {/* Stat cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:24}}>
         <Stat label="Total Tasks" value={total} sub="all projects" color={C.teal} onClick={()=>{ssf("All");sfp("All");sfa("All");ss("");sst(true);}}/>
@@ -3675,39 +3618,6 @@ export default function App(){
                 </div>
               </div>
             )}
-            {/* ── Team Workload (Admin/Manager) ── */}
-            {(()=>{
-              const members=[...new Set(dashTasks.map(t=>t.assignee).filter(Boolean))].sort();
-              if(!members.length)return null;
-              return(
-                <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"16px 20px",marginBottom:20}}>
-                  <h3 style={{margin:"0 0 14px",fontSize:14,fontWeight:700,color:C.t1}}>👥 Team Workload</h3>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
-                    {members.map(m=>{
-                      const mt=dashTasks.filter(t=>t.assignee===m);
-                      const md=mt.filter(t=>isDone(t.status)).length;
-                      const mov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                      const mp=mt.length?Math.round(md/mt.length*100):0;
-                      return(
-                        <div key={m} style={{background:C.surface,borderRadius:9,padding:"10px 12px"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                            <Av name={m} size={24}/>
-                            <span style={{fontSize:12,fontWeight:700,color:C.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m}</span>
-                            {mov>0&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>{mov}⚠</span>}
-                          </div>
-                          <div style={{height:4,background:C.border,borderRadius:2,overflow:"hidden",marginBottom:4}}>
-                            <div style={{height:"100%",width:`${mp}%`,background:mp>=80?C.green:mp>=40?C.accent:C.blue,borderRadius:2,transition:"width .4s"}}/>
-                          </div>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}>
-                            <span>{mt.length} tasks</span><span style={{color:mp>=80?C.green:C.t3}}>{mp}% done</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
             {/* ── Clean Filter Bar ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:20,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
               <input placeholder="🔍 Search tasks or projects…" value={dashSearch} onChange={e=>sdss(e.target.value)}
