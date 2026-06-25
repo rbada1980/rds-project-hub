@@ -1264,37 +1264,53 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
             <option value="Overdue">Overdue ⚠</option>
           </select>
         </div>
-        <div style={{padding:"12px 16px"}}>
-          {shown.length===0
-            ?<p style={{color:C.t3,fontSize:13,margin:0,padding:"12px 0"}}>No tasks in this category.</p>
-            :<div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {shown.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                const iAmDetailer=matchesMe(t.detailer);
-                const iAmChecker=matchesMe(t.checker);
-                return(
-                  <div key={t.id} onClick={()=>onEditTask(t)}
-                    style={{background:C.surface,border:`1px solid ${isOv?C.red+"66":C.border}`,borderRadius:9,padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .12s"}}
-                    onMouseEnter={e=>e.currentTarget.style.background=C.card}
-                    onMouseLeave={e=>e.currentTarget.style.background=C.surface}>
-                    <div style={{width:3,height:34,borderRadius:2,background:proj?.color||"#8b5cf6",flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</p>
-                      <p style={{margin:"3px 0 0",fontSize:11,color:C.t3}}>{proj?.name||"—"} · {t.assignee||"Unassigned"}{t.due_date?` · Due ${t.due_date}`:""}{isOv?" ⚠":""}</p>
-                    </div>
-                    <div style={{display:"flex",gap:5,flexShrink:0,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-                      {iAmDetailer&&<span style={{background:"#3b82f622",color:C.blue,border:`1px solid ${C.blue}33`,borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700}}>Detailer</span>}
-                      {iAmChecker&&<span style={{background:`${C.teal}22`,color:C.teal,border:`1px solid ${C.teal}33`,borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700}}>QC Check</span>}
-                      <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
-                      {t.priority&&<Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority}</Bdg>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          }
-        </div>
+        {shown.length===0
+          ?<p style={{color:C.t3,fontSize:13,margin:"12px 16px",padding:"12px 0"}}>No tasks in this category.</p>
+          :<div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead>
+                <tr style={{background:C.surface}}>
+                  {["Task","Project","Assignee","Status","Priority","My Role","Due Date"].map(h=>(
+                    <th key={h} style={{padding:"9px 14px",textAlign:"left",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap",borderBottom:`1px solid ${C.border}`}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(t=>{
+                  const proj=projects.find(p=>p.id===t.project_id);
+                  const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                  const iAmDetailer=matchesMe(t.detailer);
+                  const iAmChecker=matchesMe(t.checker);
+                  const myRole=iAmDetailer&&iAmChecker?"Detailer · QC":iAmDetailer?"Detailer":iAmChecker?"QC Check":"—";
+                  return(
+                    <tr key={t.id} onClick={()=>onEditTask(t)} style={{borderBottom:`1px solid ${C.border}`,cursor:"pointer",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                      onMouseLeave={e=>e.currentTarget.style.background=""}>
+                      <td style={{padding:"10px 14px",maxWidth:220}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:3,height:28,borderRadius:2,background:proj?.color||"#8b5cf6",flexShrink:0}}/>
+                          <span style={{fontSize:13,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><span style={{fontSize:12,color:C.teal}}>{proj?.name||"—"}</span></td>
+                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                        {t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{fontSize:12,color:C.t3}}>—</span>}
+                      </td>
+                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
+                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                        <span style={{fontSize:11,fontWeight:600,color:iAmDetailer||iAmChecker?"#8b5cf6":C.t3}}>{myRole}</span>
+                      </td>
+                      <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                        <span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{t.due_date||"—"}{isOv?" ⚠":""}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        }
       </div>
 
       {/* Team member progress */}
