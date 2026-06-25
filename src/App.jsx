@@ -14,7 +14,7 @@ const C = {
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
 const ROLES=["Engineer","Designer","Architect","Team Leader","Manager","Admin","Client"];
-const ALL_STATUSES=["To Do","Not Yet Started","In Progress","Review","Completed"];
+const ALL_STATUSES=["Not Yet Started","In Progress","Review","Completed"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
@@ -130,7 +130,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
   const [f,sf]=useState({
     project_id:initPid,
     custNo:"",custName:"",title:initial.title||"",client:initClient,
-    status:initial.status||"To Do",priority:initial.priority||"Medium",
+    status:initial.status||"Not Yet Started",priority:initial.priority||"Medium",
     assignee:initAssignee,due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
@@ -878,7 +878,7 @@ function BulkActionModal({type,count,members,onApply,onClose}){
 }
 // ── Limited task edit form for regular users (status + notes only) ──────────
 function UserTaskEditForm({task,project,onSave,onClose,saving}){
-  const [status,ss]=useState(task.status||"To Do");
+  const [status,ss]=useState(task.status||"Not Yet Started");
   const [notes,sn]=useState(task.notes||"");
   return(
     <div>
@@ -932,8 +932,8 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   const inprog=myTasks.filter(t=>t.status==="In Progress").length;
   const overdueList=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   const overdue=overdueList.length;
-  const notStarted=myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
-  const filteredTasks=statusFilter===null?[]:statusFilter==="All"?myTasks:statusFilter==="Overdue"?overdueList:statusFilter==="Not Yet Started"?myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started"):myTasks.filter(t=>t.status===statusFilter);
+  const notStarted=myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
+  const filteredTasks=statusFilter===null?[]:statusFilter==="All"?myTasks:statusFilter==="Overdue"?overdueList:statusFilter==="Not Yet Started"?myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started"):myTasks.filter(t=>t.status===statusFilter);
   const filterLabel=statusFilter==="All"?"All My Tasks":statusFilter==="Overdue"?"⚠ Overdue Tasks":statusFilter?`${statusFilter} Tasks`:"";
   const pct=total?Math.round(done/total*100):0;
   // Avatar colour palette for co-users
@@ -1007,7 +1007,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
           if(fProject!=="All"&&t.project_id!==fProject)return false;
           if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
-          if(fStatus!=="All"){const ns=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!ns&&t.status!==fStatus)return false;}
+          if(fStatus!=="All"){const ns=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!ns&&t.status!==fStatus)return false;}
           return true;
         });
         const sel=a=>({background:C.surface,border:`1px solid ${a?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:a?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
@@ -1101,7 +1101,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           const allPt=tasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
           const pip=pt.filter(t=>t.status==="In Progress").length;
-          const pnd=pt.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+          const pnd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
           const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
           // Overall project %
           const allDone=allPt.filter(t=>isDone(t.status)).length;
@@ -1243,7 +1243,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
           if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
           if(fProject!=="All"&&t.project_id!==fProject)return false;
           if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
-          if(fStatus!=="All"){const ns=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!ns&&t.status!==fStatus)return false;}
+          if(fStatus!=="All"){const ns=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!ns&&t.status!==fStatus)return false;}
           return true;
         });
         const sel=a=>({background:C.surface,border:`1px solid ${a?"#8b5cf6":C.border}`,borderRadius:8,padding:"8px 10px",color:a?"#8b5cf6":C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
@@ -1461,7 +1461,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
           const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
           const cDone=cTasks.filter(t=>isDone(t.status)).length;
           const cIP=cTasks.filter(t=>t.status==="In Progress").length;
-          const cTodo=cTasks.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+          const cTodo=cTasks.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
           const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
           const pct=cTasks.length?Math.round(cDone/cTasks.length*100):0;
           const hue=client.charCodeAt(0)*23%360;
@@ -1685,14 +1685,14 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   const done=myTasks.filter(t=>isDone(t.status)).length;
   const inprog=myTasks.filter(t=>t.status==="In Progress").length;
   const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-  const notStarted=myTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+  const notStarted=myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const pct=total?Math.round(done/total*100):0;
   const allAssignees=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
   const hasFilter=statusFilter!=="All"||filterProject!=="All"||filterAssignee!=="All"||search;
   const filtered=myTasks.filter(t=>{
     const pj=projects.find(p=>p.id===t.project_id);
     if(search&&!t.title.toLowerCase().includes(search.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(search.toLowerCase()))return false;
-    if(statusFilter!=="All"){const nsMatch=statusFilter==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==statusFilter)return false;}
+    if(statusFilter!=="All"){const nsMatch=statusFilter==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==statusFilter)return false;}
     if(filterProject!=="All"&&t.project_id!==filterProject)return false;
     if(filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
@@ -1785,7 +1785,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
           const pt=myTasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
           const pip=pt.filter(t=>t.status==="In Progress").length;
-          const pnd=pt.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length;
+          const pnd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
           const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
           const pp=pt.length?Math.round(pd/pt.length*100):0;
           const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
@@ -1852,7 +1852,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
     return tasks.filter(t=>{
       if(t.project_id!==pid)return false;
       if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
-      if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==fStatus)return false;}
+      if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==fStatus)return false;}
       if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
       return true;
     });
@@ -1898,7 +1898,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
             const matchedPt=projTasks(p.id);
             const pd=allPt.filter(t=>isDone(t.status)).length;
             const pip=allPt.filter(t=>t.status==="In Progress").length;
-            const ptd=allPt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+            const ptd=allPt.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
             const pv=allPt.length?Math.round(pd/allPt.length*100):0;
             const overduePt=allPt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
             const isExpanded=hasFilter||expanded[p.id];
@@ -1986,7 +1986,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
   const shown=tasks.filter(t=>{
     if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
     if(fProj!=="All"&&t.project_id!==fProj)return false;
-    if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==fStatus)return false;}
+    if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==fStatus)return false;}
     if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
     if(fClient!=="All"){const p=projects.find(px=>px.id===t.project_id);if((p?.client||"Unassigned")!==fClient)return false;}
     return true;
@@ -3464,7 +3464,7 @@ export default function App(){
     if(activePid&&t.project_id!==activePid)return false;
     if(activeClient){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
     if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
-    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!nsMatch&&t.status!==filterStatus)return false;}
+    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==filterStatus)return false;}
     if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
   });
@@ -3474,7 +3474,7 @@ export default function App(){
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
     if(dashUser!=="All"&&t.assignee!==dashUser)return false;
     if(dashProject!=="All"&&t.project_id!==dashProject)return false;
-    if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started"||t.status==="To Do");if(!isNotStarted&&t.status!==dashStatus)return false;}
+    if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
     if(dashClient!=="All"){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
     return true;
   });
@@ -3610,7 +3610,7 @@ export default function App(){
       showToast("Portal account created ✓");
     }
   }
-  const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Completed"];
+  const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
   const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submission List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
@@ -3780,8 +3780,8 @@ export default function App(){
                           onClick={()=>{const t=allProjTasks.filter(x=>isDone(x.status));exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - Completed Tasks`);closeExport();}}/>
                         <SBtn2 label="In Progress Tasks" count={allProjTasks.filter(t=>t.status==="In Progress").length} icon="🔄" color={C.blue}
                           onClick={()=>{const t=allProjTasks.filter(x=>x.status==="In Progress");exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - In Progress Tasks`);closeExport();}}/>
-                        <SBtn2 label="Not Yet Started" count={allProjTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} icon="⏳" color={C.t2}
-                          onClick={()=>{const t=allProjTasks.filter(x=>x.status==="To Do"||x.status==="Not Yet Started"||x.status==="To Be Started");exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - Not Started Tasks`);closeExport();}}/>
+                        <SBtn2 label="Not Yet Started" count={allProjTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length} icon="⏳" color={C.t2}
+                          onClick={()=>{const t=allProjTasks.filter(x=>x.status==="Not Yet Started"||x.status==="To Be Started");exportExcel(accessibleProjects.filter(p=>t.some(x=>x.project_id===p.id)),t,`${me.name} - Not Started Tasks`);closeExport();}}/>
                         <SBtn2 label="Overdue Tasks" count={overdueTsk.length} icon="⚠️" color={C.red}
                           onClick={()=>{exportExcel(accessibleProjects.filter(p=>overdueTsk.some(x=>x.project_id===p.id)),overdueTsk,`${me.name} - Overdue Tasks`);closeExport();}}/>
                       </div>
@@ -3942,7 +3942,7 @@ export default function App(){
               <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
               <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
               <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="To Do"||t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
+              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
               <Stat label="Recent Tasks" value={Math.min(dashTasks.length,12)} sub="latest activity" color={"#a855f7"} onClick={()=>ssm({title:"Recent Tasks",tasks:[...dashTasks].slice(-12).reverse()})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
@@ -3958,7 +3958,7 @@ export default function App(){
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length;
                 const pip=pt.filter(t=>t.status==="In Progress").length;
-                const ptd=pt.filter(t=>t.status==="To Do"||t.status==="To Be Started"||t.status==="Not Yet Started").length;
+                const ptd=pt.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
                 const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
                 const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                 const projSelected=selProjects.has(p.id);
@@ -4187,7 +4187,7 @@ export default function App(){
             <GmailSelect selectedCount={selTasks.size} total={filtered.length}
               onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
               onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Completed","In Progress","To Do","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
+              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
               }/>
           </div>}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
