@@ -52,9 +52,9 @@ function buildTableRows(tasks, projMap) {
   return tasks.map(t => {
     const proj = projMap[t.project_id];
     return `<tr style="background:${rowBg(t.status)}">
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#111827;font-weight:500;font-size:12px;">${t.title}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${proj ? proj.name : "—"}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${t.client || (proj && proj.client) || "—"}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${proj ? proj.name : "—"}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#111827;font-weight:600;font-size:12px;">${t.title}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${statusBadge(t.status)}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${t.assignee || "—"}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;color:#374151;font-size:12px;">${t.client_sub_date || "—"}</td>
@@ -69,93 +69,111 @@ function buildEmail(recipientName, tasks, projMap, today, dateLabel) {
   const inProgress = tasks.filter(t => t.status === "In Progress").length;
   const notStarted = total - done - inProgress;
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
-<div style="max-width:680px;margin:0 auto;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;">
+<tr><td>
 
-  <!-- HEADER -->
-  <div style="background:#1a3a6b;border-radius:10px 10px 0 0;overflow:hidden;">
-    <div style="padding:22px 28px;display:flex;align-items:center;gap:16px;">
-      <div style="background:#ffffff;border-radius:8px;padding:7px 14px;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;">
-        <div style="width:30px;height:30px;background:#1a3a6b;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#ffffff;letter-spacing:1px;">RDS</div>
-        <div style="font-size:12px;font-weight:800;color:#1a3a6b;letter-spacing:1px;">TECHSERV</div>
-      </div>
-      <div style="width:1px;height:36px;background:rgba(255,255,255,0.2);flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Daily Submission List</div>
+<!-- HEADER -->
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:10px 10px 0 0;">
+<tr>
+  <td style="padding:20px 28px;">
+    <table cellpadding="0" cellspacing="0" width="100%"><tr>
+      <td style="width:1px;white-space:nowrap;">
+        <table cellpadding="0" cellspacing="0"><tr>
+          <td style="background:#ffffff;border-radius:8px;padding:7px 14px;">
+            <table cellpadding="0" cellspacing="0"><tr>
+              <td style="width:30px;height:30px;background:#1a3a6b;border-radius:6px;text-align:center;vertical-align:middle;font-weight:800;font-size:11px;color:#ffffff;letter-spacing:1px;">RDS</td>
+              <td style="padding-left:8px;font-size:12px;font-weight:800;color:#1a3a6b;letter-spacing:1px;white-space:nowrap;">TECHSERV</td>
+            </tr></table>
+          </td>
+        </tr></table>
+      </td>
+      <td style="width:1px;padding:0 16px;"><div style="width:1px;height:36px;background:rgba(255,255,255,0.2);"></div></td>
+      <td>
+        <div style="font-size:18px;font-weight:700;color:#ffffff;">Daily Submission List</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:3px;">${dateLabel}</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:#ffffff;border:1px solid rgba(255,255,255,0.3);flex-shrink:0;">&#128236; Test Mail</div>
-    </div>
-    <div style="background:#163060;padding:9px 28px;display:flex;align-items:center;gap:8px;">
-      <div style="width:7px;height:7px;border-radius:50%;background:#facc15;flex-shrink:0;"></div>
-      <span style="font-size:11px;color:rgba(255,255,255,0.75);">TEST EMAIL &mdash; RDS TechServ Daily Submission Digest</span>
-    </div>
+      </td>
+      <td align="right" style="white-space:nowrap;padding-left:12px;">
+        <span style="background:rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:#ffffff;border:1px solid rgba(255,255,255,0.3);">&#128236; Test Mail</span>
+      </td>
+    </tr></table>
+  </td>
+</tr>
+<tr>
+  <td style="background:#163060;padding:9px 28px;">
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td style="width:7px;height:7px;background:#facc15;border-radius:50%;"></td>
+      <td style="padding-left:8px;font-size:11px;color:rgba(255,255,255,0.75);">TEST EMAIL &mdash; RDS TechServ Daily Submission Digest</td>
+    </tr></table>
+  </td>
+</tr>
+</table>
+
+<!-- BODY -->
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;">
+<tr><td style="padding:26px 28px;">
+  <p style="font-size:14px;color:#374151;margin:0 0 6px;">Dear ${recipientName},</p>
+  <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Please find below the list of <strong style="color:#1a3a6b;">${total} submission(s)</strong> planned for today based on <em>Client Submission Date</em> and <em>Due Date</em>. Kindly ensure all deliverables are on track.</p>
+
+  <!-- STAT STRIP -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin-bottom:22px;border-left:4px solid #1a3a6b;">
+  <tr>
+    <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;">
+      <div style="font-size:22px;font-weight:700;color:#1a3a6b;">${total}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Total</div>
+    </td>
+    <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;">
+      <div style="font-size:22px;font-weight:700;color:#059669;">${done}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Done</div>
+    </td>
+    <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;">
+      <div style="font-size:22px;font-weight:700;color:#d97706;">${inProgress}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">In Progress</div>
+    </td>
+    <td width="25%" style="padding:14px 0;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#ef4444;">${notStarted}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Not Started</div>
+    </td>
+  </tr>
+  </table>
+
+  <!-- SUBMISSION TABLE -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+  <thead>
+    <tr style="background:#1a3a6b;">
+      <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">CLIENT</th>
+      <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">PROJECT</th>
+      <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">TASK</th>
+      <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">STATUS</th>
+      <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">ASSIGNEE</th>
+      <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">SUB DATE</th>
+      <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;">DUE DATE</th>
+    </tr>
+  </thead>
+  <tbody>${buildTableRows(tasks, projMap)}</tbody>
+  </table>
+
+  <!-- SIGN-OFF -->
+  <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f3f4f6;">
+    <p style="font-size:13px;color:#374151;margin:0 0 8px;line-height:1.7;">Please review the above and ensure all tasks marked <em>Not Started</em> are actioned immediately. For any clarification, contact the respective project lead.</p>
+    <p style="font-size:13px;color:#374151;margin:0;">Thank you for your continued efforts.</p>
+    <p style="font-size:13px;color:#1a3a6b;margin:14px 0 0;font-weight:700;">RDS TechServ Team</p>
+    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal &mdash; hub-rdsprojects.com</p>
   </div>
+</td></tr>
+</table>
 
-  <!-- BODY -->
-  <div style="background:#ffffff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;padding:26px 28px;">
-    <p style="font-size:14px;color:#374151;margin:0 0 6px;">Dear ${recipientName},</p>
-    <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Please find below the list of <strong style="color:#1a3a6b;">${total} submission(s)</strong> planned for today based on <em>Client Submission Date</em> and <em>Due Date</em>. Kindly ensure all deliverables are on track.</p>
+<!-- FOOTER -->
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:0 0 10px 10px;">
+<tr>
+  <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.5);">&copy; ${new Date().getFullYear()} RDS TechServ. This is an automated email &mdash; do not reply.</td>
+  <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.4);text-align:right;">hub-rdsprojects.com</td>
+</tr>
+</table>
 
-    <!-- STAT STRIP -->
-    <table width="100%" style="background:#f8fafc;border-radius:8px;margin-bottom:22px;border-left:4px solid #1a3a6b;border-collapse:collapse;">
-      <tr>
-        <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;">
-          <div style="font-size:22px;font-weight:700;color:#1a3a6b;">${total}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Total</div>
-        </td>
-        <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;">
-          <div style="font-size:22px;font-weight:700;color:#059669;">${done}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Done</div>
-        </td>
-        <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;">
-          <div style="font-size:22px;font-weight:700;color:#d97706;">${inProgress}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">In Progress</div>
-        </td>
-        <td width="25%" style="padding:14px 0;text-align:center;">
-          <div style="font-size:22px;font-weight:700;color:#ef4444;">${notStarted}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Not Started</div>
-        </td>
-      </tr>
-    </table>
-
-    <!-- SUBMISSION TABLE -->
-    <table width="100%" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-      <thead>
-        <tr style="background:#1a3a6b;">
-          <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">TASK</th>
-          <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">PROJECT</th>
-          <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">CLIENT</th>
-          <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">STATUS</th>
-          <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">ASSIGNEE</th>
-          <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">SUB DATE</th>
-          <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;">DUE DATE</th>
-        </tr>
-      </thead>
-      <tbody>${buildTableRows(tasks, projMap)}</tbody>
-    </table>
-
-    <!-- SIGN-OFF -->
-    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f3f4f6;">
-      <p style="font-size:13px;color:#374151;margin:0 0 8px;line-height:1.7;">Please review the above and ensure all tasks marked <em>Not Started</em> are actioned immediately. For any clarification, contact the respective project lead.</p>
-      <p style="font-size:13px;color:#374151;margin:0;">Thank you for your continued efforts.</p>
-      <p style="font-size:13px;color:#1a3a6b;margin:14px 0 0;font-weight:700;">RDS TechServ Team</p>
-      <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal &mdash; hub-rdsprojects.com</p>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div style="background:#1a3a6b;border-radius:0 0 10px 10px;padding:14px 28px;">
-    <table width="100%" style="border-collapse:collapse;">
-      <tr>
-        <td style="font-size:11px;color:rgba(255,255,255,0.5);">&copy; ${new Date().getFullYear()} RDS TechServ. This is an automated email &mdash; please do not reply.</td>
-        <td style="font-size:11px;color:rgba(255,255,255,0.4);text-align:right;">hub-rdsprojects.com</td>
-      </tr>
-    </table>
-  </div>
-
-</div>
+</td></tr>
+</table>
 </body></html>`;
 }
 
