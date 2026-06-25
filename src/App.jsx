@@ -566,6 +566,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                   }
                 </div>
               );})
+            }
             </div>
           </div>
         );
@@ -3714,4 +3715,111 @@ export default function App(){
                         {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
                         <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
                       </div>
-     
+                    </div>
+                  );
+                })}
+              </div>
+            </>)}
+          </>
+        )}
+        {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
+          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
+        )}
+        {view==="submissions"&&(
+          <SubmissionsPage
+            projects={accessibleProjects}
+            tasks={tasks}
+            today={today}
+            isClient={isClient}
+            clientName={me?.client_name||""}
+            canEdit={canEdit}
+            onEdit={t=>{set(t);stm(true);}}
+          />
+        )}
+        {view==="kanban"&&(
+          <>
+            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
+            {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+              <GmailSelect selectedCount={selTasks.size} total={filtered.length}
+                onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
+                onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
+                extraOptions={ALL_STATUSES.filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))}/>
+            </div>}
+            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
+              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
+                onEdit={t=>{set(t);stm(true);}}
+                onDelete={canEdit?delTask:()=>{}}
+                onDrop={dropTask}
+                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
+                canDelete={canEdit}
+                selTasks={selTasks}
+                onToggleTask={canEdit?toggleTask:null}
+              />))}
+            </div>
+          </>
+        )}
+        {view=="clientprojects"&&canEdit&&(()=>{
+          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
+          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
+          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
+          return(
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
+                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
+              </div>
+              <ClientProjectSearch
+                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
+                today={today} isAdmin={isAdmin} canEdit={canEdit}
+                onViewTasks={pid=>navTo('list',pid)}
+                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
+                onEditTask={t=>{set(t);stm(true);}}
+              />
+            </div>
+          );
+        })()}
+        {view==="list"&&(
+          <div>
+          {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
+              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
+              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
+              extraOptions={["Done","In Progress","To Do","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
+              }/>
+          </div>}
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr style={{background:C.surface}}>
+                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
+                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
+                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
+                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
+                  </div>
+                </th>}
+                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
+              </tr></thead>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
+            </table>
+          </div>
+          </div>
+        )}
+      </main>
+      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
+      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
+      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
+      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {taskModal&&(
+        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
+          {(canEdit||!editTask)?
+            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
+            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
+          }
+        </Modal>
+      )}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
+      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
+    </div>
+  );
+}
