@@ -14,12 +14,12 @@ const C = {
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
 const ROLES=["Engineer","Designer","Architect","Team Leader","Manager","Admin","Client"];
-const ALL_STATUSES=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
+const ALL_STATUSES=["To Do","Not Yet Started","In Progress","Review","Completed"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
-const isDone=s=>s==="Done"||s==="Completed";
+const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
 
 function Av({name,size=28}){
   const h=name?name.charCodeAt(0)*17%360:200;
@@ -1392,7 +1392,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
                   {/* Mini stat pills */}
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {[
-                      {l:"Done",v:md,c:C.green},
+                      {l:"Completed",v:md,c:C.green},
                       {l:"In Progress",v:mip,c:C.blue},
                       {l:"Overdue",v:mov,c:C.red},
                     ].map(s=>(
@@ -2864,7 +2864,7 @@ function AnalyticsProjModal({title,projList,tasks,today,onClose}){
         <div style={{overflowY:"auto",flex:1}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
-              <tr>{["#","Project","Client","Tasks","Done","In Progress","Overdue","Progress","Deadline"].map(h=>(
+              <tr>{["#","Project","Client","Tasks","Completed","In Progress","Overdue","Progress","Deadline"].map(h=>(
                 <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
               ))}</tr>
             </thead>
@@ -2921,7 +2921,7 @@ function AnalyticsClientModal({title,clientList,onClose}){
         <div style={{overflowY:"auto",flex:1}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
-              <tr>{["#","Client","Projects","Total Tasks","Done","Overdue","Progress"].map(h=>(
+              <tr>{["#","Client","Projects","Total Tasks","Completed","Overdue","Progress"].map(h=>(
                 <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
               ))}</tr>
             </thead>
@@ -2963,7 +2963,7 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
         <div style={{overflowY:"auto",flex:1}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead style={{position:"sticky",top:0,background:C.card,zIndex:1}}>
-              <tr>{["#","Member","Total Tasks","Done","In Progress","Overdue","Completion"].map(h=>(
+              <tr>{["#","Member","Total Tasks","Completed","In Progress","Overdue","Completion"].map(h=>(
                 <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
               ))}</tr>
             </thead>
@@ -3214,7 +3214,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead style={{position:"sticky",top:0}}>
                 <tr style={{background:C.surface}}>
-                  {["Client","Projects","Tasks","Done","Overdue","Progress"].map(h=>(
+                  {["Client","Projects","Tasks","Completed","Overdue","Progress"].map(h=>(
                     <th key={h} style={{padding:"7px 10px",textAlign:"left",color:C.t3,fontWeight:700,textTransform:"uppercase",fontSize:10,letterSpacing:".04em",whiteSpace:"nowrap"}}>{h}</th>
                   ))}
                 </tr>
@@ -3517,7 +3517,7 @@ export default function App(){
         if(f.status!==editTask.status){
           const proj=projects.find(p=>p.id===editTask.project_id);
           const assigneeUser=users.find(u=>u.name===editTask.assignee||u.username===editTask.assignee);
-          if(f.status==="Done"){
+          if(f.status==="Completed"){
             const mgrs=users.filter(u=>(u.role==="Admin"||u.role==="Manager")&&u.id!==me.id).map(u=>u.id);
             if(mgrs.length)await createNotif(mgrs,"task_completed",`Task completed: ${editTask.title}`,`Marked done by ${me.name}${proj?` · ${proj.name}`:""}`, "task",editTask.id,me.id);
           }
@@ -3554,7 +3554,7 @@ export default function App(){
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
         showToast("Task updated ✓");
         if(f.status!==editTask.status){
-          if(f.status==="Done"){
+          if(f.status==="Completed"){
             // In-app: notify admins/managers on completion
             const mgrs=users.filter(u=>(u.role==="Admin"||u.role==="Manager")&&u.id!==me.id).map(u=>u.id);
             if(mgrs.length)await createNotif(mgrs,"task_completed",`Task completed: ${f.title}`,`Marked done by ${me.name}${proj?` · ${proj.name}`:""}`, "task",editTask.id,me.id);
@@ -3610,7 +3610,7 @@ export default function App(){
       showToast("Portal account created ✓");
     }
   }
-  const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Done","Completed"];
+  const kanbanCols=["To Do","Not Yet Started","In Progress","Review","Completed"];
   const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submission List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
@@ -4187,7 +4187,7 @@ export default function App(){
             <GmailSelect selectedCount={selTasks.size} total={filtered.length}
               onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
               onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Done","In Progress","To Do","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
+              extraOptions={["Completed","In Progress","To Do","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
               }/>
           </div>}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
