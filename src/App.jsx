@@ -3405,6 +3405,7 @@ export default function App(){
   const logoRef             = useRef();
   const prevViewRef         = useRef('dashboard');
   const initialParsed       = useRef(false);
+  const initialPath         = useRef(window.location.pathname);
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
   const isAdmin=me?.role==="Admin";
@@ -3468,7 +3469,7 @@ export default function App(){
   useEffect(()=>{if(me)loadAll();},[me]);
   // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
   useEffect(()=>{
-    if(!me)return;
+    if(!me||!initialParsed.current)return;
     const url=stateToUrl(view,activePid,activeClient,projects);
     window.history.replaceState({view,pid:activePid,client:activeClient},'',url);
   },[view,activePid,activeClient,me,projects]);
@@ -3496,7 +3497,7 @@ export default function App(){
   useEffect(()=>{
     if(!me||!projects.length||initialParsed.current)return;
     initialParsed.current=true;
-    const s=urlToState(window.location.pathname,projects);
+    const s=urlToState(initialPath.current,projects);
     let {view:tv,pid:tp,client:tc}=s;
     // Access guard on deep-link
     if(!isAdmin&&!isManager&&!isTeamLeader&&!isClient){
