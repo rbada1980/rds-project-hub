@@ -58,7 +58,7 @@ const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,b
 function Modal({title,onClose,children,wide=false}){
   return(
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",minWidth:0,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
+      <div className="rds-modal-inner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",minWidth:0,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3>
           <IBtn icon="✕" onClick={onClose}/>
@@ -173,7 +173,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           </button>
         </div>
       </div>
-      <div style={row}>
+      <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Task Title *" value={f.title} onChange={s("title")} placeholder="Enter task title"/></div>
         <div style={col}>
                 <RLabel text="Client *"/>
@@ -184,7 +184,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
                 </select>
               </div>
       </div>
-      <div style={row}>
+      <div className="rds-form-row" style={row}>
         <div style={col}>
           <div style={{marginBottom:14}}>
             <RLabel text="Assignee *"/>
@@ -197,11 +197,11 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
         </div>
         <div style={col}><FSelect label="Status *" value={f.status} onChange={s("status")} options={ALL_STATUSES}/></div>
       </div>
-      <div style={row}>
+      <div className="rds-form-row" style={row}>
         <div style={col}><FSelect label="Priority" value={f.priority} onChange={s("priority")} options={["High","Medium","Low"]}/></div>
         <div style={col}><FInput label={requireDates?"Due Date *":"Due Date"} value={f.due_date} onChange={s("due_date")} type="date"/></div>
       </div>
-      <div style={row}>
+      <div className="rds-form-row" style={row}>
         <div style={col}>
           <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer <span style={{color:C.t3,fontWeight:400}}>(defaults to assignee)</span></label>
           <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
@@ -219,11 +219,11 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           </select>
         </div>
       </div>
-      <div style={row}>
+      <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
         <div style={col}><FInput label={requireDates?"Client Sub Date *":"Client Sub Date"} value={f.client_sub_date} onChange={s("client_sub_date")} type="date"/></div>
       </div>
-      <div style={row}>
+      <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
         <div style={col}><FileUp files={f.files} onChange={files=>sf(p=>({...p,files}))}/></div>
       </div>
@@ -705,7 +705,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     </Modal>
   );
 }
-function KCard({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true}){
+function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
     <div draggable={!readonly&&!onSelect} onDragStart={e=>{if(onSelect)return;sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
@@ -731,6 +731,23 @@ function KCard({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fa
           {task.assignee?<Av name={task.assignee} size={22}/>:<span style={{fontSize:10,color:C.yellow}}>Unassigned</span>}
         </div>
       </div>
+      {!readonly&&!onSelect&&<MobileKMove task={task} onDrop={onDrop}/>}
+    </div>
+  );
+}
+// Mobile-only status mover for kanban cards
+function MobileKMove({task,onDrop}){
+  const isMobile=useMobile();
+  if(!isMobile)return null;
+  const COLS=["Not Yet Started","In Progress","Review","Completed"];
+  return(
+    <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
+      {COLS.filter(c=>c!==task.status).map(c=>(
+        <button key={c} onClick={e=>{e.stopPropagation();if(onDrop)onDrop(task.id,c);}}
+          style={{fontSize:10,padding:"3px 8px",borderRadius:6,border:`1px solid ${getStatusColor(c)}44`,background:getStatusColor(c)+"18",color:getStatusColor(c),cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+          → {c}
+        </button>
+      ))}
     </div>
   );
 }
@@ -738,7 +755,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
   const [ov,so]=useState(false);
   const selectMode=!!onToggleTask;
   return(
-    <div onDragOver={e=>{if(selectMode)return;e.preventDefault();so(true);}} onDragLeave={()=>so(false)}
+    <div className="rds-kcol" onDragOver={e=>{if(selectMode)return;e.preventDefault();so(true);}} onDragLeave={()=>so(false)}
       onDrop={e=>{if(selectMode)return;e.preventDefault();so(false);onDrop(e.dataTransfer.getData("tid"),status);}}
       style={{minWidth:220,flex:1,background:ov?C.surface+"88":"transparent",border:`2px dashed ${ov?getStatusColor(status):C.border}`,borderRadius:12,padding:12,transition:"all .15s"}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
@@ -746,7 +763,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
     </div>
   );
 }
@@ -959,7 +976,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       {/* Progress bar */}
       <div style={{marginBottom:24}}><Pb v={pct} color={C.accent} h={8}/></div>
       {/* Stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:28}}>
+      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:28}}>
         <Stat label="Total Tasks" value={total} sub="assigned to me" color={C.accent} onClick={()=>ssf(statusFilter==="All"?null:"All")}/>
         <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf(statusFilter==="Completed"?null:"Completed")}/>
         <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf(statusFilter==="In Progress"?null:"In Progress")}/>
@@ -1096,7 +1113,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       )}
       {/* My Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
           // My tasks in this project
           const pt=myTasks.filter(t=>t.project_id===p.id);
@@ -1134,7 +1151,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
               <Pb v={overallPct} color={p.color} h={7}/>
               {/* My task breakdown */}
               {pt.length>0&&(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
+                <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                   <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
                     <div style={{fontSize:10,color:C.t3,marginTop:2}}>My Done</div>
@@ -1231,7 +1248,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
       </div>
 
       {/* Top stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
+      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
         <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>{setTab("all");setSF("All");}}/>
         <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>{setTab("detailer");setSF("All");}}/>
         <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>{setTab("checker");setSF("All");}}/>
@@ -1459,7 +1476,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
   return(
     <div style={{marginBottom:32}}>
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18}}>
         {clientNames.map(client=>{
           const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
           const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
@@ -1490,7 +1507,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
               {/* Progress bar */}
               <Pb v={pct} color={clr} h={7}/>
               {/* 4-stat breakdown */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
+              <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                 <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:800,color:C.green}}>{cDone}</div>
                   <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
@@ -1785,7 +1802,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
       )}
       {/* Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
           const pt=myTasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
@@ -1809,7 +1826,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
               {/* Progress bar */}
               <Pb v={pp} color={p.color} h={7}/>
               {/* 4-stat breakdown */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
+              <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                 <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
                   <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
@@ -2820,7 +2837,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       </div>
 
       {/* ── Summary stat cards ── */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:22}}>
+      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:22}}>
         {[
           {label:"Today",value:todayCount,color:todayCount>0?C.red:"#22c55e",icon:"📅",id:"today"},
           {label:"This Week",value:allTasks.filter(t=>inRange(t,mondayOf(today),sundayOf(today))).length,color:"#f59e0b",icon:"📆",id:"this_week"},
@@ -2891,7 +2908,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
             <div style={{fontSize:13}}>Try selecting a different date range above</div>
           </div>
         ):(
-          <div style={{overflowX:"auto"}}>
+          <div className="rds-table-outer" style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
               <thead>
                 <tr style={{background:C.surface}}>
@@ -3428,14 +3445,34 @@ export default function App(){
     const s=document.createElement("style");
     s.id="rds-mobile-css";
     s.textContent=`
-      * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-      @media (max-width:768px) {
-        table { font-size: 11px !important; }
-        th, td { padding: 7px 8px !important; white-space: nowrap; }
-        .rds-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        input, select, button { font-size: 14px !important; } /* prevent iOS zoom */
-        .rds-hide-mobile { display: none !important; }
-        .rds-flex-col { flex-direction: column !important; }
+      *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
+      body,html{overflow:hidden;}
+      .rds-sidebar{transition:transform 0.25s ease;will-change:transform;}
+      @media(max-width:768px){
+        .rds-sidebar{position:fixed!important;top:0;left:0;height:100vh!important;z-index:200;transform:translateX(-100%);box-shadow:none;}
+        .rds-sidebar.open{transform:translateX(0)!important;box-shadow:4px 0 32px #00000080;}
+        .rds-main{padding:10px!important;}
+        .rds-topbar{flex-wrap:wrap;gap:8px!important;margin-bottom:12px!important;}
+        .rds-kanban-wrap{display:flex!important;gap:12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory;}
+        .rds-kcol{min-width:260px!important;flex-shrink:0!important;scroll-snap-align:start;}
+        .rds-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
+        .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
+        .rds-table-outer{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
+        .rds-table-outer table{min-width:500px;}
+        .rds-hide-mob{display:none!important;}
+        .rds-form-row{flex-direction:column!important;}
+        input,select,textarea{font-size:16px!important;}
+        .rds-modal-inner{width:96vw!important;max-width:96vw!important;padding:16px!important;}
+        .rds-bottom-nav{display:flex!important;}
+        .rds-desktop-nav{display:none!important;}
+        h1.rds-greeting{font-size:17px!important;}
+        .rds-export-btn span.rds-export-label{display:none;}
+        .rds-page-sub{display:none!important;}
+      }
+      @media(min-width:769px){
+        .rds-bottom-nav{display:none!important;}
+        .rds-desktop-nav{display:flex!important;}
+        .rds-sidebar{position:relative!important;transform:none!important;box-shadow:none!important;}
       }
     `;
     if(!document.getElementById("rds-mobile-css"))document.head.appendChild(s);
@@ -3718,7 +3755,7 @@ export default function App(){
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
       {isMobile&&sideOpen&&<div onClick={()=>setSO(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:150,backdropFilter:"blur(2px)"}}/>}
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
-      <aside style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh",position:isMobile?"fixed":"relative",top:0,left:0,zIndex:isMobile?200:"auto",transform:isMobile?(sideOpen?"translateX(0)":"translateX(-100%)"):"none",transition:"transform 0.25s ease",boxShadow:isMobile&&sideOpen?"4px 0 24px #00000080":"none"}}>
+      <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div onClick={()=>logoRef.current.click()} title="Click to upload logo" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
@@ -3791,10 +3828,10 @@ export default function App(){
           )}
         </div>
       </aside>
-      <main style={{flex:1,padding:isMobile?12:24,overflow:"auto",height:"100vh",boxSizing:"border-box",marginLeft:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:isMobile?12:24,gap:8,flexWrap:"wrap"}}>
+      <main className="rds-main" style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box",paddingBottom:isMobile?80:24}}>
+        <div className="rds-topbar" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,gap:8,flexWrap:"wrap"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            {isMobile&&<button onClick={()=>setSO(v=>!v)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:18,cursor:"pointer",lineHeight:1,flexShrink:0}}>☰</button>}
+            <button onClick={()=>setSO(v=>!v)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,display:"flex",alignItems:"center",gap:6,fontFamily:"inherit",fontWeight:700,fontSize:13}}><span style={{fontSize:18}}>☰</span><span style={{display:"none"}} className="rds-export-label">Projects</span></button>
             <div>
             {(()=>{
               const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":"User";
@@ -3804,18 +3841,18 @@ export default function App(){
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
               const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
-                <h1 style={{margin:0,fontSize:isMobile?17:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
-                {!isMobile&&<p style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>}
-                {!isMobile&&<p style={{margin:"2px 0 0",color:C.t3,fontSize:12}}>{dateStr}</p>}
+                <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
+                <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
+                <p className="rds-page-sub" style={{margin:"2px 0 0",color:C.t3,fontSize:12}}>{dateStr}</p>
               </>);
             })()}
             </div>
           </div>
           <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <NotificationCenter me={me}/>
-            {view!=="dashboard"&&!isMobile&&(
+            {view!=="dashboard"&&(
               <>
-                <input placeholder="Search tasks…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
+                <input placeholder="🔍 Search…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",width:isMobile?110:150,fontFamily:"inherit"}}/>
                 <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Status</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
@@ -3826,9 +3863,9 @@ export default function App(){
                 </select>}
               </>
             )}
-            {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export</button>);})()}
+            {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button className="rds-export-btn" onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export</span></button>);})()}
             {!isClient&&<div ref={exportRef} style={{position:"relative"}}>
-              <button onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 14px",fontSize:13}}>📊 Export ▾</button>
+              <button className="rds-export-btn" onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export ▾</span></button>
               {exportOpen&&(()=>{
                 const today2=new Date().toISOString().slice(0,10);
                 const closeExport=()=>{setExportOpen(false);setExportSec(null);};
@@ -4058,7 +4095,7 @@ export default function App(){
                 onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
                 onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length;
@@ -4088,7 +4125,7 @@ export default function App(){
                       {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
                     </div>
                     <Pb v={pv} color={p.color} h={7}/>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
+                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                       <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                         <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
                         <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
@@ -4121,7 +4158,7 @@ export default function App(){
             {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {/* ── 2. Recent Tasks ── */}
             <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
               {dashTasks.slice(-12).reverse().map(t=>{
                 const pj=projects.find(p=>p.id===t.project_id);
                 const clr=pj?.color||C.accent;
@@ -4140,7 +4177,7 @@ export default function App(){
                       {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
                       {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
+                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
                       <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                         <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
                         <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
@@ -4177,7 +4214,7 @@ export default function App(){
             {/* ── 4. Overdue Tasks ── */}
             {overdueTasks.length>0&&(<>
               <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
                 {overdueTasks.map(t=>{
                   const pj=projects.find(p=>p.id===t.project_id);
                   const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
@@ -4195,7 +4232,7 @@ export default function App(){
                         {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
                         {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
                       </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
+                      <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
                         <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                           <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
                           <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
@@ -4253,7 +4290,7 @@ export default function App(){
                 onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
                 extraOptions={ALL_STATUSES.filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))}/>
             </div>}
-            <div style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
+            <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
               {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
                 onEdit={t=>{set(t);stm(true);}}
                 onDelete={canEdit?delTask:()=>{}}
@@ -4329,6 +4366,21 @@ export default function App(){
       {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
       {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
     </div>
+    {/* ── Mobile bottom nav ── */}
+    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
+      {navs.map(([k,ico,lbl])=>(
+        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+          <span style={{fontSize:20}}>{ico}</span>
+          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
+        </button>
+      ))}
+      <button onClick={()=>sMenu(v=>!v)}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:C.t3,fontFamily:"inherit"}}>
+        <Av name={me.name} size={22}/>
+        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Me</span>
+      </button>
+    </nav>
     </MobileCtx.Provider>
   );
 }
