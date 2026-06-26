@@ -2719,24 +2719,41 @@ function exportSubmissionList(projects,tasks,today){
 // SUBMISSIONS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
-  const todayD=new Date(today);
-  const dayOfWeek=todayD.getDay();
-  const weekStart=new Date(todayD);weekStart.setDate(todayD.getDate()-dayOfWeek);
-  const weekEnd=new Date(todayD);weekEnd.setDate(todayD.getDate()+(6-dayOfWeek));
-  const ws=weekStart.toISOString().slice(0,10);
-  const we=weekEnd.toISOString().slice(0,10);
+  const [period,setPeriod]=useState("this_week");
+  const [customFrom,setCustomFrom]=useState(today);
+  const [customTo,setCustomTo]=useState(today);
+  const [showCal,setShowCal]=useState(false);
 
-  // For client: filter to their projects; for all others: use all accessible projects
-  const scopedProjects=isClient?projects.filter(p=>(p.client||"").toLowerCase()===(clientName||"").toLowerCase()):projects;
+  // ── Date range helpers ──
+  const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
+  const mondayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?6:dow-1));return r.toISOString().slice(0,10);};
+  const sundayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()+(dow===0?0:7-dow));return r.toISOString().slice(0,10);};
 
-  const inRange=(t,from,to)=>{
-    const d1=t.client_sub_date;const d2=t.due_date;
-    return(d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to);
+  const getRangeDates=()=>{
+    const d=new Date(today);
+    if(period==="today") return{from:today,to:today,label:"Today",icon:"📅",color:C.red};
+    if(period==="this_week"){const ms=mondayOf(today);const se=sundayOf(today);return{from:ms,to:se,label:`This Week  ${ms} → ${se}`,icon:"📆",color:"#f59e0b"};}
+    if(period==="next_week"){const nm=addDays(mondayOf(today),7);const ns=addDays(nm,6);return{from:nm,to:ns,label:`Next Week  ${nm} → ${ns}`,icon:"🗓",color:"#8b5cf6"};}
+    if(period==="next_month"){const nm=new Date(d.getFullYear(),d.getMonth()+1,1);const ne=new Date(d.getFullYear(),d.getMonth()+2,0);const nms=nm.toISOString().slice(0,10);const nes=ne.toISOString().slice(0,10);return{from:nms,to:nes,label:`Next Month  ${nms} → ${nes}`,icon:"📅",color:"#06b6d4"};}
+    return{from:customFrom,to:customTo,label:`${customFrom} → ${customTo}`,icon:"📆",color:C.accent};
   };
 
+  const {from:rangeFrom,to:rangeTo,label:rangeLabel,icon:rangeIcon,color:rangeColor}=getRangeDates();
+
+  const scopedProjects=isClient?projects.filter(p=>(p.client||"").toLowerCase()===(clientName||"").toLowerCase()):projects;
+  const inRange=(t,f,to)=>{const d1=t.client_sub_date;const d2=t.due_date;return(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);};
+
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
-  const todayTasks=allTasks.filter(t=>inRange(t,today,today)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
-  const weekTasks=allTasks.filter(t=>inRange(t,ws,we)&&!inRange(t,today,today)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
+  const periodTasks=allTasks.filter(t=>inRange(t,rangeFrom,rangeTo)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
+
+  // Summary stats (always shown regardless of period)
+  const todayCount=allTasks.filter(t=>inRange(t,today,today)).length;
+  const nextWeekStart=addDays(mondayOf(today),7);
+  const nextWeekEnd=addDays(nextWeekStart,6);
+  const nextWeekCount=allTasks.filter(t=>inRange(t,nextWeekStart,nextWeekEnd)).length;
+  const nextMonthStart=(()=>{const d=new Date(today);return new Date(d.getFullYear(),d.getMonth()+1,1).toISOString().slice(0,10);})();
+  const nextMonthEnd=(()=>{const d=new Date(today);return new Date(d.getFullYear(),d.getMonth()+2,0).toISOString().slice(0,10);})();
+  const nextMonthCount=allTasks.filter(t=>inRange(t,nextMonthStart,nextMonthEnd)).length;
 
   const statusColor=s=>s==="Completed"?"#16a34a":s==="In Progress"?"#2563eb":s==="Not Yet Started"?"#64748b":"#f59e0b";
   const tdC={padding:"10px 12px",textAlign:"center",fontSize:12,verticalAlign:"middle"};
@@ -2772,66 +2789,119 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   const HEADERS=["Task","Project",...(!isClient?["Client"]:[]),"Status","Assignee","Detailer","Checker","Client Sub Date","Due Date",...(!isClient?[""]:[])];
 
-  const Section=({title,icon,color,taskList,empty})=>(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",marginBottom:22}}>
-      <div style={{background:color+"18",borderBottom:`1px solid ${color}33`,padding:"14px 20px",display:"flex",alignItems:"center",gap:12}}>
-        <span style={{fontSize:20}}>{icon}</span>
-        <div>
-          <div style={{fontSize:15,fontWeight:800,color}}>{title}</div>
-          <div style={{fontSize:12,color:C.t3,marginTop:2}}>{taskList.length} submission{taskList.length!==1?"s":""}</div>
-        </div>
-        <span style={{marginLeft:"auto",fontSize:24,fontWeight:900,color}}>{taskList.length}</span>
-      </div>
-      {taskList.length===0?(
-        <div style={{padding:"32px",textAlign:"center",color:C.t3}}>
-          <div style={{fontSize:28,marginBottom:8}}>{empty}</div>
-          <div style={{fontSize:13}}>No submissions</div>
-        </div>
-      ):(
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-            <thead>
-              <tr style={{background:C.surface}}>
-                {HEADERS.map((h,i)=>(
-                  <th key={i} style={{padding:"9px 12px",textAlign:i===0?"left":"center",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap"}}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>{taskList.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+  const btnStyle=(active,color="#6366f1")=>({
+    padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+    border:`1.5px solid ${active?color:C.border}`,
+    background:active?color+"18":"transparent",
+    color:active?color:C.t2,transition:"all .15s"
+  });
+
+  const QUICK=[
+    {id:"today",label:"Today",icon:"📅",color:C.red},
+    {id:"this_week",label:"This Week",icon:"📆",color:"#f59e0b"},
+    {id:"next_week",label:"Next Week",icon:"🗓",color:"#8b5cf6"},
+    {id:"next_month",label:"Next Month",icon:"📅",color:"#06b6d4"},
+    {id:"custom",label:"Custom Range",icon:"🗓",color:C.accent},
+  ];
 
   return(
     <div>
-      <div style={{marginBottom:24}}>
+      {/* ── Header ── */}
+      <div style={{marginBottom:20}}>
         <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📬 Submission List</h2>
-        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>All clients — tasks due for submission today and this week</p>
+        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tasks and projects due for submission — filter by date range</p>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
+
+      {/* ── Summary stat cards ── */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
         {[
-          {label:"Today's Submissions",value:todayTasks.length,color:todayTasks.length>0?C.red:"#22c55e",icon:"📅"},
-          {label:"This Week",value:weekTasks.length,color:"#f59e0b",icon:"📆"},
-          {label:"Total Pending",value:allTasks.filter(t=>!isDone(t.status)).length,color:C.accent,icon:"📋"},
+          {label:"Today",value:todayCount,color:todayCount>0?C.red:"#22c55e",icon:"📅",id:"today"},
+          {label:"This Week",value:allTasks.filter(t=>inRange(t,mondayOf(today),sundayOf(today))).length,color:"#f59e0b",icon:"📆",id:"this_week"},
+          {label:"Next Week",value:nextWeekCount,color:"#8b5cf6",icon:"🗓",id:"next_week"},
+          {label:"Next Month",value:nextMonthCount,color:"#06b6d4",icon:"📅",id:"next_month"},
         ].map(s=>(
-          <div key={s.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"16px 20px",borderLeft:`4px solid ${s.color}`,display:"flex",alignItems:"center",gap:14}}>
-            <span style={{fontSize:28}}>{s.icon}</span>
+          <div key={s.label} onClick={()=>{setPeriod(s.id);setShowCal(false);}}
+            style={{background:C.card,border:`2px solid ${period===s.id?s.color:C.border}`,borderRadius:12,padding:"14px 18px",borderLeft:`4px solid ${s.color}`,display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"border .15s",boxShadow:period===s.id?`0 0 0 2px ${s.color}33`:"none"}}>
+            <span style={{fontSize:24}}>{s.icon}</span>
             <div>
-              <div style={{fontSize:28,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
-              <div style={{fontSize:11,color:C.t3,marginTop:4,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.label}</div>
+              <div style={{fontSize:26,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.label}</div>
             </div>
           </div>
         ))}
       </div>
-      <Section title="Today's Submissions" icon="📅" color={C.red} taskList={todayTasks} empty="✅"/>
-      <Section title={`This Week  ${ws} → ${we}`} icon="📆" color="#f59e0b" taskList={weekTasks} empty="🎉"/>
+
+      {/* ── Filter bar ── */}
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 18px",marginBottom:22}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:12,color:C.t3,fontWeight:700,marginRight:4}}>VIEW:</span>
+          {QUICK.map(q=>(
+            <button key={q.id} style={btnStyle(period===q.id,q.color)}
+              onClick={()=>{setPeriod(q.id);setShowCal(q.id==="custom");}}>
+              {q.icon} {q.label}
+            </button>
+          ))}
+          {!isClient&&<button onClick={()=>exportSubmissionList(scopedProjects,allTasks,today)}
+            style={{marginLeft:"auto",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${C.accent}`,background:C.accent+"18",color:C.accent}}>
+            ⬇ Export Excel
+          </button>}
+        </div>
+
+        {/* ── Custom date range picker ── */}
+        {period==="custom"&&(
+          <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+            <span style={{fontSize:12,color:C.t3,fontWeight:700}}>DATE RANGE:</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <label style={{fontSize:12,color:C.t2,fontWeight:600}}>From</label>
+              <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)}
+                style={{background:C.surface,border:`1.5px solid ${C.accent}`,borderRadius:7,padding:"6px 10px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+            <span style={{color:C.t3}}>→</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <label style={{fontSize:12,color:C.t2,fontWeight:600}}>To</label>
+              <input type="date" value={customTo} min={customFrom} onChange={e=>setCustomTo(e.target.value)}
+                style={{background:C.surface,border:`1.5px solid ${C.accent}`,borderRadius:7,padding:"6px 10px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+            <span style={{fontSize:12,color:C.t3,marginLeft:8}}>{periodTasks.length} task{periodTasks.length!==1?"s":""} in range</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Results section ── */}
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",marginBottom:22}}>
+        <div style={{background:rangeColor+"18",borderBottom:`1px solid ${rangeColor}33`,padding:"14px 20px",display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:20}}>{rangeIcon}</span>
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:rangeColor}}>{rangeLabel}</div>
+            <div style={{fontSize:12,color:C.t3,marginTop:2}}>{periodTasks.length} submission{periodTasks.length!==1?"s":""}</div>
+          </div>
+          <span style={{marginLeft:"auto",fontSize:28,fontWeight:900,color:rangeColor}}>{periodTasks.length}</span>
+        </div>
+        {periodTasks.length===0?(
+          <div style={{padding:"48px",textAlign:"center",color:C.t3}}>
+            <div style={{fontSize:40,marginBottom:10}}>🎉</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:4}}>No submissions in this period</div>
+            <div style={{fontSize:13}}>Try selecting a different date range above</div>
+          </div>
+        ):(
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead>
+                <tr style={{background:C.surface}}>
+                  {HEADERS.map((h,i)=>(
+                    <th key={i} style={{padding:"9px 12px",textAlign:i===0?"left":"center",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap",borderBottom:`1px solid ${C.border}`}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>{periodTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS CENTER
 // ─────────────────────────────────────────────────────────────────────────────
 
