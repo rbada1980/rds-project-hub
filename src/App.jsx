@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, createContext, useContext } from "react";
 import { createClient } from "@supabase/supabase-js";
+const MobileCtx=createContext(false);
+const useMobile=()=>useContext(MobileCtx);
 // email notifications removed — daily scheduled digest replaces per-update emails
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
@@ -56,7 +58,7 @@ const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,b
 function Modal({title,onClose,children,wide=false}){
   return(
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",minWidth:0,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3>
           <IBtn icon="✕" onClick={onClose}/>
@@ -144,7 +146,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     const proj=projects.find(p=>p.id===pid);
     sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
   }
-  const col={flex:1,minWidth:0},row={display:"flex",gap:16};
+  const col={flex:1,minWidth:0},row={display:"flex",gap:16,flexWrap:"wrap"};
   return(
     <div>
       <div style={{display:"flex",alignItems:"flex-end",gap:12,marginBottom:14}}>
@@ -918,7 +920,8 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
     </div>
   );
 }
-function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
+function UserDashboard({
+  const isMobile=useMobile();me,tasks,projects,clients,today,onEditTask,onViewProject}){
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
   const [statusFilter,ssf]=useState(null);
   const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
@@ -956,7 +959,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       {/* Progress bar */}
       <div style={{marginBottom:24}}><Pb v={pct} color={C.accent} h={8}/></div>
       {/* Stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:28}}>
         <Stat label="Total Tasks" value={total} sub="assigned to me" color={C.accent} onClick={()=>ssf(statusFilter==="All"?null:"All")}/>
         <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>ssf(statusFilter==="Completed"?null:"Completed")}/>
         <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>ssf(statusFilter==="In Progress"?null:"In Progress")}/>
@@ -1093,7 +1096,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       )}
       {/* My Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
           // My tasks in this project
           const pt=myTasks.filter(t=>t.project_id===p.id);
@@ -1131,7 +1134,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
               <Pb v={overallPct} color={p.color} h={7}/>
               {/* My task breakdown */}
               {pt.length>0&&(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                   <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
                     <div style={{fontSize:10,color:C.t3,marginTop:2}}>My Done</div>
@@ -1179,7 +1182,8 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
     </div>
   );
 }
-function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject}){
+function TeamLeaderDashboard({
+  const isMobile=useMobile();me,tasks,projects,today,onEditTask,onViewProject}){
   const matchesMe=v=>userMatchesStr(me,v);
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
   const [statusF,setSF]=useState("All");
@@ -1227,7 +1231,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
       </div>
 
       {/* Top stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
         <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>{setTab("all");setSF("All");}}/>
         <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>{setTab("detailer");setSF("All");}}/>
         <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>{setTab("checker");setSF("All");}}/>
@@ -1455,7 +1459,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
   return(
     <div style={{marginBottom:32}}>
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18}}>
         {clientNames.map(client=>{
           const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
           const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
@@ -1486,7 +1490,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
               {/* Progress bar */}
               <Pb v={pct} color={clr} h={7}/>
               {/* 4-stat breakdown */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                 <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:800,color:C.green}}>{cDone}</div>
                   <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
@@ -1672,7 +1676,8 @@ function Login({onLogin}){
     </div>
   );
 }
-function ClientDashboard({me,tasks,projects,today,onViewProject}){
+function ClientDashboard({
+  const isMobile=useMobile();me,tasks,projects,today,onViewProject}){
   const [statusFilter,ssf]=useState("All");
   const [search,ss]=useState("");
   const [filterProject,sfp]=useState("All");
@@ -1719,7 +1724,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
       {/* Progress bar */}
       <div style={{marginBottom:18}}><Pb v={pct} color={C.teal} h={8}/></div>
       {/* Stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:24}}>
         <Stat label="Total Tasks" value={total} sub="all projects" color={C.teal} onClick={()=>{ssf("All");sfp("All");sfa("All");ss("");sst(true);}}/>
         <Stat label="Completed" value={done} sub="finished" color={C.green} onClick={()=>{ssf("Completed");sst(true);}}/>
         <Stat label="In Progress" value={inprog} sub="active" color={C.blue} onClick={()=>{ssf("In Progress");sst(true);}}/>
@@ -1780,7 +1785,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
       )}
       {/* Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
         {myProjects.map(p=>{
           const pt=myTasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
@@ -1804,7 +1809,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
               {/* Progress bar */}
               <Pb v={pp} color={p.color} h={7}/>
               {/* 4-stat breakdown */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                 <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                   <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
                   <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
@@ -1840,7 +1845,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   );
 }
 
-function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onViewTasks,onEdit,onDelete,onEditTask}){
+function ClientProjectSearch({
+  const isMobile=useMobile();projects,tasks,assignees,today,isAdmin,canEdit,onViewTasks,onEdit,onDelete,onEditTask}){
   const [q,sq]=useState("");
   const [fStatus,sfs]=useState("All");
   const [fAssignee,sfa]=useState("All");
@@ -2007,7 +2013,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
         <div style={{marginBottom:12}}>
           <input autoFocus placeholder="🔍  Search by task, project or assignee…" value={q} onChange={e=>sq(e.target.value)}
             style={{width:"100%",background:C.surface,border:`1px solid ${q?C.accent:C.border}`,borderRadius:8,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10}}>
             <div>
               <label style={{display:"block",color:C.t3,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Project</label>
               <select value={fProj} onChange={e=>sfp(e.target.value)} style={{...inp,borderColor:fProj!=="All"?C.accent:C.border}}>
@@ -2718,7 +2724,8 @@ function exportSubmissionList(projects,tasks,today){
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBMISSIONS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
+function SubmissionsPage({
+  const isMobile=useMobile();projects,tasks,today,isClient,clientName,onEdit,canEdit}){
   const [period,setPeriod]=useState("this_week");
   const [customFrom,setCustomFrom]=useState(today);
   const [customTo,setCustomTo]=useState(today);
@@ -2813,7 +2820,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       </div>
 
       {/* ── Summary stat cards ── */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:22}}>
         {[
           {label:"Today",value:todayCount,color:todayCount>0?C.red:"#22c55e",icon:"📅",id:"today"},
           {label:"This Week",value:allTasks.filter(t=>inRange(t,mondayOf(today),sundayOf(today))).length,color:"#f59e0b",icon:"📆",id:"this_week"},
@@ -3069,7 +3076,8 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
     </div>
   );
 }
-function AnalyticsCenter({projects,tasks,users,clients,today,members}){
+function AnalyticsCenter({
+  const isMobile=useMobile();projects,tasks,users,clients,today,members}){
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
 
@@ -3406,12 +3414,33 @@ export default function App(){
   const prevViewRef         = useRef('dashboard');
   const initialParsed       = useRef(false);
   const initialPath         = useRef(window.location.pathname);
+  const [isMobile,setIM]    = useState(()=>window.innerWidth<768);
+  const [sideOpen,setSO]    = useState(false);
+  useEffect(()=>{const h=()=>setIM(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
   const isAdmin=me?.role==="Admin";
   const isManager=me?.role==="Manager";
   const isTeamLeader=me?.role==="Team Leader";
   const canEdit=isAdmin||isManager||isTeamLeader;
+  // Inject responsive CSS once
+  useEffect(()=>{
+    const s=document.createElement("style");
+    s.id="rds-mobile-css";
+    s.textContent=`
+      * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+      @media (max-width:768px) {
+        table { font-size: 11px !important; }
+        th, td { padding: 7px 8px !important; white-space: nowrap; }
+        .rds-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        input, select, button { font-size: 14px !important; } /* prevent iOS zoom */
+        .rds-hide-mobile { display: none !important; }
+        .rds-flex-col { flex-direction: column !important; }
+      }
+    `;
+    if(!document.getElementById("rds-mobile-css"))document.head.appendChild(s);
+    return()=>{const el=document.getElementById("rds-mobile-css");if(el)el.remove();};
+  },[]);
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
   function toggleTask(id){setSelTasks(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
   function toggleProject(id){setSelProjs(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
@@ -3685,9 +3714,11 @@ export default function App(){
   const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submission List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
+    <MobileCtx.Provider value={isMobile}>
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
+      {isMobile&&sideOpen&&<div onClick={()=>setSO(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:150,backdropFilter:"blur(2px)"}}/>}
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
-      <aside style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
+      <aside style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh",position:isMobile?"fixed":"relative",top:0,left:0,zIndex:isMobile?200:"auto",transform:isMobile?(sideOpen?"translateX(0)":"translateX(-100%)"):"none",transition:"transform 0.25s ease",boxShadow:isMobile&&sideOpen?"4px 0 24px #00000080":"none"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div onClick={()=>logoRef.current.click()} title="Click to upload logo" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
@@ -3699,7 +3730,7 @@ export default function App(){
         </div>
         <div style={{padding:"0 12px",flexShrink:0}}>
           {navs.map(([k,ico,lbl])=>(
-            <button key={k} onClick={()=>navTo(k,k==='list'?activePid:null)} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
+            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);if(isMobile)setSO(false);}} style={sel(view===k&&!(view==="kanban"&&activeClient))}>
               <span style={{fontSize:16}}>{ico}</span>{lbl}
             </button>
           ))}
@@ -3712,9 +3743,9 @@ export default function App(){
             <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
             {canEdit&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
           </div>
-          <button onClick={()=>view==="kanban"?(sap(null),sac(null)):navTo("list",null)} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
+          <button onClick={()=>{if(view==="kanban"){sap(null);sac(null);}else{navTo("list",null);}if(isMobile)setSO(false);}} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
           {visibleProjects.map(p=>(
-            <button key={p.id} onClick={()=>view==="kanban"?(sap(p.id),sac(null)):navTo("list",p.id)} style={sel(activePid===p.id)}>
+            <button key={p.id} onClick={()=>{if(view==="kanban"){sap(p.id);sac(null);}else{navTo("list",p.id);}if(isMobile)setSO(false);}} style={sel(activePid===p.id)}>
               <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
               <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{p.name}</span>
               {canEdit&&activePid===p.id&&(
@@ -3729,7 +3760,7 @@ export default function App(){
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
-                <button key={client} onClick={()=>navTo('clientprojects',null,client)} style={sel(view==="clientprojects"&&activeClient===client)}>
+                <button key={client} onClick={()=>{navTo('clientprojects',null,client);if(isMobile)setSO(false);}} style={sel(view==="clientprojects"&&activeClient===client)}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
                   <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{client}</span>
                 </button>
@@ -3760,9 +3791,11 @@ export default function App(){
           )}
         </div>
       </aside>
-      <main style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <div>
+      <main style={{flex:1,padding:isMobile?12:24,overflow:"auto",height:"100vh",boxSizing:"border-box",marginLeft:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:isMobile?12:24,gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {isMobile&&<button onClick={()=>setSO(v=>!v)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:18,cursor:"pointer",lineHeight:1,flexShrink:0}}>☰</button>}
+            <div>
             {(()=>{
               const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":"User";
               const displayName=isClient?(me.client_name||me.name):me.name;
@@ -3771,15 +3804,16 @@ export default function App(){
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
               const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
-                <h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
-                <p style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
-                <p style={{margin:"2px 0 0",color:C.t3,fontSize:12}}>{dateStr}</p>
+                <h1 style={{margin:0,fontSize:isMobile?17:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
+                {!isMobile&&<p style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>}
+                {!isMobile&&<p style={{margin:"2px 0 0",color:C.t3,fontSize:12}}>{dateStr}</p>}
               </>);
             })()}
+            </div>
           </div>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <NotificationCenter me={me}/>
-            {view!=="dashboard"&&(
+            {view!=="dashboard"&&!isMobile&&(
               <>
                 <input placeholder="Search tasks…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
                 <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
@@ -4024,7 +4058,7 @@ export default function App(){
                 onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
                 onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length;
@@ -4054,7 +4088,7 @@ export default function App(){
                       {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
                     </div>
                     <Pb v={pv} color={p.color} h={7}/>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:14}}>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
                       <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
                         <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
                         <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
@@ -4087,7 +4121,7 @@ export default function App(){
             {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {/* ── 2. Recent Tasks ── */}
             <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
               {dashTasks.slice(-12).reverse().map(t=>{
                 const pj=projects.find(p=>p.id===t.project_id);
                 const clr=pj?.color||C.accent;
@@ -4106,7 +4140,7 @@ export default function App(){
                       {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
                       {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
                       <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                         <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
                         <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
@@ -4143,7 +4177,7 @@ export default function App(){
             {/* ── 4. Overdue Tasks ── */}
             {overdueTasks.length>0&&(<>
               <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:18,marginBottom:28}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(340px,100%),1fr))",gap:18,marginBottom:28}}>
                 {overdueTasks.map(t=>{
                   const pj=projects.find(p=>p.id===t.project_id);
                   const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
@@ -4161,7 +4195,7 @@ export default function App(){
                         {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
                         {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
                       </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
                         <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                           <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
                           <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
@@ -4295,5 +4329,6 @@ export default function App(){
       {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
       {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
     </div>
+    </MobileCtx.Provider>
   );
 }
