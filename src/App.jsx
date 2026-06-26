@@ -920,8 +920,8 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
     </div>
   );
 }
-function UserDashboard({
-  const isMobile=useMobile();me,tasks,projects,clients,today,onEditTask,onViewProject}){
+function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
+  const isMobile=useMobile();
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
   const [statusFilter,ssf]=useState(null);
   const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
@@ -1182,8 +1182,8 @@ function UserDashboard({
     </div>
   );
 }
-function TeamLeaderDashboard({
-  const isMobile=useMobile();me,tasks,projects,today,onEditTask,onViewProject}){
+function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject}){
+  const isMobile=useMobile();
   const matchesMe=v=>userMatchesStr(me,v);
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
   const [statusF,setSF]=useState("All");
@@ -1676,8 +1676,8 @@ function Login({onLogin}){
     </div>
   );
 }
-function ClientDashboard({
-  const isMobile=useMobile();me,tasks,projects,today,onViewProject}){
+function ClientDashboard({me,tasks,projects,today,onViewProject}){
+  const isMobile=useMobile();
   const [statusFilter,ssf]=useState("All");
   const [search,ss]=useState("");
   const [filterProject,sfp]=useState("All");
@@ -1845,8 +1845,8 @@ function ClientDashboard({
   );
 }
 
-function ClientProjectSearch({
-  const isMobile=useMobile();projects,tasks,assignees,today,isAdmin,canEdit,onViewTasks,onEdit,onDelete,onEditTask}){
+function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onViewTasks,onEdit,onDelete,onEditTask}){
+  const isMobile=useMobile();
   const [q,sq]=useState("");
   const [fStatus,sfs]=useState("All");
   const [fAssignee,sfa]=useState("All");
@@ -2724,8 +2724,8 @@ function exportSubmissionList(projects,tasks,today){
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBMISSIONS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-function SubmissionsPage({
-  const isMobile=useMobile();projects,tasks,today,isClient,clientName,onEdit,canEdit}){
+function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
+  const isMobile=useMobile();
   const [period,setPeriod]=useState("this_week");
   const [customFrom,setCustomFrom]=useState(today);
   const [customTo,setCustomTo]=useState(today);
@@ -3076,8 +3076,8 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
     </div>
   );
 }
-function AnalyticsCenter({
-  const isMobile=useMobile();projects,tasks,users,clients,today,members}){
+function AnalyticsCenter({projects,tasks,users,clients,today,members}){
+  const isMobile=useMobile();
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
 
