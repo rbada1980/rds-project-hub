@@ -3651,6 +3651,7 @@ export default function App(){
       window.history.replaceState(window.history.state,'',window.location.pathname);
     }
   },[taskModal,editTask]);
+  const [mobKanCol,setMobKanCol]=useState("Not Yet Started");
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -3814,7 +3815,6 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const [mobKanCol,setMobKanCol]=useState("Not Yet Started");
   const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submission List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
