@@ -2856,9 +2856,9 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       </div>
 
       {/* ── Filter bar ── */}
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 18px",marginBottom:22}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          <span style={{fontSize:12,color:C.t3,fontWeight:700,marginRight:4}}>VIEW:</span>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"14px 18px",marginBottom:isMobile?14:22}}>
+        <div style={{display:"flex",alignItems:"center",gap:isMobile?6:8,flexWrap:"wrap"}}>
+          {!isMobile&&<span style={{fontSize:12,color:C.t3,fontWeight:700,marginRight:4}}>VIEW:</span>}
           {QUICK.map(q=>(
             <button key={q.id} style={btnStyle(period===q.id,q.color)}
               onClick={()=>{setPeriod(q.id);setShowCal(q.id==="custom");}}>
@@ -2908,6 +2908,27 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
             <div style={{fontSize:13}}>Try selecting a different date range above</div>
           </div>
         ):(
+          isMobile?(
+            <div style={{padding:"10px"}}>
+              {periodTasks.map(t=>{
+                const proj=scopedProjects.find(p=>p.id===t.project_id);
+                const isOverdue=t.due_date&&t.due_date<today&&!isDone(t.status);
+                return(
+                  <div key={t.id} style={{background:C.surface,border:`1px solid ${isOverdue?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`3px solid ${statusColor(t.status)}`}}>
+                    <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:4,lineHeight:1.3}}>{t.title}</div>
+                    <div style={{fontSize:12,color:C.accent,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"—"}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                      <span style={{fontSize:10,fontWeight:700,color:statusColor(t.status),background:statusColor(t.status)+"18",padding:"2px 7px",borderRadius:5}}>{t.status}</span>
+                      {t.client_sub_date&&<span style={{fontSize:10,color:C.t3}}>📬 {t.client_sub_date}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t3}}>📅 {t.due_date}{isOverdue?" ⚠":""}</span>}
+                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
+                    </div>
+                    {!isClient&&canEdit&&<button onClick={()=>onEdit&&onEdit(t)} style={{marginTop:8,background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
+                  </div>
+                );
+              })}
+            </div>
+          ):(
           <div className="rds-table-outer" style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
               <thead>
@@ -2920,6 +2941,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               <tbody>{periodTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
             </table>
           </div>
+          )}
         )}
       </div>
     </div>
@@ -3160,13 +3182,13 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     const hasAction=!!(projList&&projList.length>0||(taskList&&taskList.length>0)||(clientList&&clientList.length>0)||(memberList&&memberList.length>0)||onClick);
     return(
     <div onClick={hasAction?handleClick:undefined}
-      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:hasAction?"pointer":"default",transition:"box-shadow .15s"}}
+      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:isMobile?10:14,padding:isMobile?"10px 12px":"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:hasAction?"pointer":"default",transition:"box-shadow .15s"}}
       onMouseEnter={e=>{if(hasAction)e.currentTarget.style.boxShadow=`0 0 0 2px ${color}55`;}}
       onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";}}>
       <div style={{position:"absolute",top:10,right:12,fontSize:32,opacity:0.08,pointerEvents:"none"}}>{icon}</div>
-      <div style={{fontSize:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
-      <div style={{fontSize:11,color:C.t2,fontWeight:700,margin:"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
-      {sub&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
+      <div style={{fontSize:isMobile?22:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
+      <div style={{fontSize:isMobile?9:11,color:C.t2,fontWeight:700,margin:isMobile?"3px 0 2px":"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
+      {sub&&!isMobile&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
       {hasAction&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
     </div>
     );
@@ -3201,7 +3223,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
         {data.map((d,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:8,cursor:d.tasks&&d.tasks.length>0?"pointer":"default"}}
             onClick={d.tasks&&d.tasks.length>0?()=>openModal(d.label,d.tasks):undefined}>
-            <div style={{width:96,fontSize:11,color:C.t2,textAlign:"right",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={d.label}>{d.label}</div>
+            <div style={{width:isMobile?70:96,fontSize:isMobile?10:11,color:C.t2,textAlign:"right",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={d.label}>{d.label}</div>
             <div style={{flex:1,background:C.surface,borderRadius:4,height:20,overflow:"hidden",position:"relative",border:d.tasks&&d.tasks.length>0?`1px solid ${d.color||C.accent}33`:"none"}}>
               <div style={{width:`${d.value/mx*100}%`,height:"100%",background:d.color||C.accent,borderRadius:4,minWidth:d.value?3:0,transition:"width .5s"}}/>
               <span style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",fontSize:11,color:C.t1,fontWeight:700}}>{d.value}</span>
@@ -3223,20 +3245,20 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   return(
     <div>
       {/* ── Header ── */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:26}}>
+      <div style={{display:"flex",flexDirection:isMobile?"column":"row",justifyContent:"space-between",alignItems:isMobile?"flex-start":"flex-start",marginBottom:isMobile?14:26,gap:isMobile?10:0}}>
         <div>
-          <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>Business Analytics & Reporting</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>
+          <h2 style={{margin:0,fontSize:isMobile?16:20,fontWeight:900,color:C.t1}}>📊 Business Analytics</h2>
+          {!isMobile&&<p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>}
         </div>
-        <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3}}>
-          {[["all","All Time"],["quarter","Quarter"],["month","Month"],["week","Week"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+        <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3,flexShrink:0}}>
+          {[["all",isMobile?"All":"All Time"],["quarter",isMobile?"Q":"Quarter"],["month",isMobile?"Mo":"Month"],["week",isMobile?"Wk":"Week"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:isMobile?"5px 10px":"6px 14px",fontSize:isMobile?11:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
           ))}
         </div>
       </div>
 
       {/* ── KPI Row ── */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:22}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(6,1fr)",gap:isMobile?10:16,marginBottom:isMobile?14:22}}>
         <ACard icon="📁" label="Total Projects" value={totalProj} sub={`${activeProj} active · ${compProj} complete`} color={C.blue} projList={projects}/>
         <ACard icon="⚡" label="Active Projects" value={activeProj} sub={`${Math.round(activeProj/Math.max(totalProj,1)*100)}% of portfolio`} color={C.accent} projList={activeProjList}/>
         <ACard icon="✅" label="Completed Projects" value={compProj} sub="fully delivered" color={C.green} projList={compProjList}/>
@@ -3246,7 +3268,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       </div>
 
       {/* ── Row 1: Task Breakdown + Project Health ── */}
-      <div style={{display:"grid",gridTemplateColumns:"1.6fr 1fr",gap:18,marginBottom:18}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.6fr 1fr",gap:isMobile?12:18,marginBottom:isMobile?12:18}}>
         <Panel title="📊 Task Status Breakdown">
           <HBar data={statusBD}/>
           <div style={{marginTop:14,display:"flex",gap:16,flexWrap:"wrap",paddingTop:12,borderTop:`1px solid ${C.border}`}}>
@@ -3278,7 +3300,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       </div>
 
       {/* ── Row 2: Team Performance + Client Portfolio ── */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1.4fr",gap:18,marginBottom:18}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.4fr",gap:isMobile?12:18,marginBottom:isMobile?12:18}}>
         <Panel title="👥 Team Performance">
           <div style={{display:"flex",flexDirection:"column",gap:14,maxHeight:320,overflowY:"auto"}}>
             {teamPerf.map((u,i)=>(
@@ -3343,7 +3365,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       </div>
 
       {/* ── Row 3: Priority + Overdue Risk ── */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:4}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?12:18,marginBottom:4}}>
         <Panel title="🎯 Priority Distribution">
           <div style={{display:"flex",alignItems:"center",gap:24}}>
             <Donut segs={priData} label={tasks.length} sub="tasks" size={140} sw={22}/>
