@@ -707,30 +707,29 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
 }
 function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
-  const isMobile=useMobile();
-  const today=new Date().toISOString().slice(0,10);
-  const isOverdue=task.due_date&&task.due_date<today&&!isDone(task.status);
   return(
-    <div draggable={!readonly&&!onSelect&&!isMobile} onDragStart={e=>{if(onSelect)return;sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
+    <div draggable={!readonly&&!onSelect} onDragStart={e=>{if(onSelect)return;sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
       onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-      style={{background:selected?C.accent+"18":C.card,border:`1px solid ${selected?C.accent:isOverdue?C.red+"55":h?C.border:C.surface}`,borderRadius:10,padding:isMobile?"14px 14px":"12px 14px",marginBottom:isMobile?10:8,cursor:"default",opacity:d?.4:1,boxShadow:h?"0 4px 16px #00000050":"none",borderLeft:`3px solid ${selected?C.accent:isOverdue?C.red:project?.color||C.accent}`,transition:"all .15s",position:"relative"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-        <p style={{margin:0,color:C.t1,fontSize:isMobile?13:13,fontWeight:700,flex:1,lineHeight:1.4}}>{task.title}</p>
-        {onSelect
-          ?<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{width:20,height:20,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>
-          :<div style={{display:"flex",gap:4,opacity:isMobile?1:h?1:0,transition:"opacity .15s",flexShrink:0}}>
-            {!readonly&&<button onClick={e=>{e.stopPropagation();onEdit(task);}} style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:6,padding:isMobile?"5px 10px":"3px 7px",cursor:"pointer",fontSize:isMobile?12:11,color:C.accent,fontFamily:"inherit",fontWeight:700}}>✏️{isMobile?" Edit":""}</button>}
-            {!readonly&&canDelete&&!isMobile&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
-          </div>
-        }
+      style={{background:selected?C.accent+"18":C.card,border:`1px solid ${selected?C.accent:h?C.border:C.surface}`,borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:"default",opacity:d?.4:1,boxShadow:h?"0 4px 16px #00000050":"none",borderLeft:`3px solid ${selected?C.accent:project?.color||C.accent}`,transition:"all .15s",position:"relative"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4,paddingRight:onSelect?26:0}}>{task.title}</p>
+        {onSelect?<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{position:"absolute",top:12,right:12,width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>
+        :<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
+          {!readonly&&<IBtn icon="✏️" onClick={()=>onEdit(task)}/>}
+          {!readonly&&canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
+        </div>}
       </div>
-      <p style={{margin:"5px 0 0",fontSize:11,color:C.teal,fontWeight:600}}>📁 {project?.name||"—"}</p>
-      {task.client&&<p style={{margin:"2px 0 0",fontSize:11,color:C.t2}}>🏢 {task.client}</p>}
-      {task.assignee&&<p style={{margin:"2px 0 0",fontSize:11,color:C.t2}}>👤 {task.assignee}</p>}
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8,alignItems:"center"}}>
-        <Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg>
+      <p style={{margin:"4px 0 0",fontSize:11,color:C.teal}}>📁 {project?.name}</p>
+      {task.client&&<p style={{margin:"2px 0 0",fontSize:11,color:C.t2}}>👤 {task.client}</p>}
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>
         {(task.tags||[]).map(t=><span key={t} style={{background:C.border,color:C.t2,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{t}</span>)}
-        {task.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t3,fontWeight:isOverdue?700:400,marginLeft:"auto"}}>{isOverdue?"⚠ ":""}{task.due_date}</span>}
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
+        <Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {task.due_date&&<span style={{fontSize:10,color:C.t3}}>{task.due_date}</span>}
+          {task.assignee?<Av name={task.assignee} size={22}/>:<span style={{fontSize:10,color:C.yellow}}>Unassigned</span>}
+        </div>
       </div>
       {!readonly&&!onSelect&&<MobileKMove task={task} onDrop={onDrop}/>}
     </div>
@@ -3190,7 +3189,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       <div style={{fontSize:isMobile?22:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
       <div style={{fontSize:isMobile?9:11,color:C.t2,fontWeight:700,margin:isMobile?"3px 0 2px":"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
       {sub&&!isMobile&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
-      {hasAction&&!isMobile&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
+      {hasAction&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
     </div>
     );
   };
@@ -3328,29 +3327,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
           </div>
         </Panel>
         <Panel title="🏢 Client Portfolio">
-          {isMobile?(
-            <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:340,overflowY:"auto"}}>
-              {clientPortfolio.map(c=>(
-                <div key={c.name} onClick={()=>openModal(`${c.name} — All Tasks`,c.allTasks)}
-                  style={{background:C.surface,borderRadius:10,padding:"10px 12px",cursor:"pointer",border:`1px solid ${C.border}`}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <span style={{fontSize:13,fontWeight:700,color:C.accent,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
-                    <span style={{fontSize:14,fontWeight:900,color:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,marginLeft:8}}>{c.pct}%</span>
-                  </div>
-                  <div style={{height:4,background:C.card,borderRadius:2,overflow:"hidden",marginBottom:8}}>
-                    <div style={{height:"100%",width:`${c.pct}%`,background:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,borderRadius:2}}/>
-                  </div>
-                  <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                    <span style={{fontSize:11,color:C.teal}}>📁 {c.projects} proj</span>
-                    <span style={{fontSize:11,color:C.t2}}>📋 {c.tasks} tasks</span>
-                    <span style={{fontSize:11,color:C.green}}>✅ {c.done} done</span>
-                    {c.overdue>0&&<span onClick={e=>{e.stopPropagation();openModal(`${c.name} — Overdue`,c.ovTasks);}} style={{fontSize:11,color:C.red,fontWeight:700,cursor:"pointer"}}>⚠ {c.overdue} overdue</span>}
-                  </div>
-                </div>
-              ))}
-              {clientPortfolio.length===0&&<p style={{color:C.t3,fontSize:13,margin:0}}>No client data</p>}
-            </div>
-          ):(
           <div style={{overflowX:"auto",maxHeight:340,overflowY:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead style={{position:"sticky",top:0}}>
@@ -3385,7 +3361,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
               </tbody>
             </table>
           </div>
-          )}
         </Panel>
       </div>
 
@@ -3494,7 +3469,6 @@ export default function App(){
     s.textContent=`
       *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
       body,html{overflow:hidden;}
-      .rds-sidebar{transition:transform 0.25s ease;will-change:transform;}
       @media(max-width:768px){
         .rds-sidebar{display:none!important;}
         .rds-main{padding:8px!important;padding-bottom:80px!important;}
@@ -3503,9 +3477,8 @@ export default function App(){
         .rds-topbar-right{flex-shrink:0!important;display:flex!important;gap:4px!important;align-items:center!important;justify-content:flex-end!important;}
         .rds-topbar-filters{display:none!important;}
         .rds-mob-only{display:none!important;}
-        h1.rds-greeting{font-size:14px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
-        .rds-kanban-wrap{display:flex!important;gap:12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory;padding-left:4px!important;padding-right:4px!important;}
-        .rds-kcol{min-width:calc(100vw - 40px)!important;flex-shrink:0!important;scroll-snap-align:start;border-radius:12px!important;}
+        .rds-kanban-wrap{display:flex!important;gap:10px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory!important;padding-left:2px!important;padding-right:2px!important;}
+        .rds-kcol{min-width:calc(100vw - 32px)!important;flex-shrink:0!important;scroll-snap-align:start!important;border-radius:12px!important;}
         .rds-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-table-outer{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
@@ -3516,6 +3489,7 @@ export default function App(){
         .rds-modal-inner{width:96vw!important;max-width:96vw!important;padding:14px!important;}
         .rds-bottom-nav{display:flex!important;}
         .rds-desktop-nav{display:none!important;}
+        h1.rds-greeting{font-size:13px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
         .rds-export-btn span.rds-export-label{display:none;}
         .rds-export-btn{padding:7px 9px!important;font-size:13px!important;}
         .rds-new-task-btn{padding:7px 10px!important;font-size:12px!important;white-space:nowrap!important;}
@@ -3524,12 +3498,10 @@ export default function App(){
         .rds-dash-banner-avatar{display:none!important;}
         .rds-dash-banner-stats{width:100%!important;gap:8px!important;}
         .rds-dash-banner-stats > div{flex:1!important;min-width:0!important;padding:8px 10px!important;}
-        .rds-new-task-btn{padding:8px 12px!important;font-size:12px!important;}
       }
       @media(min-width:769px){
         .rds-bottom-nav{display:none!important;}
         .rds-desktop-nav{display:flex!important;}
-        .rds-sidebar{position:relative!important;transform:none!important;box-shadow:none!important;}
         .rds-mob-only{display:none!important;}
         .rds-topbar-filters{display:contents!important;}
       }
@@ -4141,7 +4113,7 @@ export default function App(){
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
                         {/* ── Stat Cards ── */}
-            <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
               <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
               <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
@@ -4179,7 +4151,7 @@ export default function App(){
                         <span style={{fontSize:11,color:C.green}}>✅ {pd}</span>
                         <span style={{fontSize:11,color:C.blue}}>🔄 {pip}</span>
                         {pov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700}}>⚠ {pov} overdue</span>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} tasks</span>
+                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} tasks →</span>
                       </div>
                     </div>
                   );
@@ -4415,4 +4387,71 @@ export default function App(){
               <ClientProjectSearch
                 projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
                 today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list
+                onViewTasks={pid=>navTo('list',pid)}
+                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
+                onEditTask={t=>{set(t);stm(true);}}
+              />
+            </div>
+          );
+        })()}
+        {view==="list"&&(
+          <div>
+          {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
+              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
+              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
+              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
+              }/>
+          </div>}
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr style={{background:C.surface}}>
+                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
+                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
+                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
+                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
+                  </div>
+                </th>}
+                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
+              </tr></thead>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
+            </table>
+          </div>
+          </div>
+        )}
+      </main>
+      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
+      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
+      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
+      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {taskModal&&(
+        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
+          {(canEdit||!editTask)?
+            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
+            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
+          }
+        </Modal>
+      )}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
+      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
+    </div>
+    {/* ── Mobile bottom nav ── */}
+    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
+      {navs.map(([k,ico,lbl])=>(
+        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+          <span style={{fontSize:20}}>{ico}</span>
+          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
+        </button>
+      ))}
+      <button onClick={()=>sMenu(v=>!v)}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:C.t3,fontFamily:"inherit"}}>
+        <Av name={me.name} size={22}/>
+        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Me</span>
+      </button>
+    </nav>
+    </MobileCtx.Provider>
+  );
+}
