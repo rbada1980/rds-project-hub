@@ -1471,11 +1471,45 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
   );
 }
 function ClientOverview({projects,tasks,onSelectClient,clients}){
+  const isMobile=useMobile();
   const clientNames=[...new Set(projects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c));
   const today=new Date().toISOString().slice(0,10);
   return(
     <div style={{marginBottom:32}}>
-      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
+      <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
+      {isMobile?(
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {clientNames.map(client=>{
+            const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
+            const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
+            const cDone=cTasks.filter(t=>isDone(t.status)).length;
+            const cIP=cTasks.filter(t=>t.status==="In Progress").length;
+            const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+            const pct=cTasks.length?Math.round(cDone/cTasks.length*100):0;
+            const hue=client.charCodeAt(0)*23%360;
+            const clr=`hsl(${hue},60%,50%)`;
+            return(
+              <div key={client} onClick={()=>onSelectClient(client)}
+                style={{background:C.card,border:`1px solid ${cOv>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${clr}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{client}</span>
+                  <span style={{fontSize:13,fontWeight:800,color:clr,flexShrink:0}}>{pct}%</span>
+                </div>
+                <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${pct}%`,background:clr,borderRadius:2}}/>
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                  <span style={{fontSize:11,color:C.t3}}>📁 {cProjects.length} proj</span>
+                  <span style={{fontSize:11,color:C.green}}>✅ {cDone}</span>
+                  <span style={{fontSize:11,color:C.blue}}>🔄 {cIP}</span>
+                  {cOv>0&&<span style={{fontSize:11,color:C.red,fontWeight:700}}>⚠ {cOv} overdue</span>}
+                  <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{cTasks.length} tasks →</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ):(
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18}}>
         {clientNames.map(client=>{
           const cProjects=projects.filter(p=>(p.client||"Unassigned")===client);
@@ -1538,6 +1572,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
           );
         })}
       </div>
+      )}
     </div>
   );
 }
@@ -3236,8 +3271,8 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   };
 
   const Panel=({title,children,style={}})=>(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:22,...style}}>
-      <h3 style={{margin:"0 0 16px",fontSize:12,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".08em"}}>{title}</h3>
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?14:22,overflow:"hidden",...style}}>
+      <h3 style={{margin:`0 0 ${isMobile?10:16}px`,fontSize:12,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".08em"}}>{title}</h3>
       {children}
     </div>
   );
@@ -4113,7 +4148,7 @@ export default function App(){
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
                         {/* ── Stat Cards ── */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
+            <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
               <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
               <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
@@ -4158,7 +4193,7 @@ export default function App(){
                 })}
               </div>
             ):(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
               {accessibleProjects.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length;
@@ -4218,11 +4253,34 @@ export default function App(){
                 );
               })}
             </div>
+
             )}
-            {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
+                        {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {/* ── 2. Recent Tasks ── */}
-            <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
+            <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Recent Tasks</h2>
+            {isMobile&&<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+              {dashTasks.slice(-12).reverse().map(t=>{
+                const pj=projects.find(p=>p.id===t.project_id);
+                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                return(
+                  <div key={t.id} onClick={()=>{set(t);stm(true);}}
+                    style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"11px 13px",cursor:"pointer",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6,marginBottom:5}}>
+                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
+                      <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),flexShrink:0}}>{t.status}</span>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                      {pj&&<span style={{fontSize:11,color:C.teal}}>📁 {pj.name}</span>}
+                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
+                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
+                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ {t.checker}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,marginLeft:"auto"}}>{isOv?"⚠ ":""}{t.due_date}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>}
+            {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
               {dashTasks.slice(-12).reverse().map(t=>{
                 const pj=projects.find(p=>p.id===t.project_id);
                 const clr=pj?.color||C.accent;
@@ -4272,7 +4330,7 @@ export default function App(){
                   </div>
                 );
               })}
-            </div>
+            </div>}
             {/* ── 3. Client-wise Overview ── */}
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
             {/* ── 4. Overdue Tasks ── */}
@@ -4396,13 +4454,40 @@ export default function App(){
         })()}
         {view==="list"&&(
           <div>
-          {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
             <GmailSelect selectedCount={selTasks.size} total={filtered.length}
               onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
               onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
               extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
               }/>
           </div>}
+          {isMobile?(
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
+                const proj=projects.find(p=>p.id===t.project_id);
+                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                return(
+                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
+                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
+                    </div>
+                    {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
+                      {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
+                    </div>
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
+                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
+                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ):(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.surface}}>
@@ -4417,6 +4502,7 @@ export default function App(){
               <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
             </table>
           </div>
+          )}
           </div>
         )}
       </main>
@@ -4437,6 +4523,27 @@ export default function App(){
       {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
       {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
     </div>
+    {/* ── Mobile ME bottom sheet ── */}
+    {isMobile&&uMenu&&(
+      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
+        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
+          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+            <Av name={me.name} size={44}/>
+            <div>
+              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
+              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
+            </div>
+          </div>
+          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
+            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Users</button>}
+            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
+            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
+            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
+          </div>
+        </div>
+      </div>
+    )}
     {/* ── Mobile bottom nav ── */}
     <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
       {navs.map(([k,ico,lbl])=>(
@@ -4447,9 +4554,9 @@ export default function App(){
         </button>
       ))}
       <button onClick={()=>sMenu(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:C.t3,fontFamily:"inherit"}}>
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
         <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Me</span>
+        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
       </button>
     </nav>
     </MobileCtx.Provider>
