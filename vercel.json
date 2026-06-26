@@ -1,5 +1,15 @@
 {
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-daily",
+      "schedule": "30 19 * * 0-5"
+    },
+    {
+      "path": "/api/cron-weekly",
+      "schedule": "30 19 * * 0"
+    }
   ]
 }
