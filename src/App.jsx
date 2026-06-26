@@ -1235,9 +1235,9 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
   return(
     <div>
       {/* Header */}
-      <div style={{background:C.card,border:`1px solid ${"#8b5cf6"}44`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #8b5cf6`}}>
-        <div style={{width:52,height:52,borderRadius:14,background:"#8b5cf622",border:`2px solid #8b5cf644`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"#8b5cf6"}}>{(me.name[0]||"T").toUpperCase()}</div>
-        <div style={{flex:1}}>
+      <div className="rds-dash-banner" style={{background:C.card,border:`1px solid ${"#8b5cf6"}44`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #8b5cf6`}}>
+        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:"#8b5cf622",border:`2px solid #8b5cf644`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"#8b5cf6"}}>{(me.name[0]||"T").toUpperCase()}</div>
+        <div style={{flex:1,minWidth:0}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>Team Leader Dashboard</h2>
           <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · Team Leader · Monitoring {teamMembers.length} team member{teamMembers.length!==1?"s":""}</p>
         </div>
@@ -3451,9 +3451,13 @@ export default function App(){
       @media(max-width:768px){
         .rds-sidebar{position:fixed!important;top:0;left:0;height:100vh!important;z-index:200;transform:translateX(-100%);box-shadow:none;}
         .rds-sidebar.open{transform:translateX(0)!important;box-shadow:4px 0 32px #00000080;}
-        .rds-main{padding:10px!important;}
-        .rds-topbar{flex-wrap:wrap;gap:8px!important;margin-bottom:12px!important;}
-        .rds-kanban-wrap{display:flex!important;gap:12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory;}
+        .rds-main{padding:8px!important;}
+        .rds-topbar{flex-wrap:wrap;gap:6px!important;margin-bottom:10px!important;}
+        .rds-topbar-left{flex:1;min-width:0;}
+        .rds-topbar-right{width:100%!important;justify-content:flex-start!important;gap:6px!important;flex-wrap:wrap!important;}
+        .rds-topbar-filters{display:none!important;}
+        .rds-mob-only{display:flex!important;}
+        .rds-kanban-wrap{display:flex!important;gap:10px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory;}
         .rds-kcol{min-width:260px!important;flex-shrink:0!important;scroll-snap-align:start;}
         .rds-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
@@ -3462,17 +3466,24 @@ export default function App(){
         .rds-hide-mob{display:none!important;}
         .rds-form-row{flex-direction:column!important;}
         input,select,textarea{font-size:16px!important;}
-        .rds-modal-inner{width:96vw!important;max-width:96vw!important;padding:16px!important;}
+        .rds-modal-inner{width:96vw!important;max-width:96vw!important;padding:14px!important;}
         .rds-bottom-nav{display:flex!important;}
         .rds-desktop-nav{display:none!important;}
-        h1.rds-greeting{font-size:17px!important;}
+        h1.rds-greeting{font-size:16px!important;}
         .rds-export-btn span.rds-export-label{display:none;}
         .rds-page-sub{display:none!important;}
+        .rds-dash-banner{flex-wrap:wrap!important;padding:14px 16px!important;gap:10px!important;}
+        .rds-dash-banner-avatar{display:none!important;}
+        .rds-dash-banner-stats{width:100%!important;gap:8px!important;}
+        .rds-dash-banner-stats > div{flex:1!important;min-width:0!important;padding:8px 10px!important;}
+        .rds-new-task-btn{padding:8px 12px!important;font-size:12px!important;}
       }
       @media(min-width:769px){
         .rds-bottom-nav{display:none!important;}
         .rds-desktop-nav{display:flex!important;}
         .rds-sidebar{position:relative!important;transform:none!important;box-shadow:none!important;}
+        .rds-mob-only{display:none!important;}
+        .rds-topbar-filters{display:contents!important;}
       }
     `;
     if(!document.getElementById("rds-mobile-css"))document.head.appendChild(s);
@@ -3830,8 +3841,8 @@ export default function App(){
       </aside>
       <main className="rds-main" style={{flex:1,padding:24,overflow:"auto",height:"100vh",boxSizing:"border-box",paddingBottom:isMobile?80:24}}>
         <div className="rds-topbar" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,gap:8,flexWrap:"wrap"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button onClick={()=>setSO(v=>!v)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,display:"flex",alignItems:"center",gap:6,fontFamily:"inherit",fontWeight:700,fontSize:13}}><span style={{fontSize:18}}>☰</span><span style={{display:"none"}} className="rds-export-label">Projects</span></button>
+          <div className="rds-topbar-left" style={{display:"flex",alignItems:"center",gap:10}}>
+            <button className="rds-mob-only" onClick={()=>setSO(v=>!v)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,display:"flex",alignItems:"center",gap:6,fontFamily:"inherit",fontWeight:700,fontSize:13}}><span style={{fontSize:18}}>☰</span><span style={{display:"none"}} className="rds-export-label">Projects</span></button>
             <div>
             {(()=>{
               const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":"User";
@@ -3848,11 +3859,11 @@ export default function App(){
             })()}
             </div>
           </div>
-          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <NotificationCenter me={me}/>
-            {view!=="dashboard"&&(
+            <span className="rds-topbar-filters" style={{display:"contents"}}>{view!=="dashboard"&&(
               <>
-                <input placeholder="🔍 Search…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",width:isMobile?110:150,fontFamily:"inherit"}}/>
+                <input placeholder="🔍 Search…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
                 <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Status</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
@@ -3862,7 +3873,7 @@ export default function App(){
                   {members.map(m=><option key={m} value={m}>{m}</option>)}
                 </select>}
               </>
-            )}
+            )}</span>
             {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button className="rds-export-btn" onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export</span></button>);})()}
             {!isClient&&<div ref={exportRef} style={{position:"relative"}}>
               <button className="rds-export-btn" onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export ▾</span></button>
@@ -3992,7 +4003,7 @@ export default function App(){
               })()}
             </div>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
-            {canEdit&&<button onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
+            {canEdit&&<button className="rds-new-task-btn" onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
         <Breadcrumb
@@ -4027,13 +4038,13 @@ export default function App(){
           <>
             {/* ── Role Banner ── */}
             {isAdmin&&(
-              <div style={{background:`linear-gradient(135deg,${C.card} 0%,${C.accent}11 100%)`,border:`1px solid ${C.accent}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid ${C.accent}`}}>
-                <div style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.accent,fontWeight:800}}>{(me.name[0]||"A").toUpperCase()}</div>
-                <div style={{flex:1}}>
+              <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.accent}11 100%)`,border:`1px solid ${C.accent}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid ${C.accent}`}}>
+                <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.accent,fontWeight:800}}>{(me.name[0]||"A").toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
                   <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>System Administration Dashboard</h2>
                   <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Full access to all projects, users, and clients</p>
                 </div>
-                <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                   {[{l:"Users",v:users.length,c:C.accent},{l:"Clients",v:clients.length,c:C.teal},{l:"Projects",v:accessibleProjects.length,c:C.blue},{l:"Health",v:(accessibleProjects.length?Math.round(accessibleProjects.filter(p=>prog(p.id)>0).length/accessibleProjects.length*100):0)+"%",c:C.green}].map(s=>(
                     <div key={s.l} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64}}>
                       <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
@@ -4044,13 +4055,13 @@ export default function App(){
               </div>
             )}
             {!isAdmin&&isManager&&(
-              <div style={{background:`linear-gradient(135deg,${C.card} 0%,${"#f59e0b"}11 100%)`,border:`1px solid ${"#f59e0b"}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #f59e0b`}}>
-                <div style={{width:52,height:52,borderRadius:14,background:"#f59e0b22",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#f59e0b",fontWeight:800}}>{(me.name[0]||"M").toUpperCase()}</div>
-                <div style={{flex:1}}>
+              <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${"#f59e0b"}11 100%)`,border:`1px solid ${"#f59e0b"}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #f59e0b`}}>
+                <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:"#f59e0b22",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#f59e0b",fontWeight:800}}>{(me.name[0]||"M").toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
                   <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>Project Management Dashboard</h2>
                   <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Managing {accessibleProjects.length} active project{accessibleProjects.length!==1?"s":""}</p>
                 </div>
-                <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                   {[{l:"Projects",v:accessibleProjects.length,c:"#f59e0b"},{l:"Team Size",v:[...new Set(dashTasks.map(t=>t.assignee).filter(Boolean))].length,c:C.blue},{l:"In Progress",v:dashTasks.filter(t=>t.status==="In Progress").length,c:C.accent},{l:"Completion",v:(dashTasks.length?Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100):0)+"%",c:C.green}].map(s=>(
                     <div key={s.l} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64}}>
                       <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
