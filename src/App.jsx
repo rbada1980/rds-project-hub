@@ -3189,7 +3189,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       <div style={{fontSize:isMobile?22:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
       <div style={{fontSize:isMobile?9:11,color:C.t2,fontWeight:700,margin:isMobile?"3px 0 2px":"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
       {sub&&!isMobile&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
-      {hasAction&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
+      {hasAction&&!isMobile&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
     </div>
     );
   };
@@ -3327,6 +3327,29 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
           </div>
         </Panel>
         <Panel title="🏢 Client Portfolio">
+          {isMobile?(
+            <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:340,overflowY:"auto"}}>
+              {clientPortfolio.map(c=>(
+                <div key={c.name} onClick={()=>openModal(`${c.name} — All Tasks`,c.allTasks)}
+                  style={{background:C.surface,borderRadius:10,padding:"10px 12px",cursor:"pointer",border:`1px solid ${C.border}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <span style={{fontSize:13,fontWeight:700,color:C.accent,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                    <span style={{fontSize:14,fontWeight:900,color:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,marginLeft:8}}>{c.pct}%</span>
+                  </div>
+                  <div style={{height:4,background:C.card,borderRadius:2,overflow:"hidden",marginBottom:8}}>
+                    <div style={{height:"100%",width:`${c.pct}%`,background:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,borderRadius:2}}/>
+                  </div>
+                  <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                    <span style={{fontSize:11,color:C.teal}}>📁 {c.projects} proj</span>
+                    <span style={{fontSize:11,color:C.t2}}>📋 {c.tasks} tasks</span>
+                    <span style={{fontSize:11,color:C.green}}>✅ {c.done} done</span>
+                    {c.overdue>0&&<span onClick={e=>{e.stopPropagation();openModal(`${c.name} — Overdue`,c.ovTasks);}} style={{fontSize:11,color:C.red,fontWeight:700,cursor:"pointer"}}>⚠ {c.overdue} overdue</span>}
+                  </div>
+                </div>
+              ))}
+              {clientPortfolio.length===0&&<p style={{color:C.t3,fontSize:13,margin:0}}>No client data</p>}
+            </div>
+          ):(
           <div style={{overflowX:"auto",maxHeight:340,overflowY:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead style={{position:"sticky",top:0}}>
@@ -3361,6 +3384,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
               </tbody>
             </table>
           </div>
+          )}
         </Panel>
       </div>
 
@@ -3479,8 +3503,8 @@ export default function App(){
         .rds-topbar-right{width:100%!important;justify-content:flex-start!important;gap:6px!important;flex-wrap:wrap!important;}
         .rds-topbar-filters{display:none!important;}
         .rds-mob-only{display:flex!important;}
-        .rds-kanban-wrap{display:flex!important;gap:10px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory;}
-        .rds-kcol{min-width:260px!important;flex-shrink:0!important;scroll-snap-align:start;}
+        .rds-kanban-wrap{display:flex!important;gap:12px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:16px!important;scroll-snap-type:x mandatory;padding-left:4px!important;padding-right:4px!important;}
+        .rds-kcol{min-width:calc(100vw - 40px)!important;flex-shrink:0!important;scroll-snap-align:start;border-radius:12px!important;}
         .rds-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-table-outer{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
