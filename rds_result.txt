@@ -1,0 +1,12 @@
+﻿=== schtasks create ===
+SUCCESS: The scheduled task "RDS_DailySubmissionDigest" has successfully been created.
+ExitCode: 0
+=== schtasks query ===
+
+Folder: \
+HostName:      DESKTOP-NBTLEF7
+TaskName:      \RDS_DailySubmissionDigest
+Next Run Time: 27-06-2026 01:00:00
+Status:        Ready
+Logon Mode:    Interactive only
+=== done ===
