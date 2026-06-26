@@ -2941,7 +2941,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               <tbody>{periodTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
             </table>
           </div>
-          )}
+          )
         )}
       </div>
     </div>
