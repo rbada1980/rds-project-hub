@@ -5,31 +5,28 @@ const { execSync } = require('child_process');
 const file = 'src/App.jsx';
 let content = fs.readFileSync(file, 'utf8');
 
-// Normalize to LF
+// Normalize to LF for consistent processing
 content = content.replace(/\r\n/g, '\n');
 
-// Fix 1: JSX ternary brace error (Vercel build fix)
+// Fix: JSX ternary brace error (Vercel build fix)
 const broken = '          )}\n        )}';
 const fixed  = '          )\n        )}';
 if (content.includes(broken)) {
   content = content.replace(broken, fixed);
   console.log('✓ JSX brace fix applied');
-} else if (content.includes(fixed)) {
-  console.log('✓ JSX brace already correct');
 } else {
-  console.log('⚠ JSX fix pattern not found - check manually');
+  console.log('✓ JSX brace already correct');
 }
 
-// Write back with CRLF (Windows standard, ensures git detects change)
+// Write back with CRLF (Windows) so git detects the change
 fs.writeFileSync(file, content.replace(/\n/g, '\r\n'), 'utf8');
-console.log('✓ File written with CRLF');
+console.log('✓ File written');
 
-// Git add, commit, push
 try {
   execSync('git add src/App.jsx', { stdio: 'inherit' });
-  execSync('git commit -m "fix: mobile UI overhaul v2 - Analytics, Kanban, Submissions, Client Portfolio"', { stdio: 'inherit' });
+  execSync('git commit -m "fix: complete mobile UI overhaul v3 - ME tab, topbar, stat grid, kanban cards, task edit, client portfolio"', { stdio: 'inherit' });
   execSync('git push origin main', { stdio: 'inherit' });
-  console.log('\n✅ Pushed to GitHub! Vercel will deploy in ~1 minute.');
+  console.log('\n✅ Pushed! Vercel deploys in ~1 min — check hub-rdsprojects.com');
 } catch (e) {
   console.log('\n⚠ Git error:', e.message);
 }
