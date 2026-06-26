@@ -3224,7 +3224,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       <div style={{fontSize:isMobile?22:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
       <div style={{fontSize:isMobile?9:11,color:C.t2,fontWeight:700,margin:isMobile?"3px 0 2px":"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
       {sub&&!isMobile&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
-      {hasAction&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
+      {hasAction&&!isMobile&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
     </div>
     );
   };
@@ -3814,6 +3814,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
+  const [mobKanCol,setMobKanCol]=useState("Not Yet Started");
   const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"],["submissions","📬","Submission List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
@@ -4163,7 +4164,7 @@ export default function App(){
                 onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
                 onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
             </div>
-            {isMobile&&<input placeholder="🔍 Search projects…" value={searchProj} onChange={e=>ssp(e.target.value)} style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px",color:C.t1,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",marginBottom:12}}/>}
+
             {isMobile?(
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
                 {accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())).map(p=>{
@@ -4412,13 +4413,54 @@ export default function App(){
                 onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
                 extraOptions={ALL_STATUSES.filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))}/>
             </div>}
-            {isMobile&&<div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:4,WebkitOverflowScrolling:"touch"}}>
-              {kanbanCols.map(col=>{const cnt=filtered.filter(t=>t.status===col).length;return(
-                <div key={col} style={{flexShrink:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:20,padding:"5px 12px",fontSize:11,fontWeight:700,color:C.t2,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
-                  {col}<span style={{background:C.accent+"22",color:C.accent,borderRadius:8,padding:"1px 6px",fontSize:10}}>{cnt}</span>
+            {isMobile?(
+              <div>
+                {/* Mobile kanban: tab strip + task list for selected column */}
+                <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:10,marginBottom:12,WebkitOverflowScrolling:"touch"}}>
+                  {kanbanCols.map(col=>{
+                    const cnt=filtered.filter(t=>t.status===col).length;
+                    const active=mobKanCol===col;
+                    return(
+                      <button key={col} onClick={()=>setMobKanCol(col)}
+                        style={{flexShrink:0,background:active?C.accent:C.card,border:`1px solid ${active?C.accent:C.border}`,borderRadius:20,padding:"7px 14px",fontSize:11,fontWeight:700,color:active?"#fff":C.t2,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                        {col}
+                        <span style={{background:active?"#ffffff33":C.accent+"22",color:active?"#fff":C.accent,borderRadius:8,padding:"1px 6px",fontSize:10,fontWeight:700}}>{cnt}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              );})}
-            </div>}
+                {/* Task list for active column */}
+                {(()=>{
+                  const colTasks=filtered.filter(t=>t.status===mobKanCol);
+                  if(colTasks.length===0)return(<div style={{textAlign:"center",padding:"40px 16px",color:C.t3,fontSize:13}}>No tasks in "{mobKanCol}"</div>);
+                  return(
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {colTasks.map(t=>{
+                        const proj=projects.find(p=>p.id===t.project_id);
+                        const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                        const canEditTask=canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker));
+                        return(
+                          <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                              <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
+                              {canEditTask&&<button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>}
+                            </div>
+                            {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                              {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
+                              {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
+                              {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
+                              {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {t.due_date}</span>}
+                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {t.due_date}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            ):(
             <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
               {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
                 onEdit={t=>{set(t);stm(true);}}
@@ -4430,6 +4472,7 @@ export default function App(){
                 onToggleTask={canEdit?toggleTask:null}
               />))}
             </div>
+            )}
           </>
         )}
         {view=="clientprojects"&&canEdit&&(()=>{
