@@ -962,9 +962,9 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   return(
     <div>
       {/* Header */}
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
-        <div style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.accent}}>{me.name[0]}</div>
-        <div style={{flex:1}}>
+      <div className="rds-dash-banner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
+        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.accent}}>{me.name[0]}</div>
+        <div style={{flex:1,minWidth:0}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>My Dashboard</h2>
           <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · {me.role} · {total} task{total!==1?"s":""} assigned</p>
         </div>
@@ -1727,9 +1727,9 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   return(
     <div>
       {/* Header */}
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
-        <div style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
-        <div style={{flex:1}}>
+      <div className="rds-dash-banner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
+        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
+        <div style={{flex:1,minWidth:0}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>{me.client_name||me.name}</h2>
           <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>Client Portal · {myProjects.length} projects · {total} tasks</p>
         </div>
