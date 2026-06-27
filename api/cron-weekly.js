@@ -181,7 +181,7 @@ export default async function handler(req, res) {
     const [allTasks, projects, users] = await Promise.all([
       supaFetch(`/rest/v1/tasks?or=(and(client_sub_date.gte.${monStr},client_sub_date.lte.${sunStr}),and(due_date.gte.${monStr},due_date.lte.${sunStr}))&select=title,client,status,assignee,due_date,client_sub_date,project_id&order=client.asc,client_sub_date.asc`),
       supaFetch(`/rest/v1/projects?select=id,name,client`),
-      supaFetch(`/rest/v1/users?select=name,email,role,client_name&not.email.is.null`)
+      supaFetch(`/rest/v1/users?select=name,email,role,client_name`)
     ]);
 
     const pm = {};
@@ -211,31 +211,9 @@ export default async function handler(req, res) {
       results.push({ email: u.email, name: u.name, tasks: tasks.length, status });
     }
 
-    // Clients — filtered to their own tasks
-    for (const u of (users || []).filter(u => u.role === "Client" && u.email?.trim() && u.client_name)) {
-      const cn = (u.client_name || "").toLowerCase();
-      const ct = tasks.filter(t =>
-        (t.client || "").toLowerCase() === cn ||
-        (pm[t.project_id]?.client || "").toLowerCase() === cn
-      );
-      if (!ct.length) continue;
-      const html = buildEmail(u.name, ct, pm, weekLabel, monLabel, sunLabel);
-      const status = await postJson(NOTIFY_URL, {
-        type: "submission_digest",
-        data: {
-          taskName: "Weekly Submission Report",
-          projectName: `${ct.length} submission(s) this week`,
-          completedBy: "RDS TechServ",
-          completedAt: weekLabel,
-          recipientEmail: u.email,
-          subject: `📊 RDS Weekly Submission Report — ${weekLabel}`,
-          htmlBody: html
-        }
-      });
-      results.push({ email: u.email, name: u.name, tasks: ct.length, status });
-    }
+    // NOTE: Clients intentionally excluded from weekly digest
 
-    console.log(`Weekly digest sent: ${results.length} recipients, ${tasks.length} tasks.`);
+    console.log(`Weekly digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${tasks.length} tasks.`);
     return res.status(200).json({ sent: results.length, tasks: tasks.length, period: `${monStr} to ${sunStr}`, results });
 
   } catch (err) {
@@ -243,3 +221,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

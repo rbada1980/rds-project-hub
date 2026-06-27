@@ -151,7 +151,7 @@ export default async function handler(req, res) {
     const [allTasks, projects, users] = await Promise.all([
       supaFetch(`/rest/v1/tasks?or=(client_sub_date.eq.${today},due_date.eq.${today})&select=title,client,status,assignee,due_date,client_sub_date,project_id&order=client.asc,client_sub_date.asc`),
       supaFetch(`/rest/v1/projects?select=id,name,client`),
-      supaFetch(`/rest/v1/users?select=name,email,role,client_name&not.email.is.null`)
+      supaFetch(`/rest/v1/users?select=name,email,role,client_name`)
     ]);
 
     if (!Array.isArray(allTasks) || !allTasks.length) {
@@ -165,8 +165,9 @@ export default async function handler(req, res) {
     const results = [];
     const sent = new Set();
 
-    // Admins, Managers, Team Leaders — full list
-    for (const u of (users || []).filter(u => ["Admin", "Manager", "Team Leader"].includes(u.role) && u.email?.trim())) {
+    // Admins, Managers, Team Leaders only — full list
+    const DIGEST_ROLES = ["Admin", "Manager", "Team Leader"];
+    for (const u of (users || []).filter(u => DIGEST_ROLES.includes(u.role) && u.email?.trim())) {
       if (sent.has(u.email)) continue;
       sent.add(u.email);
       const html = buildEmail(u.name, allTasks, pm, dateLabel);
@@ -182,34 +183,10 @@ export default async function handler(req, res) {
           htmlBody: html
         }
       });
-      results.push({ email: u.email, name: u.name, tasks: allTasks.length, status });
+      results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
     }
 
-    // Clients — filtered to their own tasks
-    for (const u of (users || []).filter(u => u.role === "Client" && u.email?.trim() && u.client_name)) {
-      const cn = (u.client_name || "").toLowerCase();
-      const ct = allTasks.filter(t =>
-        (t.client || "").toLowerCase() === cn ||
-        (pm[t.project_id]?.client || "").toLowerCase() === cn
-      );
-      if (!ct.length) continue;
-      const html = buildEmail(u.name, ct, pm, dateLabel);
-      const status = await postJson(NOTIFY_URL, {
-        type: "submission_digest",
-        data: {
-          taskName: "Daily Submission List",
-          projectName: `${ct.length} submission(s) planned`,
-          completedBy: "RDS TechServ",
-          completedAt: dateLabel,
-          recipientEmail: u.email,
-          subject: `📬 RDS Daily Submission List — ${dateLabel}`,
-          htmlBody: html
-        }
-      });
-      results.push({ email: u.email, name: u.name, tasks: ct.length, status });
-    }
-
-    console.log(`Daily digest sent: ${results.length} recipients, ${allTasks.length} tasks.`);
+    console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
     return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
 
   } catch (err) {
@@ -217,3 +194,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
