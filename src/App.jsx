@@ -2594,7 +2594,7 @@ function NotificationCenter({me}){
             borderColor:open?C.accent:C.border}}
           title="Notifications"
         >
-          <span style={{fontSize:18,lineHeight:1}}>🔔</span>
+          <span className={unreadCount>0?"rds-bell-ring":""} style={{fontSize:18,lineHeight:1,display:"inline-block"}}>🔔</span>
           {unreadCount>0&&(
             <span className="notif-badge" style={{
               position:"absolute",top:1,right:1,
@@ -3345,11 +3345,12 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     const hasAction=!!(projList&&projList.length>0||(taskList&&taskList.length>0)||(clientList&&clientList.length>0)||(memberList&&memberList.length>0)||onClick);
     return(
     <div onClick={hasAction?handleClick:undefined}
-      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:isMobile?10:14,padding:isMobile?"10px 12px":"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:hasAction?"pointer":"default",transition:"box-shadow .15s"}}
-      onMouseEnter={e=>{if(hasAction)e.currentTarget.style.boxShadow=`0 0 0 2px ${color}55`;}}
-      onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";}}>
+      className="rds-acard"
+      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:isMobile?10:14,padding:isMobile?"10px 12px":"18px 20px",borderLeft:`4px solid ${color}`,position:"relative",overflow:"hidden",cursor:hasAction?"pointer":"default",transition:"box-shadow .15s,transform .15s"}}
+      onMouseEnter={e=>{if(hasAction){e.currentTarget.style.boxShadow=`0 0 0 2px ${color}55`;e.currentTarget.style.transform="translateY(-2px)";}}}
+      onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="";}}>
       <div style={{position:"absolute",top:10,right:12,fontSize:32,opacity:0.08,pointerEvents:"none"}}>{icon}</div>
-      <div style={{fontSize:isMobile?22:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
+      <div className="rds-num-anim" style={{fontSize:isMobile?22:32,fontWeight:900,color,lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{value}</div>
       <div style={{fontSize:isMobile?9:11,color:C.t2,fontWeight:700,margin:isMobile?"3px 0 2px":"6px 0 3px",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
       {sub&&!isMobile&&<div style={{fontSize:11,color:C.t3}}>{sub}</div>}
       {hasAction&&!isMobile&&<div style={{position:"absolute",bottom:8,right:10,fontSize:9,color:color,opacity:0.7,fontWeight:700}}>CLICK TO VIEW ›</div>}
@@ -3363,10 +3364,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     let acc=0;
     return(
       <div style={{position:"relative",width:size,height:size,flexShrink:0}}>
-        <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
+        <svg width={size} height={size} className="rds-donut-svg" style={{}}>
           {segs.length===0
             ?<circle cx={cx} cy={cy} r={r} fill="none" stroke={C.border} strokeWidth={sw}/>
-            :segs.map((s,i)=>{const p=s.value/tot,da=circ*p,off=-circ*acc;acc+=p;return<circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth={sw} strokeDasharray={`${da} ${circ-da}`} strokeDashoffset={off}/>;})
+            :segs.map((s,i)=>{const p=s.value/tot,da=circ*p,off=-circ*acc;acc+=p;return<circle key={i} className="rds-donut-seg" cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth={sw} strokeDasharray={`${da} ${circ-da}`} strokeDashoffset={off} style={{"--full":circ,"--off":off}}/>;})
           }
         </svg>
         {label!==undefined&&(
@@ -3384,11 +3385,13 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
     return(
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {data.map((d,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:8,cursor:d.tasks&&d.tasks.length>0?"pointer":"default"}}
-            onClick={d.tasks&&d.tasks.length>0?()=>openModal(d.label,d.tasks):undefined}>
+          <div key={i} className="rds-hbar-row" style={{display:"flex",alignItems:"center",gap:8,cursor:d.tasks&&d.tasks.length>0?"pointer":"default",borderRadius:6,padding:"2px 4px",transition:"background .12s"}}
+            onClick={d.tasks&&d.tasks.length>0?()=>openModal(d.label,d.tasks):undefined}
+            onMouseEnter={e=>{if(d.tasks&&d.tasks.length>0)e.currentTarget.style.background=C.surface;}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
             <div style={{width:isMobile?70:96,fontSize:isMobile?10:11,color:C.t2,textAlign:"right",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={d.label}>{d.label}</div>
             <div style={{flex:1,background:C.surface,borderRadius:4,height:20,overflow:"hidden",position:"relative",border:d.tasks&&d.tasks.length>0?`1px solid ${d.color||C.accent}33`:"none"}}>
-              <div style={{width:`${d.value/mx*100}%`,height:"100%",background:d.color||C.accent,borderRadius:4,minWidth:d.value?3:0,transition:"width .5s"}}/>
+              <div className="rds-anim-bar" style={{width:`${d.value/mx*100}%`,height:"100%",background:d.color||C.accent,borderRadius:4,minWidth:d.value?3:0}}/>
               <span style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",fontSize:11,color:C.t1,fontWeight:700}}>{d.value}</span>
             </div>
           </div>
@@ -3399,7 +3402,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   };
 
   const Panel=({title,children,style={}})=>(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?14:22,overflow:"hidden",...style}}>
+    <div className="rds-panel" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?14:22,overflow:"hidden",...style}}>
       <h3 style={{margin:`0 0 ${isMobile?10:16}px`,fontSize:12,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".08em"}}>{title}</h3>
       {children}
     </div>
@@ -3467,7 +3470,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
         <Panel title="👥 Team Performance">
           <div style={{display:"flex",flexDirection:"column",gap:14,maxHeight:320,overflowY:"auto"}}>
             {teamPerf.map((u,i)=>(
-              <div key={u.name} onClick={()=>openModal(`${u.name} — All Tasks`,u.allTasks)}
+              <div key={u.name} className="rds-perf-row" onClick={()=>openModal(`${u.name} — All Tasks`,u.allTasks)}
                 style={{cursor:"pointer",borderRadius:8,padding:"6px 8px",transition:"background .15s"}}
                 onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                 onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
@@ -3480,8 +3483,8 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
                   </div>
                   <span style={{fontSize:12,fontWeight:800,color:u.pct>=80?C.green:u.pct>=50?C.blue:C.accent}}>{u.pct}%</span>
                 </div>
-                <div style={{height:5,background:C.surface,borderRadius:3,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${u.pct}%`,background:u.pct>=80?C.green:u.pct>=50?C.blue:C.accent,borderRadius:3,transition:"width .5s"}}/>
+                <div style={{height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
+                  <div className="rds-perf-bar" style={{height:"100%",width:`${u.pct}%`,background:u.pct>=80?C.green:u.pct>=50?C.blue:C.accent,borderRadius:3}}/>
                 </div>
                 <div style={{fontSize:10,color:C.t3,marginTop:2}}>{u.done}/{u.total} tasks done</div>
               </div>
@@ -3512,8 +3515,8 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
                     <td onClick={e=>{e.stopPropagation();if(c.overdue>0)openModal(`${c.name} — Overdue Tasks`,c.ovTasks);}} style={{padding:"9px 10px",color:c.overdue>0?C.red:C.t3,textAlign:"center",fontWeight:c.overdue>0?700:400,cursor:c.overdue>0?"pointer":"default",textDecoration:c.overdue>0?"underline dotted":"none"}}>{c.overdue||"—"}</td>
                     <td style={{padding:"9px 10px",minWidth:110}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{flex:1,height:5,background:C.surface,borderRadius:3,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${c.pct}%`,background:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,borderRadius:3}}/>
+                        <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
+                          <div className="rds-perf-bar" style={{height:"100%",width:`${c.pct}%`,background:c.pct>=80?C.green:c.pct>=50?C.blue:C.accent,borderRadius:3}}/>
                         </div>
                         <span style={{fontSize:11,color:C.t2,fontWeight:700,width:28,flexShrink:0}}>{c.pct}%</span>
                       </div>
@@ -3907,77 +3910,141 @@ export default function App(){
     const a=document.createElement("style");
     a.id="rds-anim-css";
     a.textContent=`
-      @keyframes rds-fade-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-      @keyframes rds-scale-in{from{opacity:0;transform:scale(0.93)}to{opacity:1;transform:scale(1)}}
-      @keyframes rds-slide-right{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
-      @keyframes rds-pop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+      /* ════════════════════════════════
+         KEYFRAMES
+      ════════════════════════════════ */
+      @keyframes rds-fade-up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes rds-scale-in{from{opacity:0;transform:scale(0.90)}to{opacity:1;transform:scale(1)}}
+      @keyframes rds-slide-left{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+      @keyframes rds-pop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 
-      /* ── Banner entrance ── */
-      .rds-dash-banner{animation:rds-fade-up 0.4s cubic-bezier(.22,1,.36,1) both;}
+      /* Bell ring */
+      @keyframes rds-bell-ring{
+        0%,100%{transform:rotate(0)}6%{transform:rotate(18deg)}12%{transform:rotate(-16deg)}
+        18%{transform:rotate(12deg)}24%{transform:rotate(-10deg)}30%{transform:rotate(6deg)}
+        36%{transform:rotate(-4deg)}42%{transform:rotate(2deg)}48%{transform:rotate(0)}
+      }
+      .rds-bell-ring{display:inline-block;transform-origin:50% 0%;animation:rds-bell-ring 3s ease-in-out 0.5s infinite;}
 
-      /* ── Stat grid staggered entrance ── */
-      .rds-stat-grid > *{animation:rds-scale-in 0.35s cubic-bezier(.22,1,.36,1) both;}
-      .rds-stat-grid > *:nth-child(1){animation-delay:.05s}
-      .rds-stat-grid > *:nth-child(2){animation-delay:.10s}
-      .rds-stat-grid > *:nth-child(3){animation-delay:.15s}
-      .rds-stat-grid > *:nth-child(4){animation-delay:.20s}
+      /* Logo breathe */
+      @keyframes rds-logo-pulse{0%,100%{filter:drop-shadow(0 0 0px rgba(99,102,241,0))}50%{filter:drop-shadow(0 0 6px rgba(99,102,241,.5))}}
+      .rds-logo-anim{animation:rds-logo-pulse 2.5s ease-in-out infinite;}
+
+      /* Bar grow from left */
+      @keyframes rds-bar-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+      .rds-anim-bar{transform-origin:left!important;animation:rds-bar-grow 0.9s cubic-bezier(.22,1,.36,1) both!important;}
+
+      /* Staggered hbar rows */
+      .rds-hbar-row:nth-child(1) .rds-anim-bar{animation-delay:.04s!important}
+      .rds-hbar-row:nth-child(2) .rds-anim-bar{animation-delay:.10s!important}
+      .rds-hbar-row:nth-child(3) .rds-anim-bar{animation-delay:.16s!important}
+      .rds-hbar-row:nth-child(4) .rds-anim-bar{animation-delay:.22s!important}
+      .rds-hbar-row:nth-child(5) .rds-anim-bar{animation-delay:.28s!important}
+      .rds-hbar-row:nth-child(6) .rds-anim-bar{animation-delay:.34s!important}
+      .rds-hbar-row:nth-child(7) .rds-anim-bar{animation-delay:.40s!important}
+      .rds-hbar-row:nth-child(8) .rds-anim-bar{animation-delay:.46s!important}
+
+      /* Perf bar (team/client) */
+      .rds-perf-bar{transform-origin:left!important;animation:rds-bar-grow 1s cubic-bezier(.22,1,.36,1) both!important;}
+      .rds-perf-row:nth-child(1) .rds-perf-bar{animation-delay:.06s!important}
+      .rds-perf-row:nth-child(2) .rds-perf-bar{animation-delay:.13s!important}
+      .rds-perf-row:nth-child(3) .rds-perf-bar{animation-delay:.20s!important}
+      .rds-perf-row:nth-child(4) .rds-perf-bar{animation-delay:.27s!important}
+      .rds-perf-row:nth-child(5) .rds-perf-bar{animation-delay:.34s!important}
+      .rds-perf-row:nth-child(6) .rds-perf-bar{animation-delay:.41s!important}
+      .rds-perf-row:nth-child(7) .rds-perf-bar{animation-delay:.48s!important}
+      .rds-perf-row:nth-child(8) .rds-perf-bar{animation-delay:.55s!important}
+
+      /* Donut spin-in */
+      @keyframes rds-donut-in{from{opacity:0;transform:rotate(-90deg) scale(0.75)}to{opacity:1;transform:rotate(-90deg) scale(1)}}
+      .rds-donut-svg{animation:rds-donut-in 0.7s cubic-bezier(.22,1,.36,1) both!important;}
+
+      /* Individual donut segments */
+      @keyframes rds-seg-draw{from{stroke-dashoffset:var(--full)}to{stroke-dashoffset:var(--off)}}
+      .rds-donut-seg{animation:rds-seg-draw 0.9s cubic-bezier(.22,1,.36,1) both;}
+      .rds-donut-seg:nth-child(1){animation-delay:.10s}
+      .rds-donut-seg:nth-child(2){animation-delay:.25s}
+      .rds-donut-seg:nth-child(3){animation-delay:.40s}
+      .rds-donut-seg:nth-child(4){animation-delay:.55s}
+
+      /* KPI ACard entrance */
+      @keyframes rds-kpi-in{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+      .rds-acard{animation:rds-kpi-in 0.4s cubic-bezier(.22,1,.36,1) both;}
+      .rds-acard:nth-child(1){animation-delay:.05s}.rds-acard:nth-child(2){animation-delay:.10s}
+      .rds-acard:nth-child(3){animation-delay:.15s}.rds-acard:nth-child(4){animation-delay:.20s}
+      .rds-acard:nth-child(5){animation-delay:.25s}.rds-acard:nth-child(6){animation-delay:.30s}
+
+      /* Number pop */
+      @keyframes rds-num-pop{0%{opacity:0;transform:scale(.6)}65%{transform:scale(1.12)}100%{opacity:1;transform:scale(1)}}
+      .rds-num-anim{animation:rds-num-pop 0.5s cubic-bezier(.22,1,.36,1) both;}
+
+      /* Analytics panel entrance */
+      @keyframes rds-panel-in{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+      .rds-panel{animation:rds-panel-in 0.45s cubic-bezier(.22,1,.36,1) both;}
+      .rds-panel:nth-child(1){animation-delay:.08s}.rds-panel:nth-child(2){animation-delay:.16s}
+      .rds-panel:nth-child(3){animation-delay:.24s}.rds-panel:nth-child(4){animation-delay:.32s}
+
+      /* ════════════════════════════════
+         ENTRANCE ANIMATIONS
+      ════════════════════════════════ */
+      .rds-dash-banner{animation:rds-fade-up 0.42s cubic-bezier(.22,1,.36,1) both;}
+
+      .rds-stat-grid > *{animation:rds-scale-in 0.36s cubic-bezier(.22,1,.36,1) both;}
+      .rds-stat-grid > *:nth-child(1){animation-delay:.05s}.rds-stat-grid > *:nth-child(2){animation-delay:.10s}
+      .rds-stat-grid > *:nth-child(3){animation-delay:.15s}.rds-stat-grid > *:nth-child(4){animation-delay:.20s}
       .rds-stat-grid > *:nth-child(5){animation-delay:.25s}
 
-      /* ── Mini grid stagger ── */
-      .rds-mini-grid > *{animation:rds-scale-in 0.3s cubic-bezier(.22,1,.36,1) both;}
-      .rds-mini-grid > *:nth-child(1){animation-delay:.04s}
-      .rds-mini-grid > *:nth-child(2){animation-delay:.08s}
-      .rds-mini-grid > *:nth-child(3){animation-delay:.12s}
-      .rds-mini-grid > *:nth-child(4){animation-delay:.16s}
+      .rds-mini-grid > *{animation:rds-scale-in 0.32s cubic-bezier(.22,1,.36,1) both;}
+      .rds-mini-grid > *:nth-child(1){animation-delay:.04s}.rds-mini-grid > *:nth-child(2){animation-delay:.09s}
+      .rds-mini-grid > *:nth-child(3){animation-delay:.14s}.rds-mini-grid > *:nth-child(4){animation-delay:.19s}
 
-      /* ── Modal pop-in ── */
+      /* ════════════════════════════════
+         INTERACTIONS
+      ════════════════════════════════ */
       .rds-modal-inner{animation:rds-scale-in 0.22s cubic-bezier(.22,1,.36,1) both;}
 
-      /* ── Sidebar nav slide ── */
       .rds-sidebar button{transition:background .15s,color .15s,padding-left .18s,box-shadow .15s!important;}
-      .rds-sidebar button:hover{padding-left:20px!important;box-shadow:inset 3px 0 0 rgba(99,102,241,.7)!important;}
+      .rds-sidebar button:hover{padding-left:20px!important;box-shadow:inset 3px 0 0 rgba(99,102,241,.75)!important;}
 
-      /* ── Banner stat cards (CSS supplement to JS) ── */
       .rds-dash-banner-stats > div{transition:transform .15s ease,box-shadow .15s ease!important;}
 
-      /* ── Table rows ── */
-      .rds-table-outer tbody tr{transition:background .12s ease!important;cursor:default;}
+      .rds-table-outer tbody tr{transition:background .12s ease!important;}
       .rds-table-outer tbody tr:hover td{background:rgba(99,102,241,.06)!important;}
 
-      /* ── Bottom nav ── */
       .rds-bottom-nav button{transition:transform .15s ease,background .15s ease!important;}
       .rds-bottom-nav button:hover{transform:translateY(-2px)!important;}
-      .rds-bottom-nav button:active{transform:scale(0.9)!important;transition:transform .08s ease!important;}
+      .rds-bottom-nav button:active{transform:scale(0.88)!important;transition:transform .08s ease!important;}
 
-      /* ── Kanban columns ── */
       .rds-kcol{transition:border-color .2s ease,background .2s ease!important;}
 
-      /* ── Input/select focus glow ── */
       input:focus,select:focus,textarea:focus{
         outline:none!important;
-        box-shadow:0 0 0 2px rgba(99,102,241,.25)!important;
+        box-shadow:0 0 0 2.5px rgba(99,102,241,.28)!important;
         transition:box-shadow .15s ease,border-color .15s ease!important;
       }
 
-      /* ── Button press effect ── */
-      button:active:not([disabled]){transform:scale(0.95)!important;transition:transform .08s ease!important;}
+      button:active:not([disabled]){transform:scale(0.94)!important;transition:transform .08s ease!important;}
 
-      /* ── Progress bar smooth ── */
-      .rds-dash-banner + * .rds-pb-fill{transition:width .8s cubic-bezier(.22,1,.36,1)!important;}
-
-      /* ── Tablet (769–1024px) ── */
+      /* ════════════════════════════════
+         TABLET (769–1024px)
+      ════════════════════════════════ */
       @media(min-width:769px) and (max-width:1024px){
         .rds-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-dash-banner{flex-wrap:wrap!important;padding:16px 18px!important;}
         .rds-dash-banner-stats{width:100%!important;margin-top:10px!important;}
         .rds-dash-banner-stats > div{flex:1!important;min-width:0!important;}
         .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
+        .rds-acard{padding:12px 14px!important;}
       }
 
-      /* ── Reduced motion ── */
+      /* ════════════════════════════════
+         REDUCED MOTION
+      ════════════════════════════════ */
       @media(prefers-reduced-motion:reduce){
-        .rds-dash-banner,.rds-stat-grid > *,.rds-mini-grid > *,.rds-modal-inner{
-          animation:none!important;
+        .rds-dash-banner,.rds-stat-grid > *,.rds-mini-grid > *,.rds-modal-inner,
+        .rds-acard,.rds-panel,.rds-num-anim,.rds-anim-bar,.rds-perf-bar,
+        .rds-donut-svg,.rds-bell-ring,.rds-logo-anim{
+          animation:none!important;transform:none!important;
         }
         *{transition-duration:.01ms!important;}
       }
@@ -4267,7 +4334,7 @@ export default function App(){
       <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div onClick={()=>logoRef.current.click()} title="Click to upload logo" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
+            <div onClick={()=>logoRef.current.click()} title="Click to upload logo" className="rds-logo-anim" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
               {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>}
             </div>
             <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}}}/>
