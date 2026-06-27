@@ -3567,14 +3567,24 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
 
 
 function CronModal({onClose}){
+  const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const [settings,setSettings]=useState({daily:true,weekly:true});
+  const [sched,setSched]=useState({
+    daily_days:"1,2,3,4,5,6",
+    daily_time:"01:00",
+    weekly_day:"1",
+    weekly_time:"01:00"
+  });
   const [loading,setLoading]=useState(true);
   const [triggering,setTriggering]=useState(null);
   const [msg,setMsg]=useState(null);
+  const [editing,setEditing]=useState(null); // "daily" | "weekly" | null
+  const [editDraft,setEditDraft]=useState({});
+  const [saving,setSaving]=useState(false);
 
   useEffect(()=>{
     (async()=>{
-      const res=await fetch(`${SUPA_URL}/rest/v1/settings?key=in.(daily_digest_enabled,weekly_digest_enabled)&select=key,value`,{
+      const res=await fetch(`${SUPA_URL}/rest/v1/settings?key=in.(daily_digest_enabled,weekly_digest_enabled,daily_digest_days,daily_digest_time,weekly_digest_day,weekly_digest_time)&select=key,value`,{
         headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`}
       });
       const data=await res.json();
@@ -3585,19 +3595,38 @@ function CronModal({onClose}){
           daily:map["daily_digest_enabled"]!=="false",
           weekly:map["weekly_digest_enabled"]!=="false"
         });
+        setSched({
+          daily_days:map["daily_digest_days"]||"1,2,3,4,5,6",
+          daily_time:map["daily_digest_time"]||"01:00",
+          weekly_day:map["weekly_digest_day"]||"1",
+          weekly_time:map["weekly_digest_time"]||"01:00"
+        });
       }
       setLoading(false);
     })();
   },[]);
 
+  async function upsertSetting(key,value){
+    // Try PATCH first, if no rows affected do POST
+    const patchRes=await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.${key}`,{
+      method:"PATCH",
+      headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value})
+    });
+    const patched=await patchRes.json();
+    if(!Array.isArray(patched)||patched.length===0){
+      await fetch(`${SUPA_URL}/rest/v1/settings`,{
+        method:"POST",
+        headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key,value})
+      });
+    }
+  }
+
   async function toggle(key,val){
     const k=key==="daily"?"daily_digest_enabled":"weekly_digest_enabled";
     setSettings(s=>({...s,[key]:val}));
-    await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.${k}`,{
-      method:"PATCH",
-      headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"},
-      body:JSON.stringify({value:val?"true":"false"})
-    });
+    await upsertSetting(k,val?"true":"false");
     setMsg(`${key==="daily"?"Daily":"Weekly"} digest ${val?"enabled":"disabled"}`);
     setTimeout(()=>setMsg(null),3000);
   }
@@ -3620,16 +3649,117 @@ function CronModal({onClose}){
     setTriggering(null);
   }
 
-  const Card=({type,label,schedule,icon})=>(
-    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px",marginBottom:14}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div>
-          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{icon} {label}</div>
-          <div style={{fontSize:11,color:C.t3,marginTop:3}}>⏰ {schedule}</div>
+  function openEdit(type){
+    if(type==="daily"){
+      const days=sched.daily_days.split(",").map(Number);
+      setEditDraft({type,days,time:sched.daily_time});
+    }else{
+      setEditDraft({type,day:Number(sched.weekly_day),time:sched.weekly_time});
+    }
+    setEditing(type);
+  }
+
+  async function saveEdit(){
+    setSaving(true);
+    if(editDraft.type==="daily"){
+      const daysStr=editDraft.days.sort((a,b)=>a-b).join(",");
+      await upsertSetting("daily_digest_days",daysStr);
+      await upsertSetting("daily_digest_time",editDraft.time);
+      setSched(s=>({...s,daily_days:daysStr,daily_time:editDraft.time}));
+    }else{
+      await upsertSetting("weekly_digest_day",String(editDraft.day));
+      await upsertSetting("weekly_digest_time",editDraft.time);
+      setSched(s=>({...s,weekly_day:String(editDraft.day),weekly_time:editDraft.time}));
+    }
+    setMsg("✅ Schedule updated successfully");
+    setTimeout(()=>setMsg(null),3000);
+    setEditing(null);
+    setSaving(false);
+  }
+
+  function schedLabel(type){
+    if(type==="daily"){
+      const dayNums=sched.daily_days.split(",").map(Number).sort((a,b)=>a-b);
+      const dayNames=dayNums.map(d=>DAYS[d]).join(", ");
+      return `${dayNames} at ${sched.daily_time} IST`;
+    }else{
+      return `Every ${DAYS[Number(sched.weekly_day)]} at ${sched.weekly_time} IST`;
+    }
+  }
+
+  const inp={background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
+  const lbl={fontSize:11,color:C.t3,fontWeight:600,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:".04em"};
+
+  const EditPanel=()=>{
+    if(!editDraft.type)return null;
+    const isDaily=editDraft.type==="daily";
+    return(
+      <div style={{background:C.card,border:`1px solid ${C.accent}44`,borderRadius:12,padding:"16px 18px",marginBottom:14,borderLeft:`3px solid ${C.accent}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>
+          ✏️ Edit {isDaily?"Daily Digest":"Weekly Report"} Schedule
         </div>
-        {/* Toggle */}
+        {isDaily?(
+          <>
+            <label style={lbl}>Active Days</label>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+              {DAYS.map((d,i)=>{
+                const on=(editDraft.days||[]).includes(i);
+                return(
+                  <div key={i} onClick={()=>{
+                    const cur=editDraft.days||[];
+                    setEditDraft(prev=>({...prev,days:on?cur.filter(x=>x!==i):[...cur,i]}));
+                  }} style={{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",
+                    background:on?C.accent+"22":C.surface,border:`1px solid ${on?C.accent:C.border}`,
+                    color:on?C.accent:C.t3,transition:"all .15s"}}>
+                    {d}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ):(
+          <>
+            <label style={lbl}>Day of Week</label>
+            <select value={editDraft.day??1} onChange={e=>setEditDraft(p=>({...p,day:Number(e.target.value)}))}
+              style={{...inp,marginBottom:14}}>
+              {DAYS.map((d,i)=><option key={i} value={i}>{d}</option>)}
+            </select>
+          </>
+        )}
+        <label style={lbl}>Time (IST)</label>
+        <input type="time" value={editDraft.time||"01:00"} onChange={e=>setEditDraft(p=>({...p,time:e.target.value}))}
+          style={{...inp,marginBottom:4}}/>
+        <div style={{fontSize:10,color:C.t3,marginBottom:14,marginTop:6}}>
+          ⚠ Note: day filtering applies immediately. Time changes also save for reference — to shift the actual trigger time, update <code style={{background:C.surface,padding:"1px 4px",borderRadius:4}}>vercel.json</code> and redeploy.
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={saveEdit} disabled={saving} style={{flex:1,background:C.accent,border:"none",borderRadius:8,padding:"8px 0",fontSize:13,fontWeight:700,color:"#fff",cursor:saving?"not-allowed":"pointer",opacity:saving?0.6:1,fontFamily:"inherit"}}>
+            {saving?"Saving…":"💾 Save Schedule"}
+          </button>
+          <button onClick={()=>setEditing(null)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,color:C.t2,cursor:"pointer",fontFamily:"inherit"}}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const Card=({type,label,icon})=>(
+    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:15,fontWeight:800,color:C.t1}}>{icon} {label}</span>
+            <button onClick={()=>editing===type?setEditing(null):openEdit(type)}
+              title="Edit schedule"
+              style={{background:editing===type?C.accent+"22":"none",border:`1px solid ${editing===type?C.accent:C.border}`,borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:12,color:editing===type?C.accent:C.t3,lineHeight:1,fontFamily:"inherit",transition:"all .15s"}}>
+              ✏️
+            </button>
+          </div>
+          <div style={{fontSize:11,color:C.t3,marginTop:4}}>⏰ {schedLabel(type)}</div>
+        </div>
         <div onClick={()=>toggle(type,!settings[type])}
-          style={{width:44,height:24,borderRadius:12,background:settings[type]?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+          style={{width:44,height:24,borderRadius:12,background:settings[type]?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0,marginLeft:12}}>
           <div style={{position:"absolute",top:3,left:settings[type]?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #00000040"}}/>
         </div>
       </div>
@@ -3637,9 +3767,7 @@ function CronModal({onClose}){
         <span style={{fontSize:12,color:settings[type]?C.green:C.t3,fontWeight:700}}>
           {settings[type]?"● Active":"○ Paused"}
         </span>
-        <button
-          onClick={()=>triggerNow(type)}
-          disabled={triggering===type}
+        <button onClick={()=>triggerNow(type)} disabled={triggering===type}
           style={{marginLeft:"auto",background:C.accent,border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:700,color:"#fff",cursor:triggering===type?"not-allowed":"pointer",opacity:triggering===type?0.6:1,fontFamily:"inherit"}}>
           {triggering===type?"Sending…":"▶ Send Now"}
         </button>
@@ -3652,8 +3780,10 @@ function CronModal({onClose}){
       {loading?<div style={{textAlign:"center",padding:32,color:C.t3}}>Loading…</div>:(
         <>
           {msg&&<div style={{background:msg.startsWith("✅")?C.green+"22":C.red+"22",border:`1px solid ${msg.startsWith("✅")?C.green:C.red}44`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,color:msg.startsWith("✅")?C.green:C.red,fontWeight:600}}>{msg}</div>}
-          <Card type="daily" label="Daily Digest" icon="📬" schedule="Mon–Sat at 1:00 AM IST (auto)"/>
-          <Card type="weekly" label="Weekly Report" icon="📊" schedule="Every Monday at 1:00 AM IST (auto)"/>
+          <Card type="daily" label="Daily Digest" icon="📬"/>
+          {editing==="daily"&&<EditPanel/>}
+          <Card type="weekly" label="Weekly Report" icon="📊"/>
+          {editing==="weekly"&&<EditPanel/>}
           <div style={{fontSize:11,color:C.t3,marginTop:8,lineHeight:1.6}}>
             Toggle pauses the scheduled run. "Send Now" triggers immediately regardless of toggle state.
           </div>
