@@ -3439,6 +3439,107 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   );
 }
 
+
+function CronModal({onClose}){
+  const C=COLORS;
+  const SUPA_URL2="https://xypcbioltukahipkqqzc.supabase.co";
+  const SUPA_KEY2="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+  const [settings,setSettings]=React.useState({daily:true,weekly:true});
+  const [loading,setLoading]=React.useState(true);
+  const [triggering,setTriggering]=React.useState(null);
+  const [msg,setMsg]=React.useState(null);
+
+  React.useEffect(()=>{
+    (async()=>{
+      const res=await fetch(`${SUPA_URL2}/rest/v1/settings?key=in.(daily_digest_enabled,weekly_digest_enabled)&select=key,value`,{
+        headers:{"apikey":SUPA_KEY2,"Authorization":`Bearer ${SUPA_KEY2}`}
+      });
+      const data=await res.json();
+      if(Array.isArray(data)){
+        const map={};
+        data.forEach(r=>{map[r.key]=r.value;});
+        setSettings({
+          daily:map["daily_digest_enabled"]!=="false",
+          weekly:map["weekly_digest_enabled"]!=="false"
+        });
+      }
+      setLoading(false);
+    })();
+  },[]);
+
+  async function toggle(key,val){
+    const k=key==="daily"?"daily_digest_enabled":"weekly_digest_enabled";
+    setSettings(s=>({...s,[key]:val}));
+    await fetch(`${SUPA_URL2}/rest/v1/settings?key=eq.${k}`,{
+      method:"PATCH",
+      headers:{"apikey":SUPA_KEY2,"Authorization":`Bearer ${SUPA_KEY2}`,"Content-Type":"application/json","Prefer":"return=minimal"},
+      body:JSON.stringify({value:val?"true":"false"})
+    });
+    setMsg(`${key==="daily"?"Daily":"Weekly"} digest ${val?"enabled":"disabled"}`);
+    setTimeout(()=>setMsg(null),3000);
+  }
+
+  async function triggerNow(type){
+    setTriggering(type);
+    setMsg(null);
+    try{
+      const res=await fetch(`/api/cron-${type}`,{method:"GET"});
+      const data=await res.json();
+      if(res.ok){
+        const sent=data.sent??0;
+        setMsg(`✅ ${type==="daily"?"Daily":"Weekly"} digest sent to ${sent} recipient(s)`);
+      }else{
+        setMsg(`⚠ Error: ${data.error||data.message||"Unknown error"}`);
+      }
+    }catch(e){
+      setMsg(`⚠ Network error: ${e.message}`);
+    }
+    setTriggering(null);
+  }
+
+  const Card=({type,label,schedule,icon})=>(
+    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px",marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{icon} {label}</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:3}}>⏰ {schedule}</div>
+        </div>
+        {/* Toggle */}
+        <div onClick={()=>toggle(type,!settings[type])}
+          style={{width:44,height:24,borderRadius:12,background:settings[type]?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+          <div style={{position:"absolute",top:3,left:settings[type]?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #00000040"}}/>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <span style={{fontSize:12,color:settings[type]?C.green:C.t3,fontWeight:700}}>
+          {settings[type]?"● Active":"○ Paused"}
+        </span>
+        <button
+          onClick={()=>triggerNow(type)}
+          disabled={triggering===type}
+          style={{marginLeft:"auto",background:C.accent,border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:700,color:"#fff",cursor:triggering===type?"not-allowed":"pointer",opacity:triggering===type?0.6:1,fontFamily:"inherit"}}>
+          {triggering===type?"Sending…":"▶ Send Now"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return(
+    <Modal title="📧 Email Digest Settings" onClose={onClose}>
+      {loading?<div style={{textAlign:"center",padding:32,color:C.t3}}>Loading…</div>:(
+        <>
+          {msg&&<div style={{background:msg.startsWith("✅")?C.green+"22":C.red+"22",border:`1px solid ${msg.startsWith("✅")?C.green:C.red}44`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,color:msg.startsWith("✅")?C.green:C.red,fontWeight:600}}>{msg}</div>}
+          <Card type="daily" label="Daily Digest" icon="📬" schedule="Mon–Sat at 1:00 AM IST (auto)"/>
+          <Card type="weekly" label="Weekly Report" icon="📊" schedule="Every Monday at 1:00 AM IST (auto)"/>
+          <div style={{fontSize:11,color:C.t3,marginTop:8,lineHeight:1.6}}>
+            Toggle pauses the scheduled run. "Send Now" triggers immediately regardless of toggle state.
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -3461,6 +3562,7 @@ export default function App(){
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
   const [pwModal,spwm]      = useState(false);
+  const [cronModal,scron]   = useState(false);
   const [statModal,ssm]     = useState(null);
   const [exportOpen,setExportOpen] = useState(false);
   const [exportSec,setExportSec] = useState(null);
@@ -3887,7 +3989,9 @@ export default function App(){
                 <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★ Super Admin</span>}</div>
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
-              {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
+              {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,borderRadius:6,fontFamily:"inherit"}}>📧 Email Digest</button>}
+              {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>📧 Email Digest</button>}
+              {isAdmin&&<button onClick={()=>{scron(true);}} style={sel(false)}>👥 Manage Users</button>}
               {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🏢 View Clients</button>}
               <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🔐 Change Password</button>
               <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
@@ -4552,6 +4656,7 @@ export default function App(){
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
+      {cronModal&&<CronModal onClose={()=>scron(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
       {taskModal&&(

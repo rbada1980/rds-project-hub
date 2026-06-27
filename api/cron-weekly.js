@@ -178,6 +178,13 @@ export default async function handler(req, res) {
     const sunLabel = lastSun.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
     const weekLabel = `Week of ${monLabel} – ${sunLabel}`;
 
+    // Check if digest is enabled
+    const settingsData = await supaFetch(`/rest/v1/settings?key=eq.weekly_digest_enabled&select=value`);
+    if (Array.isArray(settingsData) && settingsData[0]?.value === "false") {
+      console.log("Weekly digest is disabled via settings.");
+      return res.status(200).json({ message: "Weekly digest is disabled." });
+    }
+
     const [allTasks, projects, users] = await Promise.all([
       supaFetch(`/rest/v1/tasks?or=(and(client_sub_date.gte.${monStr},client_sub_date.lte.${sunStr}),and(due_date.gte.${monStr},due_date.lte.${sunStr}))&select=title,client,status,assignee,due_date,client_sub_date,project_id&order=client.asc,client_sub_date.asc`),
       supaFetch(`/rest/v1/projects?select=id,name,client`),

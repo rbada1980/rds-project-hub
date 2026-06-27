@@ -148,6 +148,13 @@ export default async function handler(req, res) {
       timeZone: "Asia/Kolkata"
     });
 
+    // Check if digest is enabled
+    const settingsData = await supaFetch(`/rest/v1/settings?key=eq.daily_digest_enabled&select=value`);
+    if (Array.isArray(settingsData) && settingsData[0]?.value === "false") {
+      console.log("Daily digest is disabled via settings.");
+      return res.status(200).json({ message: "Daily digest is disabled." });
+    }
+
     const [allTasks, projects, users] = await Promise.all([
       supaFetch(`/rest/v1/tasks?or=(client_sub_date.eq.${today},due_date.eq.${today})&select=title,client,status,assignee,due_date,client_sub_date,project_id&order=client.asc,client_sub_date.asc`),
       supaFetch(`/rest/v1/projects?select=id,name,client`),
