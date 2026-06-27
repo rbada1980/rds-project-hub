@@ -1176,6 +1176,8 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           return(
             <div key={p.id} onClick={()=>onViewProject(p.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
               {/* Title + overall % */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -3898,6 +3900,90 @@ export default function App(){
     `;
     if(!document.getElementById("rds-mobile-css"))document.head.appendChild(s);
     return()=>{const el=document.getElementById("rds-mobile-css");if(el)el.remove();};
+  },[]);
+  // ── Inject animation/UI enhancement CSS ──
+  useEffect(()=>{
+    if(document.getElementById("rds-anim-css"))return;
+    const a=document.createElement("style");
+    a.id="rds-anim-css";
+    a.textContent=`
+      @keyframes rds-fade-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes rds-scale-in{from{opacity:0;transform:scale(0.93)}to{opacity:1;transform:scale(1)}}
+      @keyframes rds-slide-right{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+      @keyframes rds-pop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+      /* ── Banner entrance ── */
+      .rds-dash-banner{animation:rds-fade-up 0.4s cubic-bezier(.22,1,.36,1) both;}
+
+      /* ── Stat grid staggered entrance ── */
+      .rds-stat-grid > *{animation:rds-scale-in 0.35s cubic-bezier(.22,1,.36,1) both;}
+      .rds-stat-grid > *:nth-child(1){animation-delay:.05s}
+      .rds-stat-grid > *:nth-child(2){animation-delay:.10s}
+      .rds-stat-grid > *:nth-child(3){animation-delay:.15s}
+      .rds-stat-grid > *:nth-child(4){animation-delay:.20s}
+      .rds-stat-grid > *:nth-child(5){animation-delay:.25s}
+
+      /* ── Mini grid stagger ── */
+      .rds-mini-grid > *{animation:rds-scale-in 0.3s cubic-bezier(.22,1,.36,1) both;}
+      .rds-mini-grid > *:nth-child(1){animation-delay:.04s}
+      .rds-mini-grid > *:nth-child(2){animation-delay:.08s}
+      .rds-mini-grid > *:nth-child(3){animation-delay:.12s}
+      .rds-mini-grid > *:nth-child(4){animation-delay:.16s}
+
+      /* ── Modal pop-in ── */
+      .rds-modal-inner{animation:rds-scale-in 0.22s cubic-bezier(.22,1,.36,1) both;}
+
+      /* ── Sidebar nav slide ── */
+      .rds-sidebar button{transition:background .15s,color .15s,padding-left .18s,box-shadow .15s!important;}
+      .rds-sidebar button:hover{padding-left:20px!important;box-shadow:inset 3px 0 0 rgba(99,102,241,.7)!important;}
+
+      /* ── Banner stat cards (CSS supplement to JS) ── */
+      .rds-dash-banner-stats > div{transition:transform .15s ease,box-shadow .15s ease!important;}
+
+      /* ── Table rows ── */
+      .rds-table-outer tbody tr{transition:background .12s ease!important;cursor:default;}
+      .rds-table-outer tbody tr:hover td{background:rgba(99,102,241,.06)!important;}
+
+      /* ── Bottom nav ── */
+      .rds-bottom-nav button{transition:transform .15s ease,background .15s ease!important;}
+      .rds-bottom-nav button:hover{transform:translateY(-2px)!important;}
+      .rds-bottom-nav button:active{transform:scale(0.9)!important;transition:transform .08s ease!important;}
+
+      /* ── Kanban columns ── */
+      .rds-kcol{transition:border-color .2s ease,background .2s ease!important;}
+
+      /* ── Input/select focus glow ── */
+      input:focus,select:focus,textarea:focus{
+        outline:none!important;
+        box-shadow:0 0 0 2px rgba(99,102,241,.25)!important;
+        transition:box-shadow .15s ease,border-color .15s ease!important;
+      }
+
+      /* ── Button press effect ── */
+      button:active:not([disabled]){transform:scale(0.95)!important;transition:transform .08s ease!important;}
+
+      /* ── Progress bar smooth ── */
+      .rds-dash-banner + * .rds-pb-fill{transition:width .8s cubic-bezier(.22,1,.36,1)!important;}
+
+      /* ── Tablet (769–1024px) ── */
+      @media(min-width:769px) and (max-width:1024px){
+        .rds-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
+        .rds-dash-banner{flex-wrap:wrap!important;padding:16px 18px!important;}
+        .rds-dash-banner-stats{width:100%!important;margin-top:10px!important;}
+        .rds-dash-banner-stats > div{flex:1!important;min-width:0!important;}
+        .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
+      }
+
+      /* ── Reduced motion ── */
+      @media(prefers-reduced-motion:reduce){
+        .rds-dash-banner,.rds-stat-grid > *,.rds-mini-grid > *,.rds-modal-inner{
+          animation:none!important;
+        }
+        *{transition-duration:.01ms!important;}
+      }
+    `;
+    document.head.appendChild(a);
+    return()=>{const el=document.getElementById("rds-anim-css");if(el)el.remove();};
   },[]);
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
   function toggleTask(id){setSelTasks(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
