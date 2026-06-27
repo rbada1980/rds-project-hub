@@ -942,6 +942,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
   const [statusFilter,ssf]=useState(null);
   const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
+  const [uStatModal,setUSM]=useState(null);
   const matchesMe=v=>userMatchesStr(me,v);
   // My tasks = tasks in accessible projects where I'm assignee / detailer / checker
   const myTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&(matchesMe(t.assignee)||matchesMe(t.detailer)||matchesMe(t.checker)));
@@ -962,17 +963,56 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   return(
     <div>
       {/* Header */}
-      <div className="rds-dash-banner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
+      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.accent}11 100%)`,border:`1px solid ${C.accent}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
         <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.accent}}>{me.name[0]}</div>
         <div style={{flex:1,minWidth:0}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>My Dashboard</h2>
           <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · {me.role} · {total} task{total!==1?"s":""} assigned</p>
         </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontSize:28,fontWeight:800,color:C.accent}}>{pct}%</div>
-          <div style={{fontSize:11,color:C.t3}}>overall complete</div>
+        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+          {[{l:"Total Tasks",v:total,c:C.accent,k:"utotal"},{l:"Completed",v:done,c:C.green,k:"ucompleted"},{l:"In Progress",v:inprog,c:C.blue,k:"uinprog"},{l:"Overdue",v:overdue,c:C.red,k:"uoverdue"}].map(s=>(
+            <div key={s.l} onClick={()=>setUSM(s.k)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:80,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
+              <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:2,whiteSpace:"nowrap"}}>{s.l} ›</div>
+            </div>
+          ))}
         </div>
       </div>
+      {uStatModal&&(()=>{
+        const completedTasks=myTasks.filter(t=>isDone(t.status));
+        const ipTasks=myTasks.filter(t=>t.status==="In Progress");
+        const od=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+        const uModalData={
+          utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
+          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${t.due_date||"—"}`,dot:C.blue};})},
+          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${t.due_date}`,dot:C.red};})},
+        };
+        const md=uModalData[uStatModal];if(!md)return null;
+        return(<div onClick={()=>setUSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+            <div style={{padding:"18px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{md.title} <span style={{color:md.color,fontSize:14}}>({md.items.length})</span></span>
+              <button onClick={()=>setUSM(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t3}}>✕</button>
+            </div>
+            <div style={{overflowY:"auto",padding:"10px 8px"}}>
+              {md.items.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No items</div>:md.items.map((item,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,marginBottom:4,transition:"background .15s",cursor:"default"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:36,height:36,borderRadius:10,background:item.dot+"22",border:`2px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
+                  <div style={{flex:1,minWidth:0,borderLeft:`3px solid ${item.dot}`,paddingLeft:10}}>
+                    <div style={{fontWeight:600,fontSize:13,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</div>
+                    <div style={{fontSize:11,color:C.t3,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>);
+      })()}
       {/* Progress bar */}
       <div style={{marginBottom:24}}><Pb v={pct} color={C.accent} h={8}/></div>
       {/* Stat cards */}
@@ -1207,6 +1247,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
   const [fSearch,setFS]=useState(""); const [fProject,setFP]=useState("All"); const [fAssignee,setFA]=useState("All"); const [fStatus,setFSt]=useState("All"); const [showDT,setSDT]=useState(false);
   const [selMember,setSM]=useState(null); // selected team member for drill-down
   const [memberSF,setMSF]=useState("All"); // status filter for member tasks
+  const [tlStatModal,setTSM]=useState(null);
 
   // Tasks where I'm detailer (my review work)
   const detailerTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&matchesMe(t.detailer));
@@ -1235,7 +1276,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
   return(
     <div>
       {/* Header */}
-      <div className="rds-dash-banner" style={{background:C.card,border:`1px solid ${"#8b5cf6"}44`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #8b5cf6`}}>
+      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${"#8b5cf6"}11 100%)`,border:`1px solid ${"#8b5cf6"}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",borderLeft:`4px solid #8b5cf6`}}>
         <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:"#8b5cf622",border:`2px solid #8b5cf644`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"#8b5cf6"}}>{(me.name[0]||"T").toUpperCase()}</div>
         <div style={{flex:1,minWidth:0}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>Team Leader Dashboard</h2>
@@ -1245,7 +1286,49 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
           <div style={{fontSize:28,fontWeight:800,color:"#8b5cf6"}}>{pct}%</div>
           <div style={{fontSize:11,color:C.t3}}>team complete</div>
         </div>
+        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap",width:"100%",marginTop:12}}>
+          {[{l:"Team Members",v:teamMembers.length,c:"#8b5cf6",k:"tlteam"},{l:"Total Tasks",v:totalAll,c:C.blue,k:"tltotal"},{l:"In Progress",v:allTasks.filter(t=>t.status==="In Progress").length,c:C.accent,k:"tlinprog"},{l:"Completion",v:pct+"%",c:C.green,k:"tlcomplete"}].map(s=>(
+            <div key={s.l} onClick={()=>setTSM(s.k)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:80,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
+              <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:2,whiteSpace:"nowrap"}}>{s.l} ›</div>
+            </div>
+          ))}
+        </div>
       </div>
+      {tlStatModal&&(()=>{
+        const ipTasks=allTasks.filter(t=>t.status==="In Progress");
+        const doneTasks=allTasks.filter(t=>isDone(t.status));
+        const tlModalData={
+          tlteam:{title:"👤 Team Members",color:"#8b5cf6",items:teamMembers.map(m=>{const mt=allTasks.filter(t=>t.assignee===m);const mip=mt.filter(t=>t.status==="In Progress").length;const md=mt.filter(t=>isDone(t.status)).length;return{label:m,sub:`${mip} in progress · ${md} done`,dot:"#8b5cf6"};})},
+          tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${t.due_date||"—"}`,dot:C.accent};})},
+          tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"}`,dot:C.green};})},
+        };
+        const md=tlModalData[tlStatModal];if(!md)return null;
+        return(<div onClick={()=>setTSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+            <div style={{padding:"18px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{md.title} <span style={{color:md.color,fontSize:14}}>({md.items.length})</span></span>
+              <button onClick={()=>setTSM(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t3}}>✕</button>
+            </div>
+            <div style={{overflowY:"auto",padding:"10px 8px"}}>
+              {md.items.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No items</div>:md.items.map((item,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,marginBottom:4,transition:"background .15s",cursor:"default"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:36,height:36,borderRadius:10,background:item.dot+"22",border:`2px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
+                  <div style={{flex:1,minWidth:0,borderLeft:`3px solid ${item.dot}`,paddingLeft:10}}>
+                    <div style={{fontWeight:600,fontSize:13,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</div>
+                    <div style={{fontSize:11,color:C.t3,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>);
+      })()}
 
       {/* Top stats */}
       <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
@@ -1735,6 +1818,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   const [filterProject,sfp]=useState("All");
   const [filterAssignee,sfa]=useState("All");
   const [showTasks,sst]=useState(false);
+  const [clStatModal,setCSM]=useState(null);
   const myProjects=projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase());
   const myPids=new Set(myProjects.map(p=>p.id));
   const myTasks=tasks.filter(t=>myPids.has(t.project_id));
@@ -1762,7 +1846,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   return(
     <div>
       {/* Header */}
-      <div className="rds-dash-banner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24,display:"flex",alignItems:"center",gap:16}}>
+      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.teal}11 100%)`,border:`1px solid ${C.teal}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
         <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
         <div style={{flex:1,minWidth:0}}>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>{me.client_name||me.name}</h2>
@@ -1772,7 +1856,49 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
           <div style={{fontSize:28,fontWeight:800,color:C.teal}}>{pct}%</div>
           <div style={{fontSize:11,color:C.t3}}>overall complete</div>
         </div>
+        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap",width:"100%",marginTop:12}}>
+          {[{l:"Projects",v:myProjects.length,c:C.teal,k:"clprojects"},{l:"Total Tasks",v:total,c:C.blue,k:"cltotal"},{l:"Completed",v:done,c:C.green,k:"clcompleted"},{l:"Completion",v:pct+"%",c:"#f59e0b",k:"clpct"}].map(s=>(
+            <div key={s.l} onClick={()=>setCSM(s.k)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:80,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
+              <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:2,whiteSpace:"nowrap"}}>{s.l} ›</div>
+            </div>
+          ))}
+        </div>
       </div>
+      {clStatModal&&(()=>{
+        const completedTasks=myTasks.filter(t=>isDone(t.status));
+        const ipTasks=myTasks.filter(t=>t.status==="In Progress");
+        const clModalData={
+          clprojects:{title:"📁 My Projects",color:C.teal,items:myProjects.map(p=>{const pt=myTasks.filter(t=>t.project_id===p.id);const pd=pt.filter(t=>isDone(t.status)).length;return{label:p.name,sub:`${pt.length} tasks · ${pt.length?Math.round(pd/pt.length*100):0}% done`,dot:C.teal};})},
+          cltotal:{title:"📋 All Tasks",color:C.blue,items:myTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          clcompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
+          clpct:{title:"📊 Tasks by Status",color:"#f59e0b",items:[{label:`✅ Completed`,sub:`${done} tasks`,dot:C.green},{label:`🔄 In Progress`,sub:`${inprog} tasks`,dot:C.blue},{label:`⏳ Not Started`,sub:`${notStarted} tasks`,dot:C.t3},{label:`⚠ Overdue`,sub:`${overdue} tasks`,dot:C.red}]},
+        };
+        const md=clModalData[clStatModal];if(!md)return null;
+        return(<div onClick={()=>setCSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+            <div style={{padding:"18px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{md.title} <span style={{color:md.color,fontSize:14}}>({md.items.length})</span></span>
+              <button onClick={()=>setCSM(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.t3}}>✕</button>
+            </div>
+            <div style={{overflowY:"auto",padding:"10px 8px"}}>
+              {md.items.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No items</div>:md.items.map((item,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,marginBottom:4,transition:"background .15s",cursor:"default"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:36,height:36,borderRadius:10,background:item.dot+"22",border:`2px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
+                  <div style={{flex:1,minWidth:0,borderLeft:`3px solid ${item.dot}`,paddingLeft:10}}>
+                    <div style={{fontWeight:600,fontSize:13,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</div>
+                    <div style={{fontSize:11,color:C.t3,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>);
+      })()}
       {/* Progress bar */}
       <div style={{marginBottom:18}}><Pb v={pct} color={C.teal} h={8}/></div>
       {/* Stat cards */}
