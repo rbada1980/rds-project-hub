@@ -4036,6 +4036,7 @@ function WarRoomPage({me,projects,users}){
   const [videoPreview,setVideoPreview]=useState(null);
   const [uploading,setUploading]=useState(false);
   const [dragOver,setDragOver]=useState(null);
+  const [projSearch,setProjSearch]=useState("");
   const endRef=useRef();
   const inputRef=useRef();
   const mrRef=useRef();
@@ -4152,47 +4153,37 @@ function WarRoomPage({me,projects,users}){
 
   // ── PROJECT SELECTOR ──
   if(!activePid){
-    const [search,setSearch]=useState("");
-    const filtered=search.trim()?projects.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||(p.client||"").toLowerCase().includes(search.toLowerCase())):projects;
+    const filtered=projSearch.trim()?projects.filter(p=>p.name.toLowerCase().includes(projSearch.toLowerCase())||(p.client||"").toLowerCase().includes(projSearch.toLowerCase())):projects;
     return(
-      <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-        {/* Header */}
-        <div style={{marginBottom:isMobile?16:24}}>
-          <h2 style={{margin:0,fontSize:isMobile?18:22,fontWeight:900,color:C.t1}}>💬 War Room</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Select a project to open its chat room</p>
-        </div>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,minHeight:isMobile?"60vh":"50vh",padding:isMobile?"0 8px":0}}>
+        <div style={{width:"100%",maxWidth:480}}>
+          {/* Header */}
+          <div style={{textAlign:"center",marginBottom:28}}>
+            <div style={{fontSize:40,marginBottom:8}}>💬</div>
+            <h2 style={{margin:0,fontSize:isMobile?18:22,fontWeight:900,color:C.t1}}>War Room</h2>
+            <p style={{margin:"6px 0 0",color:C.t3,fontSize:13}}>Select a project to open its chat room</p>
+          </div>
 
-        {/* Search */}
-        <div style={{position:"relative",marginBottom:14}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)}
-            placeholder="🔍 Search projects…"
-            style={{width:"100%",background:C.surface,border:`1px solid ${search?C.accent:C.border}`,borderRadius:10,padding:"10px 14px",color:C.t1,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-        </div>
+          {/* Dropdown card */}
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:isMobile?"20px 16px":"28px 32px",boxShadow:`0 4px 24px #00000033`}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:8,letterSpacing:1,textTransform:"uppercase"}}>Choose Project</label>
+            <select value={activePid||""} onChange={e=>e.target.value&&setActivePid(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`1.5px solid ${C.border}`,borderRadius:10,padding:"12px 14px",color:activePid?C.t1:C.t3,fontSize:15,outline:"none",cursor:"pointer",fontFamily:"inherit",appearance:"none",WebkitAppearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center"}}>
+              <option value="">— Select a project —</option>
+              {filtered.map(p=>(
+                <option key={p.id} value={p.id}>{p.name}{p.client?` (${p.client})`:""}</option>
+              ))}
+            </select>
 
-        {/* Project list */}
-        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,paddingBottom:isMobile?80:16}}>
-          {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.t3,fontSize:13}}>No projects found</div>}
-          {filtered.map(p=>{
-            const color=p.color||C.accent;
-            const last=lastMsgs[p.id];
-            return(
-              <button key={p.id} onClick={()=>setActivePid(p.id)}
-                style={{width:"100%",background:C.card,border:`1.5px solid ${C.border}`,borderRadius:12,padding:isMobile?"12px 14px":"14px 18px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:14,transition:"border-color .15s",outline:"none"}}
-                onMouseEnter={e=>e.currentTarget.style.borderColor=color}
-                onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
-                {/* Color dot */}
-                <div style={{width:10,height:10,borderRadius:"50%",background:color,flexShrink:0}}/>
-                {/* Info */}
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:isMobile?14:15,fontWeight:800,color:C.t1,marginBottom:last?3:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                  {last&&<div style={{fontSize:12,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last.author_name}: {last.body||"📹 video"} · {fmt(last.created_at)}</div>}
-                  {!last&&<div style={{fontSize:12,color:C.t3}}>No messages yet</div>}
-                </div>
-                {/* Arrow */}
-                <div style={{fontSize:18,color:C.t3,flexShrink:0}}>›</div>
-              </button>
-            );
-          })}
+            {/* Search filter */}
+            <div style={{marginTop:12}}>
+              <input value={projSearch} onChange={e=>setProjSearch(e.target.value)}
+                placeholder="🔍 Filter projects by name…"
+                style={{width:"100%",background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:10,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+
+            <div style={{marginTop:16,fontSize:12,color:C.t3,textAlign:"center"}}>{filtered.length} project{filtered.length!==1?"s":""} available</div>
+          </div>
         </div>
       </div>
     );
