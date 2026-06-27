@@ -4027,19 +4027,32 @@ function WarRoomPage({me,projects,users}){
   const [input,setInput]=useState("");
   const [sending,setSending]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [mentionList,setMentionList]=useState([]);// filtered dropdown
+  const [mentionList,setMentionList]=useState([]);
   const [mentionOpen,setMentionOpen]=useState(false);
   const [recording,setRecording]=useState(false);
   const [recSeconds,setRecSeconds]=useState(0);
   const [videoBlob,setVideoBlob]=useState(null);
   const [videoPreview,setVideoPreview]=useState(null);
   const [uploading,setUploading]=useState(false);
+  const [kbOpen,setKbOpen]=useState(false);
   const endRef=useRef();
   const inputRef=useRef();
   const mrRef=useRef();
   const chunksRef=useRef([]);
   const timerRef=useRef();
+  const chatBoxRef=useRef();
   const allMembers=users.map(u=>({name:u.name,username:u.username}));
+
+  // Track keyboard open on mobile
+  useEffect(()=>{
+    if(!isMobile)return;
+    const handler=()=>{
+      const focused=document.activeElement?.tagName==="TEXTAREA"||document.activeElement?.tagName==="INPUT";
+      setKbOpen(focused&&window.innerHeight<600);
+    };
+    window.addEventListener("resize",handler);
+    return()=>window.removeEventListener("resize",handler);
+  },[isMobile]);
 
   // Load messages when project changes
   useEffect(()=>{
@@ -4156,19 +4169,22 @@ function WarRoomPage({me,projects,users}){
   const proj=projects.find(p=>p.id===activePid);
 
   return(
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 120px)",gap:0}}>
+    <div style={{display:"flex",flexDirection:"column",height:isMobile?"calc(100dvh - 140px)":"calc(100vh - 120px)",gap:0,overflow:"hidden"}}>
       {/* Header */}
-      <div style={{marginBottom:14}}>
+      {!isMobile&&<div style={{marginBottom:14}}>
         <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>💬 War Room</h2>
         <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Real-time project chat — searchable, persistent, linked to tasks</p>
-      </div>
+      </div>}
+      {isMobile&&<div style={{marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+        <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.t1}}>💬 War Room</h2>
+      </div>}
 
-      {/* Project selector */}
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+      {/* Project selector — horizontal scroll on mobile */}
+      <div style={{display:"flex",gap:8,overflowX:isMobile?"auto":"unset",flexWrap:isMobile?"nowrap":"wrap",marginBottom:10,paddingBottom:isMobile?4:0,WebkitOverflowScrolling:"touch"}}>
         {projects.map(p=>(
           <button key={p.id} onClick={()=>setActivePid(p.id)}
-            style={{padding:"7px 14px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`2px solid ${activePid===p.id?p.color||C.accent:C.border}`,background:activePid===p.id?(p.color||C.accent)+"22":"transparent",color:activePid===p.id?p.color||C.accent:C.t2,transition:"all .15s",display:"flex",alignItems:"center",gap:5}}>
-            <span style={{width:8,height:8,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+            style={{padding:isMobile?"6px 12px":"7px 14px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`2px solid ${activePid===p.id?p.color||C.accent:C.border}`,background:activePid===p.id?(p.color||C.accent)+"22":"transparent",color:activePid===p.id?p.color||C.accent:C.t2,transition:"all .15s",display:"flex",alignItems:"center",gap:5,flexShrink:0,whiteSpace:"nowrap"}}>
+            <span style={{width:7,height:7,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/>
             {p.name}
           </button>
         ))}
@@ -4176,21 +4192,21 @@ function WarRoomPage({me,projects,users}){
 
       {!activePid?(
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:C.t3}}>
-          <span style={{fontSize:48}}>💬</span>
-          <span style={{fontSize:15,fontWeight:700,color:C.t1}}>Select a project to open its War Room</span>
-          <span style={{fontSize:13}}>Every project has a dedicated, real-time chat channel</span>
+          <span style={{fontSize:isMobile?36:48}}>💬</span>
+          <span style={{fontSize:isMobile?14:15,fontWeight:700,color:C.t1,textAlign:"center"}}>Select a project to open its War Room</span>
+          <span style={{fontSize:12,textAlign:"center"}}>Every project has a dedicated real-time chat channel</span>
         </div>
       ):(
-        <div style={{flex:1,display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",minHeight:0}}>
+        <div ref={chatBoxRef} style={{flex:1,display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${C.border}`,borderRadius:isMobile?10:14,overflow:"hidden",minHeight:0}}>
           {/* Chat header */}
-          <div style={{background:(proj?.color||C.accent)+"18",borderBottom:`1px solid ${proj?.color||C.accent}33`,padding:"12px 18px",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{width:10,height:10,borderRadius:"50%",background:proj?.color||C.accent,flexShrink:0,display:"inline-block"}}/>
-            <span style={{fontSize:14,fontWeight:800,color:C.t1}}>{proj?.name}</span>
-            <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{messages.length} messages</span>
+          <div style={{background:(proj?.color||C.accent)+"18",borderBottom:`1px solid ${proj?.color||C.accent}33`,padding:isMobile?"10px 12px":"12px 18px",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{width:9,height:9,borderRadius:"50%",background:proj?.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+            <span style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name}</span>
+            <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{messages.length} msgs</span>
           </div>
 
           {/* Messages */}
-          <div style={{flex:1,overflowY:"auto",padding:"14px 18px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px 12px":"14px 18px",display:"flex",flexDirection:"column",gap:isMobile?8:10,WebkitOverflowScrolling:"touch"}}>
             {loading?<div style={{textAlign:"center",padding:40,color:C.t3}}>Loading…</div>:
               messages.length===0?<div style={{textAlign:"center",padding:40,color:C.t3}}><div style={{fontSize:32,marginBottom:8}}>👋</div><div>No messages yet — start the conversation!</div></div>:
               messages.map(msg=>{
@@ -4198,10 +4214,10 @@ function WarRoomPage({me,projects,users}){
                 return(
                   <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}>
                     {/* Avatar */}
-                    <div style={{width:30,height:30,borderRadius:"50%",background:isMe?C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,fontWeight:800,color:"#fff"}}>
+                    <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
                       {msg.author_name?.charAt(0).toUpperCase()}
                     </div>
-                    <div style={{maxWidth:"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
+                    <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
                       {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
                       <div style={{background:isMe?C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
                         {msg.body&&<div>{renderBody(msg.body)}</div>}
@@ -4222,19 +4238,19 @@ function WarRoomPage({me,projects,users}){
 
           {/* Video preview */}
           {videoPreview&&(
-            <div style={{padding:"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:10}}>
-              <video src={videoPreview} controls style={{height:80,borderRadius:8}}/>
-              <div style={{flex:1}}>
-                <div style={{fontSize:12,color:C.t1,fontWeight:700,marginBottom:4}}>📹 Video ready to send</div>
-                <div style={{fontSize:11,color:C.t3}}>Will be attached to your message</div>
+            <div style={{padding:isMobile?"8px 10px":"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8}}>
+              <video src={videoPreview} controls style={{height:isMobile?56:80,borderRadius:8,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:isMobile?11:12,color:C.t1,fontWeight:700,marginBottom:2}}>📹 Video ready</div>
+                <div style={{fontSize:10,color:C.t3}}>Will be attached</div>
               </div>
-              <button onClick={cancelVideo} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 10px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>✕ Remove</button>
+              <button onClick={cancelVideo} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 8px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
             </div>
           )}
 
           {/* @mention dropdown */}
           {mentionOpen&&mentionList.length>0&&(
-            <div style={{margin:"0 18px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:10,padding:6,position:"relative",zIndex:10}}>
+            <div style={{margin:isMobile?"0 8px":"0 18px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:10,padding:6,position:"relative",zIndex:10}}>
               {mentionList.map(m=>(
                 <div key={m.username} onClick={()=>insertMention(m)}
                   style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"background .1s"}}
@@ -4248,29 +4264,27 @@ function WarRoomPage({me,projects,users}){
           )}
 
           {/* Input bar */}
-          <div style={{padding:"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,alignItems:"flex-end"}}>
-            <div style={{flex:1,position:"relative"}}>
-              <textarea ref={inputRef} value={input} onChange={handleInput}
-                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}if(e.key==="Escape"){setMentionOpen(false);}}}
-                placeholder="Type a message… use @ to mention someone  (Enter to send)"
-                rows={isMobile?2:1} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.5}}/>
-            </div>
+          <div style={{padding:isMobile?"8px 8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
+            <textarea ref={inputRef} value={input} onChange={handleInput}
+              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape"){setMentionOpen(false);}}}
+              placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
+              rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:isMobile?"9px 14px":"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4,overflowY:"hidden",maxHeight:80}}/>
             {/* Record button */}
             {!recording&&!videoBlob&&(
               <button onClick={startRecording} title="Record 60s video message"
-                style={{flexShrink:0,width:38,height:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>
+                style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
                 🎥
               </button>
             )}
             {recording&&(
               <button onClick={stopRecording}
-                style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:"8px 14px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
+                style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:isMobile?"7px 10px":"8px 14px",color:"#fff",fontSize:isMobile?11:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>
                 ⏹ {60-recSeconds}s
               </button>
             )}
             <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob)}
-              style={{flexShrink:0,background:C.accent,border:"none",borderRadius:10,padding:"9px 18px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob))?0.5:1,transition:"opacity .15s"}}>
-              {uploading?"⬆":"Send"}
+              style={{flexShrink:0,background:C.accent,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {isMobile?(uploading?"⬆":"➤"):(uploading?"⬆":"Send")}
             </button>
           </div>
         </div>
