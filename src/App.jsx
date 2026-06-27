@@ -4150,66 +4150,47 @@ function WarRoomPage({me,projects,users}){
 
   const proj=projects.find(p=>p.id===activePid);
 
-  // ── PROJECT CARD GRID ──
+  // ── PROJECT SELECTOR ──
   if(!activePid){
-    const cols=isMobile?1:window.innerWidth>1024?3:2;
+    const [search,setSearch]=useState("");
+    const filtered=search.trim()?projects.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||(p.client||"").toLowerCase().includes(search.toLowerCase())):projects;
     return(
-      <div style={{height:"100%",display:"flex",flexDirection:"column"}}>
-        <div style={{marginBottom:isMobile?12:20}}>
-          <h2 style={{margin:0,fontSize:isMobile?17:20,fontWeight:900,color:C.t1}}>💬 War Room</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Drag a project card into the chat — or tap to enter</p>
+      <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+        {/* Header */}
+        <div style={{marginBottom:isMobile?16:24}}>
+          <h2 style={{margin:0,fontSize:isMobile?18:22,fontWeight:900,color:C.t1}}>💬 War Room</h2>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Select a project to open its chat room</p>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap:isMobile?12:16,overflowY:"auto",paddingBottom:isMobile?80:20}}>
-          {projects.map(p=>{
+
+        {/* Search */}
+        <div style={{position:"relative",marginBottom:14}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="🔍 Search projects…"
+            style={{width:"100%",background:C.surface,border:`1px solid ${search?C.accent:C.border}`,borderRadius:10,padding:"10px 14px",color:C.t1,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+        </div>
+
+        {/* Project list */}
+        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,paddingBottom:isMobile?80:16}}>
+          {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.t3,fontSize:13}}>No projects found</div>}
+          {filtered.map(p=>{
             const color=p.color||C.accent;
             const last=lastMsgs[p.id];
-            const isDrag=dragOver===p.id;
             return(
-              <div key={p.id}
-                draggable
-                onDragStart={e=>{e.dataTransfer.setData("pid",p.id);setDragOver(p.id);}}
-                onDragEnd={()=>{setDragOver(null);setActivePid(p.id);}}
-                onTouchStart={()=>setDragOver(p.id)}
-                onTouchEnd={()=>{setDragOver(null);setActivePid(p.id);}}
-                onClick={()=>setActivePid(p.id)}
-                style={{background:C.card,border:`2px solid ${isDrag?color:C.border}`,borderRadius:14,overflow:"hidden",cursor:"grab",userSelect:"none",transition:"all .2s",transform:isDrag?"scale(1.03)":"scale(1)",boxShadow:isDrag?`0 8px 32px ${color}44`:"none",WebkitUserSelect:"none"}}>
-                {/* Color bar */}
-                <div style={{height:5,background:`linear-gradient(90deg,${color},${color}88)`}}/>
-                <div style={{padding:isMobile?"14px":"18px"}}>
-                  {/* Top row */}
-                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:isMobile?14:15,fontWeight:900,color:C.t1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                      {p.client&&<div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>👤 {p.client}</div>}
-                    </div>
-                    <div style={{width:36,height:36,borderRadius:10,background:color+"22",border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,marginLeft:10}}>
-                      💬
-                    </div>
-                  </div>
-
-                  {/* Last message preview */}
-                  <div style={{background:C.surface,borderRadius:8,padding:"8px 10px",marginBottom:12,minHeight:42}}>
-                    {last?(
-                      <>
-                        <div style={{fontSize:10,color:C.t3,marginBottom:2,fontWeight:700}}>{last.author_name} · {fmt(last.created_at)}</div>
-                        <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last.body||"📹 video message"}</div>
-                      </>
-                    ):(
-                      <div style={{fontSize:12,color:C.t3,textAlign:"center",paddingTop:4}}>No messages yet</div>
-                    )}
-                  </div>
-
-                  {/* Enter button */}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <div style={{fontSize:11,color:C.t3,display:"flex",alignItems:"center",gap:4}}>
-                      <span style={{fontSize:14}}>⠿</span> drag to enter
-                    </div>
-                    <div style={{background:color+"22",border:`1px solid ${color}44`,borderRadius:20,padding:"5px 14px",fontSize:12,fontWeight:700,color:color,display:"flex",alignItems:"center",gap:5}}>
-                      Enter Room →
-                    </div>
-                  </div>
+              <button key={p.id} onClick={()=>setActivePid(p.id)}
+                style={{width:"100%",background:C.card,border:`1.5px solid ${C.border}`,borderRadius:12,padding:isMobile?"12px 14px":"14px 18px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:14,transition:"border-color .15s",outline:"none"}}
+                onMouseEnter={e=>e.currentTarget.style.borderColor=color}
+                onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+                {/* Color dot */}
+                <div style={{width:10,height:10,borderRadius:"50%",background:color,flexShrink:0}}/>
+                {/* Info */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:isMobile?14:15,fontWeight:800,color:C.t1,marginBottom:last?3:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                  {last&&<div style={{fontSize:12,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last.author_name}: {last.body||"📹 video"} · {fmt(last.created_at)}</div>}
+                  {!last&&<div style={{fontSize:12,color:C.t3}}>No messages yet</div>}
                 </div>
-              </div>
+                {/* Arrow */}
+                <div style={{fontSize:18,color:C.t3,flexShrink:0}}>›</div>
+              </button>
             );
           })}
         </div>
