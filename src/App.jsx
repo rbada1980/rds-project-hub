@@ -3866,7 +3866,7 @@ export default function App(){
       body,html{overflow:hidden;}
       @media(max-width:768px){
         .rds-sidebar{display:none!important;}
-        .rds-main{padding:8px!important;padding-bottom:80px!important;}
+        .rds-main{padding:8px!important;padding-bottom:80px!important;overflow-x:hidden!important;}
         .rds-topbar{flex-wrap:nowrap!important;gap:6px!important;margin-bottom:10px!important;align-items:center!important;}
         .rds-topbar-left{flex:1!important;min-width:0!important;overflow:hidden!important;display:flex!important;align-items:center!important;gap:8px!important;}
         .rds-topbar-right{flex-shrink:0!important;display:flex!important;gap:4px!important;align-items:center!important;justify-content:flex-end!important;}
@@ -4644,22 +4644,26 @@ export default function App(){
               </div>
             )}
             {/* ── Clean Filter Bar ── */}
-            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:20,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
+              {/* Search - full width on mobile */}
               <input placeholder="🔍 Search tasks or projects…" value={dashSearch} onChange={e=>sdss(e.target.value)}
-                style={{flex:1,minWidth:160,background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-              <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                <option value="All">All Projects</option>
-                {accessibleProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                <option value="All">All Assignees</option>
-                {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
-              </select>
-              <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                <option value="All">All Statuses</option>
-                {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-              </select>
-              {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+                style={{width:"100%",background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",display:"block",marginBottom:isMobile?8:0}}/>
+              {/* Selects row */}
+              <div style={{display:"flex",gap:isMobile?6:10,alignItems:"center",flexWrap:"wrap",marginTop:isMobile?0:8}}>
+                <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Projects</option>
+                  {accessibleProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Assignees</option>
+                  {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
+                </select>
+                <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Statuses</option>
+                  {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
+              </div>
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
                         {/* ── Stat Cards ── */}
@@ -4960,13 +4964,20 @@ export default function App(){
                               {canEditTask&&<button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>}
                             </div>
                             {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:canEditTask?8:0}}>
                               {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
                               {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                               {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
                               {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {t.due_date}</span>}
                               {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {t.due_date}</span>}
                             </div>
+                            {canEditTask&&<div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{fontSize:10,color:C.t3,flexShrink:0}}>Move to:</span>
+                              <select value={t.status} onChange={e=>dropTask(t.id,e.target.value)}
+                                style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:getStatusColor(t.status),fontSize:11,fontWeight:700,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                                {kanbanCols.map(col=><option key={col} value={col}>{col}</option>)}
+                              </select>
+                            </div>}
                           </div>
                         );
                       })}
