@@ -4203,7 +4203,7 @@ export default function App(){
                   <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Full access to all projects, users, and clients</p>
                 </div>
                 <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-                  {[{l:"Users",v:users.length,c:C.accent},{l:"Clients",v:clients.length,c:C.teal},{l:"Projects",v:accessibleProjects.length,c:C.blue},{l:"Health",v:(accessibleProjects.length?Math.round(accessibleProjects.filter(p=>prog(p.id)>0).length/accessibleProjects.length*100):0)+"%",c:C.green}].map(s=>(
+                  {[{l:"Users",v:users.length,c:C.accent},{l:"Clients",v:clients.length,c:C.teal},{l:"Projects",v:accessibleProjects.length,c:C.blue},{l:"Overdue",v:tasks.filter(t=>t.due_date&&t.due_date<today&&t.status!=="Completed"&&t.status!=="Done").length,c:C.red}].map(s=>(
                     <div key={s.l} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64}}>
                       <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
                       <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
