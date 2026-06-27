@@ -178,11 +178,23 @@ export default async function handler(req, res) {
     const sunLabel = lastSun.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
     const weekLabel = `Week of ${monLabel} – ${sunLabel}`;
 
-    // Check if digest is enabled
-    const settingsData = await supaFetch(`/rest/v1/settings?key=eq.weekly_digest_enabled&select=value`);
-    if (Array.isArray(settingsData) && settingsData[0]?.value === "false") {
+    // Check if digest is enabled + read scheduled day
+    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(weekly_digest_enabled,weekly_digest_day)&select=key,value`);
+    const settingsMap = {};
+    if (Array.isArray(settingsData)) settingsData.forEach(r => { settingsMap[r.key] = r.value; });
+
+    if (settingsMap["weekly_digest_enabled"] === "false") {
       console.log("Weekly digest is disabled via settings.");
       return res.status(200).json({ message: "Weekly digest is disabled." });
+    }
+
+    // Check allowed day (0=Sun,...6=Sat). Default: Monday (1)
+    const allowedDay = Number(settingsMap["weekly_digest_day"] ?? 1);
+    const todayDow = istNow.getDay();
+    const DOW_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    if (todayDow !== allowedDay) {
+      console.log(`Weekly digest skipped — today is ${DOW_NAMES[todayDow]}, scheduled for ${DOW_NAMES[allowedDay]}.`);
+      return res.status(200).json({ message: `Skipped: today (${DOW_NAMES[todayDow]}) is not the scheduled day (${DOW_NAMES[allowedDay]}).` });
     }
 
     const [allTasks, projects, users] = await Promise.all([

@@ -149,10 +149,22 @@ export default async function handler(req, res) {
     });
 
     // Check if digest is enabled
-    const settingsData = await supaFetch(`/rest/v1/settings?key=eq.daily_digest_enabled&select=value`);
-    if (Array.isArray(settingsData) && settingsData[0]?.value === "false") {
+    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days)&select=key,value`);
+    const settingsMap = {};
+    if (Array.isArray(settingsData)) settingsData.forEach(r => { settingsMap[r.key] = r.value; });
+
+    if (settingsMap["daily_digest_enabled"] === "false") {
       console.log("Daily digest is disabled via settings.");
       return res.status(200).json({ message: "Daily digest is disabled." });
+    }
+
+    // Check allowed days (0=Sun,1=Mon,...6=Sat). Default: Mon–Sat (1,2,3,4,5,6)
+    const allowedDays = (settingsMap["daily_digest_days"] || "1,2,3,4,5,6")
+      .split(",").map(Number);
+    const todayDow = istDate.getDay(); // 0=Sun
+    if (!allowedDays.includes(todayDow)) {
+      console.log(`Daily digest skipped — ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days [${allowedDays}].`);
+      return res.status(200).json({ message: `Skipped: today (${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]}) not in scheduled days.` });
     }
 
     const [allTasks, projects, users] = await Promise.all([
