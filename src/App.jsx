@@ -4027,6 +4027,7 @@ function WarRoomPage({me,projects,users}){
   const [input,setInput]=useState("");
   const [sending,setSending]=useState(false);
   const [loading,setLoading]=useState(false);
+  const [lastMsgs,setLastMsgs]=useState({}); // project_id -> last message preview
   const [mentionList,setMentionList]=useState([]);
   const [mentionOpen,setMentionOpen]=useState(false);
   const [recording,setRecording]=useState(false);
@@ -4034,25 +4035,25 @@ function WarRoomPage({me,projects,users}){
   const [videoBlob,setVideoBlob]=useState(null);
   const [videoPreview,setVideoPreview]=useState(null);
   const [uploading,setUploading]=useState(false);
-  const [kbOpen,setKbOpen]=useState(false);
+  const [dragOver,setDragOver]=useState(null);
   const endRef=useRef();
   const inputRef=useRef();
   const mrRef=useRef();
   const chunksRef=useRef([]);
   const timerRef=useRef();
-  const chatBoxRef=useRef();
   const allMembers=users.map(u=>({name:u.name,username:u.username}));
 
-  // Track keyboard open on mobile
+  // Load last messages for each project (for card previews)
   useEffect(()=>{
-    if(!isMobile)return;
-    const handler=()=>{
-      const focused=document.activeElement?.tagName==="TEXTAREA"||document.activeElement?.tagName==="INPUT";
-      setKbOpen(focused&&window.innerHeight<600);
-    };
-    window.addEventListener("resize",handler);
-    return()=>window.removeEventListener("resize",handler);
-  },[isMobile]);
+    if(projects.length===0)return;
+    (async()=>{
+      const{data}=await supabase.from("war_room_messages").select("project_id,body,author_name,created_at")
+        .in("project_id",projects.map(p=>p.id)).order("created_at",{ascending:false}).limit(projects.length*3);
+      const map={};
+      (data||[]).forEach(m=>{if(!map[m.project_id])map[m.project_id]=m;});
+      setLastMsgs(map);
+    })();
+  },[projects]);
 
   // Load messages when project changes
   useEffect(()=>{
@@ -4069,15 +4070,14 @@ function WarRoomPage({me,projects,users}){
       .on("postgres_changes",{event:"INSERT",schema:"public",table:"war_room_messages"},p=>{
         if(p.new?.project_id!==activePid)return;
         setMessages(prev=>[...prev,p.new]);
+        setLastMsgs(prev=>({...prev,[p.new.project_id]:p.new}));
         setTimeout(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),80);
       }).subscribe();
     return()=>{supabase.removeChannel(ch);};
   },[activePid]);
 
-  // @mention detection in input
   function handleInput(e){
-    const val=e.target.value;
-    setInput(val);
+    const val=e.target.value;setInput(val);
     const cursor=e.target.selectionStart;
     const textBefore=val.slice(0,cursor);
     const match=textBefore.match(/@(\w*)$/);
@@ -4090,12 +4090,9 @@ function WarRoomPage({me,projects,users}){
 
   function insertMention(member){
     const cursor=inputRef.current?.selectionStart||input.length;
-    const textBefore=input.slice(0,cursor);
-    const textAfter=input.slice(cursor);
-    const replaced=textBefore.replace(/@\w*$/,"@"+member.username+" ");
-    setInput(replaced+textAfter);
-    setMentionOpen(false);
-    setTimeout(()=>{inputRef.current?.focus();},50);
+    const replaced=input.slice(0,cursor).replace(/@\w*$/,"@"+member.username+" ")+input.slice(cursor);
+    setInput(replaced);setMentionOpen(false);
+    setTimeout(()=>inputRef.current?.focus(),50);
   }
 
   async function send(){
@@ -4106,25 +4103,13 @@ function WarRoomPage({me,projects,users}){
       setUploading(true);
       const fname=`warroom_${activePid}_${Date.now()}.webm`;
       const{error:ue}=await supabase.storage.from("war-room-videos").upload(fname,videoBlob,{contentType:"video/webm",upsert:false});
-      if(!ue){
-        const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);
-        video_url=pub.publicUrl;
-      }
+      if(!ue){const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);video_url=pub.publicUrl;}
       setVideoBlob(null);setVideoPreview(null);setUploading(false);
     }
     const mentions=[...new Set([...(input.matchAll(/@(\w+)/g)||[])].map(m=>m[1]))];
-    await supabase.from("war_room_messages").insert({
-      project_id:activePid,author:me.username,author_name:me.name,
-      body:input.trim(),mentions,video_url
-    });
-    // Notifications for mentions
+    await supabase.from("war_room_messages").insert({project_id:activePid,author:me.username,author_name:me.name,body:input.trim(),mentions,video_url});
     if(mentions.length){
-      const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({
-        user_id:u.id,type:"mention",
-        title:`💬 ${me.name} mentioned you in War Room`,
-        description:input.trim().slice(0,100),
-        entity_type:"war_room",entity_id:activePid,created_by:me.username
-      }));
+      const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({user_id:u.id,type:"mention",title:`💬 ${me.name} mentioned you in War Room`,description:input.trim().slice(0,100),entity_type:"war_room",entity_id:activePid,created_by:me.username}));
       if(rows.length)await supabase.from("notifications").insert(rows);
     }
     setInput("");setMentionOpen(false);setSending(false);
@@ -4143,23 +4128,20 @@ function WarRoomPage({me,projects,users}){
       };
       mrRef.current=mr;mr.start(250);setRecording(true);setRecSeconds(0);
       timerRef.current=setInterval(()=>setRecSeconds(s=>{if(s>=59){stopRecording();return 0;}return s+1;}),1000);
-    }).catch(err=>alert("Camera/mic access needed for video messages: "+err.message));
+    }).catch(err=>alert("Camera/mic access needed: "+err.message));
   }
 
-  function stopRecording(){
-    mrRef.current?.stop();setRecording(false);clearInterval(timerRef.current);
-  }
-
+  function stopRecording(){mrRef.current?.stop();setRecording(false);clearInterval(timerRef.current);}
   function cancelVideo(){setVideoBlob(null);setVideoPreview(null);}
 
   const fmt=dt=>{const d=new Date(dt);const now=new Date();const diff=now-d;
     if(diff<60000)return"just now";
     if(diff<3600000)return Math.floor(diff/60000)+"m ago";
     if(diff<86400000)return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
-    return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+    return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"});
   };
 
-  const renderBody=(body)=>{
+  const renderBody=body=>{
     if(!body)return null;
     return body.split(/(@\w+)/g).map((part,i)=>
       part.startsWith("@")?<span key={i} style={{color:C.accent,fontWeight:700,background:C.accent+"18",borderRadius:4,padding:"0 3px"}}>{part}</span>:<span key={i}>{part}</span>
@@ -4168,131 +4150,168 @@ function WarRoomPage({me,projects,users}){
 
   const proj=projects.find(p=>p.id===activePid);
 
-  return(
-    <div style={{display:"flex",flexDirection:"column",height:isMobile?"calc(100dvh - 140px)":"calc(100vh - 120px)",gap:0,overflow:"hidden"}}>
-      {/* Header */}
-      {!isMobile&&<div style={{marginBottom:14}}>
-        <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>💬 War Room</h2>
-        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Real-time project chat — searchable, persistent, linked to tasks</p>
-      </div>}
-      {isMobile&&<div style={{marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
-        <h2 style={{margin:0,fontSize:17,fontWeight:900,color:C.t1}}>💬 War Room</h2>
-      </div>}
-
-      {/* Project selector — horizontal scroll on mobile */}
-      <div style={{display:"flex",gap:8,overflowX:isMobile?"auto":"unset",flexWrap:isMobile?"nowrap":"wrap",marginBottom:10,paddingBottom:isMobile?4:0,WebkitOverflowScrolling:"touch"}}>
-        {projects.map(p=>(
-          <button key={p.id} onClick={()=>setActivePid(p.id)}
-            style={{padding:isMobile?"6px 12px":"7px 14px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`2px solid ${activePid===p.id?p.color||C.accent:C.border}`,background:activePid===p.id?(p.color||C.accent)+"22":"transparent",color:activePid===p.id?p.color||C.accent:C.t2,transition:"all .15s",display:"flex",alignItems:"center",gap:5,flexShrink:0,whiteSpace:"nowrap"}}>
-            <span style={{width:7,height:7,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/>
-            {p.name}
-          </button>
-        ))}
-      </div>
-
-      {!activePid?(
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:C.t3}}>
-          <span style={{fontSize:isMobile?36:48}}>💬</span>
-          <span style={{fontSize:isMobile?14:15,fontWeight:700,color:C.t1,textAlign:"center"}}>Select a project to open its War Room</span>
-          <span style={{fontSize:12,textAlign:"center"}}>Every project has a dedicated real-time chat channel</span>
+  // ── PROJECT CARD GRID ──
+  if(!activePid){
+    const cols=isMobile?1:window.innerWidth>1024?3:2;
+    return(
+      <div style={{height:"100%",display:"flex",flexDirection:"column"}}>
+        <div style={{marginBottom:isMobile?12:20}}>
+          <h2 style={{margin:0,fontSize:isMobile?17:20,fontWeight:900,color:C.t1}}>💬 War Room</h2>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Drag a project card into the chat — or tap to enter</p>
         </div>
-      ):(
-        <div ref={chatBoxRef} style={{flex:1,display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${C.border}`,borderRadius:isMobile?10:14,overflow:"hidden",minHeight:0}}>
-          {/* Chat header */}
-          <div style={{background:(proj?.color||C.accent)+"18",borderBottom:`1px solid ${proj?.color||C.accent}33`,padding:isMobile?"10px 12px":"12px 18px",display:"flex",alignItems:"center",gap:8}}>
-            <span style={{width:9,height:9,borderRadius:"50%",background:proj?.color||C.accent,flexShrink:0,display:"inline-block"}}/>
-            <span style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name}</span>
-            <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{messages.length} msgs</span>
-          </div>
-
-          {/* Messages */}
-          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px 12px":"14px 18px",display:"flex",flexDirection:"column",gap:isMobile?8:10,WebkitOverflowScrolling:"touch"}}>
-            {loading?<div style={{textAlign:"center",padding:40,color:C.t3}}>Loading…</div>:
-              messages.length===0?<div style={{textAlign:"center",padding:40,color:C.t3}}><div style={{fontSize:32,marginBottom:8}}>👋</div><div>No messages yet — start the conversation!</div></div>:
-              messages.map(msg=>{
-                const isMe=msg.author===me.username;
-                return(
-                  <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}>
-                    {/* Avatar */}
-                    <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
-                      {msg.author_name?.charAt(0).toUpperCase()}
+        <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap:isMobile?12:16,overflowY:"auto",paddingBottom:isMobile?80:20}}>
+          {projects.map(p=>{
+            const color=p.color||C.accent;
+            const last=lastMsgs[p.id];
+            const isDrag=dragOver===p.id;
+            return(
+              <div key={p.id}
+                draggable
+                onDragStart={e=>{e.dataTransfer.setData("pid",p.id);setDragOver(p.id);}}
+                onDragEnd={()=>{setDragOver(null);setActivePid(p.id);}}
+                onTouchStart={()=>setDragOver(p.id)}
+                onTouchEnd={()=>{setDragOver(null);setActivePid(p.id);}}
+                onClick={()=>setActivePid(p.id)}
+                style={{background:C.card,border:`2px solid ${isDrag?color:C.border}`,borderRadius:14,overflow:"hidden",cursor:"grab",userSelect:"none",transition:"all .2s",transform:isDrag?"scale(1.03)":"scale(1)",boxShadow:isDrag?`0 8px 32px ${color}44`:"none",WebkitUserSelect:"none"}}>
+                {/* Color bar */}
+                <div style={{height:5,background:`linear-gradient(90deg,${color},${color}88)`}}/>
+                <div style={{padding:isMobile?"14px":"18px"}}>
+                  {/* Top row */}
+                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:isMobile?14:15,fontWeight:900,color:C.t1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                      {p.client&&<div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>👤 {p.client}</div>}
                     </div>
-                    <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
-                      {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
-                      <div style={{background:isMe?C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
-                        {msg.body&&<div>{renderBody(msg.body)}</div>}
-                        {msg.video_url&&(
-                          <div style={{marginTop:msg.body?8:0}}>
-                            <video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:200}}/>
-                          </div>
-                        )}
-                      </div>
-                      <span style={{fontSize:10,color:C.t3,padding:"0 4px"}}>{fmt(msg.created_at)}</span>
+                    <div style={{width:36,height:36,borderRadius:10,background:color+"22",border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,marginLeft:10}}>
+                      💬
                     </div>
                   </div>
-                );
-              })
-            }
-            <div ref={endRef}/>
-          </div>
 
-          {/* Video preview */}
-          {videoPreview&&(
-            <div style={{padding:isMobile?"8px 10px":"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8}}>
-              <video src={videoPreview} controls style={{height:isMobile?56:80,borderRadius:8,flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:isMobile?11:12,color:C.t1,fontWeight:700,marginBottom:2}}>📹 Video ready</div>
-                <div style={{fontSize:10,color:C.t3}}>Will be attached</div>
-              </div>
-              <button onClick={cancelVideo} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 8px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
-            </div>
-          )}
+                  {/* Last message preview */}
+                  <div style={{background:C.surface,borderRadius:8,padding:"8px 10px",marginBottom:12,minHeight:42}}>
+                    {last?(
+                      <>
+                        <div style={{fontSize:10,color:C.t3,marginBottom:2,fontWeight:700}}>{last.author_name} · {fmt(last.created_at)}</div>
+                        <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last.body||"📹 video message"}</div>
+                      </>
+                    ):(
+                      <div style={{fontSize:12,color:C.t3,textAlign:"center",paddingTop:4}}>No messages yet</div>
+                    )}
+                  </div>
 
-          {/* @mention dropdown */}
-          {mentionOpen&&mentionList.length>0&&(
-            <div style={{margin:isMobile?"0 8px":"0 18px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:10,padding:6,position:"relative",zIndex:10}}>
-              {mentionList.map(m=>(
-                <div key={m.username} onClick={()=>insertMention(m)}
-                  style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"background .1s"}}
-                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{width:24,height:24,borderRadius:"50%",background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff"}}>{m.name.charAt(0)}</div>
-                  <div><div style={{fontSize:12,fontWeight:700,color:C.t1}}>{m.name}</div><div style={{fontSize:10,color:C.t3}}>@{m.username}</div></div>
+                  {/* Enter button */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{fontSize:11,color:C.t3,display:"flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:14}}>⠿</span> drag to enter
+                    </div>
+                    <div style={{background:color+"22",border:`1px solid ${color}44`,borderRadius:20,padding:"5px 14px",fontSize:12,fontWeight:700,color:color,display:"flex",alignItems:"center",gap:5}}>
+                      Enter Room →
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Input bar */}
-          <div style={{padding:isMobile?"8px 8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
-            <textarea ref={inputRef} value={input} onChange={handleInput}
-              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape"){setMentionOpen(false);}}}
-              placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
-              rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:isMobile?"9px 14px":"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4,overflowY:"hidden",maxHeight:80}}/>
-            {/* Record button */}
-            {!recording&&!videoBlob&&(
-              <button onClick={startRecording} title="Record 60s video message"
-                style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
-                🎥
-              </button>
-            )}
-            {recording&&(
-              <button onClick={stopRecording}
-                style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:isMobile?"7px 10px":"8px 14px",color:"#fff",fontSize:isMobile?11:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>
-                ⏹ {60-recSeconds}s
-              </button>
-            )}
-            <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob)}
-              style={{flexShrink:0,background:C.accent,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {isMobile?(uploading?"⬆":"➤"):(uploading?"⬆":"Send")}
-            </button>
-          </div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
+    );
+  }
+
+  // ── CHAT VIEW ──
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:isMobile?"calc(100dvh - 130px)":"calc(100vh - 110px)",gap:0,overflow:"hidden"}}>
+      {/* Chat header with back button */}
+      <div style={{background:(proj?.color||C.accent)+"18",border:`1px solid ${proj?.color||C.accent}33`,borderRadius:isMobile?"10px 10px 0 0":"14px 14px 0 0",padding:isMobile?"10px 12px":"12px 18px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+        <button onClick={()=>{setActivePid(null);setMessages([]);setInput("");}}
+          style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:isMobile?"5px 8px":"6px 12px",color:C.t2,fontSize:isMobile?12:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+          ← {isMobile?"":"Back"}
+        </button>
+        <span style={{width:10,height:10,borderRadius:"50%",background:proj?.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+        <span style={{fontSize:isMobile?13:15,fontWeight:800,color:C.t1,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name}</span>
+        <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{messages.length} msgs</span>
+      </div>
+
+      {/* Messages area */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:isMobile?"0 0 10px 10px":"0 0 14px 14px",overflow:"hidden",minHeight:0}}>
+        <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px 12px":"14px 18px",display:"flex",flexDirection:"column",gap:isMobile?8:10,WebkitOverflowScrolling:"touch"}}>
+          {loading?<div style={{textAlign:"center",padding:40,color:C.t3}}>Loading…</div>:
+            messages.length===0?<div style={{textAlign:"center",padding:40,color:C.t3}}><div style={{fontSize:32,marginBottom:8}}>👋</div><div style={{fontSize:14}}>No messages yet — start the conversation!</div></div>:
+            messages.map(msg=>{
+              const isMe=msg.author===me.username;
+              return(
+                <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}>
+                  <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?proj?.color||C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
+                    {msg.author_name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
+                    {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
+                    <div style={{background:isMe?proj?.color||C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:isMobile?"8px 11px":"9px 13px",color:isMe?"#fff":C.t1,fontSize:isMobile?13:13,lineHeight:1.5,wordBreak:"break-word"}}>
+                      {msg.body&&<div>{renderBody(msg.body)}</div>}
+                      {msg.video_url&&<div style={{marginTop:msg.body?8:0}}><video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?160:200}}/></div>}
+                    </div>
+                    <span style={{fontSize:10,color:C.t3,padding:"0 4px"}}>{fmt(msg.created_at)}</span>
+                  </div>
+                </div>
+              );
+            })
+          }
+          <div ref={endRef}/>
+        </div>
+
+        {/* Video preview */}
+        {videoPreview&&(
+          <div style={{padding:isMobile?"8px 10px":"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8}}>
+            <video src={videoPreview} controls style={{height:isMobile?52:80,borderRadius:8,flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:isMobile?11:12,color:C.t1,fontWeight:700,marginBottom:2}}>📹 Video ready</div>
+              <div style={{fontSize:10,color:C.t3}}>Will be attached to your message</div>
+            </div>
+            <button onClick={cancelVideo} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 8px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
+          </div>
+        )}
+
+        {/* @mention dropdown */}
+        {mentionOpen&&mentionList.length>0&&(
+          <div style={{margin:isMobile?"0 8px":"0 18px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:10,padding:6,zIndex:10}}>
+            {mentionList.map(m=>(
+              <div key={m.username} onClick={()=>insertMention(m)}
+                style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{width:24,height:24,borderRadius:"50%",background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff"}}>{m.name.charAt(0)}</div>
+                <div><div style={{fontSize:12,fontWeight:700,color:C.t1}}>{m.name}</div><div style={{fontSize:10,color:C.t3}}>@{m.username}</div></div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input bar */}
+        <div style={{padding:isMobile?"8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
+          <textarea ref={inputRef} value={input} onChange={handleInput}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape")setMentionOpen(false);}}
+            placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
+            rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4}}/>
+          {!recording&&!videoBlob&&(
+            <button onClick={startRecording} title="Record 60s video"
+              style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
+              🎥
+            </button>
+          )}
+          {recording&&(
+            <button onClick={stopRecording}
+              style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:isMobile?"7px 10px":"8px 14px",color:"#fff",fontSize:isMobile?11:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>
+              ⏹ {60-recSeconds}s
+            </button>
+          )}
+          <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob)}
+            style={{flexShrink:0,background:proj?.color||C.accent,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {isMobile?(uploading?"⬆":"➤"):(uploading?"⬆":"Send")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
-
 
 // ══════════════════════════════════════════════════════════
 // TASK COMMENTS — with @mentions
