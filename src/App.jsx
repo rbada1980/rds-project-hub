@@ -963,19 +963,19 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   return(
     <div>
       {/* Header */}
-      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.accent}11 100%)`,border:`1px solid ${C.accent}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.accent}}>{me.name[0]}</div>
+      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.accent}11 100%)`,border:`1px solid ${C.accent}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",borderLeft:`4px solid ${C.accent}`}}>
+        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:C.accent}}>{me.name[0]}</div>
         <div style={{flex:1,minWidth:0}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>My Dashboard</h2>
-          <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · {me.role} · {total} task{total!==1?"s":""} assigned</p>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>My Dashboard</h2>
+          <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · {me.role} · {total} task{total!==1?"s":""} assigned</p>
         </div>
         <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
           {[{l:"Total Tasks",v:total,c:C.accent,k:"utotal"},{l:"Completed",v:done,c:C.green,k:"ucompleted"},{l:"In Progress",v:inprog,c:C.blue,k:"uinprog"},{l:"Overdue",v:overdue,c:C.red,k:"uoverdue"}].map(s=>(
-            <div key={s.l} onClick={()=>setUSM(s.k)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:80,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+            <div key={s.l} onClick={()=>setUSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",minWidth:64,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
               onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
               <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-              <div style={{fontSize:10,color:C.t3,marginTop:2,whiteSpace:"nowrap"}}>{s.l} ›</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
             </div>
           ))}
         </div>
@@ -1279,20 +1279,20 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
       <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${"#8b5cf6"}11 100%)`,border:`1px solid ${"#8b5cf6"}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",borderLeft:`4px solid #8b5cf6`}}>
         <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:"#8b5cf622",border:`2px solid #8b5cf644`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"#8b5cf6"}}>{(me.name[0]||"T").toUpperCase()}</div>
         <div style={{flex:1,minWidth:0}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>Team Leader Dashboard</h2>
-          <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>{me.name} · Team Leader · Monitoring {teamMembers.length} team member{teamMembers.length!==1?"s":""}</p>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>Team Leader Dashboard</h2>
+          <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Monitoring {teamMembers.length} team member{teamMembers.length!==1?"s":""}</p>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:28,fontWeight:800,color:"#8b5cf6"}}>{pct}%</div>
           <div style={{fontSize:11,color:C.t3}}>team complete</div>
         </div>
-        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap",width:"100%",marginTop:12}}>
+        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
           {[{l:"Team Members",v:teamMembers.length,c:"#8b5cf6",k:"tlteam"},{l:"Total Tasks",v:totalAll,c:C.blue,k:"tltotal"},{l:"In Progress",v:allTasks.filter(t=>t.status==="In Progress").length,c:C.accent,k:"tlinprog"},{l:"Completion",v:pct+"%",c:C.green,k:"tlcomplete"}].map(s=>(
-            <div key={s.l} onClick={()=>setTSM(s.k)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:80,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+            <div key={s.l} onClick={()=>setTSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",minWidth:64,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
               onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
               <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-              <div style={{fontSize:10,color:C.t3,marginTop:2,whiteSpace:"nowrap"}}>{s.l} ›</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
             </div>
           ))}
         </div>
@@ -1846,23 +1846,23 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   return(
     <div>
       {/* Header */}
-      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.teal}11 100%)`,border:`1px solid ${C.teal}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
+      <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.teal}11 100%)`,border:`1px solid ${C.teal}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",borderLeft:`4px solid ${C.teal}`}}>
+        <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
         <div style={{flex:1,minWidth:0}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>{me.client_name||me.name}</h2>
-          <p style={{margin:"2px 0 0",fontSize:13,color:C.t3}}>Client Portal · {myProjects.length} projects · {total} tasks</p>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>{me.client_name||me.name} — Client Portal</h2>
+          <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back · {myProjects.length} project{myProjects.length!==1?"s":""} · {total} tasks total</p>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:28,fontWeight:800,color:C.teal}}>{pct}%</div>
           <div style={{fontSize:11,color:C.t3}}>overall complete</div>
         </div>
-        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap",width:"100%",marginTop:12}}>
+        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
           {[{l:"Projects",v:myProjects.length,c:C.teal,k:"clprojects"},{l:"Total Tasks",v:total,c:C.blue,k:"cltotal"},{l:"Completed",v:done,c:C.green,k:"clcompleted"},{l:"Completion",v:pct+"%",c:"#f59e0b",k:"clpct"}].map(s=>(
-            <div key={s.l} onClick={()=>setCSM(s.k)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:80,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+            <div key={s.l} onClick={()=>setCSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",minWidth:64,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
               onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
               <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-              <div style={{fontSize:10,color:C.t3,marginTop:2,whiteSpace:"nowrap"}}>{s.l} ›</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
             </div>
           ))}
         </div>
