@@ -2906,10 +2906,11 @@ function exportSubmissionList(projects,tasks,today){
 // ─────────────────────────────────────────────────────────────────────────────
 function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
   const isMobile=useMobile();
-  const [period,setPeriod]=useState("this_week");
+  const [period,setPeriod]=useState("today");
   const [customFrom,setCustomFrom]=useState(today);
   const [customTo,setCustomTo]=useState(today);
   const [showCal,setShowCal]=useState(false);
+  const [subSearch,setSubSearch]=useState("");
 
   // ── Date range helpers ──
   const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
@@ -2931,7 +2932,14 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const inRange=(t,f,to)=>{const d1=t.client_sub_date;const d2=t.due_date;return(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);};
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
-  const periodTasks=allTasks.filter(t=>inRange(t,rangeFrom,rangeTo)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
+  const periodTasksRaw=allTasks.filter(t=>inRange(t,rangeFrom,rangeTo)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
+  const periodTasks=subSearch?periodTasksRaw.filter(t=>{
+    const proj=scopedProjects.find(p=>p.id===t.project_id);
+    const q=subSearch.toLowerCase();
+    return t.title.toLowerCase().includes(q)||(proj?.name||"").toLowerCase().includes(q)||(proj?.client||"").toLowerCase().includes(q)||(t.assignee||"").toLowerCase().includes(q)||(t.status||"").toLowerCase().includes(q);
+  }):periodTasksRaw;
+  const doneCount=periodTasks.filter(t=>isDone(t.status)).length;
+  const progPct=periodTasks.length?Math.round(doneCount/periodTasks.length*100):0;
 
   // Summary stats (always shown regardless of period)
   const todayCount=allTasks.filter(t=>inRange(t,today,today)).length;
@@ -3052,6 +3060,50 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
             <span style={{fontSize:12,color:C.t3,marginLeft:8}}>{periodTasks.length} task{periodTasks.length!==1?"s":""} in range</span>
           </div>
         )}
+      </div>
+
+      {/* ── Search + Progress bar ── */}
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"14px 18px",marginBottom:isMobile?12:18}}>
+        {/* Search row */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+          <input
+            placeholder="🔍 Search by task, project, client, assignee, status…"
+            value={subSearch} onChange={e=>setSubSearch(e.target.value)}
+            style={{flex:1,background:C.surface,border:`1.5px solid ${subSearch?rangeColor:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+          {subSearch&&<button onClick={()=>setSubSearch("")}
+            style={{flexShrink:0,background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 12px",fontSize:12,color:C.red,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕ Clear</button>}
+          <span style={{flexShrink:0,fontSize:12,color:C.t3,fontWeight:600}}>{periodTasks.length} task{periodTasks.length!==1?"s":""}</span>
+        </div>
+        {/* Progress bar */}
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".05em"}}>Completion Progress</span>
+            <div style={{display:"flex",gap:14,alignItems:"center"}}>
+              <span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>✅ {doneCount} Done</span>
+              <span style={{fontSize:11,color:C.t3,fontWeight:700}}>📋 {periodTasks.length-doneCount} Pending</span>
+              <span style={{fontSize:12,fontWeight:900,color:progPct===100?"#22c55e":rangeColor}}>{progPct}%</span>
+            </div>
+          </div>
+          <div style={{height:10,background:C.surface,borderRadius:10,overflow:"hidden",position:"relative"}}>
+            <div style={{
+              height:"100%",
+              width:`${progPct}%`,
+              background:progPct===100?"#22c55e":`linear-gradient(90deg,${rangeColor},${rangeColor}cc)`,
+              borderRadius:10,
+              transition:"width .6s cubic-bezier(.22,1,.36,1)",
+              boxShadow:`0 0 8px ${rangeColor}66`
+            }}/>
+            {/* Segment markers every 25% */}
+            {[25,50,75].map(p=>(
+              <div key={p} style={{position:"absolute",top:0,left:`${p}%`,width:1,height:"100%",background:C.bg+"55"}}/>
+            ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+            {["0%","25%","50%","75%","100%"].map(l=>(
+              <span key={l} style={{fontSize:9,color:C.t3,fontWeight:600}}>{l}</span>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ── Results section ── */}
@@ -3798,6 +3850,568 @@ function CronModal({onClose}){
   );
 }
 
+
+// ══════════════════════════════════════════════════════════
+// ANNOUNCEMENTS PAGE
+// ══════════════════════════════════════════════════════════
+function AnnouncementsPage({me,users,projects,canPost}){
+  const isMobile=useMobile();
+  const [anns,setAnns]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState({title:"",body:"",scope:"company",project_id:""});
+  const [saving,setSaving]=useState(false);
+  const [tab,setTab]=useState("all"); // all | company | project
+
+  useEffect(()=>{loadAnns();},[]);
+  useEffect(()=>{
+    const ch=supabase.channel("anns-rt-"+Date.now())
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"announcements"},p=>{
+        setAnns(prev=>[p.new,...prev]);
+      })
+      .subscribe();
+    return ()=>supabase.removeChannel(ch);
+  },[]);
+
+  async function loadAnns(){
+    const{data}=await supabase.from("announcements").select("*")
+      .order("pinned",{ascending:false}).order("created_at",{ascending:false}).limit(100);
+    setAnns(data||[]);setLoading(false);
+  }
+
+  async function postAnn(){
+    if(!form.title.trim()||!form.body.trim())return;
+    setSaving(true);
+    const{data,error}=await supabase.from("announcements").insert({
+      title:form.title.trim(),body:form.body.trim(),
+      scope:form.scope,project_id:form.scope==="project"?form.project_id:null,
+      author:me.username,author_name:me.name,pinned:false
+    }).select().single();
+    if(!error&&data){
+      // notify all users
+      const rows=users.filter(u=>u.username!==me.username).map(u=>({
+        user_id:u.id,type:"announcement",
+        title:`📢 ${me.name}: ${form.title.trim().slice(0,60)}`,
+        description:form.body.trim().slice(0,120),
+        entity_type:"announcement",entity_id:data.id,created_by:me.username
+      }));
+      if(rows.length)await supabase.from("notifications").insert(rows);
+      setShowForm(false);setForm({title:"",body:"",scope:"company",project_id:""});
+    }
+    setSaving(false);
+  }
+
+  async function togglePin(ann){
+    await supabase.from("announcements").update({pinned:!ann.pinned}).eq("id",ann.id);
+    setAnns(prev=>prev.map(a=>a.id===ann.id?{...a,pinned:!a.pinned}:a).sort((a,b)=>b.pinned-a.pinned));
+  }
+
+  async function deleteAnn(id){
+    if(!window.confirm("Delete this announcement?"))return;
+    await supabase.from("announcements").delete().eq("id",id);
+    setAnns(prev=>prev.filter(a=>a.id!==id));
+  }
+
+  const filtered=tab==="all"?anns:anns.filter(a=>a.scope===tab);
+  const fmt=dt=>new Date(dt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,gap:12,flexWrap:"wrap"}}>
+        <div>
+          <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📢 Announcements</h2>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Company-wide and project updates</p>
+        </div>
+        {canPost&&(
+          <button onClick={()=>setShowForm(v=>!v)}
+            style={{background:C.accent,border:"none",borderRadius:9,padding:"9px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>
+            {showForm?"✕ Cancel":"+ New Announcement"}
+          </button>
+        )}
+      </div>
+
+      {/* Post form */}
+      {showForm&&canPost&&(
+        <div style={{background:C.card,border:`1px solid ${C.accent}44`,borderRadius:14,padding:20,marginBottom:22}}>
+          <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:800,color:C.accent}}>📝 New Announcement</h3>
+          <input placeholder="Title *" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
+            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
+          <textarea placeholder="Body — write your announcement here *" value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))}
+            rows={4} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",resize:"vertical",marginBottom:10}}/>
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <select value={form.scope} onChange={e=>setForm(f=>({...f,scope:e.target.value,project_id:""}))}
+              style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <option value="company">🏢 Company-wide</option>
+              <option value="project">📁 Project-specific</option>
+            </select>
+            {form.scope==="project"&&(
+              <select value={form.project_id} onChange={e=>setForm(f=>({...f,project_id:e.target.value}))}
+                style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <option value="">Select project…</option>
+                {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            )}
+            <button onClick={postAnn} disabled={saving||!form.title.trim()||!form.body.trim()}
+              style={{background:C.accent,border:"none",borderRadius:8,padding:"8px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1}}>
+              {saving?"Posting…":"📢 Post"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab filter */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[["all","All"],["company","🏢 Company"],["project","📁 Project"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            style={{padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${tab===id?C.accent:C.border}`,background:tab===id?C.accent+"18":"transparent",color:tab===id?C.accent:C.t2,transition:"all .15s"}}>
+            {label} {id==="all"?`(${anns.length})`:id==="company"?`(${anns.filter(a=>a.scope==="company").length})`:id==="project"?`(${anns.filter(a=>a.scope==="project").length})`:null}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {loading?<div style={{textAlign:"center",padding:40,color:C.t3}}>Loading…</div>:
+        filtered.length===0?
+          <div style={{textAlign:"center",padding:"60px 20px",color:C.t3}}>
+            <div style={{fontSize:40,marginBottom:10}}>📭</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:4}}>No announcements yet</div>
+            {canPost&&<div style={{fontSize:13}}>Post the first one above</div>}
+          </div>:
+        filtered.map(ann=>{
+          const proj=ann.project_id?projects.find(p=>p.id===ann.project_id):null;
+          return(
+            <div key={ann.id} style={{background:C.card,border:`1.5px solid ${ann.pinned?C.accent:C.border}`,borderRadius:14,padding:isMobile?14:20,marginBottom:14,borderLeft:`4px solid ${ann.pinned?C.accent:ann.scope==="company"?"#f59e0b":"#06b6d4"}`}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                    {ann.pinned&&<span style={{fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"2px 7px",fontWeight:800}}>📌 PINNED</span>}
+                    <span style={{fontSize:10,background:ann.scope==="company"?"#f59e0b22":"#06b6d422",color:ann.scope==="company"?"#f59e0b":"#06b6d4",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{ann.scope==="company"?"🏢 Company":"📁 "+( proj?.name||"Project")}</span>
+                  </div>
+                  <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,lineHeight:1.3}}>{ann.title}</h3>
+                </div>
+                {canPost&&(
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button onClick={()=>togglePin(ann)} title={ann.pinned?"Unpin":"Pin"}
+                      style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 8px",fontSize:12,color:ann.pinned?C.accent:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
+                      📌
+                    </button>
+                    <button onClick={()=>deleteAnn(ann.id)}
+                      style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 8px",fontSize:12,color:C.red,cursor:"pointer",fontFamily:"inherit"}}>
+                      🗑
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p style={{margin:"0 0 12px",fontSize:13,color:C.t2,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{ann.body}</p>
+              <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                <span>👤 {ann.author_name}</span>
+                <span>🕐 {fmt(ann.created_at)}</span>
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════
+// WAR ROOM — realtime per-project chat + video
+// ══════════════════════════════════════════════════════════
+function WarRoomPage({me,projects,users}){
+  const isMobile=useMobile();
+  const [activePid,setActivePid]=useState(null);
+  const [messages,setMessages]=useState([]);
+  const [input,setInput]=useState("");
+  const [sending,setSending]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [mentionList,setMentionList]=useState([]);// filtered dropdown
+  const [mentionOpen,setMentionOpen]=useState(false);
+  const [recording,setRecording]=useState(false);
+  const [recSeconds,setRecSeconds]=useState(0);
+  const [videoBlob,setVideoBlob]=useState(null);
+  const [videoPreview,setVideoPreview]=useState(null);
+  const [uploading,setUploading]=useState(false);
+  const endRef=useRef();
+  const inputRef=useRef();
+  const mrRef=useRef();
+  const chunksRef=useRef([]);
+  const timerRef=useRef();
+  const allMembers=users.map(u=>({name:u.name,username:u.username}));
+
+  // Load messages when project changes
+  useEffect(()=>{
+    if(!activePid){setMessages([]);return;}
+    let ch;
+    (async()=>{
+      setLoading(true);
+      const{data}=await supabase.from("war_room_messages").select("*")
+        .eq("project_id",activePid).order("created_at",{ascending:true}).limit(200);
+      setMessages(data||[]);setLoading(false);
+      setTimeout(()=>endRef.current?.scrollIntoView({behavior:"instant"}),100);
+    })();
+    ch=supabase.channel("warroom-"+activePid+"-"+Date.now())
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"war_room_messages"},p=>{
+        if(p.new?.project_id!==activePid)return;
+        setMessages(prev=>[...prev,p.new]);
+        setTimeout(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),80);
+      }).subscribe();
+    return()=>{supabase.removeChannel(ch);};
+  },[activePid]);
+
+  // @mention detection in input
+  function handleInput(e){
+    const val=e.target.value;
+    setInput(val);
+    const cursor=e.target.selectionStart;
+    const textBefore=val.slice(0,cursor);
+    const match=textBefore.match(/@(\w*)$/);
+    if(match){
+      const q=match[1].toLowerCase();
+      setMentionList(allMembers.filter(m=>m.name.toLowerCase().includes(q)||m.username.toLowerCase().includes(q)).slice(0,6));
+      setMentionOpen(true);
+    }else{setMentionOpen(false);setMentionList([]);}
+  }
+
+  function insertMention(member){
+    const cursor=inputRef.current?.selectionStart||input.length;
+    const textBefore=input.slice(0,cursor);
+    const textAfter=input.slice(cursor);
+    const replaced=textBefore.replace(/@\w*$/,"@"+member.username+" ");
+    setInput(replaced+textAfter);
+    setMentionOpen(false);
+    setTimeout(()=>{inputRef.current?.focus();},50);
+  }
+
+  async function send(){
+    if((!input.trim()&&!videoBlob)||sending)return;
+    setSending(true);
+    let video_url=null;
+    if(videoBlob){
+      setUploading(true);
+      const fname=`warroom_${activePid}_${Date.now()}.webm`;
+      const{error:ue}=await supabase.storage.from("war-room-videos").upload(fname,videoBlob,{contentType:"video/webm",upsert:false});
+      if(!ue){
+        const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);
+        video_url=pub.publicUrl;
+      }
+      setVideoBlob(null);setVideoPreview(null);setUploading(false);
+    }
+    const mentions=[...new Set([...(input.matchAll(/@(\w+)/g)||[])].map(m=>m[1]))];
+    await supabase.from("war_room_messages").insert({
+      project_id:activePid,author:me.username,author_name:me.name,
+      body:input.trim(),mentions,video_url
+    });
+    // Notifications for mentions
+    if(mentions.length){
+      const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({
+        user_id:u.id,type:"mention",
+        title:`💬 ${me.name} mentioned you in War Room`,
+        description:input.trim().slice(0,100),
+        entity_type:"war_room",entity_id:activePid,created_by:me.username
+      }));
+      if(rows.length)await supabase.from("notifications").insert(rows);
+    }
+    setInput("");setMentionOpen(false);setSending(false);
+  }
+
+  function startRecording(){
+    navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(stream=>{
+      chunksRef.current=[];
+      const mr=new MediaRecorder(stream,{mimeType:MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"});
+      mr.ondataavailable=e=>{if(e.data.size>0)chunksRef.current.push(e.data);};
+      mr.onstop=()=>{
+        const blob=new Blob(chunksRef.current,{type:"video/webm"});
+        setVideoBlob(blob);setVideoPreview(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t=>t.stop());
+        clearInterval(timerRef.current);setRecSeconds(0);
+      };
+      mrRef.current=mr;mr.start(250);setRecording(true);setRecSeconds(0);
+      timerRef.current=setInterval(()=>setRecSeconds(s=>{if(s>=59){stopRecording();return 0;}return s+1;}),1000);
+    }).catch(err=>alert("Camera/mic access needed for video messages: "+err.message));
+  }
+
+  function stopRecording(){
+    mrRef.current?.stop();setRecording(false);clearInterval(timerRef.current);
+  }
+
+  function cancelVideo(){setVideoBlob(null);setVideoPreview(null);}
+
+  const fmt=dt=>{const d=new Date(dt);const now=new Date();const diff=now-d;
+    if(diff<60000)return"just now";
+    if(diff<3600000)return Math.floor(diff/60000)+"m ago";
+    if(diff<86400000)return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+    return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+  };
+
+  const renderBody=(body)=>{
+    if(!body)return null;
+    return body.split(/(@\w+)/g).map((part,i)=>
+      part.startsWith("@")?<span key={i} style={{color:C.accent,fontWeight:700,background:C.accent+"18",borderRadius:4,padding:"0 3px"}}>{part}</span>:<span key={i}>{part}</span>
+    );
+  };
+
+  const proj=projects.find(p=>p.id===activePid);
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 120px)",gap:0}}>
+      {/* Header */}
+      <div style={{marginBottom:14}}>
+        <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>💬 War Room</h2>
+        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Real-time project chat — searchable, persistent, linked to tasks</p>
+      </div>
+
+      {/* Project selector */}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+        {projects.map(p=>(
+          <button key={p.id} onClick={()=>setActivePid(p.id)}
+            style={{padding:"7px 14px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`2px solid ${activePid===p.id?p.color||C.accent:C.border}`,background:activePid===p.id?(p.color||C.accent)+"22":"transparent",color:activePid===p.id?p.color||C.accent:C.t2,transition:"all .15s",display:"flex",alignItems:"center",gap:5}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+            {p.name}
+          </button>
+        ))}
+      </div>
+
+      {!activePid?(
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:C.t3}}>
+          <span style={{fontSize:48}}>💬</span>
+          <span style={{fontSize:15,fontWeight:700,color:C.t1}}>Select a project to open its War Room</span>
+          <span style={{fontSize:13}}>Every project has a dedicated, real-time chat channel</span>
+        </div>
+      ):(
+        <div style={{flex:1,display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",minHeight:0}}>
+          {/* Chat header */}
+          <div style={{background:(proj?.color||C.accent)+"18",borderBottom:`1px solid ${proj?.color||C.accent}33`,padding:"12px 18px",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{width:10,height:10,borderRadius:"50%",background:proj?.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+            <span style={{fontSize:14,fontWeight:800,color:C.t1}}>{proj?.name}</span>
+            <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{messages.length} messages</span>
+          </div>
+
+          {/* Messages */}
+          <div style={{flex:1,overflowY:"auto",padding:"14px 18px",display:"flex",flexDirection:"column",gap:10}}>
+            {loading?<div style={{textAlign:"center",padding:40,color:C.t3}}>Loading…</div>:
+              messages.length===0?<div style={{textAlign:"center",padding:40,color:C.t3}}><div style={{fontSize:32,marginBottom:8}}>👋</div><div>No messages yet — start the conversation!</div></div>:
+              messages.map(msg=>{
+                const isMe=msg.author===me.username;
+                return(
+                  <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}>
+                    {/* Avatar */}
+                    <div style={{width:30,height:30,borderRadius:"50%",background:isMe?C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,fontWeight:800,color:"#fff"}}>
+                      {msg.author_name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{maxWidth:"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
+                      {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
+                      <div style={{background:isMe?C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
+                        {msg.body&&<div>{renderBody(msg.body)}</div>}
+                        {msg.video_url&&(
+                          <div style={{marginTop:msg.body?8:0}}>
+                            <video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:200}}/>
+                          </div>
+                        )}
+                      </div>
+                      <span style={{fontSize:10,color:C.t3,padding:"0 4px"}}>{fmt(msg.created_at)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            }
+            <div ref={endRef}/>
+          </div>
+
+          {/* Video preview */}
+          {videoPreview&&(
+            <div style={{padding:"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:10}}>
+              <video src={videoPreview} controls style={{height:80,borderRadius:8}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,color:C.t1,fontWeight:700,marginBottom:4}}>📹 Video ready to send</div>
+                <div style={{fontSize:11,color:C.t3}}>Will be attached to your message</div>
+              </div>
+              <button onClick={cancelVideo} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 10px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>✕ Remove</button>
+            </div>
+          )}
+
+          {/* @mention dropdown */}
+          {mentionOpen&&mentionList.length>0&&(
+            <div style={{margin:"0 18px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:10,padding:6,position:"relative",zIndex:10}}>
+              {mentionList.map(m=>(
+                <div key={m.username} onClick={()=>insertMention(m)}
+                  style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"background .1s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:24,height:24,borderRadius:"50%",background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff"}}>{m.name.charAt(0)}</div>
+                  <div><div style={{fontSize:12,fontWeight:700,color:C.t1}}>{m.name}</div><div style={{fontSize:10,color:C.t3}}>@{m.username}</div></div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Input bar */}
+          <div style={{padding:"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,alignItems:"flex-end"}}>
+            <div style={{flex:1,position:"relative"}}>
+              <textarea ref={inputRef} value={input} onChange={handleInput}
+                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}if(e.key==="Escape"){setMentionOpen(false);}}}
+                placeholder="Type a message… use @ to mention someone  (Enter to send)"
+                rows={isMobile?2:1} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.5}}/>
+            </div>
+            {/* Record button */}
+            {!recording&&!videoBlob&&(
+              <button onClick={startRecording} title="Record 60s video message"
+                style={{flexShrink:0,width:38,height:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>
+                🎥
+              </button>
+            )}
+            {recording&&(
+              <button onClick={stopRecording}
+                style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:"8px 14px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
+                ⏹ {60-recSeconds}s
+              </button>
+            )}
+            <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob)}
+              style={{flexShrink:0,background:C.accent,border:"none",borderRadius:10,padding:"9px 18px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob))?0.5:1,transition:"opacity .15s"}}>
+              {uploading?"⬆":"Send"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════
+// TASK COMMENTS — with @mentions
+// ══════════════════════════════════════════════════════════
+function TaskComments({taskId,projectId,me,users}){
+  const [comments,setComments]=useState([]);
+  const [input,setInput]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [mentionList,setMentionList]=useState([]);
+  const [mentionOpen,setMentionOpen]=useState(false);
+  const inputRef=useRef();
+  const allMembers=users.map(u=>({name:u.name,username:u.username}));
+
+  useEffect(()=>{loadComments();},[taskId]);
+
+  async function loadComments(){
+    const{data}=await supabase.from("task_comments").select("*")
+      .eq("task_id",taskId).order("created_at",{ascending:true});
+    setComments(data||[]);
+  }
+
+  function handleInput(e){
+    const val=e.target.value;setInput(val);
+    const cursor=e.target.selectionStart;
+    const textBefore=val.slice(0,cursor);
+    const match=textBefore.match(/@(\w*)$/);
+    if(match){
+      const q=match[1].toLowerCase();
+      setMentionList(allMembers.filter(m=>m.name.toLowerCase().includes(q)||m.username.toLowerCase().includes(q)).slice(0,5));
+      setMentionOpen(true);
+    }else{setMentionOpen(false);setMentionList([]);}
+  }
+
+  function insertMention(member){
+    const cursor=inputRef.current?.selectionStart||input.length;
+    const replaced=input.slice(0,cursor).replace(/@\w*$/,"@"+member.username+" ")+input.slice(cursor);
+    setInput(replaced);setMentionOpen(false);
+    setTimeout(()=>inputRef.current?.focus(),50);
+  }
+
+  async function postComment(){
+    if(!input.trim()||saving)return;
+    setSaving(true);
+    const mentions=[...new Set([...(input.matchAll(/@(\w+)/g)||[])].map(m=>m[1]))];
+    const{data,error}=await supabase.from("task_comments").insert({
+      task_id:taskId,project_id:projectId,
+      author:me.username,author_name:me.name,
+      body:input.trim(),mentions
+    }).select().single();
+    if(!error&&data){
+      setComments(prev=>[...prev,data]);
+      if(mentions.length){
+        const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({
+          user_id:u.id,type:"mention",
+          title:`💬 ${me.name} mentioned you in a task comment`,
+          description:input.trim().slice(0,100),
+          entity_type:"task",entity_id:taskId,created_by:me.username
+        }));
+        if(rows.length)await supabase.from("notifications").insert(rows);
+      }
+      setInput("");setMentionOpen(false);
+    }
+    setSaving(false);
+  }
+
+  const fmt=dt=>new Date(dt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+  const renderBody=body=>body.split(/(@\w+)/g).map((part,i)=>
+    part.startsWith("@")?<span key={i} style={{color:"#6366f1",fontWeight:700,background:"#6366f118",borderRadius:3,padding:"0 2px"}}>{part}</span>:<span key={i}>{part}</span>
+  );
+
+  return(
+    <div style={{borderTop:"1px solid #ffffff18",marginTop:20,paddingTop:16}}>
+      <div style={{fontSize:13,fontWeight:800,color:"#a0a0b0",marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+        💬 Comments <span style={{fontSize:11,background:"#6366f122",color:"#6366f1",borderRadius:10,padding:"1px 7px",fontWeight:700}}>{comments.length}</span>
+      </div>
+
+      {/* Comment list */}
+      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14,maxHeight:260,overflowY:"auto"}}>
+        {comments.length===0?
+          <div style={{fontSize:12,color:"#666",textAlign:"center",padding:"16px 0"}}>No comments yet — add the first one below</div>:
+          comments.map(cm=>{
+            const isMe=cm.author===me.username;
+            return(
+              <div key={cm.id} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:isMe?"#6366f1":"#374151",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0}}>
+                  {cm.author_name?.charAt(0).toUpperCase()}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                    <span style={{fontSize:11,fontWeight:700,color:"#d1d5db"}}>{cm.author_name}</span>
+                    <span style={{fontSize:10,color:"#6b7280"}}>{fmt(cm.created_at)}</span>
+                  </div>
+                  <div style={{fontSize:12,color:"#e5e7eb",lineHeight:1.5,wordBreak:"break-word",background:"#1f2937",borderRadius:"4px 12px 12px 12px",padding:"7px 10px"}}>
+                    {renderBody(cm.body)}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        }
+      </div>
+
+      {/* Mention dropdown */}
+      {mentionOpen&&mentionList.length>0&&(
+        <div style={{background:"#111827",border:"1px solid #6366f1",borderRadius:8,padding:4,marginBottom:6}}>
+          {mentionList.map(m=>(
+            <div key={m.username} onClick={()=>insertMention(m)}
+              style={{padding:"6px 10px",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
+              onMouseEnter={e=>e.currentTarget.style.background="#1f2937"}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div style={{width:22,height:22,borderRadius:"50%",background:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff"}}>{m.name.charAt(0)}</div>
+              <span style={{fontSize:12,color:"#d1d5db",fontWeight:600}}>{m.name}</span>
+              <span style={{fontSize:10,color:"#6b7280"}}>@{m.username}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <textarea ref={inputRef} value={input} onChange={handleInput}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postComment();}if(e.key==="Escape")setMentionOpen(false);}}
+          placeholder="Add a comment… use @ to mention  (Enter to send)"
+          rows={2} style={{flex:1,background:"#1f2937",border:"1px solid #374151",borderRadius:8,padding:"8px 10px",color:"#f3f4f6",fontSize:12,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
+        <button onClick={postComment} disabled={saving||!input.trim()}
+          style={{flexShrink:0,background:"#6366f1",border:"none",borderRadius:8,padding:"9px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving||!input.trim()?0.5:1}}>
+          {saving?"…":"Send"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -4324,7 +4938,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"]];
+  const navs=isClient?[["dashboard","◈","Dashboard"],["list","≡","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","War Room"]]:[["dashboard","◈","Dashboard"],["kanban","⊞","Kanban"],["list","≡","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","War Room"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -4922,6 +5536,21 @@ export default function App(){
             onEdit={t=>{set(t);stm(true);}}
           />
         )}
+        {view==="announcements"&&!isClient&&(
+          <AnnouncementsPage
+            me={me}
+            users={users}
+            projects={accessibleProjects}
+            canPost={isAdmin||isManager}
+          />
+        )}
+        {view==="warroom"&&!isClient&&(
+          <WarRoomPage
+            me={me}
+            projects={accessibleProjects}
+            users={users}
+          />
+        )}
         {view==="kanban"&&(
           <>
             {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
@@ -5086,6 +5715,7 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
+          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
