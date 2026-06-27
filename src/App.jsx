@@ -2280,6 +2280,8 @@ function stateToUrl(v,pid,client,projs=[]){
   if(v==='kanban')return'/kanban';
   if(v==='analytics')return'/analytics';
   if(v==='submissions')return'/submissions';
+  if(v==='announcements')return'/announcements';
+  if(v==='warroom')return'/warroom';
   if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
   return'/';
 }
@@ -2289,6 +2291,8 @@ function urlToState(path,projs=[]){
   if(path==='/kanban')return{view:'kanban',pid:null,client:null};
   if(path==='/analytics')return{view:'analytics',pid:null,client:null};
   if(path==='/submissions')return{view:'submissions',pid:null,client:null};
+  if(path==='/announcements')return{view:'announcements',pid:null,client:null};
+  if(path==='/warroom')return{view:'warroom',pid:null,client:null};
   const pm=path.match(/^\/projects\/([^/]+)$/);
   if(pm){
     const slug=decodeURIComponent(pm[1]);
