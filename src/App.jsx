@@ -3441,9 +3441,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
 
 
 function CronModal({onClose}){
-  const C=COLORS;
-  const SUPA_URL2="https://xypcbioltukahipkqqzc.supabase.co";
-  const SUPA_KEY2="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
   const [settings,setSettings]=useState({daily:true,weekly:true});
   const [loading,setLoading]=useState(true);
   const [triggering,setTriggering]=useState(null);
@@ -3451,8 +3448,8 @@ function CronModal({onClose}){
 
   useEffect(()=>{
     (async()=>{
-      const res=await fetch(`${SUPA_URL2}/rest/v1/settings?key=in.(daily_digest_enabled,weekly_digest_enabled)&select=key,value`,{
-        headers:{"apikey":SUPA_KEY2,"Authorization":`Bearer ${SUPA_KEY2}`}
+      const res=await fetch(`${SUPA_URL}/rest/v1/settings?key=in.(daily_digest_enabled,weekly_digest_enabled)&select=key,value`,{
+        headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`}
       });
       const data=await res.json();
       if(Array.isArray(data)){
@@ -3470,9 +3467,9 @@ function CronModal({onClose}){
   async function toggle(key,val){
     const k=key==="daily"?"daily_digest_enabled":"weekly_digest_enabled";
     setSettings(s=>({...s,[key]:val}));
-    await fetch(`${SUPA_URL2}/rest/v1/settings?key=eq.${k}`,{
+    await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.${k}`,{
       method:"PATCH",
-      headers:{"apikey":SUPA_KEY2,"Authorization":`Bearer ${SUPA_KEY2}`,"Content-Type":"application/json","Prefer":"return=minimal"},
+      headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"},
       body:JSON.stringify({value:val?"true":"false"})
     });
     setMsg(`${key==="daily"?"Daily":"Weekly"} digest ${val?"enabled":"disabled"}`);
