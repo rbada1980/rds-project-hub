@@ -4019,12 +4019,18 @@ function WarRoomPage({me,projects,users}){
   const [uploading,setUploading]=useState(false);
   const [dragOver,setDragOver]=useState(null);
   const [projSearch,setProjSearch]=useState("");
+  const [mediaFile,setMediaFile]=useState(null);
+  const [mediaPreview,setMediaPreview]=useState(null);
+  const [reactions,setReactions]=useState({}); // {msg_id:{emoji:[usernames]}}
+  const [emojiPickerMsgId,setEmojiPickerMsgId]=useState(null);
   const endRef=useRef();
   const inputRef=useRef();
   const mrRef=useRef();
+  const fileInputRef=useRef();
   const chunksRef=useRef([]);
   const timerRef=useRef();
-  const lastMsgAtRef=useRef(null); // tracks latest message timestamp for polling
+  const lastMsgAtRef=useRef(null);
+  const EMOJIS=["👍","❤️","😂","😮","😢","👏","🔥","✅"];
   const allMembers=users.map(u=>({name:u.name,username:u.username}));
 
   // Load last messages + per-project chat history
@@ -4069,6 +4075,18 @@ function WarRoomPage({me,projects,users}){
     let poll;
     const pid=activePid; // capture for closures
 
+    async function loadReactions(msgIds){
+      if(!msgIds?.length)return;
+      const{data:rd}=await supabase.from("war_room_reactions").select("message_id,emoji,user_username").in("message_id",msgIds);
+      const map={};
+      (rd||[]).forEach(r=>{
+        if(!map[r.message_id])map[r.message_id]={};
+        if(!map[r.message_id][r.emoji])map[r.message_id][r.emoji]=[];
+        map[r.message_id][r.emoji].push(r.user_username);
+      });
+      setReactions(prev=>({...prev,...map}));
+    }
+
     (async()=>{
       setLoading(true);
       const{data}=await supabase.from("war_room_messages").select("*")
@@ -4077,6 +4095,7 @@ function WarRoomPage({me,projects,users}){
       lastMsgAtRef.current=(data||[]).at(-1)?.created_at||null;
       setLoading(false);
       setTimeout(()=>endRef.current?.scrollIntoView({behavior:"instant"}),100);
+      if(data?.length)await loadReactions(data.map(m=>m.id));
     })();
 
     // Realtime subscription
@@ -4099,6 +4118,30 @@ function WarRoomPage({me,projects,users}){
     return()=>{supabase.removeChannel(ch);clearInterval(poll);};
   },[activePid]);
 
+  async function toggleReaction(msgId,emoji){
+    const existing=(reactions[msgId]?.[emoji])||[];
+    const hasIt=existing.includes(me.username);
+    setReactions(prev=>{
+      const mr={...(prev[msgId]||{})};
+      const users=[...(mr[emoji]||[])];
+      if(hasIt){mr[emoji]=users.filter(u=>u!==me.username);if(!mr[emoji].length)delete mr[emoji];}
+      else mr[emoji]=[...users,me.username];
+      return{...prev,[msgId]:mr};
+    });
+    setEmojiPickerMsgId(null);
+    if(hasIt)await supabase.from("war_room_reactions").delete().eq("message_id",msgId).eq("user_username",me.username).eq("emoji",emoji);
+    else await supabase.from("war_room_reactions").insert({message_id:msgId,user_username:me.username,emoji});
+  }
+
+  function handleMediaFile(e){
+    const file=e.target.files?.[0];if(!file)return;
+    setMediaFile(file);
+    if(file.type.startsWith("image/"))setMediaPreview(URL.createObjectURL(file));
+    else setMediaPreview(null);
+    e.target.value="";
+  }
+  function cancelMedia(){setMediaFile(null);setMediaPreview(null);}
+
   function handleInput(e){
     const val=e.target.value;setInput(val);
     const cursor=e.target.selectionStart;
@@ -4119,7 +4162,7 @@ function WarRoomPage({me,projects,users}){
   }
 
   async function send(){
-    if((!input.trim()&&!videoBlob)||sending)return;
+    if((!input.trim()&&!videoBlob&&!mediaFile)||sending)return;
     setSending(true);
     let video_url=null;
     if(videoBlob){
@@ -4128,6 +4171,13 @@ function WarRoomPage({me,projects,users}){
       const{error:ue}=await supabase.storage.from("war-room-videos").upload(fname,videoBlob,{contentType:"video/webm",upsert:false});
       if(!ue){const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);video_url=pub.publicUrl;}
       setVideoBlob(null);setVideoPreview(null);setUploading(false);
+    }else if(mediaFile){
+      setUploading(true);
+      const ext=mediaFile.name.split(".").pop()||"bin";
+      const fname=`warroom_${activePid}_${Date.now()}.${ext}`;
+      const{error:ue}=await supabase.storage.from("war-room-videos").upload(fname,mediaFile,{contentType:mediaFile.type,upsert:false});
+      if(!ue){const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);video_url=pub.publicUrl;}
+      setMediaFile(null);setMediaPreview(null);setUploading(false);
     }
     const mentions=[...new Set([...(input.matchAll(/@(\w+)/g)||[])].map(m=>m[1]))];
     const msgBody=input.trim();
@@ -4135,7 +4185,7 @@ function WarRoomPage({me,projects,users}){
     const{data:inserted}=await supabase.from("war_room_messages")
       .insert({project_id:activePid,author:me.username,author_name:me.name,body:msgBody,mentions,video_url})
       .select().single();
-    if(inserted)appendNew([inserted],activePid); // show immediately without waiting for poll
+    if(inserted)appendNew([inserted],activePid);
     if(mentions.length){
       const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({user_id:u.id,type:"mention",title:`💬 ${me.name} mentioned you in War Room`,description:msgBody.slice(0,100),entity_type:"war_room",entity_id:activePid,created_by:me.username}));
       if(rows.length)await supabase.from("notifications").insert(rows);
@@ -4266,17 +4316,65 @@ function WarRoomPage({me,projects,users}){
             messages.length===0?<div style={{textAlign:"center",padding:40,color:C.t3}}><div style={{fontSize:32,marginBottom:8}}>👋</div><div style={{fontSize:14}}>No messages yet — start the conversation!</div></div>:
             messages.map(msg=>{
               const isMe=msg.author===me.username;
+              const msgReactions=reactions[msg.id]||{};
+              const hasReactions=Object.keys(msgReactions).length>0;
+              const isImgUrl=u=>/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(u||"");
+              const isPdfUrl=u=>/\.pdf(\?|$)/i.test(u||"");
+              const showPicker=emojiPickerMsgId===msg.id;
               return(
-                <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}>
+                <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}
+                  onMouseLeave={()=>setEmojiPickerMsgId(null)}>
                   <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?proj?.color||C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
                     {msg.author_name?.charAt(0).toUpperCase()}
                   </div>
-                  <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}}>
+                  <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3,position:"relative"}}>
                     {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
-                    <div style={{background:isMe?proj?.color||C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:isMobile?"8px 11px":"9px 13px",color:isMe?"#fff":C.t1,fontSize:isMobile?13:13,lineHeight:1.5,wordBreak:"break-word"}}>
-                      {msg.body&&<div>{renderBody(msg.body)}</div>}
-                      {msg.video_url&&<div style={{marginTop:msg.body?8:0}}><video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?160:200}}/></div>}
+                    <div style={{position:"relative"}}>
+                      <div style={{background:isMe?proj?.color||C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:isMobile?"8px 11px":"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
+                        {msg.body&&<div>{renderBody(msg.body)}</div>}
+                        {msg.video_url&&(isImgUrl(msg.video_url)
+                          ?<div style={{marginTop:msg.body?8:0}}><img src={msg.video_url} alt="media" style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?200:280,display:"block",cursor:"pointer"}} onClick={()=>window.open(msg.video_url,"_blank")}/></div>
+                          :isPdfUrl(msg.video_url)
+                          ?<a href={msg.video_url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,marginTop:msg.body?6:0,color:isMe?"#fff":C.accent,fontWeight:700,fontSize:12,textDecoration:"none"}}>📄 View PDF</a>
+                          :/\.(mp4|webm|mov|avi)(\?|$)/i.test(msg.video_url)
+                          ?<div style={{marginTop:msg.body?8:0}}><video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?160:200}}/></div>
+                          :<a href={msg.video_url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,marginTop:msg.body?6:0,color:isMe?"#fff":C.accent,fontWeight:700,fontSize:12,textDecoration:"none"}}>📎 Download file</a>
+                        )}
+                      </div>
+                      {/* Emoji trigger */}
+                      <button onMouseEnter={e=>{e.currentTarget.style.opacity=1;setEmojiPickerMsgId(msg.id);}} onMouseLeave={e=>{if(!showPicker)e.currentTarget.style.opacity=0.3;}} onClick={()=>setEmojiPickerMsgId(showPicker?null:msg.id)}
+                        style={{position:"absolute",top:-8,right:isMe?undefined:-8,left:isMe?-8:undefined,background:C.surface,border:`1px solid ${C.border}`,borderRadius:"50%",width:22,height:22,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:showPicker?1:0.3,transition:"opacity .15s",padding:0,zIndex:5}}>
+                        😊
+                      </button>
+                      {/* Emoji picker */}
+                      {showPicker&&(
+                        <div style={{position:"absolute",bottom:"110%",left:isMe?undefined:0,right:isMe?0:undefined,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"6px 8px",display:"flex",gap:4,zIndex:20,boxShadow:"0 4px 16px #00000044",flexWrap:"wrap",width:isMobile?180:200}}>
+                          {EMOJIS.map(e=>{
+                            const myReact=(msgReactions[e]||[]).includes(me.username);
+                            return(
+                              <button key={e} onClick={()=>toggleReaction(msg.id,e)}
+                                style={{background:myReact?C.accent+"22":"transparent",border:myReact?`1px solid ${C.accent}44`:"1px solid transparent",borderRadius:6,padding:"4px 6px",fontSize:16,cursor:"pointer",transition:"background .1s"}}>
+                                {e}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
+                    {/* Reaction bubbles */}
+                    {hasReactions&&(
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap",paddingLeft:isMe?0:4,paddingRight:isMe?4:0,justifyContent:isMe?"flex-end":"flex-start"}}>
+                        {Object.entries(msgReactions).filter(([,u])=>u.length>0).map(([emoji,unames])=>{
+                          const iMine=unames.includes(me.username);
+                          return(
+                            <button key={emoji} onClick={()=>toggleReaction(msg.id,emoji)} title={unames.join(", ")}
+                              style={{background:iMine?C.accent+"22":C.surface,border:`1px solid ${iMine?C.accent+"66":C.border}`,borderRadius:20,padding:"2px 7px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:3,fontFamily:"inherit",color:iMine?C.accent:C.t2}}>
+                              {emoji}<span style={{fontSize:11,fontWeight:700}}>{unames.length}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     <span style={{fontSize:10,color:C.t3,padding:"0 4px"}}>{fmt(msg.created_at)}</span>
                   </div>
                 </div>
@@ -4297,6 +4395,20 @@ function WarRoomPage({me,projects,users}){
             <button onClick={cancelVideo} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 8px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
           </div>
         )}
+        {/* Media file preview */}
+        {mediaFile&&(
+          <div style={{padding:isMobile?"8px 10px":"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8}}>
+            {mediaPreview
+              ?<img src={mediaPreview} alt="" style={{height:isMobile?52:70,borderRadius:8,flexShrink:0,objectFit:"cover"}}/>
+              :<div style={{width:isMobile?42:52,height:isMobile?42:52,borderRadius:8,background:C.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>📄</div>
+            }
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:isMobile?11:12,color:C.t1,fontWeight:700,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mediaFile.name}</div>
+              <div style={{fontSize:10,color:C.t3}}>{(mediaFile.size/1024).toFixed(0)} KB — will be attached</div>
+            </div>
+            <button onClick={cancelMedia} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 8px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
+          </div>
+        )}
 
         {/* @mention dropdown */}
         {mentionOpen&&mentionList.length>0&&(
@@ -4315,11 +4427,18 @@ function WarRoomPage({me,projects,users}){
 
         {/* Input bar */}
         <div style={{padding:isMobile?"8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.txt" style={{display:"none"}} onChange={handleMediaFile}/>
           <textarea ref={inputRef} value={input} onChange={handleInput}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape")setMentionOpen(false);}}
             placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
             rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4}}/>
-          {!recording&&!videoBlob&&(
+          {!recording&&!videoBlob&&!mediaFile&&(
+            <button onClick={()=>fileInputRef.current?.click()} title="Attach image or file"
+              style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
+              📎
+            </button>
+          )}
+          {!recording&&!videoBlob&&!mediaFile&&(
             <button onClick={startRecording} title="Record 60s video"
               style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
               🎥
@@ -4331,8 +4450,8 @@ function WarRoomPage({me,projects,users}){
               ⏹ {60-recSeconds}s
             </button>
           )}
-          <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob)}
-            style={{flexShrink:0,background:proj?.color||C.accent,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob&&!mediaFile)}
+            style={{flexShrink:0,background:proj?.color||C.accent,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob&&!mediaFile))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
             {isMobile?(uploading?"⬆":"➤"):(uploading?"⬆":"Send")}
           </button>
         </div>
@@ -5701,165 +5820,4 @@ export default function App(){
                 <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
               </div>
               <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div>
-          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
-              }/>
-          </div>}
-          {isMobile?(
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
-                    </div>
-                    {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
-                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
-                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
-                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
-                  </div>
-                </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
-            </table>
-          </div>
-          )}
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {cronModal&&<CronModal onClose={()=>scron(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const completedTasks=tasks.filter(t=>t.status==="Completed"||t.status==="Done");
-      const ipTasks=tasks.filter(t=>t.status==="In Progress");
-      const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-      const modalData={
-        users:{title:"👥 All Employees",color:C.accent,items:users.map(u=>({label:u.name,sub:`@${u.username} · ${u.role}`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3}))},
-        clients:{title:"🏢 All Clients",color:C.teal,items:clients.map(cl=>({label:cl.name,sub:cl.email||cl.phone||"",dot:C.teal}))},
-        projects:{title:"📁 All Projects",color:C.blue,items:accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done`,dot:p.color||C.blue}))},
-        completed:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green};})},
-        team:{title:"👤 Team Members",color:C.blue,items:teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue}))},
-        inprogress:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:C.accent};})}
-      };
-      const md=modalData[DSM];
-      if(!md) return null;
-      return(
-        <div onClick={()=>setDSM(null)} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${md.color}33,0 24px 60px #00000080`}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 20px",borderBottom:`1px solid ${C.border}`}}>
-              <div>
-                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>{md.title}</div>
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{md.items.length} {DSM==="users"?"employees":DSM==="clients"?"clients":DSM==="projects"?"projects":"tasks"}</div>
-              </div>
-              <button onClick={()=>setDSM(null)} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            <div style={{overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
-              {md.items.length===0?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>:md.items.map((item,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
-      {navs.map(([k,ico,lbl])=>(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          <span style={{fontSize:20}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
-        </button>
-      ))}
-      <button onClick={()=>sMenu(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
-      </button>
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+                projects={cpProjects} tasks={cpTasks} assignees={cpAs
