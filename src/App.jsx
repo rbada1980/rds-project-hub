@@ -5758,4 +5758,33 @@ export default function App(){
             <div>
               <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
               <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-           
+            </div>
+          </div>
+          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
+            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
+            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
+            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
+            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
+            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
+          </div>
+        </div>
+      </div>
+    )}
+    {/* ── Mobile bottom nav ── */}
+    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
+      {navs.map(([k,ico,lbl])=>(
+        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+          <span style={{fontSize:20}}>{ico}</span>
+          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
+        </button>
+      ))}
+      <button onClick={()=>sMenu(v=>!v)}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
+        <Av name={me.name} size={22}/>
+        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
+      </button>
+    </nav>
+    </MobileCtx.Provider>
+  );
+}
