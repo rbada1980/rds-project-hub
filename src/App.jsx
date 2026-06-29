@@ -15,7 +15,7 @@ const C = {
   green:"#22c55e",red:"#ef4444",yellow:"#eab308",
   t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
 };
-const ROLES=["Engineer","Designer","Architect","Team Leader","Manager","Admin","Client"];
+const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Review","Completed"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
@@ -469,7 +469,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
 function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
-  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Engineer",client_name:"",email:"",assigned_projects:[]});
+  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[]});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
@@ -479,7 +479,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
   function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",assigned_projects:[]});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Engineer",client_name:"",email:"",assigned_projects:[]});se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[]});se("");}
   async function addUser(){
     if(!f.name.trim()){se("Full Name is required.");return;}
     if(!f.role){se("Role is required.");return;}
@@ -557,7 +557,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                     </div>
                     <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.email?` · ${u.email}`:""}{u.client_name?` · ${u.client_name}`:""}</div>
                   </div>
-                  <Bdg color={u.role==="Admin"?C.accent:u.role==="Manager"?"#f59e0b":u.role==="Team Leader"?"#8b5cf6":u.role==="Client"?C.teal:C.blue}>{u.role}</Bdg>
+                  <Bdg color={u.role==="Admin"?C.accent:u.role==="Manager"?"#f59e0b":u.role==="Team Leader"?"#8b5cf6":u.role==="Client"?C.teal:u.role==="Tekla"?"#10b981":C.blue}>{u.role}</Bdg>
                   {u.id===currentUser.id
                     ?<span style={{fontSize:18,opacity:0.3}} title="This is you">👤</span>
                     :<button onClick={e=>{e.stopPropagation();startEdit(u);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
@@ -4979,7 +4979,7 @@ export default function App(){
             </div>}
             <div>
             {(()=>{
-              const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":"User";
+              const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":me?.role||"User";
               const displayName=isClient?(me.client_name||me.name):me.name;
               const hr=new Date().getHours();
               const greet=hr<12?"Good Morning":hr<17?"Good Afternoon":"Good Evening";
@@ -5754,4 +5754,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
