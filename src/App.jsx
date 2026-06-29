@@ -269,7 +269,7 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
       <FInput label="Description" value={f.description} onChange={v=>sf(p=>({...p,description:v}))}/>
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Users <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned — select at least 1 more)</span></label>
+          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Employees <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned — select at least 1 more)</span></label>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>sf(p=>({...p,assigned_users:users.map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
             <button onClick={()=>sf(p=>({...p,assigned_users:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
@@ -507,11 +507,11 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     setSaving(false);
   }
   return(
-    <Modal title="Manage Users" onClose={onClose} wide>
+    <Modal title="Manage Employees" onClose={onClose} wide>
       <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        <button onClick={()=>{resetForm();st("list");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="list"?C.accent:C.surface,color:tab==="list"?"#fff":C.t2,border:`1px solid ${tab==="list"?C.accent:C.border}`}}>👥 Users</button>
+        <button onClick={()=>{resetForm();st("list");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="list"?C.accent:C.surface,color:tab==="list"?"#fff":C.t2,border:`1px solid ${tab==="list"?C.accent:C.border}`}}>👥 Employees</button>
         <button onClick={()=>{resetForm();st("clients");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="clients"?C.teal:C.surface,color:tab==="clients"?"#fff":C.t2,border:`1px solid ${tab==="clients"?C.teal:C.border}`}}>👤 Clients</button>
-        <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add User</button>
+        <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add Employee</button>
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
       {tab==="list"&&(()=>{
@@ -540,12 +540,12 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             {selUsers.size>0&&(
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 14px",background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8}}>
                 <span style={{fontSize:13,fontWeight:700,color:C.accent}}>{selUsers.size} selected</span>
-                <button onClick={async()=>{if(!window.confirm(`Delete ${selUsers.size} user(s)? This cannot be undone.`))return;for(const id of selUsers)await onDelete(id);setSU(new Set());}} style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete ({selUsers.size})</button>
+                <button onClick={async()=>{if(!window.confirm(`Delete ${selUsers.size} employee(s)? This cannot be undone.`))return;for(const id of selUsers)await onDelete(id);setSU(new Set());}} style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete ({selUsers.size})</button>
                 <button onClick={()=>setSU(new Set())} style={{background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕ Clear</button>
               </div>
             )}
             <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"52vh",overflowY:"auto"}}>
-              {shownUsers.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No users match your search.</div>}
+              {shownUsers.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No employees match your search.</div>}
               {shownUsers.map(u=>{
               const uSelectable=u.id!==currentUser.id&&u.username!==SUPER_ADMIN;
               const uSelected=selUsers.has(u.id);
@@ -665,7 +665,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
             <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
-            <button onClick={addUser} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create User"}</button>
+            <button onClick={addUser} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create Employee"}</button>
           </div>
         </div>
       )}
@@ -4905,7 +4905,7 @@ export default function App(){
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
-  async function delUser(id){await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("User removed ✓");}
+  async function delUser(id){await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
   async function deleteClient(id){await supabase.from("clients").delete().eq("id",id);scl(cl=>cl.filter(c=>c.id!==id));showToast("Client deleted ✓");}
@@ -4997,7 +4997,7 @@ export default function App(){
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
               {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,borderRadius:6,fontFamily:"inherit"}}>📧 Email Digest</button>}
-              {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Users</button>}
+              {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Employees</button>}
               {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🏢 View Clients</button>}
               <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🔐 Change Password</button>
               <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.red,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🚪 Sign Out</button>
@@ -5013,7 +5013,7 @@ export default function App(){
             </div>}
             <div>
             {(()=>{
-              const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":me?.role||"User";
+              const portalName=isAdmin?"Admin":isManager?"Manager":isTeamLeader?"Team Leader":isClient?"Client":me?.role||"Employee";
               const displayName=isClient?(me.client_name||me.name):me.name;
               const hr=new Date().getHours();
               const greet=hr<12?"Good Morning":hr<17?"Good Afternoon":"Good Evening";
@@ -5125,11 +5125,11 @@ export default function App(){
 
                     {/* 4 — By Users (admin/manager only) */}
                     {canEdit&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
-                    {canEdit&&<SHdr id="users" icon="👤" label="By Users"/>}
+                    {canEdit&&<SHdr id="users" icon="👤" label="By Employees"/>}
                     {canEdit&&exportSec==="users"&&(
                       <div style={{background:C.surface+"33",paddingBottom:4}}>
-                        <SBtn2 label="All Users Work Summary" count={tasks.length} icon="👥" color={C.teal}
-                          onClick={()=>{exportExcel(accessibleProjects,tasks,"All Users - Work Summary");closeExport();}}/>
+                        <SBtn2 label="All Employees Work Summary" count={tasks.length} icon="👥" color={C.teal}
+                          onClick={()=>{exportExcel(accessibleProjects,tasks,"All Employees - Work Summary");closeExport();}}/>
                         {allUserNames.map(u=>{
                           const uLow=u.toLowerCase();
                           const ut=tasks.filter(t=>[t.assignee,t.detailer,t.checker].filter(Boolean).some(f=>f.split(/[&\/,]+/).map(p=>canonicalName(p).toLowerCase()).includes(uLow)));
@@ -5213,7 +5213,7 @@ export default function App(){
                   <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Full access to all projects, users, and clients</p>
                 </div>
                 <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-                  {[{l:"Users",v:users.length,c:C.accent,k:"users"},{l:"Clients",v:clients.length,c:C.teal,k:"clients"},{l:"Projects",v:accessibleProjects.length,c:C.blue,k:"projects"},{l:"Completion",v:(tasks.length?Math.round(tasks.filter(t=>t.status==="Completed"||t.status==="Done").length/tasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
+                  {[{l:"Employees",v:users.length,c:C.accent,k:"users"},{l:"Clients",v:clients.length,c:C.teal,k:"clients"},{l:"Projects",v:accessibleProjects.length,c:C.blue,k:"projects"},{l:"Completion",v:(tasks.length?Math.round(tasks.filter(t=>t.status==="Completed"||t.status==="Done").length/tasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
                     <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
                       onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
                       onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
@@ -5715,7 +5715,7 @@ export default function App(){
       const ipTasks=tasks.filter(t=>t.status==="In Progress");
       const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
       const modalData={
-        users:{title:"👥 All Users",color:C.accent,items:users.map(u=>({label:u.name,sub:`@${u.username} · ${u.role}`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3}))},
+        users:{title:"👥 All Employees",color:C.accent,items:users.map(u=>({label:u.name,sub:`@${u.username} · ${u.role}`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3}))},
         clients:{title:"🏢 All Clients",color:C.teal,items:clients.map(cl=>({label:cl.name,sub:cl.email||cl.phone||"",dot:C.teal}))},
         projects:{title:"📁 All Projects",color:C.blue,items:accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done`,dot:p.color||C.blue}))},
         completed:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green};})},
@@ -5730,7 +5730,7 @@ export default function App(){
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 20px",borderBottom:`1px solid ${C.border}`}}>
               <div>
                 <div style={{fontSize:16,fontWeight:800,color:C.t1}}>{md.title}</div>
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{md.items.length} {DSM==="users"?"users":DSM==="clients"?"clients":DSM==="projects"?"projects":"tasks"}</div>
+                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{md.items.length} {DSM==="users"?"employees":DSM==="clients"?"clients":DSM==="projects"?"projects":"tasks"}</div>
               </div>
               <button onClick={()=>setDSM(null)} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
             </div>
@@ -5758,33 +5758,4 @@ export default function App(){
             <div>
               <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
               <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Users</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
-      {navs.map(([k,ico,lbl])=>(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          <span style={{fontSize:20}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
-        </button>
-      ))}
-      <button onClick={()=>sMenu(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
-      </button>
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+           
