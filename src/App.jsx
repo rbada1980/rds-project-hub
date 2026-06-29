@@ -4033,26 +4033,45 @@ function WarRoomPage({me,projects,users}){
   const EMOJIS=["👍","❤️","😂","😮","😢","👏","🔥","✅"];
   const allMembers=users.map(u=>({name:u.name,username:u.username}));
 
-  // Load last messages + per-project chat history
+  // Derive client list visible to this user
+  const clients=users.filter(u=>u.role==="Client");
+  const visibleClients=clients.filter(cl=>{
+    if(["Admin","Manager"].includes(me.role))return true;
+    if(me.role==="Client")return cl.username===me.username;
+    // TL, Rebar, Tekla: only clients whose projects they're on
+    return projects.some(p=>p.client===cl.client_name&&(p.assigned_users||[]).includes(me.username));
+  });
+
+  // Can this user SEND in a client room?
+  function canSendInRoom(cl){
+    if(!cl)return false;
+    if(["Admin","Manager"].includes(me.role))return true;
+    if(me.role==="Client")return cl.username===me.username;
+    if(me.role==="Team Leader")return projects.some(p=>p.client===cl.client_name&&(p.assigned_users||[]).includes(me.username));
+    return false; // Rebar, Tekla → read-only
+  }
+
+  // Load last messages + per-client chat history
   useEffect(()=>{
-    if(projects.length===0)return;
+    if(clients.length===0)return;
     (async()=>{
-      const{data}=await supabase.from("war_room_messages").select("project_id,body,author_name,created_at")
-        .in("project_id",projects.map(p=>p.id)).order("created_at",{ascending:false}).limit(500);
+      const{data}=await supabase.from("war_room_messages").select("client_id,body,author_name,created_at")
+        .in("client_id",clients.map(c=>c.username)).order("created_at",{ascending:false}).limit(500);
       const map={};
       const hist={};
       (data||[]).forEach(m=>{
-        if(!map[m.project_id])map[m.project_id]=m;
-        if(!hist[m.project_id])hist[m.project_id]={count:0,participants:new Set(),lastAt:m.created_at};
-        hist[m.project_id].count++;
-        hist[m.project_id].participants.add(m.author_name);
+        if(!m.client_id)return;
+        if(!map[m.client_id])map[m.client_id]=m;
+        if(!hist[m.client_id])hist[m.client_id]={count:0,participants:new Set(),lastAt:m.created_at};
+        hist[m.client_id].count++;
+        hist[m.client_id].participants.add(m.author_name);
       });
       setLastMsgs(map);
-      setChatHistory(Object.entries(hist).map(([pid,h])=>({
-        project_id:pid,count:h.count,participants:[...h.participants],lastAt:h.lastAt
+      setChatHistory(Object.entries(hist).map(([cid,h])=>({
+        client_id:cid,count:h.count,participants:[...h.participants],lastAt:h.lastAt
       })).sort((a,b)=>new Date(b.lastAt)-new Date(a.lastAt)));
     })();
-  },[projects]);
+  },[users]);
 
   // Component-level: append new messages, deduplicating by id
   function appendNew(rows,pid){
@@ -4070,10 +4089,10 @@ function WarRoomPage({me,projects,users}){
 
   // Load messages + realtime + polling fallback
   useEffect(()=>{
-    if(!activePid){setMessages([]);lastMsgAtRef.current=null;return;}
+    if(!activePid){setMessages([]);lastMsgAtRef.current=null;setReactions({});return;}
     let ch;
     let poll;
-    const pid=activePid; // capture for closures
+    const cid=activePid; // client username (= client_id)
 
     async function loadReactions(msgIds){
       if(!msgIds?.length)return;
@@ -4090,7 +4109,7 @@ function WarRoomPage({me,projects,users}){
     (async()=>{
       setLoading(true);
       const{data}=await supabase.from("war_room_messages").select("*")
-        .eq("project_id",pid).order("created_at",{ascending:true}).limit(200);
+        .eq("client_id",cid).order("created_at",{ascending:true}).limit(200);
       setMessages(data||[]);
       lastMsgAtRef.current=(data||[]).at(-1)?.created_at||null;
       setLoading(false);
@@ -4098,21 +4117,19 @@ function WarRoomPage({me,projects,users}){
       if(data?.length)await loadReactions(data.map(m=>m.id));
     })();
 
-    // Realtime subscription
-    ch=supabase.channel("warroom-"+pid+"-"+Date.now())
+    ch=supabase.channel("warroom-client-"+cid+"-"+Date.now())
       .on("postgres_changes",{event:"INSERT",schema:"public",table:"war_room_messages"},p=>{
-        if(p.new?.project_id!==pid)return;
-        appendNew([p.new],pid);
+        if(p.new?.client_id!==cid)return;
+        appendNew([p.new],cid);
       }).subscribe();
 
-    // Polling fallback — every 5s
     poll=setInterval(async()=>{
       const since=lastMsgAtRef.current;
       if(!since)return;
       const{data}=await supabase.from("war_room_messages").select("*")
-        .eq("project_id",pid).gt("created_at",since)
+        .eq("client_id",cid).gt("created_at",since)
         .order("created_at",{ascending:true}).limit(50);
-      appendNew(data,pid);
+      appendNew(data,cid);
     },5000);
 
     return()=>{supabase.removeChannel(ch);clearInterval(poll);};
@@ -4183,7 +4200,7 @@ function WarRoomPage({me,projects,users}){
     const msgBody=input.trim();
     setInput("");setMentionOpen(false);
     const{data:inserted}=await supabase.from("war_room_messages")
-      .insert({project_id:activePid,author:me.username,author_name:me.name,body:msgBody,mentions,video_url})
+      .insert({client_id:activePid,author:me.username,author_name:me.name,body:msgBody,mentions,video_url})
       .select().single();
     if(inserted)appendNew([inserted],activePid);
     if(mentions.length){
@@ -4226,68 +4243,77 @@ function WarRoomPage({me,projects,users}){
     );
   };
 
-  const proj=projects.find(p=>p.id===activePid);
+  const activeClientUser=clients.find(c=>c.username===activePid);
+  const canSend=canSendInRoom(activeClientUser);
 
-  // ── PROJECT SELECTOR ──
+  // ── CLIENT SELECTOR ──
   if(!activePid){
-    const filtered=projSearch.trim()?projects.filter(p=>p.name.toLowerCase().includes(projSearch.toLowerCase())||(p.client||"").toLowerCase().includes(projSearch.toLowerCase())):projects;
+    const filtered=projSearch.trim()
+      ?visibleClients.filter(c=>(c.client_name||c.name||"").toLowerCase().includes(projSearch.toLowerCase()))
+      :visibleClients;
     return(
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,minHeight:isMobile?"60vh":"50vh",padding:isMobile?"0 8px":0}}>
-        <div style={{width:"100%",maxWidth:520}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1,minHeight:isMobile?"60vh":"50vh",padding:isMobile?"0 8px":0,paddingTop:24,overflowY:"auto"}}>
+        <div style={{width:"100%",maxWidth:560}}>
           {/* Header */}
-          <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
             <div style={{fontSize:40,marginBottom:8}}>💬</div>
             <h2 style={{margin:0,fontSize:isMobile?18:22,fontWeight:900,color:C.t1}}>War Room</h2>
-            <p style={{margin:"6px 0 0",color:C.t3,fontSize:13}}>Select a project to open its chat room</p>
+            <p style={{margin:"6px 0 0",color:C.t3,fontSize:13}}>Client conversations — select a client to open their chat room</p>
           </div>
 
-          {/* Dropdown card */}
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:isMobile?"16px":"20px 24px",boxShadow:`0 4px 24px #00000033`}}>
-            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:8,letterSpacing:1,textTransform:"uppercase"}}>Choose Project</label>
-            <select value={activePid||""} onChange={e=>e.target.value&&setActivePid(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1.5px solid ${C.border}`,borderRadius:10,padding:"12px 14px",color:activePid?C.t1:C.t3,fontSize:15,outline:"none",cursor:"pointer",fontFamily:"inherit",appearance:"none",WebkitAppearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center"}}>
-              <option value="">— Select a project —</option>
-              {filtered.map(p=>(
-                <option key={p.id} value={p.id}>{p.name}{p.client?` (${p.client})`:""}</option>
-              ))}
-            </select>
-            <div style={{marginTop:10}}>
+          {/* Search */}
+          {visibleClients.length>4&&(
+            <div style={{marginBottom:12}}>
               <input value={projSearch} onChange={e=>setProjSearch(e.target.value)}
-                placeholder="🔍 Filter projects by name…"
+                placeholder="🔍 Search clients…"
                 style={{width:"100%",background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:10,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
             </div>
-            <div style={{marginTop:12,fontSize:12,color:C.t3,textAlign:"center"}}>{filtered.length} project{filtered.length!==1?"s":""} available</div>
-          </div>
+          )}
 
-          {/* Chat History */}
-          {chatHistory.length>0&&(
-            <div style={{marginTop:20}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:10,letterSpacing:1,textTransform:"uppercase",paddingLeft:2}}>🕐 Chat History</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:isMobile?280:360,overflowY:"auto"}}>
-                {chatHistory.map(h=>{
-                  const p=projects.find(px=>px.id===h.project_id);
-                  if(!p)return null;
-                  const dotColor=p.color||C.accent;
-                  return(
-                    <div key={h.project_id} onClick={()=>setActivePid(h.project_id)}
-                      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"11px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"border-color .15s,background .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor=dotColor;e.currentTarget.style.background=dotColor+"0d";}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background=C.card;}}>
-                      <span style={{width:10,height:10,borderRadius:"50%",background:dotColor,flexShrink:0,boxShadow:`0 0 6px ${dotColor}88`}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                        <div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                          👤 {h.participants.slice(0,3).join(", ")}{h.participants.length>3?` +${h.participants.length-3} more`:""}
-                        </div>
-                      </div>
-                      <div style={{textAlign:"right",flexShrink:0}}>
-                        <div style={{fontSize:11,fontWeight:700,color:dotColor}}>{h.count} msg{h.count!==1?"s":""}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>{fmt(h.lastAt)}</div>
-                      </div>
+          {/* Client cards */}
+          {filtered.length===0
+            ?<div style={{textAlign:"center",padding:40,color:C.t3,fontSize:13}}>No clients available</div>
+            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {filtered.map(cl=>{
+                const hist=chatHistory.find(h=>h.client_id===cl.username);
+                const lastMsg=lastMsgs[cl.username];
+                const accentColor=C.teal;
+                const iCanSend=canSendInRoom(cl);
+                return(
+                  <div key={cl.username} onClick={()=>setActivePid(cl.username)}
+                    style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?"12px 14px":"14px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:14,transition:"border-color .15s,background .15s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor=accentColor;e.currentTarget.style.background=accentColor+"10";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background=C.card;}}>
+                    {/* Avatar */}
+                    <div style={{width:44,height:44,borderRadius:"50%",background:accentColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:"#fff",flexShrink:0}}>
+                      {(cl.client_name||cl.name||"?").charAt(0).toUpperCase()}
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontSize:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl.client_name||cl.name}</span>
+                        {!iCanSend&&<span style={{fontSize:10,background:C.border,color:C.t3,borderRadius:4,padding:"1px 5px",flexShrink:0}}>read-only</span>}
+                      </div>
+                      {lastMsg
+                        ?<div style={{fontSize:12,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            <span style={{fontWeight:600,color:C.t2}}>{lastMsg.author_name}: </span>{lastMsg.body||"📎 media"}
+                          </div>
+                        :<div style={{fontSize:12,color:C.t3,marginTop:2}}>No messages yet</div>
+                      }
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      {hist&&<div style={{fontSize:12,fontWeight:700,color:accentColor}}>{hist.count} msg{hist.count!==1?"s":""}</div>}
+                      {lastMsg&&<div style={{fontSize:10,color:C.t3,marginTop:2}}>{fmt(lastMsg.created_at)}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          }
+
+          {/* Chat History (clients with activity) */}
+          {chatHistory.filter(h=>!visibleClients.find(c=>c.username===h.client_id)).length===0&&chatHistory.length>0&&(
+            <div style={{marginTop:16,fontSize:11,color:C.t3,textAlign:"center",paddingBottom:16}}>
+              {chatHistory.length} client room{chatHistory.length!==1?"s":""} with activity
             </div>
           )}
         </div>
@@ -4296,16 +4322,22 @@ function WarRoomPage({me,projects,users}){
   }
 
   // ── CHAT VIEW ──
+  const clientDisplayName=activeClientUser?.client_name||activeClientUser?.name||activePid;
   return(
     <div style={{display:"flex",flexDirection:"column",height:isMobile?"calc(100dvh - 130px)":"calc(100vh - 110px)",gap:0,overflow:"hidden"}}>
       {/* Chat header with back button */}
-      <div style={{background:(proj?.color||C.accent)+"18",border:`1px solid ${proj?.color||C.accent}33`,borderRadius:isMobile?"10px 10px 0 0":"14px 14px 0 0",padding:isMobile?"10px 12px":"12px 18px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+      <div style={{background:C.teal+"18",border:`1px solid ${C.teal}33`,borderRadius:isMobile?"10px 10px 0 0":"14px 14px 0 0",padding:isMobile?"10px 12px":"12px 18px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
         <button onClick={()=>{setActivePid(null);setMessages([]);setInput("");}}
           style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:isMobile?"5px 8px":"6px 12px",color:C.t2,fontSize:isMobile?12:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
           ← {isMobile?"":"Back"}
         </button>
-        <span style={{width:10,height:10,borderRadius:"50%",background:proj?.color||C.accent,flexShrink:0,display:"inline-block"}}/>
-        <span style={{fontSize:isMobile?13:15,fontWeight:800,color:C.t1,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name}</span>
+        <div style={{width:28,height:28,borderRadius:"50%",background:C.teal,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:"#fff",flexShrink:0}}>
+          {clientDisplayName.charAt(0).toUpperCase()}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{clientDisplayName}</div>
+          {!canSend&&<div style={{fontSize:10,color:C.t3}}>Read-only — only Admin, Manager & assigned Team Leaders can reply</div>}
+        </div>
         <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{messages.length} msgs</span>
       </div>
 
@@ -4324,13 +4356,13 @@ function WarRoomPage({me,projects,users}){
               return(
                 <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}
                   onMouseLeave={()=>setEmojiPickerMsgId(null)}>
-                  <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?proj?.color||C.accent:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
+                  <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?C.teal:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
                     {msg.author_name?.charAt(0).toUpperCase()}
                   </div>
                   <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3,position:"relative"}}>
                     {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
                     <div style={{position:"relative"}}>
-                      <div style={{background:isMe?proj?.color||C.accent:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:isMobile?"8px 11px":"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
+                      <div style={{background:isMe?C.teal:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:isMobile?"8px 11px":"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
                         {msg.body&&<div>{renderBody(msg.body)}</div>}
                         {msg.video_url&&(isImgUrl(msg.video_url)
                           ?<div style={{marginTop:msg.body?8:0}}><img src={msg.video_url} alt="media" style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?200:280,display:"block",cursor:"pointer"}} onClick={()=>window.open(msg.video_url,"_blank")}/></div>
@@ -4426,35 +4458,41 @@ function WarRoomPage({me,projects,users}){
         )}
 
         {/* Input bar */}
-        <div style={{padding:isMobile?"8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
-          <input ref={fileInputRef} type="file" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.txt" style={{display:"none"}} onChange={handleMediaFile}/>
-          <textarea ref={inputRef} value={input} onChange={handleInput}
-            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape")setMentionOpen(false);}}
-            placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
-            rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4}}/>
-          {!recording&&!videoBlob&&!mediaFile&&(
-            <button onClick={()=>fileInputRef.current?.click()} title="Attach image or file"
-              style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
-              📎
+        {canSend?(
+          <div style={{padding:isMobile?"8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
+            <input ref={fileInputRef} type="file" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.txt" style={{display:"none"}} onChange={handleMediaFile}/>
+            <textarea ref={inputRef} value={input} onChange={handleInput}
+              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape")setMentionOpen(false);}}
+              placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
+              rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4}}/>
+            {!recording&&!videoBlob&&!mediaFile&&(
+              <button onClick={()=>fileInputRef.current?.click()} title="Attach image or file"
+                style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
+                📎
+              </button>
+            )}
+            {!recording&&!videoBlob&&!mediaFile&&(
+              <button onClick={startRecording} title="Record 60s video"
+                style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
+                🎥
+              </button>
+            )}
+            {recording&&(
+              <button onClick={stopRecording}
+                style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:isMobile?"7px 10px":"8px 14px",color:"#fff",fontSize:isMobile?11:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>
+                ⏹ {60-recSeconds}s
+              </button>
+            )}
+            <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob&&!mediaFile)}
+              style={{flexShrink:0,background:C.teal,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob&&!mediaFile))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {isMobile?(uploading?"⬆":"➤"):(uploading?"⬆":"Send")}
             </button>
-          )}
-          {!recording&&!videoBlob&&!mediaFile&&(
-            <button onClick={startRecording} title="Record 60s video"
-              style={{flexShrink:0,width:isMobile?36:38,height:isMobile?36:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
-              🎥
-            </button>
-          )}
-          {recording&&(
-            <button onClick={stopRecording}
-              style={{flexShrink:0,background:C.red,border:"none",borderRadius:20,padding:isMobile?"7px 10px":"8px 14px",color:"#fff",fontSize:isMobile?11:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>
-              ⏹ {60-recSeconds}s
-            </button>
-          )}
-          <button onClick={send} disabled={sending||uploading||(!input.trim()&&!videoBlob&&!mediaFile)}
-            style={{flexShrink:0,background:proj?.color||C.accent,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!videoBlob&&!mediaFile))?0.5:1,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            {isMobile?(uploading?"⬆":"➤"):(uploading?"⬆":"Send")}
-          </button>
-        </div>
+          </div>
+        ):(
+          <div style={{padding:isMobile?"10px 14px":"12px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8,justifyContent:"center"}}>
+            <span style={{fontSize:13,color:C.t3}}>🔒 You can read this conversation but cannot send messages</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -5797,188 +5835,4 @@ export default function App(){
             ):(
             <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
               {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-                selTasks={selTasks}
-                onToggleTask={canEdit?toggleTask:null}
-              />))}
-            </div>
-            )}
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div>
-          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
-              }/>
-          </div>}
-          {isMobile?(
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
-                    </div>
-                    {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
-                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
-                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
-                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
-                  </div>
-                </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={delTask} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
-            </table>
-          </div>
-          )}
-          </div>
-        )}
-      </main>
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {cronModal&&<CronModal onClose={()=>scron(false)}/>}
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const completedTasks=tasks.filter(t=>t.status==="Completed"||t.status==="Done");
-      const ipTasks=tasks.filter(t=>t.status==="In Progress");
-      const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-      const modalData={
-        users:{title:"👥 All Employees",color:C.accent,items:users.map(u=>({label:u.name,sub:`@${u.username} · ${u.role}`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3}))},
-        clients:{title:"🏢 All Clients",color:C.teal,items:clients.map(cl=>({label:cl.name,sub:cl.email||cl.phone||"",dot:C.teal}))},
-        projects:{title:"📁 All Projects",color:C.blue,items:accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done`,dot:p.color||C.blue}))},
-        completed:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green};})},
-        team:{title:"👤 Team Members",color:C.blue,items:teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue}))},
-        inprogress:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:C.accent};})}
-      };
-      const md=modalData[DSM];
-      if(!md) return null;
-      return(
-        <div onClick={()=>setDSM(null)} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${md.color}33,0 24px 60px #00000080`}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 20px",borderBottom:`1px solid ${C.border}`}}>
-              <div>
-                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>{md.title}</div>
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{md.items.length} {DSM==="users"?"employees":DSM==="clients"?"clients":DSM==="projects"?"projects":"tasks"}</div>
-              </div>
-              <button onClick={()=>setDSM(null)} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            <div style={{overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
-              {md.items.length===0?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>:md.items.map((item,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
-      {navs.map(([k,ico,lbl])=>(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          <span style={{fontSize:20}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
-        </button>
-      ))}
-      <button onClick={()=>sMenu(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
-      </button>
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+                onEd
