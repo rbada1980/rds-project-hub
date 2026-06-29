@@ -509,14 +509,16 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   return(
     <Modal title="Manage Users" onClose={onClose} wide>
       <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        <button onClick={()=>{resetForm();st("list");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="list"?C.accent:C.surface,color:tab==="list"?"#fff":C.t2,border:`1px solid ${tab==="list"?C.accent:C.border}`}}>👥 All Users</button>
+        <button onClick={()=>{resetForm();st("list");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="list"?C.accent:C.surface,color:tab==="list"?"#fff":C.t2,border:`1px solid ${tab==="list"?C.accent:C.border}`}}>👥 Users</button>
+        <button onClick={()=>{resetForm();st("clients");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="clients"?C.teal:C.surface,color:tab==="clients"?"#fff":C.t2,border:`1px solid ${tab==="clients"?C.teal:C.border}`}}>👤 Clients</button>
         <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add User</button>
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
       {tab==="list"&&(()=>{
-        const shownUsers=users.filter(u=>{
+        const nonClientUsers=users.filter(u=>u.role!=="Client");
+        const shownUsers=nonClientUsers.filter(u=>{
           if(uRole!=="All"&&u.role!==uRole)return false;
-          if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.email||"").toLowerCase().includes(uq.toLowerCase())&&!(u.client_name||"").toLowerCase().includes(uq.toLowerCase()))return false;
+          if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.email||"").toLowerCase().includes(uq.toLowerCase()))return false;
           return true;
         });
         return(
@@ -530,10 +532,10 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                 style={{flex:1,background:C.surface,border:`1px solid ${uq?C.accent:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
               <select value={uRole} onChange={e=>sur(e.target.value)} style={{background:C.surface,border:`1px solid ${uRole!=="All"?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                 <option value="All">All Roles</option>
-                {ROLES.map(r=><option key={r} value={r}>{r}</option>)}
+                {ROLES.filter(r=>r!=="Client").map(r=><option key={r} value={r}>{r}</option>)}
               </select>
               {(uq||uRole!=="All")&&<button onClick={()=>{suq("");sur("All");}} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
-              <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownUsers.length}/{users.length}</span>
+              <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownUsers.length}/{nonClientUsers.length}</span>
             </div>
             {selUsers.size>0&&(
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 14px",background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8}}>
@@ -569,6 +571,38 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                 </div>
               );})
             }
+            </div>
+          </div>
+        );
+      })()}
+      {tab==="clients"&&(()=>{
+        const clientUsers=users.filter(u=>u.role==="Client");
+        const shownClients=clientUsers.filter(u=>{
+          if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.client_name||"").toLowerCase().includes(uq.toLowerCase()))return false;
+          return true;
+        });
+        return(
+          <div>
+            <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+              <input autoFocus placeholder="🔍  Search by name, username, client…" value={uq} onChange={e=>suq(e.target.value)}
+                style={{flex:1,background:C.surface,border:`1px solid ${uq?C.teal:C.border}`,borderRadius:8,padding:"8px 13px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+              {uq&&<button onClick={()=>suq("")} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+              <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownClients.length}/{clientUsers.length}</span>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"52vh",overflowY:"auto"}}>
+              {shownClients.length===0&&<div style={{textAlign:"center",color:C.t3,padding:32}}>No client users found.</div>}
+              {shownClients.map(u=>(
+                <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr auto auto auto",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px"}}>
+                  <Av name={u.name} size={32}/>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{u.name}</div>
+                    <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.client_name?` · 🏢 ${u.client_name}`:""}</div>
+                  </div>
+                  <Bdg color={C.teal}>Client</Bdg>
+                  <button onClick={e=>{e.stopPropagation();startEdit(u);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
+                  <button onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+u.name+"?"))onDelete(u.id);}} style={{background:C.red,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit"}}>🗑</button>
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -5726,31 +5760,4 @@ export default function App(){
               <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
             </div>
           </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Users</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
-      {navs.map(([k,ico,lbl])=>(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          <span style={{fontSize:20}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
-        </button>
-      ))}
-      <button onClick={()=>sMenu(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
-      </button>
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+          <div style={{borderTop:`1px s
