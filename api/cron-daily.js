@@ -203,13 +203,11 @@ export default async function handler(req, res) {
         }
       });
       results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
+      await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
     }
 
     console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
     return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
 
   } catch (err) {
-    console.error("Daily cron error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}
+    console.error("Daily cron 

@@ -228,6 +228,7 @@ export default async function handler(req, res) {
         }
       });
       results.push({ email: u.email, name: u.name, tasks: tasks.length, status });
+      await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
     }
 
     // NOTE: Clients intentionally excluded from weekly digest
@@ -236,7 +237,4 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent: results.length, tasks: tasks.length, period: `${monStr} to ${sunStr}`, results });
 
   } catch (err) {
-    console.error("Weekly cron error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}
+    console.error("Weekly cron 
