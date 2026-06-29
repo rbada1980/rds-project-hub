@@ -4009,6 +4009,7 @@ function WarRoomPage({me,projects,users}){
   const [sending,setSending]=useState(false);
   const [loading,setLoading]=useState(false);
   const [lastMsgs,setLastMsgs]=useState({}); // project_id -> last message preview
+  const [chatHistory,setChatHistory]=useState([]); // per-project history summary
   const [mentionList,setMentionList]=useState([]);
   const [mentionOpen,setMentionOpen]=useState(false);
   const [recording,setRecording]=useState(false);
@@ -4025,15 +4026,24 @@ function WarRoomPage({me,projects,users}){
   const timerRef=useRef();
   const allMembers=users.map(u=>({name:u.name,username:u.username}));
 
-  // Load last messages for each project (for card previews)
+  // Load last messages + per-project chat history
   useEffect(()=>{
     if(projects.length===0)return;
     (async()=>{
       const{data}=await supabase.from("war_room_messages").select("project_id,body,author_name,created_at")
-        .in("project_id",projects.map(p=>p.id)).order("created_at",{ascending:false}).limit(projects.length*3);
+        .in("project_id",projects.map(p=>p.id)).order("created_at",{ascending:false}).limit(500);
       const map={};
-      (data||[]).forEach(m=>{if(!map[m.project_id])map[m.project_id]=m;});
+      const hist={};
+      (data||[]).forEach(m=>{
+        if(!map[m.project_id])map[m.project_id]=m;
+        if(!hist[m.project_id])hist[m.project_id]={count:0,participants:new Set(),lastAt:m.created_at};
+        hist[m.project_id].count++;
+        hist[m.project_id].participants.add(m.author_name);
+      });
       setLastMsgs(map);
+      setChatHistory(Object.entries(hist).map(([pid,h])=>({
+        project_id:pid,count:h.count,participants:[...h.participants],lastAt:h.lastAt
+      })).sort((a,b)=>new Date(b.lastAt)-new Date(a.lastAt)));
     })();
   },[projects]);
 
@@ -4137,16 +4147,16 @@ function WarRoomPage({me,projects,users}){
     const filtered=projSearch.trim()?projects.filter(p=>p.name.toLowerCase().includes(projSearch.toLowerCase())||(p.client||"").toLowerCase().includes(projSearch.toLowerCase())):projects;
     return(
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,minHeight:isMobile?"60vh":"50vh",padding:isMobile?"0 8px":0}}>
-        <div style={{width:"100%",maxWidth:480}}>
+        <div style={{width:"100%",maxWidth:520}}>
           {/* Header */}
-          <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:40,marginBottom:8}}>💬</div>
             <h2 style={{margin:0,fontSize:isMobile?18:22,fontWeight:900,color:C.t1}}>War Room</h2>
             <p style={{margin:"6px 0 0",color:C.t3,fontSize:13}}>Select a project to open its chat room</p>
           </div>
 
           {/* Dropdown card */}
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:isMobile?"20px 16px":"28px 32px",boxShadow:`0 4px 24px #00000033`}}>
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:isMobile?"16px":"20px 24px",boxShadow:`0 4px 24px #00000033`}}>
             <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:8,letterSpacing:1,textTransform:"uppercase"}}>Choose Project</label>
             <select value={activePid||""} onChange={e=>e.target.value&&setActivePid(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1.5px solid ${C.border}`,borderRadius:10,padding:"12px 14px",color:activePid?C.t1:C.t3,fontSize:15,outline:"none",cursor:"pointer",fontFamily:"inherit",appearance:"none",WebkitAppearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center"}}>
@@ -4155,16 +4165,45 @@ function WarRoomPage({me,projects,users}){
                 <option key={p.id} value={p.id}>{p.name}{p.client?` (${p.client})`:""}</option>
               ))}
             </select>
-
-            {/* Search filter */}
-            <div style={{marginTop:12}}>
+            <div style={{marginTop:10}}>
               <input value={projSearch} onChange={e=>setProjSearch(e.target.value)}
                 placeholder="🔍 Filter projects by name…"
                 style={{width:"100%",background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:10,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
             </div>
-
-            <div style={{marginTop:16,fontSize:12,color:C.t3,textAlign:"center"}}>{filtered.length} project{filtered.length!==1?"s":""} available</div>
+            <div style={{marginTop:12,fontSize:12,color:C.t3,textAlign:"center"}}>{filtered.length} project{filtered.length!==1?"s":""} available</div>
           </div>
+
+          {/* Chat History */}
+          {chatHistory.length>0&&(
+            <div style={{marginTop:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:10,letterSpacing:1,textTransform:"uppercase",paddingLeft:2}}>🕐 Chat History</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:isMobile?280:360,overflowY:"auto"}}>
+                {chatHistory.map(h=>{
+                  const p=projects.find(px=>px.id===h.project_id);
+                  if(!p)return null;
+                  const dotColor=p.color||C.accent;
+                  return(
+                    <div key={h.project_id} onClick={()=>setActivePid(h.project_id)}
+                      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"11px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"border-color .15s,background .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=dotColor;e.currentTarget.style.background=dotColor+"0d";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background=C.card;}}>
+                      <span style={{width:10,height:10,borderRadius:"50%",background:dotColor,flexShrink:0,boxShadow:`0 0 6px ${dotColor}88`}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                        <div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          👤 {h.participants.slice(0,3).join(", ")}{h.participants.length>3?` +${h.participants.length-3} more`:""}
+                        </div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontSize:11,fontWeight:700,color:dotColor}}>{h.count} msg{h.count!==1?"s":""}</div>
+                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>{fmt(h.lastAt)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -5726,65 +5765,4 @@ export default function App(){
       if(!md) return null;
       return(
         <div onClick={()=>setDSM(null)} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${md.color}33,0 24px 60px #00000080`}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 20px",borderBottom:`1px solid ${C.border}`}}>
-              <div>
-                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>{md.title}</div>
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{md.items.length} {DSM==="users"?"employees":DSM==="clients"?"clients":DSM==="projects"?"projects":"tasks"}</div>
-              </div>
-              <button onClick={()=>setDSM(null)} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            <div style={{overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
-              {md.items.length===0?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>:md.items.map((item,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"none",zIndex:180,padding:"6px 0",paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
-      {navs.map(([k,ico,lbl])=>(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:view===k?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          <span style={{fontSize:20}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>{lbl}</span>
-        </button>
-      ))}
-      <button onClick={()=>sMenu(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"6px 2px",color:uMenu?C.accent:C.t3,fontFamily:"inherit"}}>
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:uMenu?C.accent:C.t3}}>Me</span>
-      </button>
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${md.color}33,0 24px 60px #
