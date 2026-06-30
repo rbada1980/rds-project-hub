@@ -116,7 +116,7 @@ function parseExcel() {
 // RULE: Add here whenever a new Excel variant causes a duplicate user.
 const NAME_MAP = {
   "siav kumar":    "Siva Kumar",
-  "shiva":         "Siva",
+  "shiva":         "Siva Kumar",    // Shiva = siav kumar = Siva Kumar (same Rebar person)
   "shiva kumar":   "Siva Kumar",
   "danush":        "Dhanush",
   "allu sai":      "Sai",
@@ -372,22 +372,4 @@ async function run() {
       }
     }
 
-    if (inserted) { taskInserted++; process.stdout.write(`\r  ✓ ${taskInserted}/${tasks.length} tasks`); }
-    else taskFailed++;
-  }
-
-  // 9. Summary
-  console.log(`\n
-═══════════════════════════════════════════
-  IMPORT COMPLETE — White Cap
-═══════════════════════════════════════════
-  ✓ Projects  : ${projInserted} / ${projectNames.length}
-  ✓ Tasks     : ${taskInserted} / ${tasks.length}
-  ✓ Users     : ${usersCreated} created
-  ❌ Failed    : ${projFailed + taskFailed}
-═══════════════════════════════════════════
-Reload hub-rdsprojects.com to see all White Cap data.
-`);
-}
-
-run().catch(console.error);
+   
