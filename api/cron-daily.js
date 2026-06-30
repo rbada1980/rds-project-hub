@@ -191,4 +191,26 @@ export default async function handler(req, res) {
     const DIGEST_ROLES = ["Admin", "Manager", "Team Leader"];
     for (const u of (users || []).filter(u => DIGEST_ROLES.includes(u.role) && u.email?.trim())) {
       if (sent.has(u.email)) continue;
-      sent.add(u
+      sent.add(u.email);
+      const html = buildEmail(u.name, allTasks, pm, dateLabel);
+      const status = await postJson(NOTIFY_URL, {
+        type: "submission_digest",
+        data: {
+          taskName: "Daily Submission List",
+          projectName: `${allTasks.length} submission(s) planned`,
+          completedBy: "RDS TechServ",
+          completedAt: dateLabel,
+          recipientEmail: u.email,
+          subject: `📬 RDS Daily Submission List — ${dateLabel}`,
+          htmlBody: html
+        }
+      });
+      results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
+      await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
+    }
+
+    console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
+    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
+
+  } catch (err) {
+    console.error("Daily cron 
