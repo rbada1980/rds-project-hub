@@ -5511,40 +5511,90 @@ export default function App(){
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
-  // ── Global war_room_messages subscription → badge + toast for incoming chat ──
+  // ── Global chat notifications: Realtime + polling fallback + browser notif ──
   const viewRef=useRef(view);
   useEffect(()=>{viewRef.current=view;},[view]);
+  const lastMsgCheckRef=useRef(null); // ISO timestamp of last checked message
+
+  function fireNotif(msg){
+    // 1. Nav badge
+    setNavBadges(prev=>({...prev,warroom:(prev.warroom||0)+1}));
+    // 2. Toast popup (when not on warroom page)
+    if(viewRef.current!=="warroom"){
+      const snippet=(msg.body||"📎 media").slice(0,80);
+      const sender=msg.author_name||msg.author;
+      sToast({msg:`💬 ${sender}: ${snippet}`,ok:true});
+      setTimeout(()=>sToast(null),6000);
+    }
+    // 3. Sound
+    try{
+      const ctx=new(window.AudioContext||window.webkitAudioContext)();
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=880;o.type="sine";
+      g.gain.setValueAtTime(0,ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+0.01);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.35);
+      o.start(ctx.currentTime);o.stop(ctx.currentTime+0.35);
+    }catch{}
+    // 4. Browser OS notification
+    if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
+      try{
+        const sender=msg.author_name||msg.author;
+        const body=(msg.body||"📎 Sent a file").slice(0,100);
+        new Notification(`💬 ${sender}`,{body,icon:"/favicon.svg",tag:"wr-"+msg.id});
+      }catch{}
+    }
+  }
+
+  // Auto-request browser notification permission once
+  useEffect(()=>{
+    if(!me||isClient)return;
+    if(typeof Notification==="undefined")return;
+    if(Notification.permission==="default"){
+      // Small delay so it doesn't feel intrusive on load
+      const t=setTimeout(()=>Notification.requestPermission(),3000);
+      return()=>clearTimeout(t);
+    }
+  },[me,isClient]);
+
+  // Realtime subscription
   useEffect(()=>{
     if(!me||isClient)return;
     const ch=supabase
-      .channel("global-wr-msgs-"+me.username)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'war_room_messages'},payload=>{
-        const msg=payload.new;
+      .channel("wr-global-"+me.username)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'war_room_messages'},p=>{
+        const msg=p.new;
         if(!msg||msg.author===me.username||msg.is_deleted)return;
-        // Always bump the warroom nav badge
-        setNavBadges(prev=>({...prev,warroom:(prev.warroom||0)+1}));
-        // Show toast + sound only when NOT on the warroom page
-        if(viewRef.current!=="warroom"){
-          const snippet=(msg.body||"📎 media").slice(0,70);
-          const sender=msg.author_name||msg.author;
-          sToast({msg:`💬 ${sender}: ${snippet}`,ok:true});
-          setTimeout(()=>sToast(null),5000);
-          try{
-            const ctx=new(window.AudioContext||window.webkitAudioContext)();
-            const o=ctx.createOscillator(),g=ctx.createGain();
-            o.connect(g);g.connect(ctx.destination);
-            o.frequency.value=660;o.type="sine";
-            g.gain.setValueAtTime(0,ctx.currentTime);
-            g.gain.linearRampToValueAtTime(0.2,ctx.currentTime+0.01);
-            g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.3);
-            o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3);
-          }catch{}
-        }
+        lastMsgCheckRef.current=msg.created_at;
+        fireNotif(msg);
       })
-      .subscribe((status,err)=>{
-        if(err)console.error("[GlobalWR] Realtime error:",err);
-      });
+      .subscribe();
     return()=>{try{supabase.removeChannel(ch);}catch{}};
+  },[me,isClient]);
+
+  // Polling fallback every 12s — catches messages Realtime misses
+  useEffect(()=>{
+    if(!me||isClient)return;
+    // Initialize lastCheck to now so we don't flood old messages on load
+    if(!lastMsgCheckRef.current)lastMsgCheckRef.current=new Date().toISOString();
+    const interval=setInterval(async()=>{
+      try{
+        const since=lastMsgCheckRef.current;
+        const{data}=await supabase.from("war_room_messages")
+          .select("id,author,author_name,body,created_at,is_deleted,client_id")
+          .gt("created_at",since)
+          .neq("author",me.username)
+          .eq("is_deleted",false)
+          .order("created_at",{ascending:true})
+          .limit(20);
+        if(data&&data.length){
+          lastMsgCheckRef.current=data[data.length-1].created_at;
+          data.forEach(msg=>fireNotif(msg));
+        }
+      }catch{}
+    },12000);
+    return()=>clearInterval(interval);
   },[me,isClient]);
 
   // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
