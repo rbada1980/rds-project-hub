@@ -4708,7 +4708,7 @@ function WarRoomPage({me,projects,users}){
                    </div>
                   :displayMessages.map((msg,idx)=>{
                     const isMe=msg.author===me.username;
-                    const isAdmin=me.username===SUPER_ADMIN||["Admin","Manager"].includes(me.role);
+                    const isAdmin=me.username===SUPER_ADMIN; // only super-admin can edit/delete others' messages
                     const msgReactions=reactions[msg.id]||{};
                     const hasReactions=Object.keys(msgReactions).length>0;
                     const isImgUrl=u=>/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(u||"");
@@ -6690,6 +6690,4 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
-    </MobileCtx.Provider>
-  );
-}
+    </MobileCtx.Provider
