@@ -30,6 +30,9 @@ async function postJson(url, payload) {
   return res.status;
 }
 
+const PORTAL = "https://hub-rdsprojects.com/submissions";
+const aStyle = "text-decoration:none;color:inherit;display:block;";
+
 function statusBadge(s) {
   if (s === "Done")        return `<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">Done</span>`;
   if (s === "In Progress") return `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">In Progress</span>`;
@@ -42,13 +45,13 @@ function tableRows(tasks, pm) {
   return tasks.map(t => {
     const p = pm[t.project_id];
     return `<tr style="background:${rowBg(t.status)}">
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${t.client || (p && p.client) || "—"}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${p ? p.name : "—"}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#111827;font-weight:600;font-size:12px;">${t.title}</td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client || (p && p.client) || "—"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${p ? p.name : "—"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#111827;font-weight:600;font-size:12px;">${t.title}</a></td>
       <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${statusBadge(t.status)}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;color:#374151;font-size:12px;">${t.assignee || "—"}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;color:#374151;font-size:12px;">${t.client_sub_date || "—"}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;color:#374151;font-size:12px;">${t.due_date || "—"}</td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.assignee || "—"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client_sub_date || "—"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.due_date || "—"}</a></td>
     </tr>`;
   }).join("");
 }
@@ -80,7 +83,7 @@ function buildEmail(name, tasks, pm, dateLabel) {
       <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:3px;">${dateLabel}</div>
     </td>
     <td align="right" style="white-space:nowrap;padding-left:12px;">
-      <span style="background:rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:#ffffff;border:1px solid rgba(255,255,255,0.3);">&#128236; Today's Report</span>
+      <a href="${PORTAL}" style="text-decoration:none;background:rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:#ffffff;border:1px solid rgba(255,255,255,0.3);">&#128236; Today's Report</a>
     </td>
   </tr></table>
 </td></tr>
@@ -95,13 +98,13 @@ function buildEmail(name, tasks, pm, dateLabel) {
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;">
 <tr><td style="padding:26px 28px;">
   <p style="font-size:14px;color:#374151;margin:0 0 6px;">Dear ${name},</p>
-  <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Please find below the list of <strong style="color:#1a3a6b;">${total} submission(s)</strong> planned for today based on <em>Client Submission Date</em> and <em>Due Date</em>. Kindly ensure all deliverables are on track.</p>
+  <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Please find below the list of <a href="${PORTAL}" style="color:#1a3a6b;font-weight:700;text-decoration:none;">${total} submission(s)</a> planned for today based on <em>Client Submission Date</em> and <em>Due Date</em>. Kindly ensure all deliverables are on track.</p>
 
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin-bottom:22px;border-left:4px solid #1a3a6b;"><tr>
-    <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;"><div style="font-size:22px;font-weight:700;color:#1a3a6b;">${total}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Total</div></td>
-    <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;"><div style="font-size:22px;font-weight:700;color:#059669;">${done}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Done</div></td>
-    <td width="25%" style="padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;"><div style="font-size:22px;font-weight:700;color:#d97706;">${ip}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">In Progress</div></td>
-    <td width="25%" style="padding:14px 0;text-align:center;"><div style="font-size:22px;font-weight:700;color:#ef4444;">${ns}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Not Started</div></td>
+    <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#1a3a6b;">${total}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Total</div></a></td>
+    <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#059669;">${done}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Done</div></a></td>
+    <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#d97706;">${ip}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">In Progress</div></a></td>
+    <td width="25%" style="padding:0;text-align:center;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#ef4444;">${ns}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Not Started</div></a></td>
   </tr></table>
 
   <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
@@ -121,14 +124,14 @@ function buildEmail(name, tasks, pm, dateLabel) {
     <p style="font-size:13px;color:#374151;margin:0 0 8px;line-height:1.7;">Please review the above and ensure all tasks marked <em>Not Started</em> are actioned immediately. For any clarification, contact the respective project lead.</p>
     <p style="font-size:13px;color:#374151;margin:0;">Thank you for your continued efforts.</p>
     <p style="font-size:13px;color:#1a3a6b;margin:14px 0 0;font-weight:700;">RDS TechServ Team</p>
-    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal &mdash; hub-rdsprojects.com</p>
+    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal &mdash; <a href="${PORTAL}" style="color:#1a3a6b;text-decoration:none;font-weight:600;">hub-rdsprojects.com</a></p>
   </div>
 </td></tr></table>
 
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:0 0 10px 10px;">
 <tr>
   <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.5);">&copy; ${new Date().getFullYear()} RDS TechServ. Automated email &mdash; do not reply.</td>
-  <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.4);text-align:right;">hub-rdsprojects.com</td>
+  <td style="padding:14px 28px;font-size:11px;text-align:right;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.6);text-decoration:none;">hub-rdsprojects.com</a></td>
 </tr>
 </table>
 
@@ -188,26 +191,4 @@ export default async function handler(req, res) {
     const DIGEST_ROLES = ["Admin", "Manager", "Team Leader"];
     for (const u of (users || []).filter(u => DIGEST_ROLES.includes(u.role) && u.email?.trim())) {
       if (sent.has(u.email)) continue;
-      sent.add(u.email);
-      const html = buildEmail(u.name, allTasks, pm, dateLabel);
-      const status = await postJson(NOTIFY_URL, {
-        type: "submission_digest",
-        data: {
-          taskName: "Daily Submission List",
-          projectName: `${allTasks.length} submission(s) planned`,
-          completedBy: "RDS TechServ",
-          completedAt: dateLabel,
-          recipientEmail: u.email,
-          subject: `📬 RDS Daily Submission List — ${dateLabel}`,
-          htmlBody: html
-        }
-      });
-      results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
-      await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
-    }
-
-    console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
-    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
-
-  } catch (err) {
-    console.error("Daily cron 
+      sent.add(u
