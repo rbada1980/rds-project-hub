@@ -112,10 +112,33 @@ function parseExcel() {
   return tasks;
 }
 
-// Split "Name1/Name2" into individual names
+// Canonical name corrections — maps any wrong/variant spelling → correct DB name.
+// RULE: Add here whenever a new Excel variant causes a duplicate user.
+const NAME_MAP = {
+  "siav kumar":    "Siva Kumar",
+  "shiva":         "Siva",
+  "shiva kumar":   "Siva Kumar",
+  "danush":        "Dhanush",
+  "allu sai":      "Sai",
+  "lokesh reddy":  "Lokesh",
+  "eswar/siav kumar":    "Eswar",
+  "allu sai/nanaji":     "Sai",
+  "lokesh reddy/nanaji": "Lokesh",
+  "eswar/nanaji":        "Eswar",
+  "balaram/jagadeesh":   "Balaram",
+  "sridevi / vaishnavi": "Sridevi",
+};
+function toTitleCase(s) { return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+function normName(n) {
+  if (!n) return "";
+  const k = n.trim();
+  return NAME_MAP[k.toLowerCase()] || toTitleCase(k);
+}
+
+// Split "Name1/Name2" into individual names, normalizing each part
 function splitNames(raw) {
   if (!raw) return [];
-  return raw.split(/[\/,&]+/).map(n => n.trim()).filter(Boolean);
+  return raw.split(/[\/,&]+/).map(n => normName(n.trim())).filter(Boolean);
 }
 
 function toUsername(name) {
@@ -349,22 +372,4 @@ async function run() {
       }
     }
 
-    if (inserted) { taskInserted++; process.stdout.write(`\r  ✓ ${taskInserted}/${tasks.length} tasks`); }
-    else taskFailed++;
-  }
-
-  // 9. Summary
-  console.log(`\n
-═══════════════════════════════════════════
-  IMPORT COMPLETE — White Cap
-═══════════════════════════════════════════
-  ✓ Projects  : ${projInserted} / ${projectNames.length}
-  ✓ Tasks     : ${taskInserted} / ${tasks.length}
-  ✓ Users     : ${usersCreated} created
-  ❌ Failed    : ${projFailed + taskFailed}
-═══════════════════════════════════════════
-Reload hub-rdsprojects.com to see all White Cap data.
-`);
-}
-
-run().catch(console.error);
+    if (inserted) { taskInserted++; process.stdout.write(`\r  ✓ $

@@ -7,12 +7,23 @@ const supabase = createClient(SUPA_URL, SUPA_KEY);
 
 const COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316","#3b82f6","#84cc16","#f43f5e","#0ea5e9","#d946ef","#fb923c"];
 
+// Canonical name corrections — maps any wrong/variant spelling → correct DB name.
+// RULE: Add here whenever a new Excel variant causes a duplicate user.
 const NAME_MAP = {
-  "siav kumar":"Siva Kumar","shiva":"Siva Kumar","shiva kumar":"Siva Kumar","eswar/siav kumar":"Eswar",
-  "allu sai":"Sai","allu sai/nanaji":"Sai",
-  "lokesh reddy/nanaji":"Lokesh Reddy","lokesh":"Lokesh Reddy",
-  "eswar/nanaji":"Eswar","balaram/jagadeesh":"Balaram",
-  "sridevi / vaishnavi":"Sridevi","danush":"Dhanush",
+  // Typos / OCR variants → correct name
+  "siav kumar":    "Siva Kumar",
+  "shiva":         "Siva",          // Shiva → Siva (Team Leader, siva.e@rdstechserv.com)
+  "shiva kumar":   "Siva Kumar",
+  "danush":        "Dhanush",
+  "allu sai":      "Sai",
+  "lokesh reddy":  "Lokesh",        // Lokesh Reddy → Lokesh (correct user)
+  // Combined Excel entries → primary person
+  "eswar/siav kumar":    "Eswar",
+  "allu sai/nanaji":     "Sai",
+  "lokesh reddy/nanaji": "Lokesh",
+  "eswar/nanaji":        "Eswar",
+  "balaram/jagadeesh":   "Balaram",
+  "sridevi / vaishnavi": "Sridevi",
 };
 // Proper Title Case — lowercases first so "NANAJI"→"Nanaji", "CHANDRA MOULI"→"Chandra Mouli"
 function toTitleCase(str){
@@ -203,18 +214,4 @@ async function main(){
         detailer:normField(t.detailer),
         checker:normField(t.checker),
         scope:t.scope||"",
-        client_sub_date:t.client_sub_date||null,
-        due_date:t.due_date||null,
-        client:"White Cap",
-        tags:[],files:[],
-      });
-      if(tErr){err(`task "${t.title}"`,tErr);tFail++;}
-      else tOk++;
-    }
-    console.log(`  ✓ ${projName} — ${tasks.length} task(s)`);
-  }
-
-  console.log(`\n=== RESULT: ${pOk} projects ✓, ${pFail} failed | ${tOk} tasks ✓, ${tFail} failed ===`);
-}
-
-main().catch(e=>console.error("FATAL:",e));
+        client_sub_date:t.cl
