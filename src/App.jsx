@@ -4026,6 +4026,7 @@ function GanttPage({projects,tasks,today,onSelectProject}){
   const isMobile=useMobile();
   const [zoom,setZoom]=useState("month");
   const [filterClient,setFc]=useState("All");
+  const [filterRisk,setFr]=useState("all"); // "all"|"red"|"yellow"|"none"
   const [showDone,setShowDone]=useState(false);
   const [tooltip,setTt]=useState(null); // {x,y,p}
   const containerRef=useRef();
@@ -4071,6 +4072,7 @@ function GanttPage({projects,tasks,today,onSelectProject}){
   const clientNames=["All",...[...new Set(projects.map(p=>p.client||"Unassigned"))].sort()];
   const filtered=enriched
     .filter(p=>filterClient==="All"||(p.client||"Unassigned")===filterClient)
+    .filter(p=>filterRisk==="all"||p.risk===filterRisk)
     .filter(p=>showDone||p.pct<100||p.total===0)
     .sort((a,b)=>{
       const o={red:0,yellow:1,green:2,none:3};
@@ -4124,14 +4126,36 @@ function GanttPage({projects,tasks,today,onSelectProject}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14,height:"100%",minHeight:0}}>
-      {/* KPI strip */}
+      {/* KPI strip — clickable filters */}
       <div style={{display:"flex",gap:10,flexWrap:"wrap",flexShrink:0}}>
-        {[{l:"Total Projects",v:enriched.length,c:C.teal},{l:"🔴 Overdue",v:redC,c:C.red},{l:"🟡 At Risk (30d)",v:yelC,c:C.yellow},{l:"⚪ No Deadline",v:noDl,c:C.t3}].map(k=>(
-          <div key={k.l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:110,flex:"1 1 110px"}}>
-            <div style={{fontSize:10,color:C.t3,marginBottom:4,whiteSpace:"nowrap"}}>{k.l}</div>
-            <div style={{fontSize:20,fontWeight:800,color:k.c}}>{k.v}</div>
-          </div>
-        ))}
+        {[
+          {l:"Total Projects",v:enriched.length,c:C.teal,key:"all",icon:"📋"},
+          {l:"Overdue",v:redC,c:C.red,key:"red",icon:"🔴"},
+          {l:"At Risk (30d)",v:yelC,c:C.yellow,key:"yellow",icon:"🟡"},
+          {l:"No Deadline",v:noDl,c:C.t3,key:"none",icon:"⚪"},
+        ].map(k=>{
+          const active=filterRisk===k.key;
+          return(
+            <div key={k.key}
+              onClick={()=>setFr(active?"all":k.key)}
+              style={{
+                background:active?`${k.c}18`:C.card,
+                border:`1px solid ${active?k.c:C.border}`,
+                borderRadius:10,padding:"10px 16px",minWidth:110,flex:"1 1 110px",
+                cursor:"pointer",transition:"all .15s",position:"relative",
+                boxShadow:active?`0 0 0 1px ${k.c}44`:"none",
+              }}
+              onMouseEnter={e=>{if(!active)e.currentTarget.style.borderColor=k.c+"66";}}
+              onMouseLeave={e=>{if(!active)e.currentTarget.style.borderColor=C.border;}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                <div style={{fontSize:10,color:active?k.c:C.t3,fontWeight:active?700:400,whiteSpace:"nowrap"}}>{k.icon} {k.l}</div>
+                {active&&<span style={{fontSize:9,background:k.c,color:"#fff",borderRadius:4,padding:"1px 5px",fontWeight:700}}>ON</span>}
+              </div>
+              <div style={{fontSize:22,fontWeight:800,color:active?k.c:k.c}}>{k.v}</div>
+              {active&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:2,background:k.c,borderRadius:"0 0 10px 10px"}}/>}
+            </div>
+          );
+        })}
       </div>
 
       {/* Controls */}
