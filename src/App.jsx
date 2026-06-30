@@ -5259,8 +5259,7 @@ export default function App(){
   const isAdmin=me?.role==="Admin"||me?.username===SUPER_ADMIN;
   const isManager=!isAdmin&&me?.role==="Manager";
   const isTeamLeader=!isAdmin&&!isManager&&me?.role==="Team Leader";
-  const canEdit=isAdmin||isManager||isTeamLeader;   // can create tasks, access edit form
-  const canManageAll=isAdmin||isManager;             // can edit/delete ANY task or project
+  const canEdit=isAdmin||isManager||isTeamLeader;
   // Inject responsive CSS once
   useEffect(()=>{
     const s=document.createElement("style");
@@ -5772,14 +5771,14 @@ export default function App(){
         <div style={{marginTop:10,padding:"0 12px",flex:1,overflowY:"auto",minHeight:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,padding:"0 4px"}}>
             <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
-            {canManageAll&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
+            {canEdit&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
           </div>
           <button onClick={()=>{if(view==="kanban"){sap(null);sac(null);}else{navTo("list",null);}if(isMobile)setSO(false);}} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
           {visibleProjects.map(p=>(
             <button key={p.id} onClick={()=>{if(view==="kanban"){sap(p.id);sac(null);}else{navTo("list",p.id);}if(isMobile)setSO(false);}} style={sel(activePid===p.id)}>
               <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
               <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{p.name}</span>
-              {canManageAll&&activePid===p.id&&(
+              {canEdit&&activePid===p.id&&(
                 <div style={{display:"flex",gap:2,flexShrink:0}}>
                   <IBtn icon="✏️" title="Edit" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
                   <IBtn icon="🗑" title="Delete" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
@@ -5787,7 +5786,7 @@ export default function App(){
               )}
             </button>
           ))}
-          {canManageAll&&(
+          {canEdit&&(
             <>
               <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
               {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
@@ -5989,7 +5988,7 @@ export default function App(){
                 );
               })()}
             </div>}
-            {canManageAll&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
+            {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button className="rds-new-task-btn" onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
@@ -6097,7 +6096,7 @@ export default function App(){
             {/* ── 1. Projects Overview ── */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-              {canManageAll&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
+              {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
                 onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
                 onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
             </div>
@@ -6147,12 +6146,12 @@ export default function App(){
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
                       <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
-                        {canManageAll&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
+                        {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
                           style={{marginTop:2,width:18,height:18,borderRadius:4,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
                         <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#ffffff",lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                        {canManageAll&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
+                        {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
                         <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
                       </div>
                     </div>
@@ -6262,8 +6261,8 @@ export default function App(){
                       </div>
                     )}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {(canManageAll||(canEdit&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))))&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to view →</span>
+                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
+                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
                     </div>
                   </div>
                 );
@@ -6376,8 +6375,8 @@ export default function App(){
                         </div>
                       )}
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {(canManageAll||(canEdit&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))))&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to view →</span>
+                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
+                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
                       </div>
                     </div>
                   );
@@ -6418,7 +6417,7 @@ export default function App(){
         {view==="kanban"&&(
           <>
             {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            {canManageAll&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+            {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
               <GmailSelect selectedCount={selTasks.size} total={filtered.length}
                 onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
                 onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
@@ -6482,12 +6481,12 @@ export default function App(){
             <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
               {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
                 onEdit={t=>{set(t);stm(true);}}
-                onDelete={canManageAll?delTask:()=>{}}
+                onDelete={canEdit?delTask:()=>{}}
                 onDrop={dropTask}
-                canEditFn={t=>canManageAll||(canEdit&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker)))}
-                canDelete={canManageAll}
+                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
+                canDelete={canEdit}
                 selTasks={selTasks}
-                onToggleTask={canManageAll?toggleTask:null}
+                onToggleTask={canEdit?toggleTask:null}
               />))}
             </div>
             )}
@@ -6515,7 +6514,7 @@ export default function App(){
         })()}
         {view==="list"&&(
           <div>
-          {!isMobile&&canManageAll&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
             <GmailSelect selectedCount={selTasks.size} total={filtered.length}
               onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
               onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
@@ -6552,7 +6551,7 @@ export default function App(){
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.surface}}>
-                {canManageAll&&<th style={{padding:"11px 12px",width:36}}>
+                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
                   <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
                     style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
@@ -6560,7 +6559,7 @@ export default function App(){
                 </th>}
                 {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canManageAll?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canManageAll?delTask:()=>{}} readonly={!canEdit} canDelete={canManageAll} selected={selTasks.has(t.id)} onSelect={canManageAll?toggleTask:null}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
             </table>
           </div>
           )}
@@ -6583,8 +6582,8 @@ export default function App(){
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
-      {canManageAll&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canManageAll&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
+      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
+      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
     </div>
     {/* ── Mobile ME bottom sheet ── */}
     {dashStatModal&&(()=>{
@@ -6694,3 +6693,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+     
