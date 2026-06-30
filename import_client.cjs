@@ -372,4 +372,22 @@ async function run() {
       }
     }
 
-   
+    if (inserted) { taskInserted++; process.stdout.write(`\r  ✓ ${taskInserted}/${tasks.length} tasks`); }
+    else taskFailed++;
+  }
+
+  // 9. Summary
+  console.log(`\n
+═══════════════════════════════════════════
+  IMPORT COMPLETE — White Cap
+═══════════════════════════════════════════
+  ✓ Projects  : ${projInserted} / ${projectNames.length}
+  ✓ Tasks     : ${taskInserted} / ${tasks.length}
+  ✓ Users     : ${usersCreated} created
+  ❌ Failed    : ${projFailed + taskFailed}
+═══════════════════════════════════════════
+Reload hub-rdsprojects.com to see all White Cap data.
+`);
+}
+
+run().catch(console.error);

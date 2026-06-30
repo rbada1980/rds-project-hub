@@ -214,4 +214,18 @@ async function main(){
         detailer:normField(t.detailer),
         checker:normField(t.checker),
         scope:t.scope||"",
-        client_sub_date:t.cli
+        client_sub_date:t.client_sub_date||null,
+        due_date:t.due_date||null,
+        client:"White Cap",
+        tags:[],files:[],
+      });
+      if(tErr){err(`task "${t.title}"`,tErr);tFail++;}
+      else tOk++;
+    }
+    console.log(`  ✓ ${projName} — ${tasks.length} task(s)`);
+  }
+
+  console.log(`\n=== RESULT: ${pOk} projects ✓, ${pFail} failed | ${tOk} tasks ✓, ${tFail} failed ===`);
+}
+
+main().catch(e=>console.error("FATAL:",e));
