@@ -5256,9 +5256,9 @@ export default function App(){
   useEffect(()=>{const h=()=>setIM(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
-  const isAdmin=me?.role==="Admin";
-  const isManager=me?.role==="Manager";
-  const isTeamLeader=me?.role==="Team Leader";
+  const isAdmin=me?.role==="Admin"||me?.username===SUPER_ADMIN;
+  const isManager=!isAdmin&&me?.role==="Manager";
+  const isTeamLeader=!isAdmin&&!isManager&&me?.role==="Team Leader";
   const canEdit=isAdmin||isManager||isTeamLeader;
   // Inject responsive CSS once
   useEffect(()=>{
@@ -6268,7 +6268,66 @@ export default function App(){
                 );
               })}
             </div>}
-            {/* ── 3. Client-wise Overview ── */}
+            {/* ── 3. Employee Overview (Admin/Manager direct access) ── */}
+            {(()=>{
+              const staff=users.filter(u=>u.role!=="Client"&&u.username!==me.username);
+              if(!staff.length)return null;
+              return(
+                <>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                  <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>👥 Employee Overview</h2>
+                  <span style={{fontSize:12,color:C.t3}}>{staff.length} team member{staff.length!==1?"s":""} · click to manage</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(220px,100%),1fr))",gap:12,marginBottom:28}}>
+                  {staff.map(u=>{
+                    const uTasks=dashTasks.filter(t=>userMatchesStr(u,t.assignee)||userMatchesStr(u,t.detailer)||userMatchesStr(u,t.checker));
+                    const done=uTasks.filter(t=>isDone(t.status)).length;
+                    const inProg=uTasks.filter(t=>t.status==="In Progress").length;
+                    const overdue=uTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                    const pct=uTasks.length?Math.round(done/uTasks.length*100):0;
+                    const hue=u.name.charCodeAt(0)*17%360;
+                    return(
+                      <div key={u.id} style={{background:C.card,border:`1px solid ${overdue>0?C.red+"44":C.border}`,borderRadius:12,padding:16,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px #00000055";}}
+                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                          <div style={{width:40,height:40,borderRadius:"50%",background:`hsl(${hue},55%,40%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff",flexShrink:0}}>{u.name.charAt(0).toUpperCase()}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                            <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
+                          </div>
+                        </div>
+                        <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:10,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pct}%`,background:`hsl(${hue},55%,45%)`,borderRadius:2,transition:"width .4s"}}/>
+                        </div>
+                        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                          <span style={{fontSize:10,background:C.green+"22",color:C.green,border:`1px solid ${C.green}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>✅ {done}</span>
+                          <span style={{fontSize:10,background:C.blue+"22",color:C.blue,border:`1px solid ${C.blue}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>🔄 {inProg}</span>
+                          {overdue>0&&<span style={{fontSize:10,background:C.red+"22",color:C.red,border:`1px solid ${C.red}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>⚠ {overdue}</span>}
+                          <span style={{fontSize:10,color:C.t3,marginLeft:"auto"}}>{uTasks.length} tasks · {pct}%</span>
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>{sfa(u.name);sv("kanban");sap(null);}}
+                            style={{flex:1,background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8,padding:"7px 0",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit",transition:"background .15s"}}
+                            onMouseEnter={e=>e.currentTarget.style.background=C.accent+"33"}
+                            onMouseLeave={e=>e.currentTarget.style.background=C.accent+"18"}>
+                            📋 Kanban
+                          </button>
+                          <button onClick={()=>{sfa(u.name);sv("list");sap(null);}}
+                            style={{flex:1,background:C.blue+"18",border:`1px solid ${C.blue}44`,borderRadius:8,padding:"7px 0",fontSize:11,fontWeight:700,color:C.blue,cursor:"pointer",fontFamily:"inherit",transition:"background .15s"}}
+                            onMouseEnter={e=>e.currentTarget.style.background=C.blue+"33"}
+                            onMouseLeave={e=>e.currentTarget.style.background=C.blue+"18"}>
+                            📄 List
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                </>
+              );
+            })()}
+            {/* ── 4. Client-wise Overview ── */}
             {!isClient&&<ClientOverview projects={accessibleProjects} tasks={dashTasks} clients={clients} onSelectClient={c=>navTo('clientprojects',null,c)}/>}
             {/* ── 4. Overdue Tasks ── */}
             {overdueTasks.length>0&&(<>
