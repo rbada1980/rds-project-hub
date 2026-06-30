@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, createContext, useContext } from "react";
+import { useState, useRef, useEffect, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
@@ -4704,7 +4704,7 @@ function WarRoomPage({me,projects,users}){
                     const displayBody=msg.edited_body||msg.body;
                     const isLastMsg=idx===displayMessages.length-1;
                     return(
-                      <React.Fragment key={msg.id}>
+                      <Fragment key={msg.id}>
                         {showDateSep&&(
                           <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0 12px",flexShrink:0}}>
                             <div style={{flex:1,height:1,background:C.border}}/>
@@ -4872,7 +4872,7 @@ function WarRoomPage({me,projects,users}){
                             )}
                           </div>
                         </div>
-                      </React.Fragment>
+                      </Fragment>
                     );
                   })
                 }
@@ -6611,3 +6611,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+                                                                                                                                       
