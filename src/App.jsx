@@ -6690,4 +6690,6 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
-    </MobileCtx.Provider
+    </MobileCtx.Provider>
+  );
+}
