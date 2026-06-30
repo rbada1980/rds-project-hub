@@ -124,6 +124,66 @@ function FileUp({files,onChange}){
     </div>
   );
 }
+function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
+  const [files,sf]=useState([]);
+  const [loading,sl]=useState(true);
+  const [uploading,su]=useState(false);
+  const fRef=useRef();
+  async function load(){
+    const{data}=await supabase.from("task_files").select("*").eq("task_id",task.id).order("created_at",{ascending:false});
+    const rows=data||[];sf(rows);sl(false);
+    if(onCountChange)onCountChange(task.id,rows.length);
+  }
+  useEffect(()=>{load();},[task.id]);
+  function fIcon(t){return t==="application/pdf"?"📄":t.startsWith("image/")?"🖼":t.includes("word")?"📝":t.includes("sheet")||t.includes("csv")?"📊":t.includes("dwg")||t.includes("dxf")||t.includes("cad")?"📐":"📎";}
+  function fmtSz(b){return!b?"—":b<1024?b+"B":b<1048576?(b/1024).toFixed(1)+"KB":(b/1048576).toFixed(1)+"MB";}
+  async function upload(e){
+    const file=e.target.files?.[0];if(!file)return;
+    su(true);
+    const path=`${task.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+    const{error:se}=await supabase.storage.from("task-files").upload(path,file,{contentType:file.type,upsert:false});
+    if(se){alert("Upload failed: "+se.message);su(false);return;}
+    const{data:pub}=supabase.storage.from("task-files").getPublicUrl(path);
+    await supabase.from("task_files").insert({task_id:task.id,project_id:task.project_id,file_name:file.name,file_size:file.size,file_type:file.type,storage_path:path,public_url:pub.publicUrl,uploaded_by:me.name||me.username});
+    e.target.value="";su(false);load();
+  }
+  async function del(f){
+    if(!confirm(`Delete "${f.file_name}"?`))return;
+    await supabase.storage.from("task-files").remove([f.storage_path]);
+    await supabase.from("task_files").delete().eq("id",f.id);
+    sf(fs=>{const next=fs.filter(x=>x.id!==f.id);if(onCountChange)onCountChange(task.id,next.length);return next;});
+  }
+  const canDel=f=>canEdit||f.uploaded_by===me.name||f.uploaded_by===me.username;
+  return(
+    <Modal title={`📎 Files — ${task.title}`} onClose={onClose} wide>
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <span style={{color:C.t3,fontSize:12}}>{loading?"…":files.length+" file(s) attached"}</span>
+          <div>
+            <input ref={fRef} type="file" multiple style={{display:"none"}} onChange={upload}/>
+            <button onClick={()=>fRef.current.click()} disabled={uploading} style={{...SBtn,padding:"8px 18px",fontSize:12}}>{uploading?"Uploading…":"⬆ Upload"}</button>
+          </div>
+        </div>
+        {loading?(<div style={{textAlign:"center",padding:32,color:C.t3}}>Loading…</div>)
+        :files.length===0?(<div style={{textAlign:"center",padding:32,color:C.t3,border:`2px dashed ${C.border}`,borderRadius:10,fontSize:13}}>No files yet.<br/><span style={{fontSize:11}}>Upload revised drawings, barlists, EMDs, or any reference doc.</span></div>)
+        :(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {files.map(f=>(
+            <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px"}}>
+              <span style={{fontSize:22,flexShrink:0}}>{fIcon(f.file_type||"")}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:C.t1,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.file_name}</div>
+                <div style={{color:C.t3,fontSize:11,marginTop:2}}>{fmtSz(f.file_size)} · {f.uploaded_by} · {(f.created_at||"").slice(0,10)}</div>
+              </div>
+              <a href={f.public_url} target="_blank" rel="noreferrer"
+                style={{...GBtn,padding:"6px 12px",fontSize:11,color:C.teal,borderColor:C.teal+"44",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,flexShrink:0}}>⬇ Open</a>
+              {canDel(f)&&<IBtn icon="🗑" onClick={()=>del(f)} color={C.red}/>}
+            </div>
+          ))}
+        </div>)}
+      </div>
+    </Modal>
+  );
+}
 function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,requireDates=false}){
   const [custom,setCustom]=useState(false);
   const initPid=initial.project_id||projects[0]?.id||"";
@@ -739,7 +799,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     </Modal>
   );
 }
-function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true}){
+function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true,fileCount=0,onFiles=null}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
     <div draggable={!readonly&&!onSelect} onDragStart={e=>{if(onSelect)return;sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
@@ -749,6 +809,7 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4,paddingRight:onSelect?26:0}}>{task.title}</p>
         {onSelect?<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{position:"absolute",top:12,right:12,width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>
         :<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
+          {onFiles&&<IBtn icon="📎" onClick={e=>{e.stopPropagation();onFiles(task);}} title="Files"/>}
           {!readonly&&<IBtn icon="✏️" onClick={()=>onEdit(task)}/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
         </div>}
@@ -759,7 +820,10 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
         {(task.tags||[]).map(t=><span key={t} style={{background:C.border,color:C.t2,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>{t}</span>)}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
-        <Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg>
+          {fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:onFiles?"pointer":"default"}}>📎{fileCount}</span>}
+        </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {task.due_date&&<span style={{fontSize:10,color:C.t3}}>{task.due_date}</span>}
           {task.assignee?<Av name={task.assignee} size={22}/>:<span style={{fontSize:10,color:C.yellow}}>Unassigned</span>}
@@ -785,7 +849,7 @@ function MobileKMove({task,onDrop}){
     </div>
   );
 }
-function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null}){
+function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null,taskFileCounts={},onFiles=null}){
   const [ov,so]=useState(false);
   const selectMode=!!onToggleTask;
   return(
@@ -797,11 +861,11 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode} fileCount={taskFileCounts[t.id]||0} onFiles={onFiles}/>)}
     </div>
   );
 }
-function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false}){
+function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null}){
   const [h,sh]=useState(false);
   const td={padding:"10px 16px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
@@ -814,7 +878,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      <td style={td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:13}}>{task.title}</span></div></td>
+      <td style={td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:13}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
       <td style={td}><span style={{color:C.t2,fontSize:12}}>{project?.name}</span></td>
       <td style={td}><span style={{color:C.teal,fontSize:12}}>{task.client||"—"}</span></td>
       <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.scope||"—"}</span></td>
@@ -825,10 +889,11 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.checker||"—"}</span></td>
       <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
       <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.client_sub_date||"—"}</span></td>
-      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}>{!readonly&&<div style={{display:"flex",gap:4}}>
-        <IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>
-        {canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
-      </div>}</td>
+      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}><div style={{display:"flex",gap:4}}>
+        {onFiles&&<IBtn icon="📎" onClick={e=>{e.stopPropagation();onFiles(task);}} title="Files"/>}
+        {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
+        {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
+      </div></td>
     </tr>
   );
 }
@@ -5533,6 +5598,8 @@ export default function App(){
   const [dashClient,sdsc]   = useState("All");
   const [dashStatus,sdsst]  = useState("All");
   const [toast,sToast]      = useState(null);
+  const [taskFileCounts,setTFC] = useState({});  // {[taskId]: fileCount}
+  const [fileTask,setFileTask]  = useState(null); // task object whose files panel is open
   const [logo,sLogo]        = useState(null);
   const [selTasks,setSelTasks]   = useState(new Set());
   const [selProjects,setSelProjs]= useState(new Set());
@@ -5799,6 +5866,18 @@ export default function App(){
       }
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
+    // Load file counts separately (non-blocking)
+    loadFileCounts();
+  }
+  async function loadFileCounts(){
+    const{data}=await supabase.from("task_files").select("task_id");
+    if(!data)return;
+    const counts={};
+    data.forEach(r=>{counts[r.task_id]=(counts[r.task_id]||0)+1;});
+    setTFC(counts);
+  }
+  function updateFileCount(taskId,n){
+    setTFC(prev=>({...prev,[taskId]:n}));
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
@@ -6871,6 +6950,8 @@ export default function App(){
                 canDelete={canEdit}
                 selTasks={selTasks}
                 onToggleTask={canEdit?toggleTask:null}
+                taskFileCounts={taskFileCounts}
+                onFiles={t=>setFileTask(t)}
               />))}
             </div>
             )}
@@ -6943,13 +7024,15 @@ export default function App(){
                 </th>}
                 {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
             </table>
           </div>
           )}
           </div>
         )}
       </main>
+      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>
+}
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
