@@ -12,6 +12,7 @@ const COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec
 const NAME_MAP = {
   // Typos / OCR variants → correct name
   "siav kumar":    "Siva Kumar",
+  "siva kumar":    "Siva Kumar",
   "shiva":         "Siva Kumar",    // Shiva = siav kumar = Siva Kumar (same Rebar person)
   "shiva kumar":   "Siva Kumar",
   "danush":        "Dhanush",
@@ -213,19 +214,4 @@ async function main(){
         assignee,
         detailer:normField(t.detailer),
         checker:normField(t.checker),
-        scope:t.scope||"",
-        client_sub_date:t.client_sub_date||null,
-        due_date:t.due_date||null,
-        client:"White Cap",
-        tags:[],files:[],
-      });
-      if(tErr){err(`task "${t.title}"`,tErr);tFail++;}
-      else tOk++;
-    }
-    console.log(`  ✓ ${projName} — ${tasks.length} task(s)`);
-  }
-
-  console.log(`\n=== RESULT: ${pOk} projects ✓, ${pFail} failed | ${tOk} tasks ✓, ${tFail} failed ===`);
-}
-
-main().catch(e=>console.error("FATAL:",e));
+        scope:t.scope||
