@@ -5511,19 +5511,18 @@ export default function App(){
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
-  // ── Global chat notifications: Realtime + polling fallback + browser notif ──
+  // ── Global chat notifications ──
   const viewRef=useRef(view);
   useEffect(()=>{viewRef.current=view;},[view]);
-  const lastMsgCheckRef=useRef(null); // ISO timestamp of last checked message
+  const lastNotifPollRef=useRef(null); // ISO timestamp — tracks last polled notification
+  const seenNotifIds=useRef(new Set());
 
-  function fireNotif(msg){
+  function fireNotif(title,body,id){
     // 1. Nav badge
     setNavBadges(prev=>({...prev,warroom:(prev.warroom||0)+1}));
-    // 2. Toast popup (when not on warroom page)
+    // 2. Toast (when not on warroom page)
     if(viewRef.current!=="warroom"){
-      const snippet=(msg.body||"📎 media").slice(0,80);
-      const sender=msg.author_name||msg.author;
-      sToast({msg:`💬 ${sender}: ${snippet}`,ok:true});
+      sToast({msg:`${title}: ${(body||"📎 media").slice(0,80)}`,ok:true});
       setTimeout(()=>sToast(null),6000);
     }
     // 3. Sound
@@ -5539,61 +5538,61 @@ export default function App(){
     }catch{}
     // 4. Browser OS notification
     if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
-      try{
-        const sender=msg.author_name||msg.author;
-        const body=(msg.body||"📎 Sent a file").slice(0,100);
-        new Notification(`💬 ${sender}`,{body,icon:"/favicon.svg",tag:"wr-"+msg.id});
-      }catch{}
+      try{new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});}catch{}
     }
   }
 
-  // Auto-request browser notification permission once
+  // Auto-request browser notification permission once (3s after login)
   useEffect(()=>{
     if(!me||isClient)return;
     if(typeof Notification==="undefined")return;
     if(Notification.permission==="default"){
-      // Small delay so it doesn't feel intrusive on load
       const t=setTimeout(()=>Notification.requestPermission(),3000);
       return()=>clearTimeout(t);
     }
   },[me,isClient]);
 
-  // Realtime subscription
+  // Realtime — war_room_messages direct (instant when Supabase delivers)
   useEffect(()=>{
     if(!me||isClient)return;
     const ch=supabase
       .channel("wr-global-"+me.username)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'war_room_messages'},p=>{
         const msg=p.new;
-        if(!msg||msg.author===me.username||msg.is_deleted)return;
-        lastMsgCheckRef.current=msg.created_at;
-        fireNotif(msg);
+        if(!msg||msg.author===me.username)return;
+        seenNotifIds.current.add("msg-"+msg.id);
+        const sender=msg.author_name||msg.author;
+        fireNotif(`💬 ${sender}`,msg.body,msg.id);
       })
       .subscribe();
     return()=>{try{supabase.removeChannel(ch);}catch{}};
   },[me,isClient]);
 
-  // Polling fallback every 12s — catches messages Realtime misses
+  // Polling fallback every 3s on notifications table — most reliable path
+  // sendMessage() already inserts into notifications for every recipient
   useEffect(()=>{
     if(!me||isClient)return;
-    // Initialize lastCheck to now so we don't flood old messages on load
-    if(!lastMsgCheckRef.current)lastMsgCheckRef.current=new Date().toISOString();
+    if(!lastNotifPollRef.current)lastNotifPollRef.current=new Date().toISOString();
     const interval=setInterval(async()=>{
       try{
-        const since=lastMsgCheckRef.current;
-        const{data}=await supabase.from("war_room_messages")
-          .select("id,author,author_name,body,created_at,is_deleted,client_id")
+        const since=lastNotifPollRef.current;
+        const{data,error}=await supabase.from("notifications")
+          .select("id,type,title,description,created_at")
+          .eq("user_id",me.id)
+          .in("type",["war_room_message","mention"])
           .gt("created_at",since)
-          .neq("author",me.username)
-          .eq("is_deleted",false)
           .order("created_at",{ascending:true})
-          .limit(20);
-        if(data&&data.length){
-          lastMsgCheckRef.current=data[data.length-1].created_at;
-          data.forEach(msg=>fireNotif(msg));
-        }
+          .limit(10);
+        if(error||!data||!data.length)return;
+        lastNotifPollRef.current=data[data.length-1].created_at;
+        data.forEach(n=>{
+          const key="notif-"+n.id;
+          if(seenNotifIds.current.has(key))return;
+          seenNotifIds.current.add(key);
+          fireNotif(n.title||"💬 New message",n.description,n.id);
+        });
       }catch{}
-    },12000);
+    },3000);
     return()=>clearInterval(interval);
   },[me,isClient]);
 
@@ -6773,9 +6772,4 @@ export default function App(){
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
         {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
         <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:
