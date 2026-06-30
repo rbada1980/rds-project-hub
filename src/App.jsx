@@ -5511,6 +5511,39 @@ export default function App(){
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
+  // ── Global war_room_messages subscription → badge + toast for incoming chat ──
+  useEffect(()=>{
+    if(!me||isClient)return;
+    const ch=supabase
+      .channel("global-wr-msgs-"+me.username)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'war_room_messages'},payload=>{
+        const msg=payload.new;
+        if(!msg||msg.author===me.username||msg.is_deleted)return;
+        // Always bump the warroom nav badge
+        setNavBadges(prev=>({...prev,warroom:(prev.warroom||0)+1}));
+        // Show toast only when NOT currently on the warroom page
+        if(view!=="warroom"){
+          const snippet=(msg.body||"📎 media").slice(0,70);
+          const sender=msg.author_name||msg.author;
+          sToast({msg:`💬 ${sender}: ${snippet}`,ok:true});
+          setTimeout(()=>sToast(null),5000);
+          // Play notification sound
+          try{
+            const ctx=new(window.AudioContext||window.webkitAudioContext)();
+            const o=ctx.createOscillator(),g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.frequency.value=660;o.type="sine";
+            g.gain.setValueAtTime(0,ctx.currentTime);
+            g.gain.linearRampToValueAtTime(0.2,ctx.currentTime+0.01);
+            g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.3);
+            o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3);
+          }catch{}
+        }
+      })
+      .subscribe();
+    return()=>{try{supabase.removeChannel(ch);}catch{}};
+  },[me,isClient,view]);
+
   // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
   useEffect(()=>{
     if(!me||!initialParsed.current)return;
