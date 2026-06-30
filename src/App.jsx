@@ -4020,6 +4020,271 @@ function AnnouncementsPage({me,users,projects,canPost}){
 
 
 // ══════════════════════════════════════════════════════════
+// GANTT VIEW — timeline per project, risk-coloured bars
+// ══════════════════════════════════════════════════════════
+function GanttPage({projects,tasks,today,onSelectProject}){
+  const isMobile=useMobile();
+  const [zoom,setZoom]=useState("month");
+  const [filterClient,setFc]=useState("All");
+  const [showDone,setShowDone]=useState(false);
+  const [tooltip,setTt]=useState(null); // {x,y,p}
+  const containerRef=useRef();
+
+  // px per day
+  const PPD=zoom==="week"?42:zoom==="month"?14:5;
+  const LW=isMobile?130:230; // label column width
+  const RH=40; // row height
+  const GH=28; // group header height
+  const HDR=52; // timeline header height
+
+  // date range: show from 30/14/30 days before today to end of last project
+  const todayD=new Date(today);
+  const rangePad={week:14,month:21,quarter:60};
+  const rs=new Date(todayD); rs.setDate(rs.getDate()-rangePad[zoom]);
+  const maxDeadline=projects.reduce((mx,p)=>{
+    const d=p.deadline||null;
+    return(d&&d>mx)?d:mx;
+  },"");
+  const reD=maxDeadline?new Date(Math.max(new Date(maxDeadline),todayD)):new Date(todayD);
+  reD.setDate(reD.getDate()+(zoom==="week"?14:zoom==="month"?30:90));
+  const totalDays=Math.ceil((reD-rs)/86400000)+1;
+  const TW=totalDays*PPD;
+
+  const dx=dateStr=>{if(!dateStr)return null;return Math.round((new Date(dateStr)-rs)/86400000)*PPD;};
+  const todayX=dx(today);
+
+  // Build enriched project list
+  const enriched=projects.map(p=>{
+    const pt=tasks.filter(t=>t.project_id===p.id);
+    const done=pt.filter(t=>isDone(t.status)).length;
+    const pct=pt.length?Math.round(done/pt.length*100):0;
+    const withDue=pt.filter(t=>t.due_date).map(t=>t.due_date).sort();
+    const startD=withDue[0]||null;
+    const latestTask=withDue[withDue.length-1]||null;
+    const deadline=p.deadline||latestTask||null;
+    const start=startD||(deadline?new Date(new Date(deadline).getTime()-21*86400000).toISOString().slice(0,10):null);
+    const daysLeft=deadline?Math.ceil((new Date(deadline)-todayD)/86400000):null;
+    const risk=!deadline?"none":daysLeft<0&&pct<100?"red":daysLeft<=30&&pct<80?"yellow":"green";
+    return{...p,pt,pct,deadline,start,risk,total:pt.length,done,inProg:pt.filter(t=>t.status==="In Progress").length};
+  });
+
+  const clientNames=["All",...[...new Set(projects.map(p=>p.client||"Unassigned"))].sort()];
+  const filtered=enriched
+    .filter(p=>filterClient==="All"||(p.client||"Unassigned")===filterClient)
+    .filter(p=>showDone||p.pct<100||p.total===0)
+    .sort((a,b)=>{
+      const o={red:0,yellow:1,green:2,none:3};
+      if(o[a.risk]!==o[b.risk])return o[a.risk]-o[b.risk];
+      if(a.deadline&&b.deadline)return a.deadline.localeCompare(b.deadline);
+      return a.deadline?-1:b.deadline?1:a.name.localeCompare(b.name);
+    });
+
+  // Group by client
+  const groupMap={};
+  filtered.forEach(p=>{const k=p.client||"Unassigned";if(!groupMap[k])groupMap[k]=[];groupMap[k].push(p);});
+  const groups=Object.entries(groupMap);
+
+  // Timeline header ticks
+  const ticks=[];
+  {
+    let d=new Date(rs);
+    while(d<=reD){
+      const ds=d.toISOString().slice(0,10);
+      const x=dx(ds);
+      if(zoom==="week"){
+        ticks.push({x,label:d.toLocaleDateString("en-US",{weekday:"short",day:"numeric"}),major:d.getDay()===1});
+        d.setDate(d.getDate()+1);
+      }else if(zoom==="month"){
+        if(d.getDay()===1||ticks.length===0){
+          ticks.push({x,label:d.toLocaleDateString("en-US",{month:"short",day:"numeric"}),major:d.getDate()<=7});
+        }
+        d.setDate(d.getDate()+1);
+      }else{
+        if(d.getDate()===1||ticks.length===0){
+          ticks.push({x,label:d.toLocaleDateString("en-US",{month:"short",year:"2-digit"}),major:true});
+        }
+        d.setDate(d.getDate()+1);
+      }
+    }
+  }
+
+  const rc=r=>r==="red"?C.red:r==="yellow"?C.yellow:r==="green"?C.green:C.t3;
+
+  // KPI counts
+  const redC=enriched.filter(p=>p.risk==="red").length;
+  const yelC=enriched.filter(p=>p.risk==="yellow").length;
+  const noDl=enriched.filter(p=>!p.deadline).length;
+
+  // Scroll to today on zoom change
+  useEffect(()=>{
+    if(containerRef.current&&todayX!=null){
+      containerRef.current.scrollLeft=Math.max(0,todayX-LW-80);
+    }
+  },[zoom]);
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14,height:"100%",minHeight:0}}>
+      {/* KPI strip */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",flexShrink:0}}>
+        {[{l:"Total Projects",v:enriched.length,c:C.teal},{l:"🔴 Overdue",v:redC,c:C.red},{l:"🟡 At Risk (30d)",v:yelC,c:C.yellow},{l:"⚪ No Deadline",v:noDl,c:C.t3}].map(k=>(
+          <div key={k.l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 16px",minWidth:110,flex:"1 1 110px"}}>
+            <div style={{fontSize:10,color:C.t3,marginBottom:4,whiteSpace:"nowrap"}}>{k.l}</div>
+            <div style={{fontSize:20,fontWeight:800,color:k.c}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",flexShrink:0}}>
+        <div style={{display:"flex",gap:2,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:3,flexShrink:0}}>
+          {[["week","Week"],["month","Month"],["quarter","Quarter"]].map(([z,l])=>(
+            <button key={z} onClick={()=>setZoom(z)} style={{background:zoom===z?C.teal:"transparent",border:"none",borderRadius:6,padding:"5px 12px",color:zoom===z?"#fff":C.t2,fontSize:12,fontWeight:zoom===z?700:400,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+          ))}
+        </div>
+        <select value={filterClient} onChange={e=>setFc(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 10px",color:C.t1,fontSize:12,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+          {clientNames.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.t2,cursor:"pointer",userSelect:"none"}}>
+          <input type="checkbox" checked={showDone} onChange={e=>setShowDone(e.target.checked)} style={{accentColor:C.teal}}/>
+          Show 100% complete
+        </label>
+        {/* Legend */}
+        <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          {[["red",C.red,"Overdue"],["yellow",C.yellow,"< 30d + <80%"],["green",C.green,"On track"],["none",C.t3,"No deadline"]].map(([k,col,l])=>(
+            <span key={k} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.t3}}>
+              <span style={{width:10,height:10,borderRadius:2,background:col,flexShrink:0,display:"inline-block"}}/>
+              {l}
+            </span>
+          ))}
+          <span style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.t3}}>
+            <span style={{width:2,height:12,background:C.accent,display:"inline-block"}}/>Today
+          </span>
+        </div>
+      </div>
+
+      {/* Gantt chart — single scroll container with sticky label column */}
+      <div ref={containerRef} style={{flex:1,overflow:"auto",background:C.card,border:`1px solid ${C.border}`,borderRadius:12,minHeight:0,position:"relative"}}>
+        <div style={{minWidth:LW+TW,display:"inline-block",verticalAlign:"top",width:"100%"}}>
+
+          {/* Timeline header */}
+          <div style={{display:"flex",position:"sticky",top:0,zIndex:20,background:C.surface,borderBottom:`1px solid ${C.border}`,height:HDR}}>
+            <div style={{width:LW,minWidth:LW,position:"sticky",left:0,zIndex:21,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",alignItems:"flex-end",padding:"0 12px 10px",flexShrink:0}}>
+              <span style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.07em"}}>Project · Risk</span>
+            </div>
+            <div style={{position:"relative",flexGrow:1,height:HDR,minWidth:TW}}>
+              {ticks.map((t,i)=>(
+                <div key={i} style={{position:"absolute",left:t.x,top:0,height:"100%",borderLeft:`1px solid ${t.major?C.border:C.border+"66"}`,display:"flex",alignItems:"flex-end",paddingBottom:8,paddingLeft:3,pointerEvents:"none"}}>
+                  <span style={{fontSize:t.major?10:9,color:t.major?C.t2:C.t3,whiteSpace:"nowrap",fontWeight:t.major?600:400}}>{t.label}</span>
+                </div>
+              ))}
+              {todayX!=null&&(
+                <div style={{position:"absolute",left:todayX,top:0,height:"100%",borderLeft:`2px solid ${C.accent}`,zIndex:5,pointerEvents:"none"}}>
+                  <span style={{position:"absolute",top:6,left:3,fontSize:9,color:C.accent,fontWeight:700,whiteSpace:"nowrap",background:C.surface,padding:"1px 4px",borderRadius:3}}>TODAY</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Rows */}
+          {groups.map(([client,projs])=>(
+            <div key={client}>
+              {/* Client group header */}
+              <div style={{display:"flex",height:GH,position:"sticky",zIndex:10,background:C.surface+"ee",backdropFilter:"blur(4px)"}}>
+                <div style={{width:LW,minWidth:LW,position:"sticky",left:0,zIndex:11,background:C.surface+"ee",borderRight:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 12px",gap:6,flexShrink:0}}>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:`hsl(${(client.charCodeAt(0)*23)%360},60%,50%)`}}/>
+                  <span style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{client} · {projs.length}</span>
+                </div>
+                <div style={{position:"relative",flexGrow:1,minWidth:TW,borderBottom:`1px solid ${C.border}`,background:C.surface+"44"}}>
+                  {ticks.map((t,i)=>(t.major?<div key={i} style={{position:"absolute",left:t.x,top:0,bottom:0,borderLeft:`1px solid ${C.border}44`,pointerEvents:"none"}}/>:null))}
+                </div>
+              </div>
+
+              {/* Project rows */}
+              {projs.map((p,ri)=>{
+                const x1=p.start?dx(p.start):null;
+                const x2=p.deadline?dx(p.deadline):null;
+                const barW=x1!=null&&x2!=null?Math.max(x2-x1,PPD*2):PPD*4;
+                const barX=x1!=null?x1:(x2!=null?x2-barW:(todayX||0)-barW/2);
+                const fillW=Math.round(barW*p.pct/100);
+                const riskC=rc(p.risk);
+                const isEven=ri%2===0;
+                return(
+                  <div key={p.id} style={{display:"flex",height:RH,background:isEven?C.card:C.surface+"66"}}
+                    onMouseLeave={()=>setTt(null)}>
+                    {/* Label cell */}
+                    <div style={{width:LW,minWidth:LW,position:"sticky",left:0,zIndex:8,background:isEven?C.card:C.surface+"ee",borderRight:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 8px 0 12px",gap:6,cursor:"pointer",flexShrink:0,transition:"background .1s"}}
+                      onClick={()=>onSelectProject(p.id)}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.border}
+                      onMouseLeave={e=>{e.currentTarget.style.background=isEven?C.card:C.surface+"ee";setTt(null);}}>
+                      <div style={{width:6,height:6,borderRadius:"50%",background:riskC,flexShrink:0}}/>
+                      <span style={{fontSize:11,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,lineHeight:1.3}}>{p.name}</span>
+                      <span style={{fontSize:10,color:riskC,fontWeight:700,flexShrink:0}}>{p.total?`${p.pct}%`:""}</span>
+                    </div>
+                    {/* Timeline cell */}
+                    <div style={{position:"relative",flexGrow:1,minWidth:TW,cursor:"pointer"}}
+                      onClick={()=>onSelectProject(p.id)}
+                      onMouseMove={e=>{
+                        const rect=e.currentTarget.closest('[data-gantt]')?.getBoundingClientRect()||{left:0,top:0};
+                        setTt({x:e.clientX,y:e.clientY,p});
+                      }}>
+                      {/* Grid lines */}
+                      {ticks.filter(t=>t.major).map((t,i)=>(
+                        <div key={i} style={{position:"absolute",left:t.x,top:0,bottom:0,borderLeft:`1px solid ${C.border}33`,pointerEvents:"none"}}/>
+                      ))}
+                      {/* Today marker */}
+                      {todayX!=null&&<div style={{position:"absolute",left:todayX,top:0,bottom:0,borderLeft:`2px solid ${C.accent}44`,pointerEvents:"none",zIndex:2}}/>}
+                      {/* Bar */}
+                      <div style={{position:"absolute",top:"50%",transform:"translateY(-50%)",left:barX,width:barW,height:22,borderRadius:5,background:`${riskC}1a`,border:`1px solid ${riskC}55`,overflow:"hidden",zIndex:3}}>
+                        {/* Progress fill */}
+                        <div style={{position:"absolute",inset:0,width:fillW,background:`${riskC}77`,borderRadius:5,transition:"width .3s"}}/>
+                        {/* Label */}
+                        {barW>48&&<span style={{position:"absolute",left:6,top:"50%",transform:"translateY(-50%)",fontSize:9,color:"#ffffffcc",fontWeight:700,whiteSpace:"nowrap",zIndex:4,pointerEvents:"none"}}>{p.pct}% · {p.done}/{p.total}</span>}
+                      </div>
+                      {/* Deadline diamond marker */}
+                      {x2!=null&&(
+                        <div style={{position:"absolute",top:"50%",left:x2,transform:"translate(-5px,-50%) rotate(45deg)",width:8,height:8,background:riskC,border:`1px solid ${riskC}`,zIndex:4,pointerEvents:"none",borderRadius:1}}/>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          {filtered.length===0&&(
+            <div style={{padding:60,textAlign:"center",color:C.t3,fontSize:13}}>No projects match the current filters.</div>
+          )}
+        </div>
+
+        {/* Tooltip */}
+        {tooltip&&(
+          <div style={{position:"fixed",left:tooltip.x+14,top:tooltip.y-10,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px",zIndex:9999,boxShadow:"0 8px 24px #00000080",pointerEvents:"none",maxWidth:240}}>
+            <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:6,lineHeight:1.3}}>{tooltip.p.name}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              {[
+                ["Client",tooltip.p.client||"—"],
+                ["Progress",`${tooltip.p.pct}% (${tooltip.p.done}/${tooltip.p.total} tasks)`],
+                ["In Progress",`${tooltip.p.inProg} tasks`],
+                ["Deadline",tooltip.p.deadline||"Not set"],
+              ].map(([k,v])=>(
+                <div key={k} style={{display:"flex",gap:6,fontSize:11}}>
+                  <span style={{color:C.t3,minWidth:70}}>{k}</span>
+                  <span style={{color:k==="Deadline"&&tooltip.p.risk==="red"?C.red:C.t1,fontWeight:k==="Deadline"?600:400}}>{v}</span>
+                </div>
+              ))}
+              <div style={{marginTop:4,display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:8,height:8,borderRadius:2,background:rc(tooltip.p.risk)}}/>
+                <span style={{fontSize:11,color:rc(tooltip.p.risk),fontWeight:600,textTransform:"capitalize"}}>{tooltip.p.risk==="none"?"No deadline":tooltip.p.risk==="red"?"Overdue":tooltip.p.risk==="yellow"?"At risk":"On track"}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
 // WAR ROOM — realtime per-project chat + video
 // ══════════════════════════════════════════════════════════
 function WarRoomPage({me,projects,users}){
@@ -5813,7 +6078,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -5921,7 +6186,7 @@ export default function App(){
               const hr=new Date().getHours();
               const greet=hr<12?"Good Morning":hr<17?"Good Afternoon":"Good Evening";
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
+              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="gantt"?"📅 Project Timeline":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
                 <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
                 <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
@@ -6472,6 +6737,14 @@ export default function App(){
         )}
         {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
           <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
+        )}
+        {view==="gantt"&&!isClient&&(
+          <GanttPage
+            projects={accessibleProjects}
+            tasks={tasks}
+            today={today}
+            onSelectProject={pid=>{navTo("list",pid);}}
+          />
         )}
         {view==="submissions"&&!isClient&&(
           <SubmissionsPage
