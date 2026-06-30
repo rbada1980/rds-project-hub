@@ -1,2 +1,3 @@
-Everything up-to-date
+To https://github.com/rbada1980/rds-project-hub.git
+   dbb4658..fe00a77  main -> main
 Exit: 0 
