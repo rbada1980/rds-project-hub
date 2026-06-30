@@ -5512,6 +5512,8 @@ export default function App(){
   useEffect(()=>{if(me)loadAll();},[me]);
 
   // ── Global war_room_messages subscription → badge + toast for incoming chat ──
+  const viewRef=useRef(view);
+  useEffect(()=>{viewRef.current=view;},[view]);
   useEffect(()=>{
     if(!me||isClient)return;
     const ch=supabase
@@ -5521,13 +5523,12 @@ export default function App(){
         if(!msg||msg.author===me.username||msg.is_deleted)return;
         // Always bump the warroom nav badge
         setNavBadges(prev=>({...prev,warroom:(prev.warroom||0)+1}));
-        // Show toast only when NOT currently on the warroom page
-        if(view!=="warroom"){
+        // Show toast + sound only when NOT on the warroom page
+        if(viewRef.current!=="warroom"){
           const snippet=(msg.body||"📎 media").slice(0,70);
           const sender=msg.author_name||msg.author;
           sToast({msg:`💬 ${sender}: ${snippet}`,ok:true});
           setTimeout(()=>sToast(null),5000);
-          // Play notification sound
           try{
             const ctx=new(window.AudioContext||window.webkitAudioContext)();
             const o=ctx.createOscillator(),g=ctx.createGain();
@@ -5540,9 +5541,11 @@ export default function App(){
           }catch{}
         }
       })
-      .subscribe();
+      .subscribe((status,err)=>{
+        if(err)console.error("[GlobalWR] Realtime error:",err);
+      });
     return()=>{try{supabase.removeChannel(ch);}catch{}};
-  },[me,isClient,view]);
+  },[me,isClient]);
 
   // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
   useEffect(()=>{
@@ -5879,7 +5882,7 @@ export default function App(){
             </div>
           </div>
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <NotificationCenter me={me} onBadgeChange={b=>setNavBadges(b)}/>
+            <NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>
             <span className="rds-topbar-filters" style={{display:"contents"}}>{view!=="dashboard"&&(
               <>
                 <input placeholder="🔍 Search…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
