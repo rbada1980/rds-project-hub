@@ -4316,316 +4316,328 @@ function WarRoomPage({me,projects,users}){
 
   const activeClientUser=clients.find(c=>c.username===activePid);
   const canSend=canSendInRoom(activeClientUser);
+  const clientDisplayName=activeClientUser?.client_name||activeClientUser?.name||activePid||"";
+  const filtered=projSearch.trim()
+    ?visibleClients.filter(c=>(c.client_name||c.name||"").toLowerCase().includes(projSearch.toLowerCase()))
+    :visibleClients;
 
-  // ── CLIENT SELECTOR ──
-  if(!activePid){
-    const filtered=projSearch.trim()
-      ?visibleClients.filter(c=>(c.client_name||c.name||"").toLowerCase().includes(projSearch.toLowerCase()))
-      :visibleClients;
-    return(
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1,minHeight:isMobile?"60vh":"50vh",padding:isMobile?"0 8px":0,paddingTop:24,overflowY:"auto"}}>
-        <div style={{width:"100%",maxWidth:560}}>
+  return(
+    <div style={{display:"flex",height:isMobile?"calc(100dvh - 130px)":"calc(100vh - 110px)",overflow:"hidden",border:`1px solid ${C.border}`,borderRadius:16,background:C.bg}}>
+
+      {/* LEFT SIDEBAR */}
+      {(!isMobile||!activePid)&&(
+        <div style={{width:isMobile?"100%":"272px",minWidth:isMobile?"100%":"272px",display:"flex",flexDirection:"column",background:C.surface,borderRight:isMobile?"none":`1px solid ${C.border}`,overflow:"hidden"}}>
           {/* Header */}
-          <div style={{textAlign:"center",marginBottom:20}}>
-            <div style={{fontSize:40,marginBottom:8}}>💬</div>
-            <h2 style={{margin:0,fontSize:isMobile?18:22,fontWeight:900,color:C.t1}}>Messages</h2>
-            <p style={{margin:"6px 0 0",color:C.t3,fontSize:13}}>Client conversations — select a client to open their chat room</p>
+          <div style={{padding:"16px 16px 14px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:34,height:34,borderRadius:10,background:`linear-gradient(135deg,${C.teal},${C.blue})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>💬</div>
+              <div>
+                <div style={{fontSize:15,fontWeight:800,color:C.t1,lineHeight:1.3}}>Messages</div>
+                <div style={{fontSize:10,color:C.t3}}>{visibleClients.length} client conversation{visibleClients.length!==1?"s":""}</div>
+              </div>
+            </div>
           </div>
 
           {/* Search */}
-          {visibleClients.length>4&&(
-            <div style={{marginBottom:12}}>
-              <input value={projSearch} onChange={e=>setProjSearch(e.target.value)}
-                placeholder="🔍 Search clients…"
-                style={{width:"100%",background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:10,padding:"9px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-            </div>
-          )}
+          <div style={{padding:"10px 12px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+            <input value={projSearch} onChange={e=>setProjSearch(e.target.value)}
+              placeholder="Search clients…"
+              style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+          </div>
 
-          {/* Client cards */}
-          {filtered.length===0
-            ?<div style={{textAlign:"center",padding:40,color:C.t3,fontSize:13}}>No clients available</div>
-            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.map(cl=>{
-                const hist=chatHistory.find(h=>h.client_id===cl.username);
+          {/* Client list */}
+          <div style={{flex:1,overflowY:"auto"}}>
+            {filtered.length===0
+              ?<div style={{padding:28,textAlign:"center",color:C.t3,fontSize:12}}>No clients found</div>
+              :filtered.map(cl=>{
+                const isActive=activePid===cl.username;
                 const lastMsg=lastMsgs[cl.username];
-                const accentColor=C.teal;
-                const iCanSend=canSendInRoom(cl);
-                const histOpen=historyClientId===cl.username;
+                const displayName=cl.client_name||cl.name||"?";
+                const hue=displayName.charCodeAt(0)*17%360;
                 return(
-                  <div key={cl.username} style={{display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${histOpen?accentColor:C.border}`,borderRadius:14,overflow:"hidden",transition:"border-color .15s"}}>
-                    {/* Card row */}
-                    <div onClick={()=>setActivePid(cl.username)}
-                      style={{padding:isMobile?"12px 14px":"14px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:14,transition:"background .15s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background=accentColor+"10"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                      <div style={{width:44,height:44,borderRadius:"50%",background:accentColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:"#fff",flexShrink:0}}>
-                        {(cl.client_name||cl.name||"?").charAt(0).toUpperCase()}
+                  <div key={cl.username} onClick={()=>setActivePid(cl.username)}
+                    style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:isActive?`${C.teal}1a`:"transparent",borderLeft:`3px solid ${isActive?C.teal:"transparent"}`,transition:"all .15s"}}
+                    onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background=C.card+"cc";}}
+                    onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background="transparent";}}>
+                    <div style={{position:"relative",flexShrink:0}}>
+                      <div style={{width:40,height:40,borderRadius:"50%",background:`hsl(${hue},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#fff"}}>
+                        {displayName.charAt(0).toUpperCase()}
                       </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <span style={{fontSize:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl.client_name||cl.name}</span>
-                          {!iCanSend&&<span style={{fontSize:10,background:C.border,color:C.t3,borderRadius:4,padding:"1px 5px",flexShrink:0}}>read-only</span>}
-                        </div>
+                      <div style={{position:"absolute",bottom:1,right:1,width:9,height:9,borderRadius:"50%",background:C.green,border:`2px solid ${C.surface}`}}/>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}}>
+                        <span style={{fontSize:13,fontWeight:700,color:isActive?C.teal:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
+                        {lastMsg&&<span style={{fontSize:10,color:C.t3,flexShrink:0,marginLeft:6}}>{fmt(lastMsg.created_at)}</span>}
+                      </div>
+                      <div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                         {lastMsg
-                          ?<div style={{fontSize:12,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                              <span style={{fontWeight:600,color:C.t2}}>{lastMsg.author_name}: </span>{lastMsg.body||"📎 media"}
-                            </div>
-                          :<div style={{fontSize:12,color:C.t3,marginTop:2}}>No messages yet</div>
+                          ?<><span style={{color:C.t2,fontWeight:600}}>{lastMsg.author_name}: </span>{lastMsg.body||"📎 media"}</>
+                          :"No messages yet"
                         }
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                        {hist&&<div style={{fontSize:12,fontWeight:700,color:accentColor,textAlign:"right"}}>
-                          <div>{hist.count} msg{hist.count!==1?"s":""}</div>
-                          {lastMsg&&<div style={{fontSize:10,color:C.t3,fontWeight:400}}>{fmt(lastMsg.created_at)}</div>}
-                        </div>}
-                        {/* History button */}
-                        {hist&&<button
-                          onClick={e=>{e.stopPropagation();setHistoryClientId(histOpen?null:cl.username);}}
-                          title="Chat history"
-                          style={{width:32,height:32,borderRadius:"50%",background:histOpen?accentColor+"22":C.surface,border:`1px solid ${histOpen?accentColor:C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0,transition:"all .15s"}}>
-                          🕐
-                        </button>}
                       </div>
                     </div>
-
-                    {/* History panel */}
-                    {histOpen&&(
-                      <div style={{borderTop:`1px solid ${C.border}`,background:C.surface,maxHeight:isMobile?260:340,overflowY:"auto"}}>
-                        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.surface,zIndex:2}}>
-                          <span style={{fontSize:12,fontWeight:700,color:C.t2}}>🕐 Recent Messages</span>
-                          <button onClick={()=>setActivePid(cl.username)} style={{background:accentColor,border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                            Open Chat →
-                          </button>
-                        </div>
-                        {historyLoading
-                          ?<div style={{padding:20,textAlign:"center",color:C.t3,fontSize:12}}>Loading…</div>
-                          :historyMsgs.length===0
-                          ?<div style={{padding:20,textAlign:"center",color:C.t3,fontSize:12}}>No messages yet</div>
-                          :<div style={{display:"flex",flexDirection:"column",gap:0}}>
-                            {historyMsgs.map((msg,i)=>(
-                              <div key={msg.id||i} style={{padding:"9px 14px",borderBottom:`1px solid ${C.border}22`,display:"flex",gap:10,alignItems:"flex-start"}}>
-                                <div style={{width:28,height:28,borderRadius:"50%",background:msg.author===me.username?accentColor:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0}}>
-                                  {msg.author_name?.charAt(0).toUpperCase()}
-                                </div>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:2}}>
-                                    <span style={{fontSize:12,fontWeight:700,color:C.t1}}>{msg.author_name}</span>
-                                    <span style={{fontSize:10,color:C.t3}}>{fmt(msg.created_at)}</span>
-                                  </div>
-                                  {msg.body&&<div style={{fontSize:12,color:C.t2,lineHeight:1.4,wordBreak:"break-word"}}>{msg.body}</div>}
-                                  {msg.video_url&&<div style={{fontSize:11,color:C.accent,marginTop:2}}>📎 media attachment</div>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        }
-                      </div>
-                    )}
                   </div>
                 );
-              })}
-            </div>
-          }
+              })
+            }
+          </div>
+        </div>
+      )}
 
-          {/* Chat History (clients with activity) */}
-          {chatHistory.filter(h=>!visibleClients.find(c=>c.username===h.client_id)).length===0&&chatHistory.length>0&&(
-            <div style={{marginTop:16,fontSize:11,color:C.t3,textAlign:"center",paddingBottom:16}}>
-              {chatHistory.length} client room{chatHistory.length!==1?"s":""} with activity
+      {/* RIGHT: CHAT AREA */}
+      {(!isMobile||activePid)&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+          {activePid?(
+            <>
+              {/* Chat header */}
+              <div style={{padding:isMobile?"10px 14px":"13px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:12,background:C.surface,flexShrink:0}}>
+                {isMobile&&(
+                  <button onClick={()=>{setActivePid(null);setMessages([]);setInput("");}}
+                    style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px",color:C.t2,fontSize:12,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+                    ←
+                  </button>
+                )}
+                {(()=>{const dn=clientDisplayName;const hue=dn?dn.charCodeAt(0)*17%360:200;return(
+                  <div style={{position:"relative",flexShrink:0}}>
+                    <div style={{width:38,height:38,borderRadius:"50%",background:`hsl(${hue},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#fff"}}>
+                      {dn?dn.charAt(0).toUpperCase():"?"}
+                    </div>
+                    <div style={{position:"absolute",bottom:1,right:1,width:9,height:9,borderRadius:"50%",background:C.green,border:`2px solid ${C.surface}`}}/>
+                  </div>
+                );})()}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{clientDisplayName}</div>
+                  <div style={{fontSize:11,color:C.green,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{width:6,height:6,borderRadius:"50%",background:C.green,display:"inline-block"}}/>
+                    Active now
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  {!canSend&&<span style={{fontSize:10,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,padding:"2px 8px",color:C.t3}}>read-only</span>}
+                  <span style={{fontSize:11,color:C.t3,background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 10px"}}>{messages.length} msg{messages.length!==1?"s":""}</span>
+                </div>
+              </div>
+
+              {/* Messages area */}
+              <div style={{flex:1,overflowY:"auto",padding:isMobile?"12px 14px":"16px 24px",display:"flex",flexDirection:"column",gap:0,background:C.bg,WebkitOverflowScrolling:"touch"}}>
+                {loading
+                  ?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:40,color:C.t3,fontSize:13}}>
+                    <div style={{width:16,height:16,border:`2px solid ${C.border}`,borderTop:`2px solid ${C.teal}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+                    Loading messages…
+                   </div>
+                  :messages.length===0
+                  ?<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:12,color:C.t3,padding:40}}>
+                    <div style={{width:64,height:64,borderRadius:20,background:C.surface,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>👋</div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:14,fontWeight:700,color:C.t2,marginBottom:4}}>No messages yet</div>
+                      <div style={{fontSize:12}}>Be the first to say something!</div>
+                    </div>
+                   </div>
+                  :messages.map((msg,idx)=>{
+                    const isMe=msg.author===me.username;
+                    const msgReactions=reactions[msg.id]||{};
+                    const hasReactions=Object.keys(msgReactions).length>0;
+                    const isImgUrl=u=>/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(u||"");
+                    const isPdfUrl=u=>/\.pdf(\?|$)/i.test(u||"");
+                    const showPicker=emojiPickerMsgId===msg.id;
+                    const msgDate=new Date(msg.created_at).toDateString();
+                    const prevMsgDate=idx>0?new Date(messages[idx-1].created_at).toDateString():null;
+                    const showDateSep=msgDate!==prevMsgDate;
+                    const prevMsg=idx>0?messages[idx-1]:null;
+                    const isGrouped=!showDateSep&&prevMsg&&prevMsg.author===msg.author&&(new Date(msg.created_at)-new Date(prevMsg.created_at))<120000;
+                    const authorHue=(msg.author_name||"?").charCodeAt(0)*17%360;
+                    return(
+                      <React.Fragment key={msg.id}>
+                        {showDateSep&&(
+                          <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0 12px",flexShrink:0}}>
+                            <div style={{flex:1,height:1,background:C.border}}/>
+                            <span style={{fontSize:11,color:C.t3,background:C.bg,padding:"3px 12px",borderRadius:20,border:`1px solid ${C.border}`,flexShrink:0,whiteSpace:"nowrap"}}>
+                              {new Date(msg.created_at).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short",year:"numeric"})}
+                            </span>
+                            <div style={{flex:1,height:1,background:C.border}}/>
+                          </div>
+                        )}
+                        <div style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end",marginTop:isGrouped?2:8,paddingLeft:isMe?24:0,paddingRight:isMe?0:24}}
+                          onMouseLeave={()=>setEmojiPickerMsgId(null)}>
+                          {!isGrouped
+                            ?<div style={{width:isMobile?28:32,height:isMobile?28:32,borderRadius:"50%",background:isMe?C.teal:`hsl(${authorHue},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
+                              {(msg.author_name||"?").charAt(0).toUpperCase()}
+                             </div>
+                            :<div style={{width:isMobile?28:32,flexShrink:0}}/>
+                          }
+                          <div style={{maxWidth:isMobile?"82%":"66%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:2,position:"relative"}}>
+                            {!isMe&&!isGrouped&&<span style={{fontSize:11,color:C.t3,fontWeight:700,paddingLeft:2,marginBottom:1}}>{msg.author_name}</span>}
+                            <div style={{position:"relative"}}>
+                              <div style={{
+                                background:isMe?C.teal:C.card,
+                                borderRadius:isMe?"16px 4px 16px 16px":"4px 16px 16px 16px",
+                                padding:isMobile?"8px 12px":"9px 14px",
+                                color:isMe?"#fff":C.t1,
+                                fontSize:13,lineHeight:1.55,wordBreak:"break-word",
+                                border:isMe?"none":`1px solid ${C.border}`,
+                                boxShadow:isMe?`0 2px 8px ${C.teal}33`:"0 1px 4px #00000033"
+                              }}>
+                                {msg.body&&<div>{renderBody(msg.body)}</div>}
+                                {msg.video_url&&(isImgUrl(msg.video_url)
+                                  ?<div style={{marginTop:msg.body?8:0}}><img src={msg.video_url} alt="media" style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?200:280,display:"block",cursor:"pointer"}} onClick={()=>window.open(msg.video_url,"_blank")}/></div>
+                                  :isPdfUrl(msg.video_url)
+                                  ?<a href={msg.video_url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,marginTop:msg.body?6:0,color:isMe?"#ccf2ee":C.accent,fontWeight:700,fontSize:12,textDecoration:"none"}}>📄 View PDF</a>
+                                  :/\.(mp4|webm|mov|avi)(\?|$)/i.test(msg.video_url)
+                                  ?<div style={{marginTop:msg.body?8:0}}><video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?160:200}}/></div>
+                                  :<a href={msg.video_url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,marginTop:msg.body?6:0,color:isMe?"#ccf2ee":C.accent,fontWeight:700,fontSize:12,textDecoration:"none"}}>📎 Download file</a>
+                                )}
+                                {msg._pending&&<div style={{fontSize:10,color:isMe?"#ccf2ee99":C.t3,marginTop:4,textAlign:"right"}}>Sending…</div>}
+                                {msg._failed&&<div style={{fontSize:10,color:"#fca5a5",marginTop:4,textAlign:"right"}}>⚠ Failed to send</div>}
+                              </div>
+                              <button onMouseEnter={e=>{e.currentTarget.style.opacity=1;setEmojiPickerMsgId(msg.id);}} onMouseLeave={e=>{if(!showPicker)e.currentTarget.style.opacity=0;}} onClick={()=>setEmojiPickerMsgId(showPicker?null:msg.id)}
+                                style={{position:"absolute",top:-8,right:isMe?undefined:-8,left:isMe?-8:undefined,background:C.surface,border:`1px solid ${C.border}`,borderRadius:"50%",width:22,height:22,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:showPicker?1:0,transition:"opacity .15s",padding:0,zIndex:5,boxShadow:"0 2px 6px #00000055"}}>
+                                😊
+                              </button>
+                              {showPicker&&(
+                                <div style={{position:"absolute",bottom:"110%",left:isMe?undefined:0,right:isMe?0:undefined,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"6px 8px",display:"flex",gap:4,zIndex:20,boxShadow:"0 4px 20px #00000066",flexWrap:"wrap",width:isMobile?180:200}}>
+                                  {EMOJIS.map(e=>{
+                                    const myReact=(msgReactions[e]||[]).includes(me.username);
+                                    return(
+                                      <button key={e} onClick={()=>toggleReaction(msg.id,e)}
+                                        style={{background:myReact?C.accent+"22":"transparent",border:myReact?`1px solid ${C.accent}44`:"1px solid transparent",borderRadius:6,padding:"4px 6px",fontSize:16,cursor:"pointer",transition:"background .1s"}}>
+                                        {e}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            {hasReactions&&(
+                              <div style={{display:"flex",gap:4,flexWrap:"wrap",paddingLeft:isMe?0:2,paddingRight:isMe?2:0,justifyContent:isMe?"flex-end":"flex-start"}}>
+                                {Object.entries(msgReactions).filter(([,u])=>u.length>0).map(([emoji,unames])=>{
+                                  const iMine=unames.includes(me.username);
+                                  return(
+                                    <button key={emoji} onClick={()=>toggleReaction(msg.id,emoji)} title={unames.join(", ")}
+                                      style={{background:iMine?C.accent+"22":C.surface,border:`1px solid ${iMine?C.accent+"66":C.border}`,borderRadius:20,padding:"2px 7px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:3,fontFamily:"inherit",color:iMine?C.accent:C.t2}}>
+                                      {emoji}<span style={{fontSize:11,fontWeight:700}}>{unames.length}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {!msg._pending&&!msg._failed&&(
+                              <span style={{fontSize:10,color:C.t3,padding:"0 2px"}}>
+                                {new Date(msg.created_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
+                                {isMe&&<span style={{marginLeft:4,color:C.teal}}>✓✓</span>}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
+                }
+                <div ref={endRef}/>
+              </div>
+
+              {mediaFile&&(
+                <div style={{padding:isMobile?"8px 14px":"10px 20px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                  {mediaPreview
+                    ?<img src={mediaPreview} alt="" style={{height:56,borderRadius:8,flexShrink:0,objectFit:"cover"}}/>
+                    :<div style={{width:48,height:48,borderRadius:8,background:C.card,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>📄</div>
+                  }
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,color:C.t1,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mediaFile.name}</div>
+                    <div style={{fontSize:10,color:C.t3,marginTop:2}}>{(mediaFile.size/1024).toFixed(0)} KB · will be attached</div>
+                  </div>
+                  <button onClick={cancelMedia} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 10px",color:C.t3,fontSize:12,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕ Remove</button>
+                </div>
+              )}
+
+              {mentionOpen&&mentionList.length>0&&(
+                <div style={{margin:isMobile?"0 12px":"0 20px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",zIndex:10,boxShadow:"0 -4px 20px #00000055",flexShrink:0}}>
+                  {mentionList.map(m=>{
+                    const mh=m.name.charCodeAt(0)*17%360;
+                    return(
+                      <div key={m.username} onClick={()=>insertMention(m)}
+                        style={{padding:"9px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.border}`}}
+                        onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <div style={{width:28,height:28,borderRadius:"50%",background:`hsl(${mh},55%,42%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0}}>{m.name.charAt(0)}</div>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{m.name}</div>
+                          <div style={{fontSize:10,color:C.t3}}>@{m.username}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {canSend?(
+                <div style={{flexShrink:0,position:"relative"}}>
+                  {emojiOpen&&(
+                    <div style={{position:"absolute",bottom:"100%",left:0,right:0,background:C.card,border:`1px solid ${C.border}`,zIndex:30,display:"flex",flexDirection:"column",maxHeight:isMobile?260:300,boxShadow:"0 -8px 32px #00000066"}}>
+                      <div style={{display:"flex",overflowX:"auto",borderBottom:`1px solid ${C.border}`,padding:"4px 6px",gap:2,flexShrink:0}}>
+                        {EMOJI_CATS.map((cat,i)=>(
+                          <button key={i} onClick={()=>setEmojiCat(i)}
+                            style={{flexShrink:0,background:emojiCat===i?`${C.teal}22`:"transparent",border:emojiCat===i?`1px solid ${C.teal}55`:"1px solid transparent",borderRadius:8,padding:"4px 8px",fontSize:16,cursor:"pointer",transition:"background .1s"}}
+                            title={cat.name}>{cat.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{overflowY:"auto",padding:"6px 8px",display:"grid",gridTemplateColumns:`repeat(${isMobile?8:10},1fr)`,gap:2,flex:1}}>
+                        {EMOJI_CATS[emojiCat].emojis.map((em,i)=>(
+                          <button key={i} onClick={()=>insertEmoji(em)}
+                            style={{background:"transparent",border:"none",borderRadius:6,padding:"4px 2px",fontSize:isMobile?20:22,cursor:"pointer",lineHeight:1}}
+                            onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{padding:isMobile?"10px 12px":"12px 20px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,alignItems:"flex-end",background:C.surface}}>
+                    <input ref={fileInputRef} type="file" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.txt" style={{display:"none"}} onChange={handleMediaFile}/>
+                    <button onClick={()=>setEmojiOpen(o=>!o)} title="Emoji"
+                      style={{flexShrink:0,width:36,height:36,borderRadius:"50%",background:emojiOpen?`${C.teal}22`:C.card,border:`1px solid ${emojiOpen?C.teal:C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,transition:"all .15s"}}>
+                      😊
+                    </button>
+                    {!mediaFile&&(
+                      <button onClick={()=>fileInputRef.current?.click()} title="Attach file"
+                        style={{flexShrink:0,width:36,height:36,borderRadius:"50%",background:C.card,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>
+                        📎
+                      </button>
+                    )}
+                    <textarea ref={inputRef} value={input} onChange={handleInput}
+                      onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape"){setMentionOpen(false);setEmojiOpen(false);}}}
+                      placeholder={isMobile?"Message…":"Type a message… @ to mention  (Enter to send)"}
+                      rows={1} style={{flex:1,background:C.card,border:`1px solid ${C.border}`,borderRadius:20,padding:"9px 16px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.5,transition:"border-color .15s"}}
+                      onFocus={e=>e.target.style.borderColor=C.teal}
+                      onBlur={e=>e.target.style.borderColor=C.border}/>
+                    <button onClick={send} disabled={sending||uploading||(!input.trim()&&!mediaFile)}
+                      style={{flexShrink:0,background:sending||uploading||(!input.trim()&&!mediaFile)?C.border:C.teal,border:"none",borderRadius:isMobile?"50%":"12px",width:isMobile?36:undefined,height:36,padding:isMobile?0:"0 20px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:sending||uploading||(!input.trim()&&!mediaFile)?"not-allowed":"pointer",fontFamily:"inherit",transition:"all .15s",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                      {isMobile?(uploading?"⬆":"➤"):uploading?"Uploading…":"Send ➤"}
+                    </button>
+                  </div>
+                </div>
+              ):(
+                <div style={{padding:isMobile?"10px 14px":"12px 20px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",justifyContent:"center",gap:8,flexShrink:0}}>
+                  <span style={{fontSize:12,color:C.t3}}>🔒 Read-only — only Admin, Manager & Team Leaders can reply</span>
+                </div>
+              )}
+            </>
+          ):(
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:C.bg}}>
+              <div style={{width:80,height:80,borderRadius:24,background:C.surface,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>💬</div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:16,fontWeight:700,color:C.t2,marginBottom:6}}>Select a conversation</div>
+                <div style={{fontSize:12,color:C.t3}}>Choose a client from the sidebar to open their chat room</div>
+              </div>
             </div>
           )}
         </div>
-      </div>
-    );
-  }
-
-  // ── CHAT VIEW ──
-  const clientDisplayName=activeClientUser?.client_name||activeClientUser?.name||activePid;
-  return(
-    <div style={{display:"flex",flexDirection:"column",height:isMobile?"calc(100dvh - 130px)":"calc(100vh - 110px)",gap:0,overflow:"hidden"}}>
-      {/* Chat header with back button */}
-      <div style={{background:C.teal+"18",border:`1px solid ${C.teal}33`,borderRadius:isMobile?"10px 10px 0 0":"14px 14px 0 0",padding:isMobile?"10px 12px":"12px 18px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-        <button onClick={()=>{setActivePid(null);setMessages([]);setInput("");}}
-          style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:isMobile?"5px 8px":"6px 12px",color:C.t2,fontSize:isMobile?12:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-          ← {isMobile?"":"Back"}
-        </button>
-        <div style={{width:28,height:28,borderRadius:"50%",background:C.teal,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:"#fff",flexShrink:0}}>
-          {clientDisplayName.charAt(0).toUpperCase()}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{clientDisplayName}</div>
-          {!canSend&&<div style={{fontSize:10,color:C.t3}}>Read-only — only Admin, Manager & assigned Team Leaders can reply</div>}
-        </div>
-        <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{messages.length} msgs</span>
-      </div>
-
-      {/* Messages area */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",background:C.card,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:isMobile?"0 0 10px 10px":"0 0 14px 14px",overflow:"hidden",minHeight:0}}>
-        <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px 12px":"14px 18px",display:"flex",flexDirection:"column",gap:isMobile?8:10,WebkitOverflowScrolling:"touch"}}>
-          {loading?<div style={{textAlign:"center",padding:40,color:C.t3}}>Loading…</div>:
-            messages.length===0?<div style={{textAlign:"center",padding:40,color:C.t3}}><div style={{fontSize:32,marginBottom:8}}>👋</div><div style={{fontSize:14}}>No messages yet — start the conversation!</div></div>:
-            messages.map(msg=>{
-              const isMe=msg.author===me.username;
-              const msgReactions=reactions[msg.id]||{};
-              const hasReactions=Object.keys(msgReactions).length>0;
-              const isImgUrl=u=>/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(u||"");
-              const isPdfUrl=u=>/\.pdf(\?|$)/i.test(u||"");
-              const showPicker=emojiPickerMsgId===msg.id;
-              return(
-                <div key={msg.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",gap:8,alignItems:"flex-end"}}
-                  onMouseLeave={()=>setEmojiPickerMsgId(null)}>
-                  <div style={{width:isMobile?26:30,height:isMobile?26:30,borderRadius:"50%",background:isMe?C.teal:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:isMobile?11:12,fontWeight:800,color:"#fff"}}>
-                    {msg.author_name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{maxWidth:isMobile?"80%":"72%",display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3,position:"relative"}}>
-                    {!isMe&&<span style={{fontSize:10,color:C.t3,fontWeight:700,paddingLeft:4}}>{msg.author_name}</span>}
-                    <div style={{position:"relative"}}>
-                      <div style={{background:isMe?C.teal:C.surface,borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:isMobile?"8px 11px":"9px 13px",color:isMe?"#fff":C.t1,fontSize:13,lineHeight:1.5,wordBreak:"break-word"}}>
-                        {msg.body&&<div>{renderBody(msg.body)}</div>}
-                        {msg.video_url&&(isImgUrl(msg.video_url)
-                          ?<div style={{marginTop:msg.body?8:0}}><img src={msg.video_url} alt="media" style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?200:280,display:"block",cursor:"pointer"}} onClick={()=>window.open(msg.video_url,"_blank")}/></div>
-                          :isPdfUrl(msg.video_url)
-                          ?<a href={msg.video_url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,marginTop:msg.body?6:0,color:isMe?"#fff":C.accent,fontWeight:700,fontSize:12,textDecoration:"none"}}>📄 View PDF</a>
-                          :/\.(mp4|webm|mov|avi)(\?|$)/i.test(msg.video_url)
-                          ?<div style={{marginTop:msg.body?8:0}}><video src={msg.video_url} controls style={{maxWidth:"100%",borderRadius:8,maxHeight:isMobile?160:200}}/></div>
-                          :<a href={msg.video_url} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,marginTop:msg.body?6:0,color:isMe?"#fff":C.accent,fontWeight:700,fontSize:12,textDecoration:"none"}}>📎 Download file</a>
-                        )}
-                      </div>
-                      {/* Emoji trigger */}
-                      <button onMouseEnter={e=>{e.currentTarget.style.opacity=1;setEmojiPickerMsgId(msg.id);}} onMouseLeave={e=>{if(!showPicker)e.currentTarget.style.opacity=0.3;}} onClick={()=>setEmojiPickerMsgId(showPicker?null:msg.id)}
-                        style={{position:"absolute",top:-8,right:isMe?undefined:-8,left:isMe?-8:undefined,background:C.surface,border:`1px solid ${C.border}`,borderRadius:"50%",width:22,height:22,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:showPicker?1:0.3,transition:"opacity .15s",padding:0,zIndex:5}}>
-                        😊
-                      </button>
-                      {/* Emoji picker */}
-                      {showPicker&&(
-                        <div style={{position:"absolute",bottom:"110%",left:isMe?undefined:0,right:isMe?0:undefined,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"6px 8px",display:"flex",gap:4,zIndex:20,boxShadow:"0 4px 16px #00000044",flexWrap:"wrap",width:isMobile?180:200}}>
-                          {EMOJIS.map(e=>{
-                            const myReact=(msgReactions[e]||[]).includes(me.username);
-                            return(
-                              <button key={e} onClick={()=>toggleReaction(msg.id,e)}
-                                style={{background:myReact?C.accent+"22":"transparent",border:myReact?`1px solid ${C.accent}44`:"1px solid transparent",borderRadius:6,padding:"4px 6px",fontSize:16,cursor:"pointer",transition:"background .1s"}}>
-                                {e}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    {/* Reaction bubbles */}
-                    {hasReactions&&(
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap",paddingLeft:isMe?0:4,paddingRight:isMe?4:0,justifyContent:isMe?"flex-end":"flex-start"}}>
-                        {Object.entries(msgReactions).filter(([,u])=>u.length>0).map(([emoji,unames])=>{
-                          const iMine=unames.includes(me.username);
-                          return(
-                            <button key={emoji} onClick={()=>toggleReaction(msg.id,emoji)} title={unames.join(", ")}
-                              style={{background:iMine?C.accent+"22":C.surface,border:`1px solid ${iMine?C.accent+"66":C.border}`,borderRadius:20,padding:"2px 7px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:3,fontFamily:"inherit",color:iMine?C.accent:C.t2}}>
-                              {emoji}<span style={{fontSize:11,fontWeight:700}}>{unames.length}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <span style={{fontSize:10,color:msg._failed?C.red:C.t3,padding:"0 4px"}}>
-                      {msg._failed?"⚠ Failed to send":msg._pending?"Sending…":fmt(msg.created_at)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          }
-          <div ref={endRef}/>
-        </div>
-
-        {/* Media file preview */}
-        {mediaFile&&(
-          <div style={{padding:isMobile?"8px 10px":"10px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8}}>
-            {mediaPreview
-              ?<img src={mediaPreview} alt="" style={{height:isMobile?52:70,borderRadius:8,flexShrink:0,objectFit:"cover"}}/>
-              :<div style={{width:isMobile?42:52,height:isMobile?42:52,borderRadius:8,background:C.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>📄</div>
-            }
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:isMobile?11:12,color:C.t1,fontWeight:700,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mediaFile.name}</div>
-              <div style={{fontSize:10,color:C.t3}}>{(mediaFile.size/1024).toFixed(0)} KB — will be attached</div>
-            </div>
-            <button onClick={cancelMedia} style={{background:"transparent",border:`1px solid ${C.red}`,borderRadius:6,padding:"5px 8px",color:C.red,fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>
-          </div>
-        )}
-
-        {/* @mention dropdown */}
-        {mentionOpen&&mentionList.length>0&&(
-          <div style={{margin:isMobile?"0 8px":"0 18px",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:10,padding:6,zIndex:10}}>
-            {mentionList.map(m=>(
-              <div key={m.username} onClick={()=>insertMention(m)}
-                style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
-                onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div style={{width:24,height:24,borderRadius:"50%",background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff"}}>{m.name.charAt(0)}</div>
-                <div><div style={{fontSize:12,fontWeight:700,color:C.t1}}>{m.name}</div><div style={{fontSize:10,color:C.t3}}>@{m.username}</div></div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Input bar */}
-        {canSend?(
-          <div style={{position:"relative"}}>
-            {/* Emoji picker panel */}
-            {emojiOpen&&(
-              <div style={{position:"absolute",bottom:"100%",left:0,right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:"14px 14px 0 0",zIndex:30,display:"flex",flexDirection:"column",maxHeight:isMobile?260:320,boxShadow:"0 -4px 24px #00000044"}}>
-                {/* Category tabs */}
-                <div style={{display:"flex",overflowX:"auto",borderBottom:`1px solid ${C.border}`,padding:"4px 6px",gap:2,flexShrink:0}}>
-                  {EMOJI_CATS.map((cat,i)=>(
-                    <button key={i} onClick={()=>setEmojiCat(i)}
-                      style={{flexShrink:0,background:emojiCat===i?C.teal+"22":"transparent",border:emojiCat===i?`1px solid ${C.teal}55`:"1px solid transparent",borderRadius:8,padding:"4px 8px",fontSize:16,cursor:"pointer",transition:"background .1s"}}
-                      title={cat.name}>
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Emoji grid */}
-                <div style={{overflowY:"auto",padding:"6px 8px",display:"grid",gridTemplateColumns:`repeat(${isMobile?8:10},1fr)`,gap:2,flex:1}}>
-                  {EMOJI_CATS[emojiCat].emojis.map((em,i)=>(
-                    <button key={i} onClick={()=>insertEmoji(em)}
-                      style={{background:"transparent",border:"none",borderRadius:6,padding:"4px 2px",fontSize:isMobile?20:22,cursor:"pointer",lineHeight:1,transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{padding:isMobile?"8px":"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:isMobile?6:8,alignItems:"center",background:C.card}}>
-              <input ref={fileInputRef} type="file" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.txt" style={{display:"none"}} onChange={handleMediaFile}/>
-              {/* Emoji button */}
-              <button onClick={()=>setEmojiOpen(o=>!o)} title="Emoji"
-                style={{flexShrink:0,width:isMobile?34:36,height:isMobile?34:36,borderRadius:"50%",background:emojiOpen?C.teal+"22":C.surface,border:`1px solid ${emojiOpen?C.teal:C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?18:20,transition:"background .15s"}}>
-                😊
-              </button>
-              <textarea ref={inputRef} value={input} onChange={handleInput}
-                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey&&!isMobile){e.preventDefault();send();}if(e.key==="Escape"){setMentionOpen(false);setEmojiOpen(false);}}}
-                placeholder={isMobile?"Message… @ to mention":"Type a message… @ to mention  (Enter to send)"}
-                rows={1} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"9px 14px",color:C.t1,fontSize:isMobile?14:13,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box",lineHeight:1.4}}/>
-              {!mediaFile&&(
-                <button onClick={()=>fileInputRef.current?.click()} title="Attach image or file"
-                  style={{flexShrink:0,width:isMobile?34:36,height:isMobile?34:36,borderRadius:"50%",background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?15:16}}>
-                  📎
-                </button>
-              )}
-              <button onClick={send} disabled={sending||uploading||(!input.trim()&&!mediaFile)}
-                style={{flexShrink:0,background:C.teal,border:"none",borderRadius:isMobile?"50%":"10px",width:isMobile?36:undefined,height:isMobile?36:undefined,padding:isMobile?0:"9px 18px",color:"#fff",fontSize:isMobile?18:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(sending||uploading||(!input.trim()&&!mediaFile))?0.5:1,transition:"all .15s",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {isMobile?(uploading?"⬆":"➤"):"Send"}
-              </button>
-            </div>
-          </div>
-        ):(
-          <div style={{padding:isMobile?"10px 14px":"12px 18px",borderTop:`1px solid ${C.border}`,background:C.surface,display:"flex",alignItems:"center",gap:8,justifyContent:"center"}}>
-            <span style={{fontSize:13,color:C.t3}}>🔒 You can read this conversation but cannot send messages</span>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
+
 
 // ══════════════════════════════════════════════════════════
 // TASK COMMENTS — with @mentions
