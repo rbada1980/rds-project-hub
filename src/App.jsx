@@ -4708,7 +4708,7 @@ function WarRoomPage({me,projects,users}){
                    </div>
                   :displayMessages.map((msg,idx)=>{
                     const isMe=msg.author===me.username;
-                    const isAdmin=me.username===SUPER_ADMIN; // only super-admin can edit/delete others' messages
+                    const isAdmin=false; // no one can edit/delete others' messages — own messages only
                     const msgReactions=reactions[msg.id]||{};
                     const hasReactions=Object.keys(msgReactions).length>0;
                     const isImgUrl=u=>/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(u||"");
