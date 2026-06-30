@@ -369,4 +369,27 @@ async function run() {
         if (!removedCols.includes(bad)) { removedCols.push(bad); console.log(`\n  ⚠ Removing column "${bad}"`); }
         delete payload[bad];
       } else {
-        console.log(`\n  ❌ Task "${t.
+        console.log(`\n  ❌ Task "${t.title}": ${errStr.slice(0,200)}`);
+        break;
+      }
+    }
+
+    if (inserted) { taskInserted++; process.stdout.write(`\r  ✓ ${taskInserted}/${tasks.length} tasks`); }
+    else taskFailed++;
+  }
+
+  // 9. Summary
+  console.log(`\n
+═══════════════════════════════════════════
+  IMPORT COMPLETE — White Cap
+═══════════════════════════════════════════
+  ✓ Projects  : ${projInserted} / ${projectNames.length}
+  ✓ Tasks     : ${taskInserted} / ${tasks.length}
+  ✓ Users     : ${usersCreated} created
+  ❌ Failed    : ${projFailed + taskFailed}
+═══════════════════════════════════════════
+Reload hub-rdsprojects.com to see all White Cap data.
+`);
+}
+
+run().catch(console.error);
