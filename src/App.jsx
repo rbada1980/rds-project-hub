@@ -4070,6 +4070,7 @@ function WarRoomPage({me,projects,users}){
   const [summaryOpen,setSummaryOpen]=useState(false);
   const [summaryText,setSummaryText]=useState("");
   const [reads,setReads]=useState({});
+  const [unreadCounts,setUnreadCounts]=useState({});
   // ── Refs ──
   const endRef=useRef();
   const inputRef=useRef();
@@ -4105,20 +4106,31 @@ function WarRoomPage({me,projects,users}){
   const visibleClients=clients;
   function canSendInRoom(cl){if(!cl)return false;return true;}
 
-  // ── Load sidebar history ──
+  // ── Load sidebar history + unread counts ──
   useEffect(()=>{
     if(clients.length===0)return;
     (async()=>{
-      const{data}=await supabase.from("war_room_messages").select("client_id,body,author_name,created_at")
+      const{data}=await supabase.from("war_room_messages").select("client_id,body,author_name,created_at,author")
         .in("client_id",clients.map(c=>c.username)).order("created_at",{ascending:false}).limit(500);
       const map={};const hist={};
+      // Compute unread: messages from others since last visit
+      const lastVisit=JSON.parse(localStorage.getItem("wr_lastvisit")||"{}");
+      const unreads={};
       (data||[]).forEach(m=>{
         if(!m.client_id)return;
         if(!map[m.client_id])map[m.client_id]=m;
         if(!hist[m.client_id])hist[m.client_id]={count:0,participants:new Set(),lastAt:m.created_at};
         hist[m.client_id].count++;hist[m.client_id].participants.add(m.author_name);
+        // Count unread: from others, after last visit
+        if(m.author!==me.username){
+          const lastSeen=lastVisit[m.client_id];
+          if(!lastSeen||new Date(m.created_at)>new Date(lastSeen)){
+            unreads[m.client_id]=(unreads[m.client_id]||0)+1;
+          }
+        }
       });
       setLastMsgs(map);
+      setUnreadCounts(unreads);
       setChatHistory(Object.entries(hist).map(([cid,h])=>({client_id:cid,count:h.count,participants:[...h.participants],lastAt:h.lastAt})).sort((a,b)=>new Date(b.lastAt)-new Date(a.lastAt)));
     })();
   },[users]);
@@ -4131,6 +4143,9 @@ function WarRoomPage({me,projects,users}){
       if(!fresh.length)return prev;
       lastMsgAtRef.current=fresh[fresh.length-1].created_at;
       if(pid||activePid)setLastMsgs(p=>({...p,[pid||activePid]:fresh[fresh.length-1]}));
+      // Increment unread count for messages from others
+      const othersNew=fresh.filter(m=>m.author!==me.username);
+      if(othersNew.length)setUnreadCounts(u=>({...u,[pid||activePid]:((u[pid||activePid]||0)+othersNew.length)}));
       // Track new messages when scrolled up
       setNewMsgCount(n=>n+fresh.length);
       setTimeout(()=>{
@@ -4144,6 +4159,11 @@ function WarRoomPage({me,projects,users}){
   // ── Load messages + realtime + polling ──
   useEffect(()=>{
     if(!activePid){setMessages([]);lastMsgAtRef.current=null;setReactions({});setNewMsgCount(0);setSearchOpen(false);setMsgSearch("");setReplyTo(null);setMsgMenuId(null);setEditingMsgId(null);return;}
+    // Mark this client as visited — clear unread badge
+    const lv=JSON.parse(localStorage.getItem("wr_lastvisit")||"{}");
+    lv[activePid]=new Date().toISOString();
+    localStorage.setItem("wr_lastvisit",JSON.stringify(lv));
+    setUnreadCounts(prev=>({...prev,[activePid]:0}));
     let ch;let poll;const cid=activePid;
     async function loadReactions(msgIds){
       if(!msgIds?.length)return;
@@ -4182,7 +4202,7 @@ function WarRoomPage({me,projects,users}){
   useEffect(()=>{
     if(!activePid){setTypingUsers([]);return;}
     const cid=activePid;
-    const ch=supabase.channel("presence-"+cid+"-"+Date.now(),{config:{presence:{key:me.username}}})
+    const ch=supabase.channel("typing-"+cid,{config:{presence:{key:me.username}}})
       .on("presence",{event:"sync"},()=>{
         const state=ch.presenceState();
         const typing=Object.entries(state).filter(([k,v])=>k!==me.username&&v[0]?.typing).map(([,v])=>({name:v[0].name,username:v[0].username}));
@@ -4429,7 +4449,7 @@ function WarRoomPage({me,projects,users}){
     const clientUser=clients.find(c=>c.username===capturedCid);
     const clientDisplayN=clientUser?.client_name||clientUser?.name||capturedCid;
     const snippet=(msgBody||"📎 media").slice(0,80);
-    const recipientBase=users.filter(u=>u.username!==me.username&&(u.username===capturedCid||["Admin","Manager"].includes(u.role)));
+    const recipientBase=users.filter(u=>u.username!==me.username&&(u.username===capturedCid||u.role!=="Client"));
     const allUsers=notifyAll?users.filter(u=>u.username!==me.username):recipientBase;
     if(allUsers.length){
       await supabase.from("notifications").insert(allUsers.map(u=>({user_id:u.id,type:"war_room_message",title:`💬 ${me.name} in ${clientDisplayN}`,description:snippet,entity_type:"war_room",entity_id:capturedCid,created_by:me.username})));
@@ -4575,11 +4595,14 @@ function WarRoomPage({me,projects,users}){
                       <div style={{position:"absolute",bottom:1,right:1,width:9,height:9,borderRadius:"50%",background:C.green,border:`2px solid ${C.surface}`}}/>
                     </div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}}>
-                        <span style={{fontSize:13,fontWeight:700,color:isActive?C.teal:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
-                        {lastMsg&&<span style={{fontSize:10,color:C.t3,flexShrink:0,marginLeft:6}}>{fmt(lastMsg.created_at)}</span>}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                        <span style={{fontSize:13,fontWeight:unreadCounts[cl.username]>0?800:700,color:isActive?C.teal:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayName}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0,marginLeft:4}}>
+                          {lastMsg&&!unreadCounts[cl.username]&&<span style={{fontSize:10,color:C.t3}}>{fmt(lastMsg.created_at)}</span>}
+                          {unreadCounts[cl.username]>0&&<span style={{background:C.teal,color:"#fff",fontSize:10,fontWeight:800,borderRadius:20,padding:"1px 7px",lineHeight:"16px",minWidth:18,textAlign:"center"}}>{unreadCounts[cl.username]}</span>}
+                        </div>
                       </div>
-                      <div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      <div style={{fontSize:11,color:unreadCounts[cl.username]>0?C.t2:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:unreadCounts[cl.username]>0?600:400}}>
                         {lastMsg?<><span style={{color:C.t2,fontWeight:600}}>{lastMsg.author_name}: </span>{lastMsg.body||"📎 media"}</>:"No messages yet"}
                       </div>
                     </div>
@@ -4685,7 +4708,7 @@ function WarRoomPage({me,projects,users}){
                    </div>
                   :displayMessages.map((msg,idx)=>{
                     const isMe=msg.author===me.username;
-                    const isAdmin=["Admin","Manager"].includes(me.role);
+                    const isAdmin=me.username===SUPER_ADMIN||["Admin","Manager"].includes(me.role);
                     const msgReactions=reactions[msg.id]||{};
                     const hasReactions=Object.keys(msgReactions).length>0;
                     const isImgUrl=u=>/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(u||"");
@@ -6592,22 +6615,4 @@ export default function App(){
           {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
           <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
           <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeig
