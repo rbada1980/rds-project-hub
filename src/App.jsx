@@ -3672,6 +3672,96 @@ const WF_ACTIONS=[["notify_checker","Notify Checker"],["notify_assignee","Notify
 const WF_ROLES=["Admin","Manager","Team Leader","Rebar","Client"];
 const ALL_WF_STATUSES=["Not Yet Started","In Progress","Review","Completed"];
 
+
+function EmailDigestCard(){
+  const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const [enabled,setEnabled]=useState(true);
+  const [sched,setSched]=useState({days:"1,2,3,4,5,6",time:"01:00"});
+  const [loading,setLoading]=useState(true);
+  const [triggering,setTriggering]=useState(false);
+  const [msg,setMsg]=useState(null);
+  const [editing,setEditing]=useState(false);
+  const [editDraft,setEditDraft]=useState({});
+  const [saving2,setSaving2]=useState(false);
+  const inp2={background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"8px 11px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
+  useEffect(()=>{
+    (async()=>{
+      const res=await fetch(SUPA_URL+"/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days,daily_digest_time)&select=key,value",{
+        headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+      });
+      const data=await res.json();
+      if(Array.isArray(data)){
+        const map={};data.forEach(r=>{map[r.key]=r.value;});
+        setEnabled(map["daily_digest_enabled"]!=="false");
+        setSched({days:map["daily_digest_days"]||"1,2,3,4,5,6",time:map["daily_digest_time"]||"01:00"});
+      }
+      setLoading(false);
+    })();
+  },[]);
+  async function upsertSetting(key,value){
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+key,{method:"PATCH",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({value})});
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){await fetch(SUPA_URL+"/rest/v1/settings",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({key,value}));}
+  }
+  async function toggle(val){setEnabled(val);await upsertSetting("daily_digest_enabled",val?"true":"false");setMsg("Digest "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
+  async function triggerNow(){
+    setTriggering(true);setMsg(null);
+    try{const res=await fetch("/api/cron-daily",{method:"GET"});const data=await res.json();setMsg(res.ok?"Sent to "+(data.sent??0)+" recipient(s)":"Error: "+(data.error||"Unknown"));}
+    catch(e){setMsg("Network error: "+e.message);}
+    setTriggering(false);setTimeout(()=>setMsg(null),4000);
+  }
+  async function saveEdit(){
+    setSaving2(true);
+    const daysStr=editDraft.days.sort((a,b)=>a-b).join(",");
+    await upsertSetting("daily_digest_days",daysStr);
+    await upsertSetting("daily_digest_time",editDraft.time);
+    setSched({days:daysStr,time:editDraft.time});
+    setMsg("Schedule updated");setTimeout(()=>setMsg(null),3000);setEditing(false);setSaving2(false);
+  }
+  const schedLabel=()=>{const ns=sched.days.split(",").map(Number).sort((a,b)=>a-b);return ns.map(d=>DAYS[d]).join(", ")+" at "+sched.time+" IST";};
+  if(loading)return null;
+  return(
+    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+        <span style={{fontSize:20}}>{"\ud83d\udce7"}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Daily Submission Email</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin, Manager, Team Leaders"+(loading?"":" — "+schedLabel())}</div>
+        </div>
+        <div onClick={()=>toggle(!enabled)} style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+          <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #0003"}}/>
+        </div>
+      </div>
+      {msg&&<div style={{fontSize:12,fontWeight:700,color:msg.startsWith("Error")||msg.startsWith("Network")?C.red:C.green,background:(msg.startsWith("Error")||msg.startsWith("Network")?C.red:C.green)+"22",borderRadius:8,padding:"8px 12px",marginBottom:12}}>{msg}</div>}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:12,color:enabled?C.green:C.t3,fontWeight:700}}>{enabled?"Active":"Paused"}</span>
+        <button onClick={()=>{setEditing(e=>!e);setEditDraft({days:sched.days.split(",").map(Number),time:sched.time});}} style={{...GBtn,fontSize:11,padding:"5px 12px",marginLeft:"auto"}}>{"Edit Schedule"}</button>
+        <button onClick={triggerNow} disabled={triggering} style={{...GBtn,fontSize:11,padding:"5px 12px",opacity:triggering?.6:1}}>{triggering?"Sending...":"Send Now"}</button>
+      </div>
+      {editing&&(
+        <div style={{marginTop:14,background:C.surface,borderRadius:10,padding:16,border:"1px solid "+C.accent+"44"}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.t1,marginBottom:12}}>Edit Schedule</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:8}}>ACTIVE DAYS</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+            {DAYS.map((d,i)=>{const on=(editDraft.days||[]).includes(i);return(
+              <div key={i} onClick={()=>{const cur=editDraft.days||[];setEditDraft(p=>({...p,days:on?cur.filter(x=>x!==i):[...cur,i]}));}}
+                style={{padding:"4px 10px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",background:on?C.accent+"22":C.surface,border:"1px solid "+(on?C.accent:C.border),color:on?C.accent:C.t3}}>
+                {d}
+              </div>
+            );})}
+          </div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>TIME (IST)</div>
+          <input type="time" value={editDraft.time||"01:00"} onChange={e=>setEditDraft(p=>({...p,time:e.target.value}))} style={{...inp2,marginBottom:14}}/>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={saveEdit} disabled={saving2} style={{...GBtn,background:C.accent,color:"#fff",borderColor:C.accent,flex:1,padding:"8px 0"}}>{saving2?"Saving...":"Save Schedule"}</button>
+            <button onClick={()=>setEditing(false)} style={GBtn}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}){
   const [showForm,setShowForm]=useState(false);
   const [editWf,setEditWf]=useState(null);
@@ -3689,6 +3779,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
   const lbl={fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,display:"block"};
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      <EmailDigestCard/>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Workflow Automation</div>
