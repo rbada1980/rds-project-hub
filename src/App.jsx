@@ -4109,7 +4109,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
                       <div style={{width:8,height:8,borderRadius:"50%",background:C.red,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                        <div style={{fontSize:10,color:C.t3}}>{pj?pj.name:"—"}+" · "+t.assignee||"Unassigned"}</div>
+                        <div style={{fontSize:10,color:C.t3}}>{(pj?pj.name:"—")+" · "+(t.assignee||"Unassigned")}</div>
                       </div>
                       <div style={{flexShrink:0,textAlign:"right"}}>
                         <div style={{fontSize:11,fontWeight:800,color:C.red}}>{daysOver>0?daysOver+"d ":s.over+"h "+"over"}</div>
@@ -7908,4 +7908,4 @@ export default function App(){
       );})}
       {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3p
+        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0
