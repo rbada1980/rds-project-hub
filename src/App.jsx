@@ -6503,39 +6503,6 @@ export default function App(){
             );
           })}
         </div>
-        <div style={{padding:"12px 12px 0",flexShrink:0}}>
-          <input placeholder="🔍 Search projects…" value={searchProj} onChange={e=>ssp(e.target.value)} style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
-        </div>
-        <div style={{marginTop:10,padding:"0 12px",flex:1,overflowY:"auto",minHeight:0}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,padding:"0 4px"}}>
-            <span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>Projects</span>
-            {canEdit&&<IBtn icon="+" onClick={()=>spm(true)} title="New Project" color={C.accent}/>}
-          </div>
-          <button onClick={()=>{if(view==="kanban"){sap(null);sac(null);}else{navTo("list",null);}if(isMobile)setSO(false);}} style={sel(!activePid&&!activeClient)}><div style={{width:8,height:8,borderRadius:"50%",background:C.t3}}/>All Projects</button>
-          {visibleProjects.map(p=>(
-            <button key={p.id} onClick={()=>{if(view==="kanban"){sap(p.id);sac(null);}else{navTo("list",p.id);}if(isMobile)setSO(false);}} style={sel(activePid===p.id)}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
-              <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{p.name}</span>
-              {canEdit&&activePid===p.id&&(
-                <div style={{display:"flex",gap:2,flexShrink:0}}>
-                  <IBtn icon="✏️" title="Edit" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
-                  <IBtn icon="🗑" title="Delete" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
-                </div>
-              )}
-            </button>
-          ))}
-          {canEdit&&(
-            <>
-              <div style={{marginTop:14,padding:"0 4px"}}><span style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em"}}>By Client</span></div>
-              {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c)).map(client=>(
-                <button key={client} onClick={()=>{navTo('clientprojects',null,client);if(isMobile)setSO(false);}} style={sel(view==="clientprojects"&&activeClient===client)}>
-                  <div style={{width:8,height:8,borderRadius:"50%",background:`hsl(${client.charCodeAt(0)*23%360},60%,50%)`,flexShrink:0}}/>
-                  <span style={{flex:1,wordBreak:"break-word",lineHeight:1.3}}>{client}</span>
-                </button>
-              ))}
-            </>
-          )}
-        </div>
         <div style={{padding:"12px 10px",borderTop:`1px solid ${C.border}`,flexShrink:0,position:"relative"}}>
           <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",minWidth:0,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit",overflow:"hidden"}}>
             <Av name={me.name} size={32}/>
@@ -6799,6 +6766,16 @@ export default function App(){
                 </div>
               </div>
             )}
+            {/* ── Ctrl+K Hint ── */}
+            <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+              <span style={{fontSize:15}}>⌨️</span>
+              <span style={{fontSize:12,color:"#ef4444",lineHeight:1.5}}>
+                Press{" "}
+                <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:11,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
+                {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:11,color:"#ef4444",fontWeight:700}}>⌘K</kbd>{" "}on Mac)</span>
+                {" "}anywhere in the website — shows your 10 most recent projects instantly
+              </span>
+            </div>
             {/* ── Clean Filter Bar ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
               {/* Search - full width on mobile */}
@@ -7488,3 +7465,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
