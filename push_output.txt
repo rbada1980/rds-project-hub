@@ -6,7 +6,6 @@ Your branch is ahead of 'origin/main' by 1 commit.
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
 	modified:   src/App.jsx
-	renamed:    src/email/notifications.js -> src/email notifications/notifications.js
 
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
@@ -17,5 +16,5 @@ Changes not staged for commit:
  
 Running git push... 
 To https://github.com/rbada1980/rds-project-hub.git
-   3069de2..fde3071  main -> main
+   0b8723f..0124d1d  main -> main
 Exit code: 0 
