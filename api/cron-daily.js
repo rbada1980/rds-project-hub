@@ -152,13 +152,21 @@ export default async function handler(req, res) {
     });
 
     // Check if digest is enabled
-    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days)&select=key,value`);
+    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days,last_digest_date)&select=key,value`);
     const settingsMap = {};
     if (Array.isArray(settingsData)) settingsData.forEach(r => { settingsMap[r.key] = r.value; });
 
     if (settingsMap["daily_digest_enabled"] === "false") {
       console.log("Daily digest is disabled via settings.");
       return res.status(200).json({ message: "Daily digest is disabled." });
+    }
+
+    // ── Idempotency guard: refuse to run more than once per IST day ──────────
+    // This blocks the "Send Now" button AND prevents double-fires if Vercel
+    // somehow queues the cron twice. last_digest_date is written at the end.
+    if (settingsMap["last_digest_date"] === today) {
+      console.log(`Daily digest already ran for ${today} — skipping duplicate.`);
+      return res.status(200).json({ message: `Already sent for ${today}. Next run tomorrow at 1 AM IST.` });
     }
 
     // Check allowed days (0=Sun,1=Mon,...6=Sat). Default: Mon–Sat (1,2,3,4,5,6)
@@ -185,13 +193,14 @@ export default async function handler(req, res) {
     for (const p of (projects || [])) pm[p.id] = p;
 
     const results = [];
-    const sent = new Set();
+    const sent = new Set(); // normalised lowercase email keys — prevents case-dupe sends
 
     // Admins, Managers, Team Leaders only — full list
     const DIGEST_ROLES = ["Admin", "Manager", "Team Leader"];
     for (const u of (users || []).filter(u => DIGEST_ROLES.includes(u.role) && u.email?.trim())) {
-      if (sent.has(u.email)) continue;
-      sent.add(u.email);
+      const emailKey = u.email.trim().toLowerCase();
+      if (sent.has(emailKey)) continue;
+      sent.add(emailKey);
       const html = buildEmail(u.name, allTasks, pm, dateLabel);
       const status = await postJson(NOTIFY_URL, {
         type: "submission_digest",
@@ -200,7 +209,7 @@ export default async function handler(req, res) {
           projectName: `${allTasks.length} submission(s) planned`,
           completedBy: "RDS TechServ",
           completedAt: dateLabel,
-          recipientEmail: u.email,
+          recipientEmail: u.email.trim(),
           subject: `📬 RDS Daily Submission List — ${dateLabel}`,
           htmlBody: html
         }
@@ -209,8 +218,31 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
     }
 
+    // ── Stamp today so any repeat call is blocked for the rest of this IST day ──
+    try {
+      const patchRes = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date`, {
+        method: "PATCH",
+        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+        body: JSON.stringify({ value: today })
+      });
+      const patched = await patchRes.json();
+      if (!Array.isArray(patched) || patched.length === 0) {
+        await fetch(`${SUPA_URL}/rest/v1/settings`, {
+          method: "POST",
+          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+          body: JSON.stringify({ key: "last_digest_date", value: today })
+        });
+      }
+    } catch (stampErr) {
+      console.warn("Could not stamp last_digest_date:", stampErr.message);
+    }
+
+    console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
     console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
     return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
 
   } catch (err) {
-    console.error("Daily cron 
+    console.error("Daily cron error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}

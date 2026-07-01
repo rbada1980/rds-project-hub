@@ -3865,13 +3865,14 @@ function CronModal({onClose}){
                 <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #00000040"}}/>
               </div>
             </div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:12,color:enabled?C.green:C.t3,fontWeight:700}}>
-                {enabled?"● Active":"○ Paused"}
+                {enabled?"● Active — runs automatically at 1 AM IST":"○ Paused"}
               </span>
               <button onClick={triggerNow} disabled={triggering}
-                style={{marginLeft:"auto",background:C.accent,border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:700,color:"#fff",cursor:triggering?"not-allowed":"pointer",opacity:triggering?0.6:1,fontFamily:"inherit"}}>
-                {triggering?"Sending…":"▶ Send Now"}
+                title="Server blocks this if today's digest already ran"
+                style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,color:C.t3,cursor:triggering?"not-allowed":"pointer",opacity:triggering?0.6:1,fontFamily:"inherit"}}>
+                {triggering?"Sending…":"🧪 Force Re-send (Test)"}
               </button>
             </div>
           </div>
