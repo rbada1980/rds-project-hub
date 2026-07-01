@@ -6936,7 +6936,6 @@ export default function App(){
                   </div>
                 );
               })}
-                  })}
                   </div>
                 );}
                 return(<>
@@ -7489,3 +7488,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+                        
