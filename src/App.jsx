@@ -5744,22 +5744,32 @@ function TaskComments({taskId,projectId,me,users}){
 }
 
 // ── ⌘K Command Palette ────────────────────────────────────────────
-function CommandPalette({projects,tasks,users,onNav,onClose}){
+function CommandPalette({projects,tasks,users,clients,taskFileCounts,onNav,onClose}){
   const [q,setQ]=useState("");
   const [sel,setSel]=useState(0);
   const inputRef=useRef();
   useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),30);},[]);
   const qL=q.trim().toLowerCase();
   const results=[];
+  const fc=taskFileCounts||{};
   if(!qL){
-    projects.slice(0,10).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
+    // Default: recent projects, clients, people, tasks with files
+    projects.slice(0,8).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
+    clients.slice(0,5).forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
+    users.filter(u=>u.role!=="Admin"&&u.role!=="Manager").slice(0,5).forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.client_name?" · "+u.client_name:""),data:u}));
+    const fileTasks=tasks.filter(t=>fc[t.id]>0).slice(0,5);
+    fileTasks.forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:`${fc[t.id]} file${fc[t.id]!==1?"s":""} · ${pj?.name||"—"}`,data:t});});
   } else {
-    projects.filter(p=>p.name.toLowerCase().includes(qL)||(p.client||"").toLowerCase().includes(qL)||(p.group_name||"").toLowerCase().includes(qL)).slice(0,8)
+    projects.filter(p=>p.name.toLowerCase().includes(qL)||(p.client||"").toLowerCase().includes(qL)||(p.group_name||"").toLowerCase().includes(qL)||(p.description||"").toLowerCase().includes(qL)).slice(0,6)
       .forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
-    tasks.filter(t=>t.title.toLowerCase().includes(qL)||(t.assignee||"").toLowerCase().includes(qL)).slice(0,8)
-      .forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);results.push({type:"task",icon:isDone(t.status)?"✅":"🔵",title:t.title,sub:(pj?.name||"—")+" · "+t.status,data:t});});
-    users.filter(u=>u.name.toLowerCase().includes(qL)||u.role.toLowerCase().includes(qL)).slice(0,4)
-      .forEach(u=>results.push({type:"user",icon:"👤",title:u.name,sub:u.role,data:u}));
+    tasks.filter(t=>t.title.toLowerCase().includes(qL)||(t.assignee||"").toLowerCase().includes(qL)||(t.detailer||"").toLowerCase().includes(qL)||(t.checker||"").toLowerCase().includes(qL)||(t.status||"").toLowerCase().includes(qL)||(t.description||"").toLowerCase().includes(qL)).slice(0,6)
+      .forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);const hasFiles=fc[t.id]>0;results.push({type:"task",icon:isDone(t.status)?"✅":hasFiles?"📎":"🔵",title:t.title,sub:(pj?.name||"—")+" · "+t.status+(hasFiles?` · ${fc[t.id]} file${fc[t.id]!==1?"s":""}":""),data:t});});
+    clients.filter(c=>c.name.toLowerCase().includes(qL)||(c.email||"").toLowerCase().includes(qL)||(c.phone||"").toLowerCase().includes(qL)||(c.address||"").toLowerCase().includes(qL)).slice(0,5)
+      .forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
+    users.filter(u=>u.name.toLowerCase().includes(qL)||u.role.toLowerCase().includes(qL)||(u.username||"").toLowerCase().includes(qL)||(u.email||"").toLowerCase().includes(qL)||(u.client_name||"").toLowerCase().includes(qL)).slice(0,6)
+      .forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Admin"?"🛡️":u.role==="Manager"?"🎯":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.username?" · @"+u.username:"")+(u.client_name?" · "+u.client_name:""),data:u}));
+    tasks.filter(t=>fc[t.id]>0&&(t.title.toLowerCase().includes(qL)||(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(qL))).slice(0,4)
+      .forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:`${fc[t.id]} file${fc[t.id]!==1?"s":""} · ${pj?.name||"—"} · ${t.status}`,data:t});});
   }
   useEffect(()=>setSel(0),[q]);
   useEffect(()=>{
@@ -5773,17 +5783,17 @@ function CommandPalette({projects,tasks,users,onNav,onClose}){
     return()=>window.removeEventListener("keydown",onKey);
   },[results,sel]);
   function go(item){onNav(item.type,item.data);onClose();}
-  const typeLabel={project:"Projects",task:"Tasks",user:"Team"};
-  const groups=["project","task","user"];
+  const typeLabel={project:"Projects",task:"Tasks",client:"Clients",user:"People",file:"Files"};
+  const groups=["project","task","client","user","file"];
   return(
     <div style={{position:"fixed",inset:0,background:"#00000090",zIndex:9999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"10vh"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{width:"min(620px,94vw)",background:"#1a1f2e",border:"1px solid #2a3040",borderRadius:16,overflow:"hidden",boxShadow:"0 32px 80px #000000c0"}}>
+      <div style={{width:"min(660px,94vw)",background:"#1a1f2e",border:"1px solid #2a3040",borderRadius:16,overflow:"hidden",boxShadow:"0 32px 80px #000000c0"}}>
         {/* Search input */}
         <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid #2a3040"}}>
           <span style={{fontSize:18,opacity:.6}}>⌘</span>
           <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)}
-            placeholder="Search projects, tasks, people…"
+            placeholder="Search projects, tasks, clients, people, files…"
             style={{flex:1,background:"transparent",border:"none",outline:"none",color:"#f1f5f9",fontSize:16,fontFamily:"inherit"}}/>
           <kbd onClick={onClose} style={{background:"#2a3040",border:"1px solid #3a4050",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#94a3b8",cursor:"pointer"}}>Esc</kbd>
         </div>
@@ -5795,12 +5805,12 @@ function CommandPalette({projects,tasks,users,onNav,onClose}){
             if(!gr.length)return null;
             return(
               <div key={type}>
-                <div style={{padding:"10px 16px 4px",fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em"}}>{typeLabel[type]}</div>
-                {gr.map((item,i)=>{
+                <div style={{padding:"10px 16px 4px",fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em"}}>{typeLabel[type]} <span style={{color:"#334155",fontWeight:400}}>({gr.length})</span></div>
+                {gr.map((item)=>{
                   const globalIdx=results.indexOf(item);
                   const isSelected=globalIdx===sel;
                   return(
-                    <div key={item.data.id||item.data.username} onClick={()=>go(item)}
+                    <div key={(item.data.id||item.data.username||item.data.name)+"_"+type} onClick={()=>go(item)}
                       style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer",
                         background:isSelected?"#2a3040":"transparent",borderLeft:`3px solid ${isSelected?"#14b8a6":"transparent"}`}}
                       onMouseEnter={()=>setSel(globalIdx)}>
@@ -7333,10 +7343,12 @@ export default function App(){
         )}
       </main>
       {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>}
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} onNav={(type,data)=>{
+      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} taskFileCounts={taskFileCounts} onNav={(type,data)=>{
         if(type==="project")navTo("list",data.id);
-        else if(type==="task")navTo("list",data.project_id);
+        else if(type==="task"){navTo("list",data.project_id);}
         else if(type==="user"){sfa(data.name);sv("list");sap(null);}
+        else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
+        else if(type==="file"){setFileTask(data);}
       }} onClose={()=>setCmdOpen(false)}/>}
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
