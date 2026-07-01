@@ -1760,239 +1760,216 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
     </div>
   );
 }
-async function exportExcel(projects,tasks,label="Report"){
-  if(!window.ExcelJS){
-    await new Promise((res,rej)=>{
-      const s=document.createElement("script");
-      s.src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js";
-      s.onload=res;s.onerror=rej;document.head.appendChild(s);
-    });
-  }
+function exportExcel(projects,tasks,label="Report"){
   const today=new Date().toISOString().slice(0,10);
   const safe=label.replace(/[/\\:*?"<>|]/g," ").trim();
-  const wb=new window.ExcelJS.Workbook();
-  wb.creator="RDS Project Hub";wb.created=new Date();
-  const a_=h=>"FF"+h.replace("#","");
-  const fl=c=>({type:"pattern",pattern:"solid",fgColor:{argb:a_(c)}});
-  const fn=(o={})=>{const f={name:"Arial"};if(o.bold)f.bold=true;if(o.size)f.size=o.size;if(o.color)f.color={argb:a_(o.color)};if(o.italic)f.italic=true;return f;};
-  const al=(h="left",v="middle",w=false)=>({horizontal:h,vertical:v,wrapText:w});
-  const bdr=(c="#2a3040")=>{const b={style:"thin",color:{argb:a_(c)}};return{top:b,bottom:b,left:b,right:b};};
-  const mkBar=(v,mx,w=25)=>{if(!mx)return"░".repeat(w);const f=Math.round((v/mx)*w);return"█".repeat(f)+"░".repeat(w-f);};
-  // Stats
+  // ── helpers ──────────────────────────────────────────────────
+  const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  function cell(val,sid,merge=0,type="String"){
+    const m=merge?` ss:MergeAcross="${merge}"`:"";
+    return `<Cell ss:StyleID="${sid}"${m}><Data ss:Type="${type}">${esc(val)}</Data></Cell>`;
+  }
+  function numCell(val,sid){return `<Cell ss:StyleID="${sid}"><Data ss:Type="Number">${val}</Data></Cell>`;}
+  function row(h,...cells){return `<Row ss:Height="${h}">${cells.join("")}</Row>`;}
+  function emptyRow(h,sid,n=1){return `<Row ss:Height="${h}">${Array(n).fill(`<Cell ss:StyleID="${sid}"/>`).join("")}</Row>`;}
+  const BAR=(v,mx,w=24)=>{if(!mx)return"░".repeat(w);const f=Math.round((v/mx)*w);return"█".repeat(f)+"░".repeat(w-f);};
+  // ── stats ─────────────────────────────────────────────────────
   const total=tasks.length;
   const done=tasks.filter(t=>isDone(t.status)).length;
   const inprog=tasks.filter(t=>t.status==="In Progress").length;
   const review=tasks.filter(t=>t.status==="Review").length;
-  const notStarted=tasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
-  const canceled=tasks.filter(t=>t.status==="job canceled").length;
+  const notStart=tasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
+  const cancl=tasks.filter(t=>t.status==="job canceled").length;
   const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
   const pct=total?Math.round((done/total)*100):0;
-  const byAssignee={};
-  tasks.forEach(t=>{const a=t.assignee||"Unassigned";if(!byAssignee[a])byAssignee[a]={total:0,done:0};byAssignee[a].total++;if(isDone(t.status))byAssignee[a].done++;});
-  const assignees=Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total);
-  const byClient={};
-  tasks.forEach(t=>{const proj=projects.find(p=>p.id===t.project_id);const c=proj?.client||"Unassigned";if(!byClient[c])byClient[c]={total:0,done:0};byClient[c].total++;if(isDone(t.status))byClient[c].done++;});
-  const clients=Object.entries(byClient).filter(([,v])=>v.total>0).sort((a,b)=>b[1].total-a[1].total);
+  const byA={};tasks.forEach(t=>{const a=t.assignee||"Unassigned";if(!byA[a])byA[a]={t:0,d:0};byA[a].t++;if(isDone(t.status))byA[a].d++;});
+  const asgns=Object.entries(byA).sort((a,b)=>b[1].t-a[1].t);
+  const byC={};tasks.forEach(t=>{const p=projects.find(x=>x.id===t.project_id);const c=p?.client||"Unassigned";if(!byC[c])byC[c]={t:0,d:0};byC[c].t++;if(isDone(t.status))byC[c].d++;});
+  const clnts=Object.entries(byC).filter(([,v])=>v.t>0).sort((a,b)=>b[1].t-a[1].t);
+  // ── styles ────────────────────────────────────────────────────
+  const S=`
+  <Style ss:ID="def"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="title"><Font ss:Name="Arial" ss:Size="22" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="sub"><Font ss:Name="Arial" ss:Size="11" ss:Color="#94A3B8"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="secHdr"><Font ss:Name="Arial" ss:Size="12" ss:Bold="1" ss:Color="#14B8A6"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tblHdr"><Font ss:Name="Arial" ss:Size="9" ss:Bold="1" ss:Color="#94A3B8"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="kpiLbl"><Font ss:Name="Arial" ss:Size="8" ss:Bold="1" ss:Color="#94A3B8"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="kpiTotal"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#F97316"/></Borders></Style>
+  <Style ss:ID="kpiDone"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#4ADE80"/></Borders></Style>
+  <Style ss:ID="kpiProg"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#93C5FD"/></Borders></Style>
+  <Style ss:ID="kpiOvd"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#FCA5A5"/></Borders></Style>
+  <Style ss:ID="kpiPct"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#86EFAC"/><Interior ss:Color="#14532D" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#86EFAC"/></Borders></Style>
+  <Style ss:ID="progBar"><Font ss:Name="Courier New" ss:Size="11" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="progBarOr"><Font ss:Name="Courier New" ss:Size="11" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="progBarRd"><Font ss:Name="Courier New" ss:Size="11" ss:Bold="1" ss:Color="#EF4444"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stDone"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stDoneC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="stDoneB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stProg"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stProgC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="stProgB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stRev"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stRevC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="stRevB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stNot"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stNotC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="stNotB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stCnx"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stCnxC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="stCnxB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stOvd"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="stOvdC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="stOvdB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEv"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOd"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvC"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdC"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvD"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdD"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvBG"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#22C55E"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdBG"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#22C55E"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvBO"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdBO"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#F97316"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvBR"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#94A3B8"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdBR"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#94A3B8"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvP"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdP"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvPO"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdPO"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnEvPR"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#EF4444"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="asnOdPR"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#EF4444"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="hdrTask"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#14B8A6"/></Borders></Style>
+  <Style ss:ID="clientRow"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#F97316" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="projRow"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#3B82F6" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tDone"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0A1F14" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tDoneB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tProg"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0A1631" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tProgB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tOvd"><Font ss:Name="Arial" ss:Size="10" ss:Color="#FCA5A5"/><Interior ss:Color="#1C0A0A" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tOvdB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#7F1D1D" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tRev"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tRevB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tDef"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="tDefB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tCnxB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tNum"><Font ss:Name="Arial" ss:Size="10" ss:Color="#94A3B8"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tNumD"><Font ss:Name="Arial" ss:Size="10" ss:Color="#94A3B8"/><Interior ss:Color="#0A1F14" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tNumP"><Font ss:Name="Arial" ss:Size="10" ss:Color="#94A3B8"/><Interior ss:Color="#0A1631" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="tNumO"><Font ss:Name="Arial" ss:Size="10" ss:Color="#FCA5A5"/><Interior ss:Color="#1C0A0A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="gap"><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
+  `;
   // ── Sheet 1: Analytics ─────────────────────────────────────
-  const dash=wb.addWorksheet("Analytics",{views:[{showGridLines:false,showRowColHeaders:false}],properties:{tabColor:{argb:"FF14B8A6"}}});
-  dash.getColumn(1).width=2;dash.getColumn(2).width=24;dash.getColumn(3).width=13;
-  dash.getColumn(4).width=13;dash.getColumn(5).width=28;dash.getColumn(6).width=12;dash.getColumn(7).width=2;
-  const bgR=(ws,rn,c)=>{for(let i=1;i<=7;i++)ws.getCell(rn,i).fill=fl(c);};
-  let r=1;
-  // Top padding
-  dash.getRow(r).height=8;bgR(dash,r,"#0f1117");r++;
-  // Title
-  dash.getRow(r).height=40;bgR(dash,r,"#0f1117");
-  dash.mergeCells(r,2,r,6);
-  const ttl=dash.getCell(r,2);
-  ttl.value="📊  RDS Project Hub — "+safe;
-  ttl.font=fn({bold:true,size:22,color:"#f1f5f9"});
-  ttl.alignment=al("left","middle");ttl.fill=fl("#0f1117");r++;
-  // Subtitle
-  dash.getRow(r).height=18;bgR(dash,r,"#0f1117");
-  dash.mergeCells(r,2,r,6);
-  const sub=dash.getCell(r,2);
-  sub.value="Generated: "+today+"   •   "+total+" tasks  |  "+projects.length+" projects  |  "+pct+"% complete";
-  sub.font=fn({size:11,color:"#94a3b8"});sub.alignment=al("left","middle");sub.fill=fl("#0f1117");r++;
-  dash.getRow(r).height=10;bgR(dash,r,"#0f1117");r++;
-  // KPI section header
-  dash.getRow(r).height=18;bgR(dash,r,"#0f1117");
-  dash.mergeCells(r,2,r,6);
-  const kh=dash.getCell(r,2);kh.value="▸  KEY METRICS";
-  kh.font=fn({bold:true,size:12,color:"#14b8a6"});kh.alignment=al("left","middle");kh.fill=fl("#0f1117");r++;
-  // KPI cards — label row
-  const kpis=[
-    {label:"TOTAL TASKS",value:total,bg:"#1e2433",txt:"#f97316"},
-    {label:"COMPLETED",value:done,bg:"#022c22",txt:"#4ade80"},
-    {label:"IN PROGRESS",value:inprog,bg:"#172554",txt:"#93c5fd"},
-    {label:"OVERDUE",value:overdue,bg:"#450a0a",txt:"#fca5a5"},
-    {label:"COMPLETION %",value:pct+"%",bg:"#14532d",txt:"#86efac"},
-  ];
-  dash.getRow(r).height=16;bgR(dash,r,"#0f1117");
-  kpis.forEach((k,i)=>{
-    const c=dash.getCell(r,2+i);c.value=k.label;
-    c.font=fn({bold:true,size:8,color:"#94a3b8"});
-    c.alignment=al("center","middle");c.fill=fl("#0f1117");
-  });r++;
-  // KPI value row
-  dash.getRow(r).height=56;bgR(dash,r,"#0f1117");
-  kpis.forEach((k,i)=>{
-    const c=dash.getCell(r,2+i);c.value=k.value;
-    c.font=fn({bold:true,size:28,color:k.txt});
-    c.alignment=al("center","middle");c.fill=fl(k.bg);
-    c.border={top:{style:"thick",color:{argb:a_(k.txt)}},bottom:{style:"thin",color:{argb:a_("#2a3040")}},left:{style:"thin",color:{argb:a_("#2a3040")}},right:{style:"thin",color:{argb:a_("#2a3040")}}};
-  });r++;
-  dash.getRow(r).height=12;bgR(dash,r,"#0f1117");r++;
-  // Progress bar
-  dash.getRow(r).height=18;bgR(dash,r,"#0f1117");
-  dash.mergeCells(r,2,r,6);
-  const ph=dash.getCell(r,2);ph.value="▸  COMPLETION PROGRESS";
-  ph.font=fn({bold:true,size:12,color:"#14b8a6"});ph.alignment=al("left","middle");ph.fill=fl("#0f1117");r++;
-  dash.getRow(r).height=30;bgR(dash,r,"#1e2433");
-  dash.mergeCells(r,2,r,5);
-  const pb=dash.getCell(r,2);
   const bW=40;const bF=Math.round((pct/100)*bW);
-  pb.value="█".repeat(bF)+"░".repeat(bW-bF)+"   "+pct+"% Complete   ("+done+" of "+total+")";
-  pb.font=fn({bold:true,size:11,color:pct>=80?"#22c55e":pct>=50?"#f97316":"#ef4444"});
-  pb.alignment=al("left","middle");pb.fill=fl("#1e2433");
-  const pbr=dash.getCell(r,6);
-  pbr.value=done+" / "+total;pbr.font=fn({size:11,color:"#94a3b8"});
-  pbr.alignment=al("right","middle");pbr.fill=fl("#1e2433");r++;
-  dash.getRow(r).height=12;bgR(dash,r,"#0f1117");r++;
-  // Status breakdown
-  dash.getRow(r).height=18;bgR(dash,r,"#0f1117");
-  dash.mergeCells(r,2,r,6);
-  const sth=dash.getCell(r,2);sth.value="▸  STATUS BREAKDOWN";
-  sth.font=fn({bold:true,size:12,color:"#14b8a6"});sth.alignment=al("left","middle");sth.fill=fl("#0f1117");r++;
-  dash.getRow(r).height=16;bgR(dash,r,"#1e2433");
-  ["Status","Count","Done%","Progress Bar",""].forEach((h,i)=>{
-    const c=dash.getCell(r,2+i);c.value=h;
-    c.font=fn({bold:true,size:9,color:"#94a3b8"});
-    c.alignment=al(i===3?"left":"center","middle");c.fill=fl("#1e2433");
-  });r++;
-  const statuses=[
-    {label:"✅ Completed",count:done,bg:"#022c22",txt:"#4ade80"},
-    {label:"🔵 In Progress",count:inprog,bg:"#172554",txt:"#93c5fd"},
-    {label:"🟣 Review",count:review,bg:"#2e1065",txt:"#d8b4fe"},
-    {label:"⚪ Not Started",count:notStarted,bg:"#1c1917",txt:"#a8a29e"},
-    {label:"❌ Canceled",count:canceled,bg:"#1c0505",txt:"#f87171"},
-    {label:"⚠ Overdue",count:overdue,bg:"#450a0a",txt:"#fca5a5"},
+  const pbStyle=pct>=80?"progBar":pct>=50?"progBarOr":"progBarRd";
+  const maxSt=Math.max(done,inprog,review,notStart,cancl,overdue,1);
+  const stData=[
+    {lbl:"✅  Completed",cnt:done,s:"stDone",sc:"stDoneC",sb:"stDoneB"},
+    {lbl:"🔵  In Progress",cnt:inprog,s:"stProg",sc:"stProgC",sb:"stProgB"},
+    {lbl:"🟣  Review",cnt:review,s:"stRev",sc:"stRevC",sb:"stRevB"},
+    {lbl:"⚪  Not Started",cnt:notStart,s:"stNot",sc:"stNotC",sb:"stNotB"},
+    {lbl:"❌  Canceled",cnt:cancl,s:"stCnx",sc:"stCnxC",sb:"stCnxB"},
+    {lbl:"⚠   Overdue",cnt:overdue,s:"stOvd",sc:"stOvdC",sb:"stOvdB"},
   ];
-  const maxSt=Math.max(...statuses.map(s=>s.count),1);
-  statuses.forEach(s=>{
-    dash.getRow(r).height=22;bgR(dash,r,"#0f1117");
-    const lc=dash.getCell(r,2);lc.value=s.label;lc.font=fn({bold:true,size:10,color:s.txt});lc.alignment=al("left","middle");lc.fill=fl(s.bg);
-    const vc=dash.getCell(r,3);vc.value=s.count;vc.font=fn({bold:true,size:13,color:s.txt});vc.alignment=al("center","middle");vc.fill=fl(s.bg);
-    const dp=dash.getCell(r,4);dp.value=total?Math.round((s.count/total)*100)+"%":"0%";dp.font=fn({size:10,color:s.txt});dp.alignment=al("center","middle");dp.fill=fl(s.bg);
-    const bc=dash.getCell(r,5);bc.value=mkBar(s.count,maxSt,24);bc.font=fn({size:9,color:s.txt});bc.alignment=al("left","middle");bc.fill=fl(s.bg);
-    for(let i=1;i<=7;i++)if(dash.getCell(r,i).fill.fgColor?.argb===undefined)dash.getCell(r,i).fill=fl(s.bg);
-    r++;
+  let dash=``;
+  dash+=`<Column ss:Width="18"/><Column ss:Width="150"/><Column ss:Width="65"/><Column ss:Width="55"/><Column ss:Width="160"/><Column ss:Width="70"/><Column ss:Width="18"/>`;
+  // title
+  dash+=`<Row ss:Height="8">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
+  dash+=`<Row ss:Height="42"><Cell ss:StyleID="gap"/>${cell("📊  RDS Project Hub — "+safe,"title",4)}<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("Generated: "+today+"   •   "+total+" tasks   |   "+projects.length+" projects   |   "+pct+"% complete","sub",4)}<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="10">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
+  // KPI section header
+  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  KEY METRICS","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
+  // KPI labels
+  dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>`;
+  dash+=cell("TOTAL TASKS","kpiLbl")+cell("COMPLETED","kpiLbl")+cell("IN PROGRESS","kpiLbl")+cell("OVERDUE","kpiLbl")+cell("COMPLETION %","kpiLbl");
+  dash+=`<Cell ss:StyleID="gap"/></Row>`;
+  // KPI values
+  dash+=`<Row ss:Height="58"><Cell ss:StyleID="gap"/>`;
+  dash+=numCell(total,"kpiTotal")+numCell(done,"kpiDone")+numCell(inprog,"kpiProg")+numCell(overdue,"kpiOvd")+cell(pct+"%","kpiPct");
+  dash+=`<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
+  // Progress bar
+  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  COMPLETION PROGRESS","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="30"><Cell ss:StyleID="gap"/>${cell("█".repeat(bF)+"░".repeat(bW-bF)+"   "+pct+"% Complete   ("+done+" of "+total+")",pbStyle,3)}${cell(done+" / "+total,"sub")}<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
+  // Status breakdown
+  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  STATUS BREAKDOWN","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>${cell("Status","tblHdr")+cell("Count","tblHdr")+cell("Share %","tblHdr")+cell("Progress Bar","tblHdr")+cell("","tblHdr")}<Cell ss:StyleID="gap"/></Row>`;
+  stData.forEach(s=>{
+    const share=total?Math.round((s.cnt/total)*100):0;
+    dash+=`<Row ss:Height="22"><Cell ss:StyleID="gap"/>`;
+    dash+=cell(s.lbl,s.s)+numCell(s.cnt,s.sc)+cell(share+"%",s.sc)+cell(BAR(s.cnt,maxSt,22),s.sb)+`<Cell ss:StyleID="${s.s}"/>`;
+    dash+=`<Cell ss:StyleID="gap"/></Row>`;
   });
-  dash.getRow(r).height=12;bgR(dash,r,"#0f1117");r++;
+  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
   // Assignee breakdown
-  dash.getRow(r).height=18;bgR(dash,r,"#0f1117");
-  dash.mergeCells(r,2,r,6);
-  const ah=dash.getCell(r,2);ah.value="▸  ASSIGNEE BREAKDOWN";
-  ah.font=fn({bold:true,size:12,color:"#14b8a6"});ah.alignment=al("left","middle");ah.fill=fl("#0f1117");r++;
-  dash.getRow(r).height=16;bgR(dash,r,"#1e2433");
-  ["Assignee","Tasks","Done","Progress Bar","Done %"].forEach((h,i)=>{
-    const c=dash.getCell(r,2+i);c.value=h;
-    c.font=fn({bold:true,size:9,color:"#94a3b8"});
-    c.alignment=al(i===3?"left":"center","middle");c.fill=fl("#1e2433");
-  });r++;
-  const maxAsgn=Math.max(...assignees.map(([,v])=>v.total),1);
-  assignees.slice(0,20).forEach(([name,v],idx)=>{
-    const bg=idx%2===0?"#1e2433":"#171b26";
-    dash.getRow(r).height=20;bgR(dash,r,bg);
-    const cp=v.total?Math.round((v.done/v.total)*100):0;
-    const nc=dash.getCell(r,2);nc.value=name;nc.font=fn({bold:true,size:10,color:"#f1f5f9"});nc.alignment=al("left","middle");nc.fill=fl(bg);
-    const tc=dash.getCell(r,3);tc.value=v.total;tc.font=fn({bold:true,size:11,color:"#f97316"});tc.alignment=al("center","middle");tc.fill=fl(bg);
-    const dc=dash.getCell(r,4);dc.value=v.done;dc.font=fn({bold:true,size:11,color:"#22c55e"});dc.alignment=al("center","middle");dc.fill=fl(bg);
-    const bc=dash.getCell(r,5);bc.value=mkBar(v.done,v.total,22);bc.font=fn({size:9,color:cp>=80?"#22c55e":cp>=50?"#f97316":"#94a3b8"});bc.alignment=al("left","middle");bc.fill=fl(bg);
-    const pc=dash.getCell(r,6);pc.value=cp+"%";pc.font=fn({bold:true,size:10,color:cp>=80?"#22c55e":cp>=50?"#f97316":"#ef4444"});pc.alignment=al("center","middle");pc.fill=fl(bg);
-    r++;
+  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  ASSIGNEE BREAKDOWN","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
+  dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>${cell("Assignee","tblHdr")+cell("Tasks","tblHdr")+cell("Done","tblHdr")+cell("Progress Bar","tblHdr")+cell("Done %","tblHdr")}<Cell ss:StyleID="gap"/></Row>`;
+  asgns.slice(0,20).forEach(([name,v],i)=>{
+    const e=i%2===0;const cp=v.t?Math.round((v.d/v.t)*100):0;
+    const [sN,sC,sD,sP,sPc]=[e?"asnEv":"asnOd",e?"asnEvC":"asnOdC",e?"asnEvD":"asnOdD",cp>=80?(e?"asnEvBG":"asnOdBG"):cp>=50?(e?"asnEvBO":"asnOdBO"):(e?"asnEvBR":"asnOdBR"),cp>=80?(e?"asnEvP":"asnOdP"):cp>=50?(e?"asnEvPO":"asnOdPO"):(e?"asnEvPR":"asnOdPR")];
+    dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell(name,sN)+numCell(v.t,sC)+numCell(v.d,sD)+cell(BAR(v.d,v.t,22),sP)+cell(cp+"%",sPc)}<Cell ss:StyleID="gap"/></Row>`;
   });
-  dash.getRow(r).height=12;bgR(dash,r,"#0f1117");r++;
+  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
   // Client breakdown
-  if(clients.length>0){
-    dash.getRow(r).height=18;bgR(dash,r,"#0f1117");
-    dash.mergeCells(r,2,r,6);
-    const ch=dash.getCell(r,2);ch.value="▸  CLIENT BREAKDOWN";
-    ch.font=fn({bold:true,size:12,color:"#14b8a6"});ch.alignment=al("left","middle");ch.fill=fl("#0f1117");r++;
-    dash.getRow(r).height=16;bgR(dash,r,"#1e2433");
-    ["Client","Tasks","Done","Progress Bar","Done %"].forEach((h,i)=>{
-      const c=dash.getCell(r,2+i);c.value=h;
-      c.font=fn({bold:true,size:9,color:"#94a3b8"});
-      c.alignment=al(i===3?"left":"center","middle");c.fill=fl("#1e2433");
-    });r++;
-    clients.forEach(([name,v],idx)=>{
-      const bg=idx%2===0?"#1e2433":"#171b26";
-      dash.getRow(r).height=20;bgR(dash,r,bg);
-      const cp=v.total?Math.round((v.done/v.total)*100):0;
-      dash.getCell(r,2).value=name;dash.getCell(r,2).font=fn({bold:true,size:10,color:"#f1f5f9"});dash.getCell(r,2).alignment=al("left","middle");dash.getCell(r,2).fill=fl(bg);
-      dash.getCell(r,3).value=v.total;dash.getCell(r,3).font=fn({bold:true,size:11,color:"#f97316"});dash.getCell(r,3).alignment=al("center","middle");dash.getCell(r,3).fill=fl(bg);
-      dash.getCell(r,4).value=v.done;dash.getCell(r,4).font=fn({bold:true,size:11,color:"#22c55e"});dash.getCell(r,4).alignment=al("center","middle");dash.getCell(r,4).fill=fl(bg);
-      const bc=dash.getCell(r,5);bc.value=mkBar(v.done,v.total,22);bc.font=fn({size:9,color:cp>=80?"#22c55e":cp>=50?"#f97316":"#94a3b8"});bc.alignment=al("left","middle");bc.fill=fl(bg);
-      dash.getCell(r,6).value=cp+"%";dash.getCell(r,6).font=fn({bold:true,size:10,color:cp>=80?"#22c55e":cp>=50?"#f97316":"#ef4444"});dash.getCell(r,6).alignment=al("center","middle");dash.getCell(r,6).fill=fl(bg);
-      r++;
+  if(clnts.length){
+    dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  CLIENT BREAKDOWN","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
+    dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>${cell("Client","tblHdr")+cell("Tasks","tblHdr")+cell("Done","tblHdr")+cell("Progress Bar","tblHdr")+cell("Done %","tblHdr")}<Cell ss:StyleID="gap"/></Row>`;
+    clnts.forEach(([name,v],i)=>{
+      const e=i%2===0;const cp=v.t?Math.round((v.d/v.t)*100):0;
+      const [sN,sC,sD,sP,sPc]=[e?"asnEv":"asnOd",e?"asnEvC":"asnOdC",e?"asnEvD":"asnOdD",cp>=80?(e?"asnEvBG":"asnOdBG"):cp>=50?(e?"asnEvBO":"asnOdBO"):(e?"asnEvBR":"asnOdBR"),cp>=80?(e?"asnEvP":"asnOdP"):cp>=50?(e?"asnEvPO":"asnOdPO"):(e?"asnEvPR":"asnOdPR")];
+      dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell(name,sN)+numCell(v.t,sC)+numCell(v.d,sD)+cell(BAR(v.d,v.t,22),sP)+cell(cp+"%",sPc)}<Cell ss:StyleID="gap"/></Row>`;
     });
   }
   // ── Sheet 2: Tasks ──────────────────────────────────────────
-  const ts=wb.addWorksheet("Tasks",{views:[{state:"frozen",ySplit:1}],properties:{tabColor:{argb:"FFF97316"}}});
-  [5,38,14,12,16,10,15,15,15,12,14,14].forEach((w,i)=>ts.getColumn(i+1).width=w);
-  const hdrs=["#","Task","Project","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","Client"];
-  const hr=ts.getRow(1);hr.height=28;
-  hdrs.forEach((h,i)=>{
-    const c=hr.getCell(i+1);c.value=h;
-    c.font=fn({bold:true,size:11,color:"#f1f5f9"});
-    c.fill=fl("#1e2433");c.alignment=al("center","middle");
-    c.border={bottom:{style:"medium",color:{argb:a_("#14b8a6")}}};
-  });
-  let rn=2,n=1;
   const clientGroups=[...new Set(projects.map(p=>p.client||"Unassigned"))];
+  let taskSheet=``;
+  taskSheet+=`<Column ss:Width="30"/><Column ss:Width="200"/><Column ss:Width="120"/><Column ss:Width="60"/><Column ss:Width="90"/><Column ss:Width="60"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="70"/><Column ss:Width="80"/><Column ss:Width="90"/>`;
+  taskSheet+=`<Row ss:Height="28">${["#","Task","Project","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","Client"].map(h=>cell(h,"hdrTask")).join("")}</Row>`;
+  let n=1;
   clientGroups.forEach(client=>{
     const cP=projects.filter(p=>(p.client||"Unassigned")===client);
     const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
     if(!cT.length)return;
-    ts.getRow(rn).height=22;
-    ts.mergeCells(rn,1,rn,12);
-    const cc=ts.getCell(rn,1);
-    cc.value="CLIENT: "+client+"   ("+cP.length+" projects, "+cT.length+" tasks)";
-    cc.font=fn({bold:true,size:11,color:"#ffffff"});cc.fill=fl("#f97316");cc.alignment=al("left","middle");rn++;
+    taskSheet+=`<Row ss:Height="22">${cell("CLIENT: "+client+"   ("+cP.length+" projects, "+cT.length+" tasks)","clientRow",11)}</Row>`;
     cP.forEach(proj=>{
       const pt=cT.filter(t=>t.project_id===proj.id);
       if(!pt.length)return;
-      ts.getRow(rn).height=18;
-      ts.mergeCells(rn,1,rn,12);
-      const pc=ts.getCell(rn,1);
-      pc.value="  ▸ "+proj.name+"  ("+pt.length+" tasks)";
-      pc.font=fn({bold:true,size:10,color:"#ffffff"});pc.fill=fl("#3b82f6");pc.alignment=al("left","middle");rn++;
+      taskSheet+=`<Row ss:Height="18">${cell("  ▸ "+proj.name+"  ("+pt.length+" tasks)","projRow",11)}</Row>`;
       pt.forEach(t=>{
         const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
         const isC=isDone(t.status);const isI=t.status==="In Progress";const isR=t.status==="Review";const isCx=t.status==="job canceled";
-        let rb=ov?"#1c0a0a":isC?"#0a1f14":isI?"#0a1631":"#171b26";
-        let sb="#1e2433",st="#f1f5f9";
-        if(ov){sb="#7f1d1d";st="#fca5a5";}else if(isC){sb="#022c22";st="#4ade80";}else if(isI){sb="#172554";st="#93c5fd";}else if(isR){sb="#2e1065";st="#d8b4fe";}else if(isCx){sb="#1c0505";st="#f87171";}
-        ts.getRow(rn).height=20;
-        const vals=[n++,t.title,proj.name,t.scope||"—",(t.status||"—")+(ov?" ⚠":""),t.priority||"—",t.assignee||"Unassigned",t.detailer||"—",t.checker||"—",t.due_date||"—",t.client_sub_date||"—",client];
-        vals.forEach((v,i)=>{
-          const c=ts.getCell(rn,i+1);c.value=v;
-          c.fill=fl(i===4?sb:rb);
-          c.font=fn({size:10,color:i===4?st:ov?"#fca5a5":"#f1f5f9",bold:i===1||i===4});
-          c.alignment=al(i===1?"left":"center","middle");
-        });rn++;
+        let rs="tDef",rsb="tDefB",rn_s="tNum";
+        if(ov){rs="tOvd";rsb="tOvdB";rn_s="tNumO";}
+        else if(isC){rs="tDone";rsb="tDoneB";rn_s="tNumD";}
+        else if(isI){rs="tProg";rsb="tProgB";rn_s="tNumP";}
+        else if(isR){rs="tRev";rsb="tRevB";}
+        else if(isCx){rsb="tCnxB";}
+        taskSheet+=`<Row ss:Height="20">`;
+        taskSheet+=numCell(n++,rn_s);
+        taskSheet+=cell(t.title||"",rs);
+        taskSheet+=cell(proj.name,rs);
+        taskSheet+=cell(t.scope||"—",rs);
+        taskSheet+=cell((t.status||"—")+(ov?" ⚠":""),rsb);
+        taskSheet+=cell(t.priority||"—",rs);
+        taskSheet+=cell(t.assignee||"Unassigned",rs);
+        taskSheet+=cell(t.detailer||"—",rs);
+        taskSheet+=cell(t.checker||"—",rs);
+        taskSheet+=cell(t.due_date||"—",ov?"tOvdB":rs);
+        taskSheet+=cell(t.client_sub_date||"—",rs);
+        taskSheet+=cell(client,rs);
+        taskSheet+=`</Row>`;
       });
-      ts.getRow(rn).height=5;for(let i=1;i<=12;i++)ts.getCell(rn,i).fill=fl("#0f1117");rn++;
+      taskSheet+=`<Row ss:Height="5">${Array(12).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
     });
   });
-  // Download
-  const buf=await wb.xlsx.writeBuffer();
-  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;
-  a.download="RDS Report - "+safe+" - "+today+".xlsx";
+  // ── Build SpreadsheetML XML ──────────────────────────────────
+  const xml=`<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office"><Styles>${S}</Styles><Worksheet ss:Name="Analytics"><Table>${dash}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FitToPage/><Print><FitWidth>1</FitWidth></Print></WorksheetOptions></Worksheet><Worksheet ss:Name="Tasks"><Table>${taskSheet}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions></Worksheet></Workbook>`;
+  const b64=btoa(unescape(encodeURIComponent(xml)));
+  const a=document.createElement("a");
+  a.href="data:application/vnd.ms-excel;base64,"+b64;
+  a.download="RDS Report - "+safe+" - "+today+".xls";
   document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function ChangePasswordModal({me,onClose}){
