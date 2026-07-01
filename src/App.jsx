@@ -301,7 +301,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     </div>
   );
 }
-function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUsername=""}){
+function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUsername="",existingGroupNames=[]}){
   function toggleUser(username){
     if(username===narayanaUsername)return;// Narayana always stays assigned
     sf(p=>({...p,assigned_users:p.assigned_users.includes(username)?p.assigned_users.filter(u=>u!==username):[...p.assigned_users,username]}));
@@ -327,6 +327,13 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
         </div>
       </div>
       <FInput label="Description" value={f.description} onChange={v=>sf(p=>({...p,description:v}))}/>
+      <div style={{marginBottom:14}}>
+        <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Group / Phase <span style={{color:C.t3,fontWeight:400}}>(optional — groups projects together on dashboard)</span></label>
+        <input value={f.group_name||""} onChange={e=>sf(p=>({...p,group_name:e.target.value}))} list="group-suggestions"
+          placeholder="e.g. Somi Parc Phase 1, Tower A, Podium…"
+          style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+        <datalist id="group-suggestions">{[...new Set(existingGroupNames||[])].map(g=><option key={g} value={g}/>)}</datalist>
+      </div>
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Employees <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned — select at least 1 more)</span></label>
@@ -366,15 +373,15 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
     </>
   );
 }
-function ProjectForm({onSave,onClose,saving,users,clients,requireDates=false}){
+function ProjectForm({onSave,onClose,saving,users,clients,requireDates=false,existingGroupNames=[]}){
   const narayana=users.find(u=>(u.name||"").toLowerCase().includes("narayana"));
-  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:narayana?[narayana.username]:[]});
+  const [f,sf]=useState({name:"",deadline:"",description:"",client:"",color:C.teal,assigned_users:narayana?[narayana.username]:[],group_name:""});
   const otherUsers=f.assigned_users.filter(u=>u!==narayana?.username);
   const canSave=f.name.trim()&&f.client&&otherUsers.length>0&&(!requireDates||f.deadline);
   const missingMsg=!f.name.trim()?"Project Name is required.":!f.client?"Client is required.":otherUsers.length===0?"Select at least one more team member.":requireDates&&!f.deadline?"Deadline is required.":"";
   return(
     <div>
-      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username}/>
+      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username} existingGroupNames={existingGroupNames}/>
       {missingMsg&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>⚠ {missingMsg}</div>}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
@@ -383,16 +390,17 @@ function ProjectForm({onSave,onClose,saving,users,clients,requireDates=false}){
     </div>
   );
 }
-function EditProjectForm({project,onSave,onClose,saving,users,clients,requireDates=false}){
+function EditProjectForm({project,onSave,onClose,saving,users,clients,requireDates=false,existingGroupNames=[]}){
   const narayana=users.find(u=>(u.name||"").toLowerCase().includes("narayana"));
   const [f,sf]=useState({
     name:project.name||"",deadline:project.deadline||"",
     description:project.description||"",client:project.client||"",
     color:project.color||C.teal,assigned_users:project.assigned_users||[],
+    group_name:project.group_name||"",
   });
   return(
     <div>
-      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username}/>
+      <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username} existingGroupNames={existingGroupNames}/>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
         <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Save Changes"}</button>
@@ -5735,6 +5743,92 @@ function TaskComments({taskId,projectId,me,users}){
   );
 }
 
+// ── ⌘K Command Palette ────────────────────────────────────────────
+function CommandPalette({projects,tasks,users,onNav,onClose}){
+  const [q,setQ]=useState("");
+  const [sel,setSel]=useState(0);
+  const inputRef=useRef();
+  useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),30);},[]);
+  const qL=q.trim().toLowerCase();
+  const results=[];
+  if(!qL){
+    projects.slice(0,10).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
+  } else {
+    projects.filter(p=>p.name.toLowerCase().includes(qL)||(p.client||"").toLowerCase().includes(qL)||(p.group_name||"").toLowerCase().includes(qL)).slice(0,8)
+      .forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
+    tasks.filter(t=>t.title.toLowerCase().includes(qL)||(t.assignee||"").toLowerCase().includes(qL)).slice(0,8)
+      .forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);results.push({type:"task",icon:isDone(t.status)?"✅":"🔵",title:t.title,sub:(pj?.name||"—")+" · "+t.status,data:t});});
+    users.filter(u=>u.name.toLowerCase().includes(qL)||u.role.toLowerCase().includes(qL)).slice(0,4)
+      .forEach(u=>results.push({type:"user",icon:"👤",title:u.name,sub:u.role,data:u}));
+  }
+  useEffect(()=>setSel(0),[q]);
+  useEffect(()=>{
+    function onKey(e){
+      if(e.key==="ArrowDown"){e.preventDefault();setSel(s=>Math.min(s+1,results.length-1));}
+      if(e.key==="ArrowUp"){e.preventDefault();setSel(s=>Math.max(s-1,0));}
+      if(e.key==="Enter"&&results[sel]){go(results[sel]);}
+      if(e.key==="Escape"){onClose();}
+    }
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[results,sel]);
+  function go(item){onNav(item.type,item.data);onClose();}
+  const typeLabel={project:"Projects",task:"Tasks",user:"Team"};
+  const groups=["project","task","user"];
+  return(
+    <div style={{position:"fixed",inset:0,background:"#00000090",zIndex:9999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"10vh"}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{width:"min(620px,94vw)",background:"#1a1f2e",border:"1px solid #2a3040",borderRadius:16,overflow:"hidden",boxShadow:"0 32px 80px #000000c0"}}>
+        {/* Search input */}
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid #2a3040"}}>
+          <span style={{fontSize:18,opacity:.6}}>⌘</span>
+          <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)}
+            placeholder="Search projects, tasks, people…"
+            style={{flex:1,background:"transparent",border:"none",outline:"none",color:"#f1f5f9",fontSize:16,fontFamily:"inherit"}}/>
+          <kbd onClick={onClose} style={{background:"#2a3040",border:"1px solid #3a4050",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#94a3b8",cursor:"pointer"}}>Esc</kbd>
+        </div>
+        {/* Results */}
+        <div style={{maxHeight:"60vh",overflowY:"auto"}}>
+          {results.length===0&&<div style={{padding:"32px 20px",textAlign:"center",color:"#475569",fontSize:14}}>{qL?"No results found":"Start typing to search…"}</div>}
+          {groups.map(type=>{
+            const gr=results.filter(r=>r.type===type);
+            if(!gr.length)return null;
+            return(
+              <div key={type}>
+                <div style={{padding:"10px 16px 4px",fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em"}}>{typeLabel[type]}</div>
+                {gr.map((item,i)=>{
+                  const globalIdx=results.indexOf(item);
+                  const isSelected=globalIdx===sel;
+                  return(
+                    <div key={item.data.id||item.data.username} onClick={()=>go(item)}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer",
+                        background:isSelected?"#2a3040":"transparent",borderLeft:`3px solid ${isSelected?"#14b8a6":"transparent"}`}}
+                      onMouseEnter={()=>setSel(globalIdx)}>
+                      <span style={{fontSize:18,width:24,textAlign:"center",flexShrink:0}}>{item.icon}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:600,color:isSelected?"#f1f5f9":"#cbd5e1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
+                        <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>
+                      </div>
+                      {isSelected&&<span style={{fontSize:11,color:"#14b8a6",flexShrink:0}}>Enter ↵</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+        {/* Footer */}
+        <div style={{padding:"8px 16px",borderTop:"1px solid #2a3040",display:"flex",gap:16,fontSize:11,color:"#475569"}}>
+          <span><kbd style={{background:"#2a3040",borderRadius:4,padding:"1px 5px",fontSize:10}}>↑↓</kbd> navigate</span>
+          <span><kbd style={{background:"#2a3040",borderRadius:4,padding:"1px 5px",fontSize:10}}>↵</kbd> open</span>
+          <span><kbd style={{background:"#2a3040",borderRadius:4,padding:"1px 5px",fontSize:10}}>Esc</kbd> close</span>
+          <span style={{marginLeft:"auto"}}>{results.length} result{results.length!==1?"s":""}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -5780,6 +5874,7 @@ export default function App(){
   const [toast,sToast]      = useState(null);
   const [taskFileCounts,setTFC] = useState({});  // {[taskId]: fileCount}
   const [fileTask,setFileTask]  = useState(null); // task object whose files panel is open
+  const [cmdOpen,setCmdOpen]    = useState(false); // ⌘K command palette
   const [logo,sLogo]        = useState(null);
   const [selTasks,setSelTasks]   = useState(new Set());
   const [selProjects,setSelProjs]= useState(new Set());
@@ -5792,6 +5887,14 @@ export default function App(){
   const [isMobile,setIM]    = useState(()=>window.innerWidth<768);
   const [sideOpen,setSO]    = useState(false);
   useEffect(()=>{const h=()=>setIM(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  useEffect(()=>{
+    function handleCmdKey(e){
+      if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setCmdOpen(o=>!o);}
+      if(e.key==="Escape")setCmdOpen(false);
+    }
+    window.addEventListener("keydown",handleCmdKey);
+    return()=>window.removeEventListener("keydown",handleCmdKey);
+  },[]);
   const today=new Date().toISOString().slice(0,10);
   const isClient=me?.role==="Client";
   const isAdmin=me?.role==="Admin"||me?.username===SUPER_ADMIN;
@@ -6333,14 +6436,14 @@ export default function App(){
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
   async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
-  async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());
+  async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());
     // In-app: notify assigned users
     const assignedIds=(f.assigned_users||[]).map(uname=>users.find(u=>u.username===uname||u.name===uname)?.id).filter(id=>id&&id!==me.id);
     if(assignedIds.length)await createNotif(assignedIds,"project_assigned",`New project assigned: ${f.name}`,`You've been added to ${f.name}${f.client?` · Client: ${f.client}`:""}${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
     // Notify client
     if(pcu?.id&&pcu.id!==me.id)await createNotif([pcu.id],"project_assigned",`Project created: ${f.name}`,`A new project has been set up for your account${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
   }spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
-  async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[]}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
@@ -6765,8 +6868,17 @@ export default function App(){
                 })}
               </div>
             ):(
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-              {accessibleProjects.map(p=>{
+              {(()=>{
+                const grpd={};
+                const ungrouped=[];
+                accessibleProjects.forEach(p=>{
+                  if(p.group_name){if(!grpd[p.group_name])grpd[p.group_name]=[];grpd[p.group_name].push(p);}
+                  else ungrouped.push(p);
+                });
+                const hasGroups=Object.keys(grpd).length>0;
+                function ProjGrid({projs}){return(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:16}}>
+                  {projs.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length;
                 const pip=pt.filter(t=>t.status==="In Progress").length;
@@ -6824,8 +6936,41 @@ export default function App(){
                   </div>
                 );
               })}
-            </div>
-
+                  })}
+                  </div>
+                );}
+                return(<>
+                  {hasGroups&&Object.entries(grpd).sort((a,b)=>a[0].localeCompare(b[0])).map(([gname,gprojs])=>{
+                    const gt=tasks.filter(t=>gprojs.some(p=>p.id===t.project_id));
+                    const gd=gt.filter(t=>isDone(t.status)).length;
+                    const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                    const gpct=gt.length?Math.round(gd/gt.length*100):0;
+                    const [gopen,setGOpen]=React.useState(true);
+                    return(
+                      <div key={gname} style={{marginBottom:22}}>
+                        <div onClick={()=>setGOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.card,border:`1px solid ${gov>0?C.red+"55":C.teal+"44"}`,borderRadius:gopen?"12px 12px 0 0":"12px",cursor:"pointer",userSelect:"none",marginBottom:0}}>
+                          <span style={{fontSize:14,fontWeight:700,color:C.teal,transition:"transform .18s",display:"inline-block",transform:gopen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{gname}</div>
+                            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{gprojs.length} project{gprojs.length!==1?"s":""} · {gt.length} tasks</div>
+                          </div>
+                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                            <span style={{fontSize:13,fontWeight:800,color:gpct>=80?C.green:gpct>=50?C.accent:C.red}}>{gpct}%</span>
+                            {gov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 8px"}}>⚠ {gov} overdue</span>}
+                          </div>
+                        </div>
+                        {gopen&&<div style={{border:`1px solid ${C.teal}44`,borderTop:"none",borderRadius:"0 0 12px 12px",padding:"16px 16px 4px 16px",background:"#ffffff08",marginBottom:4}}>
+                          <ProjGrid projs={gprojs}/>
+                        </div>}
+                      </div>
+                    );
+                  })}
+                  {ungrouped.length>0&&<>
+                    {hasGroups&&<h3 style={{margin:"4px 0 14px",fontSize:13,fontWeight:700,color:C.t3,letterSpacing:".05em",textTransform:"uppercase"}}>Ungrouped Projects</h3>}
+                    <ProjGrid projs={ungrouped}/>
+                  </>}
+                </>);
+              })()}
             )}
                         {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {/* ── 2. Recent Tasks ── */}
@@ -7211,14 +7356,18 @@ export default function App(){
           </div>
         )}
       </main>
-      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>
-}
+      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>}
+      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} onNav={(type,data)=>{
+        if(type==="project")navTo("list",data.id);
+        else if(type==="task")navTo("list",data.project_id);
+        else if(type==="user"){sfa(data.name);sv("list");sap(null);}
+      }} onClose={()=>setCmdOpen(false)}/>}
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
       {cronModal&&<CronModal onClose={()=>scron(false)}/>}
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {taskModal&&(
         <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
           {(canEdit||!editTask)?
@@ -7228,7 +7377,7 @@ export default function App(){
           {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
         </Modal>
       )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit}/></Modal>)}
+      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
       {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
     </div>
