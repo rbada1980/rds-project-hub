@@ -5786,8 +5786,10 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
     if(uIds.size===0)continue;
     const endD2=new Date(dead);
     const startDt=t.start_date?new Date(t.start_date):new Date(todayD);
+    // Overdue tasks (deadline in past) still show on today so they aren't invisible
+    const effectiveEnd=endD2<todayD?new Date(todayD):endD2;
     const base=new Date(Math.max(startDt.getTime(),new Date(startStr).getTime()));
-    const lim=new Date(Math.min(endD2.getTime(),new Date(endStr).getTime()));
+    const lim=new Date(Math.min(effectiveEnd.getTime(),new Date(endStr).getTime()));
     for(const uid of uIds){
       if(!workload[uid])continue;
       const cur=new Date(base);
@@ -7686,16 +7688,4 @@ export default function App(){
       {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
         {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+ 
