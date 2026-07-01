@@ -3701,7 +3701,7 @@ function EmailDigestCard(){
   async function upsertSetting(key,value){
     const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+key,{method:"PATCH",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({value})});
     const d=await r.json();
-    if(!Array.isArray(d)||d.length===0){await fetch(SUPA_URL+"/rest/v1/settings",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({key,value}));}
+    if(!Array.isArray(d)||d.length===0){await fetch(SUPA_URL+"/rest/v1/settings",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({key,value})});}
   }
   async function toggle(val){setEnabled(val);await upsertSetting("daily_digest_enabled",val?"true":"false");setMsg("Digest "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
   async function triggerNow(){
