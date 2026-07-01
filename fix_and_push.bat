@@ -1,7 +1,8 @@
 @echo off
 cd /d C:\Users\HP\rds-project-hub
-echo Pushing Excel analytics fix (SpreadsheetML - no CDN)...
+echo Pushing command palette + project grouping...
 git push origin main
 echo.
-echo Done! Vercel deploys in ~1 min. Then hard-refresh browser (Ctrl+Shift+R).
+echo Done! Vercel deploys in ~1 min.
+echo Then: Run project_grouping_migration.sql in Supabase SQL Editor.
 pause
