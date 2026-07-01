@@ -5764,23 +5764,39 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
 
   const workload={};
   for(const u of teamUsers)workload[u.id]={};
+
+  function findUser(name){
+    if(!name)return null;
+    const n=name.trim().toLowerCase();
+    return teamUsers.find(x=>x.name.toLowerCase()===n||( x.username&&x.username.toLowerCase()===n))||null;
+  }
+  function splitNames(str){
+    return str?str.split(/[\/,&]+/).map(s=>s.trim()).filter(Boolean):[];
+  }
+
   for(const t of tasks){
     if(t.status==="Completed")continue;
-    if(!t.assignee)continue;
-    const u=teamUsers.find(x=>x.name===t.assignee||x.username===t.assignee);
-    if(!u)continue;
     const dead=t.deadline||t.due_date||t.client_sub_date;
     if(!dead)continue;
+    // Collect all people on this task (assignee + detailer + checker, case-insensitive)
+    const uIds=new Set();
+    if(t.assignee){const u=findUser(t.assignee);if(u)uIds.add(u.id);}
+    splitNames(t.detailer).forEach(n=>{const u=findUser(n);if(u)uIds.add(u.id);});
+    splitNames(t.checker).forEach(n=>{const u=findUser(n);if(u)uIds.add(u.id);});
+    if(uIds.size===0)continue;
     const endD2=new Date(dead);
-    // If no start_date, treat today as implicit start so active tasks show on the heatmap now
     const startDt=t.start_date?new Date(t.start_date):new Date(todayD);
-    const cur=new Date(Math.max(startDt.getTime(),new Date(startStr).getTime()));
+    const base=new Date(Math.max(startDt.getTime(),new Date(startStr).getTime()));
     const lim=new Date(Math.min(endD2.getTime(),new Date(endStr).getTime()));
-    while(cur<=lim){
-      const k=cur.toISOString().slice(0,10);
-      if(!workload[u.id][k])workload[u.id][k]=[];
-      workload[u.id][k].push(t);
-      cur.setDate(cur.getDate()+1);
+    for(const uid of uIds){
+      if(!workload[uid])continue;
+      const cur=new Date(base);
+      while(cur<=lim){
+        const k=cur.toISOString().slice(0,10);
+        if(!workload[uid][k])workload[uid][k]=[];
+        if(!workload[uid][k].find(x=>x.id===t.id))workload[uid][k].push(t);
+        cur.setDate(cur.getDate()+1);
+      }
     }
   }
 
@@ -7671,15 +7687,4 @@ export default function App(){
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
         {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
         <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More<
