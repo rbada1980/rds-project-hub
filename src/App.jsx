@@ -4218,177 +4218,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
 }
 
 
-function CronModal({onClose}){
-  const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const [enabled,setEnabled]=useState(true);
-  const [sched,setSched]=useState({days:"1,2,3,4,5,6",time:"01:00"});
-  const [loading,setLoading]=useState(true);
-  const [triggering,setTriggering]=useState(false);
-  const [msg,setMsg]=useState(null);
-  const [editing,setEditing]=useState(false);
-  const [editDraft,setEditDraft]=useState({});
-  const [saving,setSaving]=useState(false);
-
-  useEffect(()=>{
-    (async()=>{
-      const res=await fetch(`${SUPA_URL}/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days,daily_digest_time)&select=key,value`,{
-        headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`}
-      });
-      const data=await res.json();
-      if(Array.isArray(data)){
-        const map={};
-        data.forEach(r=>{map[r.key]=r.value;});
-        setEnabled(map["daily_digest_enabled"]!=="false");
-        setSched({
-          days:map["daily_digest_days"]||"1,2,3,4,5,6",
-          time:map["daily_digest_time"]||"01:00"
-        });
-      }
-      setLoading(false);
-    })();
-  },[]);
-
-  async function upsertSetting(key,value){
-    const patchRes=await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.${key}`,{
-      method:"PATCH",
-      headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"},
-      body:JSON.stringify({value})
-    });
-    const patched=await patchRes.json();
-    if(!Array.isArray(patched)||patched.length===0){
-      await fetch(`${SUPA_URL}/rest/v1/settings`,{
-        method:"POST",
-        headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"},
-        body:JSON.stringify({key,value})
-      });
-    }
-  }
-
-  async function toggle(val){
-    setEnabled(val);
-    await upsertSetting("daily_digest_enabled",val?"true":"false");
-    setMsg(`Daily digest ${val?"enabled":"disabled"}`);
-    setTimeout(()=>setMsg(null),3000);
-  }
-
-  async function triggerNow(){
-    setTriggering(true);
-    setMsg(null);
-    try{
-      const res=await fetch("/api/cron-daily",{method:"GET"});
-      const data=await res.json();
-      if(res.ok){
-        setMsg(`✅ Daily digest sent to ${data.sent??0} recipient(s)`);
-      }else{
-        setMsg(`⚠ Error: ${data.error||data.message||"Unknown error"}`);
-      }
-    }catch(e){
-      setMsg(`⚠ Network error: ${e.message}`);
-    }
-    setTriggering(false);
-  }
-
-  async function saveEdit(){
-    setSaving(true);
-    const daysStr=editDraft.days.sort((a,b)=>a-b).join(",");
-    await upsertSetting("daily_digest_days",daysStr);
-    await upsertSetting("daily_digest_time",editDraft.time);
-    setSched({days:daysStr,time:editDraft.time});
-    setMsg("✅ Schedule updated");
-    setTimeout(()=>setMsg(null),3000);
-    setEditing(false);
-    setSaving(false);
-  }
-
-  const schedLabel=()=>{
-    const dayNums=sched.days.split(",").map(Number).sort((a,b)=>a-b);
-    return `${dayNums.map(d=>DAYS[d]).join(", ")} at ${sched.time} IST`;
-  };
-
-  const inp={background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
-  const lbl={fontSize:11,color:C.t3,fontWeight:600,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:".04em"};
-
-  return(
-    <Modal title="📧 Daily Email Digest" onClose={onClose}>
-      {loading?<div style={{textAlign:"center",padding:32,color:C.t3}}>Loading…</div>:(
-        <>
-          {msg&&<div style={{background:msg.startsWith("✅")?C.green+"22":C.red+"22",border:`1px solid ${msg.startsWith("✅")?C.green:C.red}44`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,color:msg.startsWith("✅")?C.green:C.red,fontWeight:600}}>{msg}</div>}
-
-          {/* Main card */}
-          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px",marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:15,fontWeight:800,color:C.t1}}>📬 Daily Submission List</span>
-                  <button onClick={()=>{setEditing(e=>!e);setEditDraft({days:sched.days.split(",").map(Number),time:sched.time});}}
-                    title="Edit schedule"
-                    style={{background:editing?C.accent+"22":"none",border:`1px solid ${editing?C.accent:C.border}`,borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:12,color:editing?C.accent:C.t3,lineHeight:1,fontFamily:"inherit",transition:"all .15s"}}>
-                    ✏️
-                  </button>
-                </div>
-                <div style={{fontSize:11,color:C.t3,marginTop:4}}>⏰ {schedLabel()}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:2}}>📩 Admin · Manager · Team Leaders</div>
-              </div>
-              <div onClick={()=>toggle(!enabled)}
-                style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0,marginLeft:12}}>
-                <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #00000040"}}/>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:12,color:enabled?C.green:C.t3,fontWeight:700}}>
-                {enabled?"● Active — runs automatically at 1 AM IST":"○ Paused"}
-              </span>
-              <button onClick={triggerNow} disabled={triggering}
-                title="Server blocks this if today's digest already ran"
-                style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,color:C.t3,cursor:triggering?"not-allowed":"pointer",opacity:triggering?0.6:1,fontFamily:"inherit"}}>
-                {triggering?"Sending…":"🧪 Force Re-send (Test)"}
-              </button>
-            </div>
-          </div>
-
-          {/* Edit panel */}
-          {editing&&(
-            <div style={{background:C.card,border:`1px solid ${C.accent}44`,borderRadius:12,padding:"16px 18px",marginBottom:14,borderLeft:`3px solid ${C.accent}`}}>
-              <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>✏️ Edit Schedule</div>
-              <label style={lbl}>Active Days</label>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
-                {DAYS.map((d,i)=>{
-                  const on=(editDraft.days||[]).includes(i);
-                  return(
-                    <div key={i} onClick={()=>{
-                      const cur=editDraft.days||[];
-                      setEditDraft(prev=>({...prev,days:on?cur.filter(x=>x!==i):[...cur,i]}));
-                    }} style={{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",
-                      background:on?C.accent+"22":C.surface,border:`1px solid ${on?C.accent:C.border}`,
-                      color:on?C.accent:C.t3,transition:"all .15s"}}>
-                      {d}
-                    </div>
-                  );
-                })}
-              </div>
-              <label style={lbl}>Time (IST)</label>
-              <input type="time" value={editDraft.time||"01:00"} onChange={e=>setEditDraft(p=>({...p,time:e.target.value}))}
-                style={{...inp,marginBottom:14}}/>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={saveEdit} disabled={saving} style={{flex:1,background:C.accent,border:"none",borderRadius:8,padding:"8px 0",fontSize:13,fontWeight:700,color:"#fff",cursor:saving?"not-allowed":"pointer",opacity:saving?0.6:1,fontFamily:"inherit"}}>
-                  {saving?"Saving…":"💾 Save Schedule"}
-                </button>
-                <button onClick={()=>setEditing(false)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,color:C.t2,cursor:"pointer",fontFamily:"inherit"}}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div style={{fontSize:11,color:C.t3,marginTop:4,lineHeight:1.6}}>
-            Toggle pauses the scheduled run. "Send Now" triggers immediately.
-          </div>
-        </>
-      )}
-    </Modal>
-  );
-}
-
 
 // ══════════════════════════════════════════════════════════
 // ANNOUNCEMENTS PAGE
@@ -6344,7 +6173,7 @@ export default function App(){
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
   const [pwModal,spwm]      = useState(false);
-  const [cronModal,scron]   = useState(false);
+
   const [statModal,ssm]     = useState(null);
   const [exportOpen,setExportOpen] = useState(false);
   const [exportSec,setExportSec] = useState(null);
@@ -7041,7 +6870,6 @@ export default function App(){
                 <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★ Super Admin</span>}</div>
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
-              {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,borderRadius:6,fontFamily:"inherit"}}>📧 Email Digest</button>}
               {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>👥 Manage Employees</button>}
               {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🏢 View Clients</button>}
               <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"8px 10px",color:C.t2,fontSize:13,fontFamily:"inherit",borderRadius:6,fontWeight:600}}>🔐 Change Password</button>
@@ -7882,7 +7710,7 @@ export default function App(){
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-      {cronModal&&<CronModal onClose={()=>scron(false)}/>}
+
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {taskModal&&(
@@ -7951,7 +7779,6 @@ export default function App(){
             </div>
           </div>
           <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{scron(true);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>📧 Email Digest</button>}
             {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
             {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
             <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
