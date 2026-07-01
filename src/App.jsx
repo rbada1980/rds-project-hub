@@ -39,7 +39,7 @@ function SLABadge({task}){
   if(!s)return null;
   const bg=s.breach?"#450a0a":"#78350f44";
   const cl=s.breach?"#fca5a5":"#fcd34d";
-  const txt=s.breach?"⏰ "+s.over+"h over SLA":"⚠ "+s.left+"h left";
+  const txt=s.breach?"SLA +"+s.over+"h":"SLA "+s.left+"h left";
   return <span style={{fontSize:9,fontWeight:800,background:bg,color:cl,borderRadius:4,padding:"2px 6px",whiteSpace:"nowrap",border:"1px solid "+(s.breach?"#7f1d1d":"#78350f")}}>{txt}</span>;
 }
 
@@ -3664,9 +3664,9 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
   );
 }
 
-// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // WORKFLOWS PAGE
-// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 const WF_TRIGGERS=[["status_changed","Status Changes To"],["task_assigned","Task Assigned"],["task_created","Task Created"]];
 const WF_ACTIONS=[["notify_checker","Notify Checker"],["notify_assignee","Notify Assignee"],["notify_role","Notify Role"],["change_status","Change Status To"]];
 const WF_ROLES=["Admin","Manager","Team Leader","Rebar","Client"];
@@ -3677,7 +3677,6 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
   const [editWf,setEditWf]=useState(null);
   const empty={name:"",trigger_event:"status_changed",trigger_value:"Review",action_type:"notify_checker",action_target:"",escalate_hours:"",escalate_to:"Manager",is_active:true};
   const [form,setForm]=useState(empty);
-
   function openAdd(){setForm(empty);setEditWf(null);setShowForm(true);}
   function openEdit(wf){setForm({...wf,escalate_hours:wf.escalate_hours||""});setEditWf(wf);setShowForm(true);}
   function handleSave(){
@@ -3686,10 +3685,8 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
     if(editWf){onUpdate(editWf.id,payload);}else{onAdd(payload);}
     setShowForm(false);
   }
-
   const inp={background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"8px 12px",fontSize:13,color:C.t1,width:"100%",fontFamily:"inherit",boxSizing:"border-box"};
   const lbl={fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,display:"block"};
-
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -3699,7 +3696,6 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
         </div>
         <button onClick={openAdd} style={{...GBtn,marginLeft:"auto",background:C.accent,color:"#fff",borderColor:C.accent}}>+ Add Rule</button>
       </div>
-
       {workflows.length===0&&!showForm&&(
         <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:40,textAlign:"center",color:C.t3}}>
           <div style={{fontSize:32,marginBottom:10}}>{"⚙"}</div>
@@ -3707,7 +3703,6 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
           <div style={{fontSize:12}}>Click "Add Rule" to create your first automation</div>
         </div>
       )}
-
       {showForm&&(
         <div style={{background:C.card,border:"2px solid "+C.accent+"44",borderRadius:14,padding:20}}>
           <div style={{fontSize:14,fontWeight:800,color:C.t1,marginBottom:16}}>{editWf?"Edit Rule":"New Rule"}</div>
@@ -3740,7 +3735,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
               <div>
                 <label style={lbl}>Target Role</label>
                 <select style={inp} value={form.action_target} onChange={e=>setForm(f=>({...f,action_target:e.target.value}))}>
-                  <option value="">Select role…</option>
+                  <option value="">Select role...</option>
                   {WF_ROLES.map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
@@ -3754,7 +3749,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
               </div>
             )}
             <div>
-              <label style={lbl}>ESCALATE after (hours, optional)</label>
+              <label style={lbl}>Escalate after (hours, optional)</label>
               <input style={inp} type="number" min="1" value={form.escalate_hours} onChange={e=>setForm(f=>({...f,escalate_hours:e.target.value}))} placeholder="e.g. 24"/>
             </div>
             {form.escalate_hours&&(
@@ -3767,12 +3762,11 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
             )}
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={handleSave} disabled={saving} style={{...GBtn,background:C.accent,color:"#fff",borderColor:C.accent,padding:"8px 20px"}}>{saving?"Saving…":"Save Rule"}</button>
+            <button onClick={handleSave} disabled={saving} style={{...GBtn,background:C.accent,color:"#fff",borderColor:C.accent,padding:"8px 20px"}}>{saving?"Saving...":"Save Rule"}</button>
             <button onClick={()=>setShowForm(false)} style={GBtn}>Cancel</button>
           </div>
         </div>
       )}
-
       {workflows.map(wf=>{
         const triggerLabel=(WF_TRIGGERS.find(([v])=>v===wf.trigger_event)||[])[1]||wf.trigger_event;
         const actionLabel=(WF_ACTIONS.find(([v])=>v===wf.action_type)||[])[1]||wf.action_type;
@@ -3784,10 +3778,10 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
                 <span style={{fontSize:10,fontWeight:700,background:wf.is_active?C.green+"22":C.border,color:wf.is_active?C.green:C.t3,borderRadius:4,padding:"2px 7px"}}>{wf.is_active?"Active":"Paused"}</span>
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",fontSize:12}}>
-                <span style={{background:"#312e81",color:"#a5b4fc",borderRadius:6,padding:"3px 8px",fontWeight:700}}>{"WHEN "+triggerLabel+(wf.trigger_value?" → "+wf.trigger_value:"")}</span>
-                <span style={{color:C.t3}}>{"→"}</span>
-                <span style={{background:"#14532d",color:"#86efac",borderRadius:6,padding:"3px 8px",fontWeight:700}}>{"THEN "+actionLabel+(wf.action_target?" → "+wf.action_target:"")}</span>
-                {wf.escalate_hours&&<><span style={{color:C.t3}}>{"→"}</span><span style={{background:"#7c2d12",color:"#fdba74",borderRadius:6,padding:"3px 8px",fontWeight:700}}>{"ESCALATE in "+wf.escalate_hours+"h → "+wf.escalate_to}</span></>}
+                <span style={{background:"#312e81",color:"#a5b4fc",borderRadius:6,padding:"3px 8px",fontWeight:700}}>{"WHEN "+triggerLabel+(wf.trigger_value?" to "+wf.trigger_value:"")}</span>
+                <span style={{color:C.t3}}>{">"}</span>
+                <span style={{background:"#14532d",color:"#86efac",borderRadius:6,padding:"3px 8px",fontWeight:700}}>{"THEN "+actionLabel+(wf.action_target?" "+wf.action_target:"")}</span>
+                {wf.escalate_hours&&<><span style={{color:C.t3}}>{">"}</span><span style={{background:"#7c2d12",color:"#fdba74",borderRadius:6,padding:"3px 8px",fontWeight:700}}>{"ESCALATE "+wf.escalate_hours+"h to "+wf.escalate_to}</span></>}
               </div>
             </div>
             <div style={{display:"flex",gap:6,flexShrink:0}}>
@@ -4087,10 +4081,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
         </Panel>
       </div>
 
-      {/* ── SLA Breach Report ─────────────────── */}
+      {/* ── SLA Breach Report ── */}
       <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20,marginTop:8}}>
         <div style={{fontWeight:800,fontSize:15,color:C.t1,marginBottom:4}}>SLA Breach Report</div>
-        <div style={{fontSize:12,color:C.t3,marginBottom:14}}>Tasks that have exceeded their SLA based on priority (Critical=24h, High=72h, Medium=7d, Low=14d from creation)</div>
+        <div style={{fontSize:12,color:C.t3,marginBottom:14}}>Tasks exceeding SLA (Critical=24h, High=72h, Medium=7d, Low=14d from creation)</div>
         {(()=>{
           const breached=tasks.filter(t=>{const s=getSLAStatus(t);return s&&s.breach;}).sort((a,b)=>getSLAStatus(b).over-getSLAStatus(a).over);
           if(breached.length===0)return <div style={{textAlign:"center",padding:"24px 0",color:C.green,fontWeight:700,fontSize:14}}>All tasks within SLA</div>;
@@ -4109,11 +4103,11 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
                       <div style={{width:8,height:8,borderRadius:"50%",background:C.red,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                        <div style={{fontSize:10,color:C.t3}}>{(pj?pj.name:"—")+" · "+(t.assignee||"Unassigned")}</div>
+                        <div style={{fontSize:10,color:C.t3}}>{(pj?pj.name:"No project")+" · "+(t.assignee||"Unassigned")}</div>
                       </div>
                       <div style={{flexShrink:0,textAlign:"right"}}>
-                        <div style={{fontSize:11,fontWeight:800,color:C.red}}>{daysOver>0?daysOver+"d ":s.over+"h "+"over"}</div>
-                        <div style={{fontSize:9,color:C.t3}}>{t.priority||"Medium"} SLA</div>
+                        <div style={{fontSize:11,fontWeight:800,color:C.red}}>{daysOver>0?daysOver+"d over":s.over+"h over"}</div>
+                        <div style={{fontSize:9,color:C.t3}}>{(t.priority||"Medium")+" SLA"}</div>
                       </div>
                     </div>
                   );
@@ -6839,12 +6833,11 @@ export default function App(){
         if(detailerUser?.id&&detailerUser.id!==me.id)await createNotif([detailerUser.id],"task_assigned",`Detailing assigned: ${f.title}`,`You are the detailer${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
         if(checkerUser?.id&&checkerUser.id!==me.id)await createNotif([checkerUser.id],"task_assigned",`QC assigned: ${f.title}`,`You are the checker${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
       }
-        // ── Workflow engine ──
+        // workflow engine
         for(const wf of workflows.filter(w=>w.is_active)){
           let fired=false;
-          if(wf.trigger_event==="status_changed"&&editTask&&f.status!==editTask.status){
-            if(!wf.trigger_value||wf.trigger_value===f.status)fired=true;
-          }else if(wf.trigger_event==="task_created"&&!editTask){fired=true;}
+          if(wf.trigger_event==="status_changed"&&editTask&&f.status!==editTask.status){if(!wf.trigger_value||wf.trigger_value===f.status)fired=true;}
+          else if(wf.trigger_event==="task_created"&&!editTask){fired=true;}
           else if(wf.trigger_event==="task_assigned"&&f.assignee){fired=true;}
           if(!fired)continue;
           const proj2=projects.find(p=>p.id===pid);
@@ -6852,16 +6845,16 @@ export default function App(){
           if(wf.action_type==="notify_checker"){const cu=users.find(u=>u.name===f.checker||u.username===f.checker);if(cu&&cu.id!==me.id)targetIds=[cu.id];}
           else if(wf.action_type==="notify_assignee"){const au=users.find(u=>u.name===f.assignee||u.username===f.assignee);if(au&&au.id!==me.id)targetIds=[au.id];}
           else if(wf.action_type==="notify_role"){targetIds=users.filter(u=>u.role===wf.action_target&&u.id!==me.id).map(u=>u.id);}
-          if(targetIds.length)await createNotif(targetIds,"workflow","Workflow: "+wf.name,f.title+(wf.trigger_value?" moved to "+wf.trigger_value:"")+(proj2?" · "+proj2.name:""),"task",editTask?.id||null,me.id);
+          if(targetIds.length)await createNotif(targetIds,"workflow","Workflow: "+wf.name,f.title+(proj2?" in "+proj2.name:""),"task",editTask?.id||null,me.id);
         }
       stm(false);set(null);
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
-  async function addWorkflow(f){ssv(true);try{const {data}=await supabase.from("workflows").insert([f]).select().single();if(data)swf(ws=>[...ws,data]);showToast("Rule created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
-  async function updateWorkflow(id,f){ssv(true);try{const {data}=await supabase.from("workflows").update(f).eq("id",id).select().single();if(data)swf(ws=>ws.map(w=>w.id===id?data:w));showToast("Rule updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
-  async function deleteWorkflow(id){await supabase.from("workflows").delete().eq("id",id);swf(ws=>ws.filter(w=>w.id!==id));showToast("Rule deleted ✓");}
+  async function addWorkflow(f){ssv(true);try{const {data}=await supabase.from("workflows").insert([f]).select().single();if(data)swf(ws=>[...ws,data]);showToast("Rule created");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function updateWorkflow(id,f){ssv(true);try{const {data}=await supabase.from("workflows").update(f).eq("id",id).select().single();if(data)swf(ws=>ws.map(w=>w.id===id?data:w));showToast("Rule updated");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function deleteWorkflow(id){await supabase.from("workflows").delete().eq("id",id);swf(ws=>ws.filter(w=>w.id!==id));showToast("Rule deleted");}
   async function toggleWorkflow(wf){const {data}=await supabase.from("workflows").update({is_active:!wf.is_active}).eq("id",wf.id).select().single();if(data)swf(ws=>ws.map(w=>w.id===wf.id?data:w));}
   async function reassignTask(taskId,newAssigneeName){
     const task=tasks.find(t=>String(t.id)===String(taskId));
@@ -7908,4 +7901,17 @@ export default function App(){
       );})}
       {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0
+        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
+        <span style={{fontSize:21,lineHeight:1}}>···</span>
+        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
+      </button>}
+      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
+        <Av name={me.name} size={22}/>
+        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
+      </button>}
+    </nav>
+    </MobileCtx.Provider>
+  );
+}
