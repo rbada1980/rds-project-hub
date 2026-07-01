@@ -5744,6 +5744,188 @@ function TaskComments({taskId,projectId,me,users}){
 }
 
 // ── ⌘K Command Palette ────────────────────────────────────────────
+
+function CapacityView({tasks,users,projects,onReassign,canEdit}){
+  const [rangeDays,setRangeDays]=useState(28);
+  const [weekOffset,setWeekOffset]=useState(0);
+  const [selCell,setSelCell]=useState(null);
+  const [dragId,setDragId]=useState(null);
+  const [dropTarget,setDropTarget]=useState(null);
+
+  const todayD=new Date();todayD.setHours(0,0,0,0);
+  const todayStr=todayD.toISOString().slice(0,10);
+  const startD=new Date(todayD);
+  startD.setDate(startD.getDate()+weekOffset*7);
+  const dateArr=Array.from({length:rangeDays},(_,i)=>{const d=new Date(startD);d.setDate(d.getDate()+i);return d;});
+  const startStr=dateArr[0].toISOString().slice(0,10);
+  const endStr=dateArr[dateArr.length-1].toISOString().slice(0,10);
+
+  const teamUsers=users.filter(u=>u.role!=="Client");
+
+  const workload={};
+  for(const u of teamUsers)workload[u.id]={};
+  for(const t of tasks){
+    if(t.status==="Completed")continue;
+    if(!t.assignee)continue;
+    const u=teamUsers.find(x=>x.name===t.assignee||x.username===t.assignee);
+    if(!u)continue;
+    const dead=t.deadline||t.due_date||t.client_sub_date;
+    if(!dead)continue;
+    const endD2=new Date(dead);
+    const startDt=t.start_date?new Date(t.start_date):endD2;
+    const cur=new Date(Math.max(startDt.getTime(),new Date(startStr).getTime()));
+    const lim=new Date(Math.min(endD2.getTime(),new Date(endStr).getTime()));
+    while(cur<=lim){
+      const k=cur.toISOString().slice(0,10);
+      if(!workload[u.id][k])workload[u.id][k]=[];
+      workload[u.id][k].push(t);
+      cur.setDate(cur.getDate()+1);
+    }
+  }
+
+  function cellBg(cnt,isWe){
+    if(cnt===0)return isWe?"#1e2d3d":"transparent";
+    if(cnt<=2)return"#15803d";
+    if(cnt<=4)return"#b45309";
+    return"#b91c1c";
+  }
+
+  const selTasks=selCell?(workload[selCell.uid]||{})[selCell.ds]||[]:[];
+  const NAME_W=150;
+  const CELL_W=28;
+  const CELL_H=40;
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14,height:"100%"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Team Capacity Planning</div>
+          <div style={{fontSize:12,color:C.t3,marginTop:2}}>Workload heatmap — click a cell to see tasks — drag to reassign</div>
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <button onClick={()=>setWeekOffset(o=>o-1)} style={GBtn}>Prev</button>
+          <button onClick={()=>setWeekOffset(0)} style={{...GBtn,color:C.accent,borderColor:C.accent+"55"}}>Today</button>
+          <button onClick={()=>setWeekOffset(o=>o+1)} style={GBtn}>Next</button>
+          <select value={rangeDays} onChange={e=>setRangeDays(Number(e.target.value))} style={{...GBtn,cursor:"pointer",padding:"7px 10px"}}>
+            <option value={14}>2 weeks</option>
+            <option value={28}>4 weeks</option>
+            <option value={42}>6 weeks</option>
+          </select>
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:12,alignItems:"center",fontSize:11,color:C.t3}}>
+        <span style={{fontWeight:700}}>Load:</span>
+        {[["Free","#1e2d3d"],["1-2 tasks","#15803d"],["3-4 tasks","#b45309"],["5+ tasks","#b91c1c"]].map(([l,clr])=>(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+            <div style={{width:12,height:12,borderRadius:3,background:clr,border:"1px solid #ffffff22"}}/>
+            <span>{l}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{flex:1,overflow:"auto",background:C.card,border:"1px solid "+C.border,borderRadius:12,minHeight:200}}>
+        <div style={{display:"flex",position:"sticky",top:0,zIndex:10,background:C.surface,borderBottom:"1px solid "+C.border}}>
+          <div style={{width:NAME_W,minWidth:NAME_W,padding:"8px 12px",fontSize:11,fontWeight:700,color:C.t3,borderRight:"1px solid "+C.border,position:"sticky",left:0,background:C.surface,zIndex:12}}>MEMBER</div>
+          {dateArr.map(d=>{
+            const ds=d.toISOString().slice(0,10);
+            const isT=ds===todayStr;
+            const isWe=d.getDay()===0||d.getDay()===6;
+            return(
+              <div key={ds} style={{width:CELL_W,minWidth:CELL_W,textAlign:"center",padding:"4px 0 2px",fontSize:9,fontWeight:isT?800:500,color:isT?C.accent:isWe?C.t3+"66":C.t3,borderRight:"1px solid "+C.border+"22",position:"relative",flexShrink:0}}>
+                <div>{"SMTWTFS"[d.getDay()]}</div>
+                <div style={{fontSize:10,fontWeight:isT?800:400,color:isT?C.accent:isWe?"#475569":"#94a3b8"}}>{d.getDate()}</div>
+                {isT&&<div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:2,height:3,background:C.accent,borderRadius:1}}/>}
+              </div>
+            );
+          })}
+        </div>
+
+        {teamUsers.map((u,ri)=>{
+          const uWork=workload[u.id]||{};
+          const isEven=ri%2===0;
+          const isDT=dropTarget===u.id;
+          return(
+            <div key={u.id}
+              onDragOver={e=>{e.preventDefault();setDropTarget(u.id);}}
+              onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDropTarget(null);}}
+              onDrop={e=>{
+                e.preventDefault();setDropTarget(null);
+                const tid=e.dataTransfer.getData("taskId");
+                if(tid&&onReassign){onReassign(tid,u.name);}
+                setSelCell(null);
+              }}
+              style={{display:"flex",background:isDT?C.accent+"22":isEven?C.card:C.surface,borderBottom:"1px solid "+C.border+"22",minHeight:CELL_H,alignItems:"center",transition:"background .1s",outline:isDT?"2px dashed "+C.accent:"none",outlineOffset:-2}}>
+              <div style={{width:NAME_W,minWidth:NAME_W,padding:"6px 10px",borderRight:"1px solid "+C.border,display:"flex",alignItems:"center",gap:7,position:"sticky",left:0,zIndex:5,background:isDT?C.accent+"22":isEven?C.card:C.surface}}>
+                <Av name={u.name} size={22}/>
+                <div style={{overflow:"hidden",flex:1}}>
+                  <div style={{fontSize:11,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                  <div style={{fontSize:9,color:C.t3}}>{u.role}</div>
+                </div>
+              </div>
+              {dateArr.map(d=>{
+                const ds=d.toISOString().slice(0,10);
+                const cellTs=uWork[ds]||[];
+                const cnt=cellTs.length;
+                const isT=ds===todayStr;
+                const isWe=d.getDay()===0||d.getDay()===6;
+                const isSel=selCell&&selCell.uid===u.id&&selCell.ds===ds;
+                const bg=isSel?C.accent:cellBg(cnt,isWe);
+                return(
+                  <div key={ds}
+                    onClick={()=>cnt>0?setSelCell(isSel?null:{uid:u.id,ds,uName:u.name}):null}
+                    style={{width:CELL_W,minWidth:CELL_W,height:CELL_H,display:"flex",alignItems:"center",justifyContent:"center",background:bg,borderRight:"1px solid "+C.border+"11",borderLeft:isT?"2px solid "+C.accent+"77":"none",cursor:cnt>0?"pointer":"default",fontSize:9,fontWeight:800,color:"#ffffffcc",flexShrink:0,opacity:isWe&&cnt===0?0.3:1,transition:"background .1s"}}>
+                    {cnt>0?cnt:""}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        {teamUsers.length===0&&(
+          <div style={{padding:40,textAlign:"center",color:C.t3,fontSize:13}}>No team members found</div>
+        )}
+      </div>
+
+      {selCell&&(
+        <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:14,maxHeight:260,overflow:"auto",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <div style={{flex:1}}>
+              <span style={{fontWeight:800,color:C.t1,fontSize:13}}>{selCell.uName}</span>
+              <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{selCell.ds+" · "+selTasks.length+" task"+(selTasks.length!==1?"s":"")}</span>
+            </div>
+            <button onClick={()=>setSelCell(null)} style={{...GBtn,padding:"3px 9px",fontSize:11}}>Close</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            {selTasks.map(t=>{
+              const proj=projects.find(p=>p.id===t.project_id);
+              return(
+                <div key={t.id}
+                  draggable={canEdit}
+                  onDragStart={e=>{e.dataTransfer.setData("taskId",String(t.id));setDragId(t.id);}}
+                  onDragEnd={()=>setDragId(null)}
+                  style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"9px 11px",cursor:canEdit?"grab":"default",display:"flex",gap:8,alignItems:"flex-start",opacity:dragId===t.id?0.4:1,transition:"opacity .1s"}}>
+                  {canEdit&&<span title="Drag to reassign" style={{fontSize:15,color:C.t3,marginTop:1,flexShrink:0,cursor:"grab",userSelect:"none"}}>{"⠿"}</span>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:700,color:C.t1,marginBottom:3}}>{t.title}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                      {proj&&<span style={{fontSize:10,color:C.teal}}>{"📁 "+proj.name}</span>}
+                      <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
+                      {(t.deadline||t.due_date)&&<span style={{fontSize:10,color:C.t3}}>{"📅 "+(t.deadline||t.due_date)}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {canEdit&&<div style={{fontSize:10,color:C.t3,textAlign:"center",marginTop:8}}>{"Drag any card onto a member row above to reassign"}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CommandPalette({projects,tasks,users,clients,taskFileCounts,onNav,onClose}){
   const [q,setQ]=useState("");
   const [sel,setSel]=useState(0);
@@ -6444,6 +6626,17 @@ export default function App(){
     ssv(false);
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
+  async function reassignTask(taskId,newAssigneeName){
+    const task=tasks.find(t=>String(t.id)===String(taskId));
+    if(!task)return;
+    const {data,error}=await supabase.from("tasks").update({assignee:newAssigneeName}).eq("id",taskId).select().single();
+    if(!error&&data){
+      st(ts=>ts.map(t=>t.id===data.id?data:t));
+      showToast("Reassigned to "+newAssigneeName+" ✓");
+    }else{
+      showToast("Reassign failed: "+(error?.message||"unknown"),false);
+    }
+  }
   async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
   async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());
     // In-app: notify assigned users
@@ -6475,7 +6668,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -7162,6 +7355,9 @@ export default function App(){
         )}
         {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
           <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
+        )}
+        {view==="capacity"&&(isAdmin||isManager||isTeamLeader)&&(
+          <CapacityView tasks={tasks} users={users} projects={projects} canEdit={canEdit} onReassign={reassignTask}/>
         )}
         {view==="gantt"&&!isClient&&(
           <GanttPage
