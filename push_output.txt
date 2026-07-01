@@ -13,12 +13,8 @@ Changes not staged for commit:
 	modified:   push_output.txt
 	modified:   src/App.jsx
 
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	supabase/migrations/
-
  
 Running git push... 
 To https://github.com/rbada1980/rds-project-hub.git
-   1eaf529..a2a09c8  main -> main
+   7c47635..6799cab  main -> main
 Exit code: 0 
