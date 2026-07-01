@@ -1087,6 +1087,16 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           ))}
         </div>
       </div>
+      {/* ── Ctrl+K Hint ── */}
+      <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+        <span style={{fontSize:17}}>⌨️</span>
+        <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
+          Press{" "}
+          <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
+          {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>cmd K</kbd>{" "}on Mac)</span>
+          {" "}anywhere in the website — shows your 10 most recent projects instantly
+        </span>
+      </div>
       {uStatModal&&(()=>{
         const completedTasks=myTasks.filter(t=>isDone(t.status));
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
@@ -1405,6 +1415,16 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
             </div>
           ))}
         </div>
+      </div>
+      {/* ── Ctrl+K Hint ── */}
+      <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+        <span style={{fontSize:17}}>⌨️</span>
+        <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
+          Press{" "}
+          <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
+          {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>cmd K</kbd>{" "}on Mac)</span>
+          {" "}anywhere in the website — shows your 10 most recent projects instantly
+        </span>
       </div>
       {tlStatModal&&(()=>{
         const ipTasks=allTasks.filter(t=>t.status==="In Progress");
@@ -2154,6 +2174,16 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
             </div>
           ))}
         </div>
+      </div>
+      {/* ── Ctrl+K Hint ── */}
+      <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+        <span style={{fontSize:17}}>⌨️</span>
+        <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
+          Press{" "}
+          <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
+          {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>cmd K</kbd>{" "}on Mac)</span>
+          {" "}anywhere in the website — shows your 10 most recent projects instantly
+        </span>
       </div>
       {clStatModal&&(()=>{
         const completedTasks=myTasks.filter(t=>isDone(t.status));
@@ -6768,11 +6798,11 @@ export default function App(){
             )}
             {/* ── Ctrl+K Hint ── */}
             <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
-              <span style={{fontSize:15}}>⌨️</span>
-              <span style={{fontSize:12,color:"#ef4444",lineHeight:1.5}}>
+              <span style={{fontSize:17}}>⌨️</span>
+              <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
                 Press{" "}
-                <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:11,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
-                {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:11,color:"#ef4444",fontWeight:700}}>⌘K</kbd>{" "}on Mac)</span>
+                <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
+                {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>cmd K</kbd>{" "}on Mac)</span>
                 {" "}anywhere in the website — shows your 10 most recent projects instantly
               </span>
             </div>
@@ -7439,29 +7469,4 @@ export default function App(){
         </div>
       </div>
     </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+    <nav className="rds-bottom-nav" style={{position:"fixed"
