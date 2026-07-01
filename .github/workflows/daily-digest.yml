@@ -1,0 +1,26 @@
+name: Daily Submission Digest
+
+# Runs Mon-Sat at 1:00 AM IST (= 19:30 UTC Sun-Fri)
+on:
+  schedule:
+    - cron: '30 19 * * 0-5'  # Sun-Fri UTC = Mon-Sat 1AM IST
+  workflow_dispatch:          # Manual trigger from GitHub Actions tab
+
+jobs:
+  send-digest:
+    name: Send 1 AM IST digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger daily digest
+        run: |
+          echo "Calling digest at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://hub-rdsprojects.com/api/cron-daily)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Digest API returned HTTP $HTTP_CODE"
+            exit 1
+          fi
