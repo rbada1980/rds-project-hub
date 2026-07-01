@@ -6868,7 +6868,7 @@ export default function App(){
                 })}
               </div>
             ):(
-              {(()=>{
+              (()=>{
                 const grpd={};
                 const ungrouped=[];
                 accessibleProjects.forEach(p=>{
@@ -6970,7 +6970,7 @@ export default function App(){
                     <ProjGrid projs={ungrouped}/>
                   </>}
                 </>);
-              })()}
+              })()
             )}
                         {(()=>{const up=accessibleProjects.filter(p=>!p.assigned_users||p.assigned_users.length===0);if(!up.length)return null;return(<><h2 style={{margin:"0 0 14px",fontSize:16,fontWeight:700,color:C.yellow}}>📂 Unassigned Projects</h2><div style={{background:C.card,border:`1px solid ${C.yellow}44`,borderRadius:12,overflow:"hidden",marginBottom:28}}>{up.map(p=>{const pt=tasks.filter(t=>t.project_id===p.id);const pv=prog(p.id);return(<div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}><div style={{width:3,height:36,borderRadius:2,background:p.color}}/><div style={{flex:1}}><p style={{margin:0,fontSize:13,fontWeight:600,color:C.t1}}>{p.name}</p><p style={{margin:0,fontSize:11,color:C.t3}}>{p.client?`👤 ${p.client} · `:""}{pt.length} tasks · Due {p.deadline||"TBD"}</p></div><Bdg color={p.color}>{pv}%</Bdg>{isAdmin&&<button onClick={()=>sep(p)} style={{...GBtn,padding:"5px 12px",fontSize:12,color:C.yellow,borderColor:C.yellow}}>Assign →</button>}</div>);})}</div></>);})()}
             {/* ── 2. Recent Tasks ── */}
@@ -7489,3 +7489,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+  
