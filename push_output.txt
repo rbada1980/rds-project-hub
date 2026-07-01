@@ -3,20 +3,19 @@ On branch main
 Your branch is ahead of 'origin/main' by 1 commit.
   (use "git push" to publish your local commits)
 
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   src/App.jsx
+	renamed:    src/email/notifications.js -> src/email notifications/notifications.js
+
 Changes not staged for commit:
-  (use "git add/rm <file>..." to update what will be committed)
+  (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
-	modified:   push_and_log.bat
-	deleted:    src/email/notifications.js
+	modified:   push_output.txt
+	modified:   src/App.jsx
 
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	push_output.txt
-	src/email notifications/
-
-no changes added to commit (use "git add" and/or "git commit -a")
  
 Running git push... 
 To https://github.com/rbada1980/rds-project-hub.git
-   f012310..cc63af2  main -> main
+   e31c640..6926890  main -> main
 Exit code: 0 
