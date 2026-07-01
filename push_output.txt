@@ -13,8 +13,12 @@ Changes not staged for commit:
 	modified:   push_output.txt
 	modified:   src/App.jsx
 
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	merge_user.cjs
+
  
 Running git push... 
 To https://github.com/rbada1980/rds-project-hub.git
-   aaa4b9e..e15a970  main -> main
+   8955da0..18229ca  main -> main
 Exit code: 0 
