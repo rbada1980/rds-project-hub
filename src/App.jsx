@@ -6561,6 +6561,7 @@ export default function App(){
           </div>
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>
+            {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
             <span className="rds-topbar-filters" style={{display:"contents"}}>{view!=="dashboard"&&(
               <>
                 <input placeholder="🔍 Search…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
@@ -6715,15 +6716,24 @@ export default function App(){
           onProject={()=>navTo('list',activePid)}
         />
         {/* ── Ctrl+K Hint ── */}
-        <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
-          <span style={{fontSize:17}}>⌨️</span>
-          <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
-            Press{" "}
-            <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
-            {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>cmd K</kbd>{" "}on Mac)</span>
-            {" "}anywhere in the website — shows your 10 most recent projects instantly
-          </span>
-        </div>
+        {isMobile?(
+          <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+            <span style={{fontSize:17}}>🔍</span>
+            <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
+              Tap the <strong style={{color:"#ef4444",fontWeight:700}}>🔍 search icon</strong> in the top bar to search projects, tasks, clients, people and files
+            </span>
+          </div>
+        ):(
+          <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+            <span style={{fontSize:17}}>⌨️</span>
+            <span style={{fontSize:14,color:"#ef4444",lineHeight:1.5}}>
+              Press{" "}
+              <kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>Ctrl+K</kbd>
+              {" "}<span style={{color:"#ef444488"}}>(or{" "}<kbd style={{background:"#ef444422",border:"1px solid #ef4444",borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#ef4444",fontWeight:700}}>cmd K</kbd>{" "}on Mac)</span>
+              {" "}anywhere in the website — search projects, tasks, clients, people and files
+            </span>
+          </div>
+        )}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
             me={me} tasks={tasks} projects={accessibleProjects} today={today}
