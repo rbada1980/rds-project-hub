@@ -6492,7 +6492,7 @@ export default function App(){
             <div><div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div></div>
           </div>
         </div>
-        <div style={{padding:"0 12px",flexShrink:0}}>
+        <div style={{padding:"0 12px",flex:1,overflow:"auto"}}>
           {navs.map(([k,ico,lbl])=>{
             const badge=navBadges[k]||0;
             return(
