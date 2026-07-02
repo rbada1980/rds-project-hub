@@ -6173,7 +6173,147 @@ function CommandPalette({projects,tasks,users,clients,taskFileCounts,onNav,onClo
   );
 }
 
-export default function App(){
+export default // ─── AttendanceBar ───────────────────────────────────────────────────────────
+function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut}){
+  const [tick,setTick]=useState(0);
+  useEffect(()=>{
+    if(!attRec||attRec.logout_at)return;
+    const id=setInterval(()=>setTick(t=>t+1),1000);
+    return()=>clearInterval(id);
+  },[attRec]);
+  if(!attRec||attRec.logout_at)return null;
+  const now=Date.now();
+  const loginMs=new Date(attRec.login_at).getTime();
+  const liveBrk=attBreak?Math.floor((now-new Date(attBreak.break_start).getTime())/60000):0;
+  const rawMin=Math.floor((now-loginMs)/60000);
+  const workMin=Math.max(0,rawMin-(attRec.total_break_minutes||0)-liveBrk);
+  const wH=Math.floor(workMin/60),wM=workMin%60;
+  const bH=Math.floor(liveBrk/60),bM=liveBrk%60;
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+      <span style={{fontSize:12,color:attBreak?"#f97316":"#22c55e",fontWeight:700,background:attBreak?"#f9731618":"#22c55e18",border:"1px solid "+(attBreak?"#f9731666":"#22c55e66"),borderRadius:8,padding:"4px 9px",fontFamily:"monospace",whiteSpace:"nowrap"}}>
+        {attBreak?"☕ "+(bH>0?bH+"h ":"")+String(bM).padStart(2,"0")+"m on break":"🕐 "+wH+"h "+String(wM).padStart(2,"0")+"m"}
+      </span>
+      {!attBreak
+        ?<button onClick={onStartBreak} style={{background:"transparent",color:"#f97316",border:"1px solid #f9731666",borderRadius:8,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>☕ Break</button>
+        :<button onClick={onEndBreak} style={{background:"transparent",color:"#22c55e",border:"1px solid #22c55e66",borderRadius:8,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>▶ Resume</button>
+      }
+      <button onClick={()=>{if(window.confirm("Clock out for today?"))onClockOut();}} style={{background:"transparent",color:"#ef4444",border:"1px solid #ef444466",borderRadius:8,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>⏹ Out</button>
+    </div>
+  );
+}
+// ─── AttendanceStats ──────────────────────────────────────────────────────────
+function AttendanceStats({stats,attRec,attBreak}){
+  const [tick,setTick]=useState(0);
+  useEffect(()=>{
+    if(!attRec||attRec.logout_at)return;
+    const id=setInterval(()=>setTick(t=>t+1),30000);
+    return()=>clearInterval(id);
+  },[attRec]);
+  if(!stats)return null;
+  function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h>0?h+"h "+String(mn).padStart(2,"0")+"m":mn+"m";}
+  const now=Date.now();
+  const loginMs=attRec&&!attRec.logout_at?new Date(attRec.login_at).getTime():null;
+  const liveBrk=attRec&&attBreak&&!attRec.logout_at?Math.floor((now-new Date(attBreak.break_start).getTime())/60000):0;
+  const rawMin=loginMs?Math.floor((now-loginMs)/60000):0;
+  const todayLive=loginMs?Math.max(0,rawMin-(attRec.total_break_minutes||0)-liveBrk):(stats.todayMin||0);
+  const items=[
+    {label:"Today",min:todayLive,color:"#22c55e",icon:"📅"},
+    {label:"Yesterday",min:stats.yesterdayMin||0,color:"#3b82f6",icon:"📆"},
+    {label:"This Week",min:stats.thisWeekMin||0,color:"#a855f7",icon:"🗓"},
+    {label:"Last Week",min:stats.lastWeekMin||0,color:"#06b6d4",icon:"🗓"},
+    {label:"This Month",min:stats.thisMonthMin||0,color:"#f59e0b",icon:"📅"},
+    {label:"Last Month",min:stats.lastMonthMin||0,color:"#94a3b8",icon:"📆"},
+  ];
+  return(
+    <div style={{marginBottom:24}}>
+      <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⏱ Your Work Hours</h2>
+      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:12}}>
+        {items.map(it=>(
+          <div key={it.label} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"14px 16px"}}>
+            <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>{it.icon} {it.label}</div>
+            <div style={{fontSize:20,fontWeight:800,color:it.color,fontFamily:"monospace"}}>{fmtMin(it.min)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+// ─── AttendancePage ───────────────────────────────────────────────────────────
+function AttendancePage({users}){
+  const todayStr=new Date().toISOString().slice(0,10);
+  const dfltFrom=new Date(Date.now()-29*86400000).toISOString().slice(0,10);
+  const [rows,setRows]=useState([]);
+  const [ldng,setLdng]=useState(false);
+  const [dateFrom,setDateFrom]=useState(dfltFrom);
+  const [dateTo,setDateTo]=useState(todayStr);
+  const [fUser,setFUser]=useState("All");
+  useEffect(()=>{load();},[dateFrom,dateTo,fUser]);
+  async function load(){
+    setLdng(true);
+    let url=SUPA_URL+"/rest/v1/attendance?date=gte."+dateFrom+"&date=lte."+dateTo+"&order=date.desc,user_name.asc&select=*&limit=500";
+    if(fUser!=="All"){const u=users.find(u=>u.name===fUser);if(u)url+="&user_id=eq."+u.id;}
+    const res=await fetch(url,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const data=await res.json();
+    setRows(Array.isArray(data)?data:[]);
+    setLdng(false);
+  }
+  function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h+"h "+String(mn).padStart(2,"0")+"m";}
+  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+  function exportCsv(){
+    const hdr=["Date","Employee","Clock In","Clock Out","Work Hours","Break Min","Status"];
+    const csvRows=rows.map(r=>[r.date,r.user_name,fmtTime(r.login_at),fmtTime(r.logout_at),fmtMin(r.total_work_minutes),r.total_break_minutes||0,r.logout_at?"Done":"Active"]);
+    const csv=[hdr,...csvRows].map(r=>r.join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="attendance_report.csv";a.click();
+  }
+  const nonClients=users.filter(u=>u.role!=="Client");
+  return(
+    <div style={{marginTop:32,marginBottom:32}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#f1f5f9"}}>📋 Team Attendance Report</h2>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{background:C.card,border:"1px solid "+C.border,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",colorScheme:"dark"}}/>
+          <span style={{color:C.t3,fontSize:13}}>to</span>
+          <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{background:C.card,border:"1px solid "+C.border,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",colorScheme:"dark"}}/>
+          <select value={fUser} onChange={e=>setFUser(e.target.value)} style={{background:C.card,border:"1px solid "+C.border,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            <option value="All">All Employees</option>
+            {nonClients.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
+          </select>
+          <button onClick={exportCsv} style={{...GBtn,padding:"7px 14px",fontSize:13}}>⬇ CSV</button>
+        </div>
+      </div>
+      {ldng?<div style={{textAlign:"center",padding:32,color:C.t3}}>Loading…</div>:(
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead>
+              <tr style={{background:C.surface}}>
+                {["Date","Employee","Clock In","Clock Out","Work Hours","Break","Status"].map(h=>(
+                  <th key={h} style={{padding:"10px 12px",textAlign:"left",color:C.t2,fontWeight:600,borderBottom:"1px solid "+C.border,whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length===0?<tr><td colSpan={7} style={{padding:32,textAlign:"center",color:C.t3}}>No records found</td></tr>:rows.map(r=>(
+                <tr key={r.id} style={{borderBottom:"1px solid "+C.border+"55"}}>
+                  <td style={{padding:"9px 12px",color:C.t1,fontWeight:600}}>{r.date}</td>
+                  <td style={{padding:"9px 12px",color:C.t1}}>{r.user_name}</td>
+                  <td style={{padding:"9px 12px",color:"#22c55e",fontFamily:"monospace"}}>{fmtTime(r.login_at)}</td>
+                  <td style={{padding:"9px 12px",color:r.logout_at?C.t2:"#f59e0b",fontFamily:"monospace"}}>{fmtTime(r.logout_at)}</td>
+                  <td style={{padding:"9px 12px",color:"#3b82f6",fontWeight:700,fontFamily:"monospace"}}>{fmtMin(r.total_work_minutes)}</td>
+                  <td style={{padding:"9px 12px",color:C.t3}}>{r.total_break_minutes||0}m</td>
+                  <td style={{padding:"9px 12px"}}><span style={{fontSize:11,fontWeight:700,color:r.logout_at?"#22c55e":"#f59e0b",background:r.logout_at?"#22c55e18":"#f59e0b18",border:"1px solid "+(r.logout_at?"#22c55e44":"#f59e0b44"),borderRadius:6,padding:"2px 8px"}}>{r.logout_at?"Done":"Active"}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length>0&&<p style={{margin:"8px 0 0",fontSize:12,color:C.t3}}>{rows.length} record{rows.length!==1?"s":""}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+function App(){
   useEffect(()=>{
     document.body.style.margin="0";
     document.body.style.padding="0";
@@ -6217,6 +6357,11 @@ export default function App(){
   const [dashProject,sdsp]  = useState("All");
   const [dashClient,sdsc]   = useState("All");
   const [dashStatus,sdsst]  = useState("All");
+  // ── Attendance ──
+  const attRecRef=useRef(null);
+  const [attRec,sattRec]=useState(null);
+  const [attBreak,sattBrk]=useState(null);
+  const [attStats,sattStats]=useState(null);
   const [toast,sToast]      = useState(null);
   const [taskFileCounts,setTFC] = useState({});  // {[taskId]: fileCount}
   const [fileTask,setFileTask]  = useState(null); // task object whose files panel is open
@@ -6510,7 +6655,87 @@ export default function App(){
     setTFC(prev=>({...prev,[taskId]:n}));
   }
   useEffect(()=>{if(me)loadAll();},[me]);
+  // ── Attendance functions ──────────────────────────────────────────────────
+  async function loadAttendance(){
+    if(!me||me.role==="Client")return;
+    const todayStr=new Date().toISOString().slice(0,10);
+    const res=await fetch(SUPA_URL+"/rest/v1/attendance?user_id=eq."+me.id+"&date=eq."+todayStr+"&select=*",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const rows=await res.json();
+    if(!Array.isArray(rows)||rows.length===0){
+      const ins=await fetch(SUPA_URL+"/rest/v1/attendance",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({user_id:me.id,user_name:me.name,date:todayStr})});
+      const d=await ins.json();
+      if(Array.isArray(d)&&d.length>0){attRecRef.current=d[0];sattRec(d[0]);}
+    }else{
+      const rec=rows[0];
+      attRecRef.current=rec;sattRec(rec);
+      if(!rec.logout_at){
+        const br=await fetch(SUPA_URL+"/rest/v1/breaks?attendance_id=eq."+rec.id+"&break_end=is.null&select=*",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+        const brows=await br.json();
+        if(Array.isArray(brows)&&brows.length>0)sattBrk(brows[0]);
+      }
+    }
+  }
+  async function loadAttStats(){
+    if(!me||me.role==="Client")return;
+    const now=new Date();
+    const todayStr=now.toISOString().slice(0,10);
+    const from60=new Date(now);from60.setDate(from60.getDate()-60);
+    const res=await fetch(SUPA_URL+"/rest/v1/attendance?user_id=eq."+me.id+"&date=gte."+from60.toISOString().slice(0,10)+"&select=date,total_work_minutes",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const rows=await res.json();
+    if(!Array.isArray(rows))return;
+    const dow=now.getDay();
+    const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+    const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
+    const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
+    const monStr=mon.toISOString().slice(0,10);
+    const lMonStr=lMon.toISOString().slice(0,10);
+    const lSunStr=lSun.toISOString().slice(0,10);
+    const ystStr=new Date(now.getTime()-86400000).toISOString().slice(0,10);
+    const mthStr=todayStr.slice(0,8)+"01";
+    const lMthStart=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,10);
+    const lMthEnd=new Date(now.getFullYear(),now.getMonth(),0).toISOString().slice(0,10);
+    function sumMin(fn){return rows.filter(fn).reduce((s,r)=>s+(r.total_work_minutes||0),0);}
+    sattStats({
+      todayMin:sumMin(r=>r.date===todayStr),
+      yesterdayMin:sumMin(r=>r.date===ystStr),
+      thisWeekMin:sumMin(r=>r.date>=monStr&&r.date<=todayStr),
+      lastWeekMin:sumMin(r=>r.date>=lMonStr&&r.date<=lSunStr),
+      thisMonthMin:sumMin(r=>r.date>=mthStr&&r.date<=todayStr),
+      lastMonthMin:sumMin(r=>r.date>=lMthStart&&r.date<=lMthEnd),
+    });
+  }
+  async function attStartBreak(){
+    const rec=attRecRef.current;
+    if(!rec||rec.logout_at)return;
+    const res=await fetch(SUPA_URL+"/rest/v1/breaks",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({attendance_id:rec.id})});
+    const d=await res.json();
+    if(Array.isArray(d)&&d.length>0)sattBrk(d[0]);
+  }
+  async function attEndBreak(){
+    if(!attBreak)return;
+    const dur=Math.floor((Date.now()-new Date(attBreak.break_start).getTime())/60000);
+    await fetch(SUPA_URL+"/rest/v1/breaks?id=eq."+attBreak.id,{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({break_end:new Date().toISOString(),duration_minutes:dur})});
+    const rec=attRecRef.current;
+    const newBrk=(rec?.total_break_minutes||0)+dur;
+    const pr=await fetch(SUPA_URL+"/rest/v1/attendance?id=eq."+rec.id,{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({total_break_minutes:newBrk})});
+    const pd=await pr.json();
+    const updated=Array.isArray(pd)&&pd.length>0?pd[0]:{...rec,total_break_minutes:newBrk};
+    attRecRef.current=updated;sattRec(updated);sattBrk(null);
+  }
+  async function attClockOut(){
+    if(attBreak)await attEndBreak();
+    const rec=attRecRef.current;
+    if(!rec||rec.logout_at)return;
+    const now=new Date();
+    const totalMin=Math.floor((now.getTime()-new Date(rec.login_at).getTime())/60000);
+    const workMin=Math.max(0,totalMin-(rec.total_break_minutes||0));
+    const pr=await fetch(SUPA_URL+"/rest/v1/attendance?id=eq."+rec.id,{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({logout_at:now.toISOString(),total_work_minutes:workMin})});
+    const pd=await pr.json();
+    if(Array.isArray(pd)&&pd.length>0){attRecRef.current=pd[0];sattRec(pd[0]);}
+    await loadAttStats();
+  }
 
+  useEffect(()=>{if(me&&me.role!=="Client"){loadAttendance();loadAttStats();}},[me]);
   // ── Global chat notifications ──
   const viewRef=useRef(view);
   useEffect(()=>{viewRef.current=view;},[view]);
@@ -6927,6 +7152,7 @@ export default function App(){
           </div>
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>
+            {!isClient&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut}/>}
             {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
             <span className="rds-topbar-filters" style={{display:"contents"}}>{view!=="dashboard"&&(
               <>
@@ -7100,6 +7326,7 @@ export default function App(){
             </span>
           </div>
         )}
+        {view==="dashboard"&&!isClient&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
             me={me} tasks={tasks} projects={accessibleProjects} today={today}
@@ -7526,6 +7753,7 @@ export default function App(){
             </>)}
           </>
         )}
+        {view==="dashboard"&&isAdmin&&(<AttendancePage users={users}/>)}
         {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
           <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
         )}
