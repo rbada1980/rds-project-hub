@@ -5859,13 +5859,15 @@ function TaskComments({taskId,projectId,me,users}){
 function CapacityView({tasks,users,projects,onReassign,canEdit}){
   const [rangeDays,setRangeDays]=useState(28);
   const [weekOffset,setWeekOffset]=useState(0);
+  const [baseDate,setBaseDate]=useState(null);
   const [selCell,setSelCell]=useState(null);
   const [dragId,setDragId]=useState(null);
   const [dropTarget,setDropTarget]=useState(null);
 
   const todayD=new Date();todayD.setHours(0,0,0,0);
   const todayStr=todayD.toISOString().slice(0,10);
-  const startD=new Date(todayD);
+  const tomorrowStr=new Date(todayD.getTime()+86400000).toISOString().slice(0,10);
+  const startD=baseDate?new Date(baseDate):new Date(todayD);
   startD.setDate(startD.getDate()+weekOffset*7);
   const dateArr=Array.from({length:rangeDays},(_,i)=>{const d=new Date(startD);d.setDate(d.getDate()+i);return d;});
   const startStr=dateArr[0].toISOString().slice(0,10);
@@ -5933,9 +5935,11 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
           <div style={{fontSize:12,color:C.t3,marginTop:2}}>Workload heatmap — click a cell to see tasks — drag to reassign</div>
         </div>
         <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-          <button onClick={()=>setWeekOffset(o=>o-1)} style={GBtn}>Prev</button>
-          <button onClick={()=>setWeekOffset(0)} style={{...GBtn,color:C.accent,borderColor:C.accent+"55"}}>Today</button>
-          <button onClick={()=>setWeekOffset(o=>o+1)} style={GBtn}>Next</button>
+          <button onClick={()=>{setBaseDate(null);setWeekOffset(o=>o-1);}} style={GBtn}>Prev</button>
+          <button onClick={()=>{setBaseDate(null);setWeekOffset(0);}} style={{...GBtn,color:C.accent,borderColor:C.accent+"55"}}>Today</button>
+          <button onClick={()=>{setBaseDate(tomorrowStr);setWeekOffset(0);}} style={{...GBtn,color:C.green,borderColor:C.green+"55"}}>Tomorrow</button>
+          <button onClick={()=>{setBaseDate(null);setWeekOffset(o=>o+1);}} style={GBtn}>Next</button>
+          <input type="date" value={baseDate&&weekOffset===0?baseDate:""} onChange={e=>{setBaseDate(e.target.value||null);setWeekOffset(0);}} title="Jump to date" style={{...GBtn,cursor:"pointer",padding:"5px 8px",colorScheme:"dark",width:130}} />
           <select value={rangeDays} onChange={e=>setRangeDays(Number(e.target.value))} style={{...GBtn,cursor:"pointer",padding:"7px 10px"}}>
             <option value={14}>2 weeks</option>
             <option value={28}>4 weeks</option>
