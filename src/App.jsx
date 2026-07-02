@@ -6173,7 +6173,7 @@ function CommandPalette({projects,tasks,users,clients,taskFileCounts,onNav,onClo
   );
 }
 
-export default // ─── AttendanceBar ───────────────────────────────────────────────────────────
+// ─── AttendanceBar ───────────────────────────────────────────────────────────
 function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut}){
   const [tick,setTick]=useState(0);
   useEffect(()=>{
@@ -6313,7 +6313,7 @@ function AttendancePage({users}){
     </div>
   );
 }
-function App(){
+export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
     document.body.style.padding="0";
