@@ -7429,13 +7429,15 @@ export default function App(){
                       <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
                         onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
                     )}
-                    {/* 7 — Working Hours (admin/manager only) */}
-                    {(isAdmin||isManager)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
-                    {(isAdmin||isManager)&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
-                    {(isAdmin||isManager)&&exportSec==="hours"&&(()=>{
+                    {/* 7 — Working Hours (all non-client roles) */}
+                    {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
+                    {!isClient&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
+                    {!isClient&&exportSec==="hours"&&(()=>{
+                      const isOwnOnly=!isAdmin&&!isManager;
                       async function exportWH(fromStr,toStr,label){
                         try{
                           let url=SUPA_URL+"/rest/v1/attendance?select=*&order=date.desc,user_name.asc&limit=2000";
+                          if(isOwnOnly)url+="&user_id=eq."+me.id;
                           if(fromStr)url+="&date=gte."+fromStr;
                           if(toStr)url+="&date=lte."+toStr;
                           const res=await fetch(url,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
@@ -7445,7 +7447,7 @@ export default function App(){
                           const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
                           let xml=xlsHead+'<Worksheet ss:Name="Working Hours"><Table ss:DefaultRowHeight="18">';
                           xml+='<Column ss:Width="90"/><Column ss:Width="140"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="85"/>';
-                          xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours — '+label+'</Data></Cell></Row>';
+                          const empSuffix=isOwnOnly?" — "+(me.name||""):"";xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours — '+label+empSuffix+'</Data></Cell></Row>';
                           xml+='<Row ss:Height="8"></Row>';
                           xml+='<Row ss:Height="20"><Cell ss:StyleID="hdr"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Employee</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock In</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock Out</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Work Hours</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Break (min)</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Status</Data></Cell></Row>';
                           rows.forEach((r,i)=>{
