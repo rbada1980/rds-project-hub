@@ -8193,7 +8193,7 @@ export default function App(){
               <div style={{display:"flex",gap:isMobile?6:10,alignItems:"center",flexWrap:"wrap",marginTop:isMobile?0:8}}>
                 <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Projects</option>
-                  {accessibleProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                  {accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashClient!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Clients</option>
@@ -8221,6 +8221,7 @@ export default function App(){
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
+            {(()=>{const _reset=dashProject!=="All"&&dashClient!=="All"&&!accessibleProjects.find(p=>p.id===dashProject&&(p.client||"Unassigned")===dashClient);if(_reset)sdsp("All");})()}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
               {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
@@ -8230,7 +8231,7 @@ export default function App(){
 
             {isMobile?(
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())).map(p=>{
+                {accessibleProjects.filter(p=>(dashClient==="All"||(p.client||"Unassigned")===dashClient)&&(!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase()))).map(p=>{
                   const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                   const pd=pt.filter(t=>isDone(t.status)).length;
                   const pip=pt.filter(t=>t.status==="In Progress").length;
@@ -8260,7 +8261,8 @@ export default function App(){
               (()=>{
                 const grpd={};
                 const ungrouped=[];
-                accessibleProjects.forEach(p=>{
+                const dashFilteredProjects=accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient);
+                dashFilteredProjects.forEach(p=>{
                   if(p.group_name){if(!grpd[p.group_name])grpd[p.group_name]=[];grpd[p.group_name].push(p);}
                   else ungrouped.push(p);
                 });
