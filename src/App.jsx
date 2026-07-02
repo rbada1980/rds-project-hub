@@ -7429,7 +7429,51 @@ export default function App(){
                       <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
                         onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
                     )}
-                    {/* 7 — Submission List */}
+                    {/* 7 — Working Hours (admin/manager only) */}
+                    {(isAdmin||isManager)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
+                    {(isAdmin||isManager)&&(
+                      <SBtn2 label="Working Hours" count={null} icon={"\u23F1"} color={"#059669"} indent={false}
+                        onClick={async()=>{
+                          try{
+                            const from=new Date();from.setDate(from.getDate()-30);
+                            const fromStr=from.toISOString().slice(0,10);
+                            const res=await fetch(SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+fromStr+"&order=date.desc,user_name.asc&limit=2000",{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+                            const rows=await res.json();
+                            function fmtTime(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+                            function fmtHrs(min){if(!min)return"0h 0m";return Math.floor(min/60)+"h "+(min%60)+"m";}
+                            const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
+                            let xml=xlsHead+'<Worksheet ss:Name="Working Hours"><Table ss:DefaultRowHeight="18">';
+                            xml+='<Column ss:Width="90"/><Column ss:Width="140"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="85"/>';
+                            xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours Report</Data></Cell></Row>';
+                            xml+='<Row ss:Height="8"></Row>';
+                            xml+='<Row ss:Height="20"><Cell ss:StyleID="hdr"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Employee</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock In</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock Out</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Work Hours</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Break (min)</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Status</Data></Cell></Row>';
+                            rows.forEach((r,i)=>{
+                              const even=i%2===0;
+                              const s=even?"even":"odd";const sc=even?"ctr_e":"ctr";
+                              const status=r.logout_at?"Completed":"Active";
+                              const sStyle=r.logout_at?"done":"active";
+                              xml+='<Row ss:Height="17">';
+                              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+r.date+'</Data></Cell>';
+                              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(r.user_name||"")+'</Data></Cell>';
+                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtTime(r.login_at)+'</Data></Cell>';
+                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtTime(r.logout_at)+'</Data></Cell>';
+                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtHrs(r.total_work_minutes)+'</Data></Cell>';
+                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="Number">'+(r.total_break_minutes||0)+'</Data></Cell>';
+                              xml+='<Cell ss:StyleID="'+sStyle+'"><Data ss:Type="String">'+status+'</Data></Cell>';
+                              xml+='</Row>';
+                            });
+                            xml+='</Table></Worksheet></Workbook>';
+                            const blob=new Blob([xml],{type:"application/vnd.ms-excel"});
+                            const url=URL.createObjectURL(blob);
+                            const a=document.createElement("a");a.href=url;
+                            a.download="Working_Hours_"+today2+".xls";a.click();
+                            URL.revokeObjectURL(url);
+                          }catch(e){alert("Export failed: "+e.message);}
+                          closeExport();
+                        }}/>
+                    )}
+
+                    {/* 8 — Submission List */}
                     <div style={{height:1,background:C.border,margin:"4px 0"}}/>
                     <SBtn2 label="Submission List" count={null} icon="📬" color={"#0891b2"} indent={false}
                       onClick={()=>{exportSubmissionList(accessibleProjects,tasks,today2);closeExport();}}/>
