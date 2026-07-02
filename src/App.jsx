@@ -2584,6 +2584,8 @@ function stateToUrl(v,pid,client,projs=[]){
   }
   if(v==='list')return'/tasks';
   if(v==='kanban')return'/kanban';
+  if(v==='capacity')return'/capacity';
+  if(v==='workflows')return'/workflows';
   if(v==='gantt')return'/timeline';
   if(v==='analytics')return'/analytics';
   if(v==='submissions')return'/submissions';
@@ -2596,6 +2598,8 @@ function urlToState(path,projs=[]){
   if(!path||path==='/'||path==='/dashboard')return{view:'dashboard',pid:null,client:null};
   if(path==='/tasks')return{view:'list',pid:null,client:null};
   if(path==='/kanban')return{view:'kanban',pid:null,client:null};
+  if(path==='/capacity')return{view:'capacity',pid:null,client:null};
+  if(path==='/workflows')return{view:'workflows',pid:null,client:null};
   if(path==='/timeline')return{view:'gantt',pid:null,client:null};
   if(path==='/analytics')return{view:'analytics',pid:null,client:null};
   if(path==='/submissions')return{view:'submissions',pid:null,client:null};
