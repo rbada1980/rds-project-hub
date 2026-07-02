@@ -7431,47 +7431,79 @@ export default function App(){
                     )}
                     {/* 7 — Working Hours (admin/manager only) */}
                     {(isAdmin||isManager)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
-                    {(isAdmin||isManager)&&(
-                      <SBtn2 label="Working Hours" count={null} icon={"\u23F1"} color={"#059669"} indent={false}
-                        onClick={async()=>{
-                          try{
-                            const from=new Date();from.setDate(from.getDate()-30);
-                            const fromStr=from.toISOString().slice(0,10);
-                            const res=await fetch(SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+fromStr+"&order=date.desc,user_name.asc&limit=2000",{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-                            const rows=await res.json();
-                            function fmtTime(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
-                            function fmtHrs(min){if(!min)return"0h 0m";return Math.floor(min/60)+"h "+(min%60)+"m";}
-                            const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
-                            let xml=xlsHead+'<Worksheet ss:Name="Working Hours"><Table ss:DefaultRowHeight="18">';
-                            xml+='<Column ss:Width="90"/><Column ss:Width="140"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="85"/>';
-                            xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours Report</Data></Cell></Row>';
-                            xml+='<Row ss:Height="8"></Row>';
-                            xml+='<Row ss:Height="20"><Cell ss:StyleID="hdr"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Employee</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock In</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock Out</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Work Hours</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Break (min)</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Status</Data></Cell></Row>';
-                            rows.forEach((r,i)=>{
-                              const even=i%2===0;
-                              const s=even?"even":"odd";const sc=even?"ctr_e":"ctr";
-                              const status=r.logout_at?"Completed":"Active";
-                              const sStyle=r.logout_at?"done":"active";
-                              xml+='<Row ss:Height="17">';
-                              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+r.date+'</Data></Cell>';
-                              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(r.user_name||"")+'</Data></Cell>';
-                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtTime(r.login_at)+'</Data></Cell>';
-                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtTime(r.logout_at)+'</Data></Cell>';
-                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtHrs(r.total_work_minutes)+'</Data></Cell>';
-                              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="Number">'+(r.total_break_minutes||0)+'</Data></Cell>';
-                              xml+='<Cell ss:StyleID="'+sStyle+'"><Data ss:Type="String">'+status+'</Data></Cell>';
-                              xml+='</Row>';
-                            });
-                            xml+='</Table></Worksheet></Workbook>';
-                            const blob=new Blob([xml],{type:"application/vnd.ms-excel"});
-                            const url=URL.createObjectURL(blob);
-                            const a=document.createElement("a");a.href=url;
-                            a.download="Working_Hours_"+today2+".xls";a.click();
-                            URL.revokeObjectURL(url);
-                          }catch(e){alert("Export failed: "+e.message);}
-                          closeExport();
-                        }}/>
-                    )}
+                    {(isAdmin||isManager)&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
+                    {(isAdmin||isManager)&&exportSec==="hours"&&(()=>{
+                      async function exportWH(fromStr,toStr,label){
+                        try{
+                          let url=SUPA_URL+"/rest/v1/attendance?select=*&order=date.desc,user_name.asc&limit=2000";
+                          if(fromStr)url+="&date=gte."+fromStr;
+                          if(toStr)url+="&date=lte."+toStr;
+                          const res=await fetch(url,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+                          const rows=await res.json();
+                          function fmtTime(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+                          function fmtHrs(min){if(!min&&min!==0)return"";return Math.floor(min/60)+"h "+(min%60)+"m";}
+                          const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
+                          let xml=xlsHead+'<Worksheet ss:Name="Working Hours"><Table ss:DefaultRowHeight="18">';
+                          xml+='<Column ss:Width="90"/><Column ss:Width="140"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="85"/>';
+                          xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours — '+label+'</Data></Cell></Row>';
+                          xml+='<Row ss:Height="8"></Row>';
+                          xml+='<Row ss:Height="20"><Cell ss:StyleID="hdr"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Employee</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock In</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock Out</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Work Hours</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Break (min)</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Status</Data></Cell></Row>';
+                          rows.forEach((r,i)=>{
+                            const even=i%2===0;const s=even?"even":"odd";const sc=even?"ctr_e":"ctr";
+                            const status=r.logout_at?"Completed":"Active";const sStyle=r.logout_at?"done":"active";
+                            xml+='<Row ss:Height="17">';
+                            xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+r.date+'</Data></Cell>';
+                            xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(r.user_name||"")+'</Data></Cell>';
+                            xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtTime(r.login_at)+'</Data></Cell>';
+                            xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtTime(r.logout_at)+'</Data></Cell>';
+                            xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+fmtHrs(r.total_work_minutes)+'</Data></Cell>';
+                            xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="Number">'+(r.total_break_minutes||0)+'</Data></Cell>';
+                            xml+='<Cell ss:StyleID="'+sStyle+'"><Data ss:Type="String">'+status+'</Data></Cell>';
+                            xml+='</Row>';
+                          });
+                          xml+='</Table></Worksheet></Workbook>';
+                          const blob=new Blob([xml],{type:"application/vnd.ms-excel"});
+                          const burl=URL.createObjectURL(blob);
+                          const a=document.createElement("a");a.href=burl;
+                          a.download="Working_Hours_"+label.replace(/\s+/g,"_")+"_"+today2+".xls";a.click();
+                          URL.revokeObjectURL(burl);
+                        }catch(e){alert("Export failed: "+e.message);}
+                        closeExport();
+                      }
+                      const now=new Date();
+                      const y=now.getFullYear(),m=now.getMonth(),d=now.getDate();
+                      const pad=n=>String(n).padStart(2,"0");
+                      const iso=(yr,mo,dy)=>yr+"-"+pad(mo+1)+"-"+pad(dy);
+                      // date helpers
+                      const todayStr=iso(y,m,d);
+                      const yday=new Date(y,m,d-1);const ydayStr=iso(yday.getFullYear(),yday.getMonth(),yday.getDate());
+                      const dow=now.getDay();const wkMon=new Date(y,m,d-(dow===0?6:dow-1));
+                      const thisWkFrom=iso(wkMon.getFullYear(),wkMon.getMonth(),wkMon.getDate());
+                      const lastWkMon=new Date(wkMon);lastWkMon.setDate(lastWkMon.getDate()-7);
+                      const lastWkSun=new Date(wkMon);lastWkSun.setDate(lastWkSun.getDate()-1);
+                      const lastWkFrom=iso(lastWkMon.getFullYear(),lastWkMon.getMonth(),lastWkMon.getDate());
+                      const lastWkTo=iso(lastWkSun.getFullYear(),lastWkSun.getMonth(),lastWkSun.getDate());
+                      const thisMoFrom=iso(y,m,1);
+                      const lastMoFrom=iso(m===0?y-1:y,m===0?11:m-1,1);
+                      const lastMoTo=iso(y,m,0);
+                      const threeMonFrom=iso(m<3?y-1:y,(m-3+12)%12,1);
+                      return(
+                        <div style={{background:C.surface+"33",paddingBottom:4}}>
+                          <SBtn2 label="Yesterday" icon="📅" color={C.t2}
+                            onClick={()=>exportWH(ydayStr,ydayStr,"Yesterday")}/>
+                          <SBtn2 label="This Week" icon="📅" color={C.blue}
+                            onClick={()=>exportWH(thisWkFrom,todayStr,"This_Week")}/>
+                          <SBtn2 label="Last Week" icon="📅" color={C.t2}
+                            onClick={()=>exportWH(lastWkFrom,lastWkTo,"Last_Week")}/>
+                          <SBtn2 label="This Month" icon="📅" color={C.teal}
+                            onClick={()=>exportWH(thisMoFrom,todayStr,"This_Month")}/>
+                          <SBtn2 label="Last Month" icon="📅" color={C.t2}
+                            onClick={()=>exportWH(lastMoFrom,lastMoTo,"Last_Month")}/>
+                          <SBtn2 label="Last 3 Months" icon="📅" color={"#7c3aed"}
+                            onClick={()=>exportWH(threeMonFrom,todayStr,"Last_3_Months")}/>
+                        </div>
+                      );
+                    })()}
 
                     {/* 8 — Submission List */}
                     <div style={{height:1,background:C.border,margin:"4px 0"}}/>
