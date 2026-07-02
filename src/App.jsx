@@ -2629,6 +2629,18 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
     crumbs.push({label:'🗂 Kanban',active:true});
   }else if(view==='analytics'){
     crumbs.push({label:'📊 Analytics',active:true});
+  }else if(view==='capacity'){
+    crumbs.push({label:'🗓 Capacity',active:true});
+  }else if(view==='workflows'){
+    crumbs.push({label:'⚙️ Workflows',active:true});
+  }else if(view==='submissions'){
+    crumbs.push({label:'📬 Submission List',active:true});
+  }else if(view==='gantt'){
+    crumbs.push({label:'📅 Timeline',active:true});
+  }else if(view==='announcements'){
+    crumbs.push({label:'📢 Announcements',active:true});
+  }else if(view==='warroom'){
+    crumbs.push({label:'💬 Messages',active:true});
   }else if(view==='clientprojects'&&activeClient){
     crumbs.push({label:'🏢 Clients',onClick:onDashboard,active:false});
     crumbs.push({label:activeClient,active:true});
@@ -6172,7 +6184,8 @@ export default function App(){
   const [workflows,swf]     = useState([]);
   const [clients,scl]       = useState([]);
   const [loading,sl]        = useState(false);
-  const [view,sv]           = useState("dashboard");
+  const [view,sv]           = useState(()=>{try{return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
+  useEffect(()=>{try{sessionStorage.setItem("rds_view",view);}catch(e){}},[view]);
   const [activePid,sap]     = useState(null);
   const [activeClient,sac]  = useState(null);
   const [taskModal,stm]     = useState(false);
