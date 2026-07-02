@@ -5744,6 +5744,124 @@ function WarRoomPage({me,projects,users}){
 // ══════════════════════════════════════════════════════════
 // TASK COMMENTS — with @mentions
 // ══════════════════════════════════════════════════════════
+function TaskTimeLogs({taskId,projectId,me,isClient}){
+  const [logs,setLogs]=useState([]);
+  const [showForm,setShowForm]=useState(false);
+  const [hrs,setHrs]=useState("");
+  const [mins,setMins]=useState("0");
+  const [logDate,setLogDate]=useState(new Date().toISOString().slice(0,10));
+  const [notes,setNotes]=useState("");
+  const [saving,setSaving]=useState(false);
+
+  useEffect(()=>{loadLogs();},[taskId]);
+
+  async function loadLogs(){
+    const res=await fetch(SUPA_URL+"/rest/v1/time_logs?task_id=eq."+taskId+"&order=logged_date.desc,created_at.desc&select=*",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const data=await res.json();
+    setLogs(Array.isArray(data)?data:[]);
+  }
+
+  async function saveLog(){
+    const dur=(parseInt(hrs)||0)*60+(parseInt(mins)||0);
+    if(dur<=0)return;
+    setSaving(true);
+    await fetch(SUPA_URL+"/rest/v1/time_logs",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({task_id:taskId,project_id:projectId,user_id:me.id,user_name:me.name,duration_minutes:dur,logged_date:logDate,notes:notes.trim()||null})});
+    setSaving(false);setShowForm(false);setHrs("");setMins("0");setNotes("");
+    loadLogs();
+  }
+
+  async function deleteLog(id){
+    await fetch(SUPA_URL+"/rest/v1/time_logs?id=eq."+id,{method:"DELETE",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    setLogs(prev=>prev.filter(l=>l.id!==id));
+  }
+
+  const totalMins=logs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+  function fmtDur(min){if(!min)return"0m";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
+  function fmtDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});}
+  const byUser={};
+  logs.forEach(l=>{if(!byUser[l.user_name])byUser[l.user_name]=0;byUser[l.user_name]+=(l.duration_minutes||0);});
+  const canSave=(parseInt(hrs)||0)*60+(parseInt(mins)||0)>0;
+
+  return(
+    <div style={{borderTop:"1px solid #ffffff18",marginTop:20,paddingTop:16}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:800,color:"#a0a0b0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          ⏱ Time Logged
+          <span style={{fontSize:11,background:"#05966922",color:"#059669",borderRadius:10,padding:"1px 8px",fontWeight:700}}>{fmtDur(totalMins)}</span>
+          {logs.length>0&&<span style={{fontSize:11,background:"#33415522",color:"#94a3b8",borderRadius:10,padding:"1px 7px"}}>{logs.length} {logs.length===1?"entry":"entries"}</span>}
+        </div>
+        {!isClient&&<button onClick={()=>setShowForm(v=>!v)} style={{background:showForm?"#059669":"none",border:"1px solid #059669",borderRadius:6,padding:"3px 12px",color:showForm?"#fff":"#059669",fontSize:12,cursor:"pointer",fontWeight:600,transition:"all .15s"}}>{showForm?"✕ Cancel":"+ Log Time"}</button>}
+      </div>
+
+      {Object.keys(byUser).length>0&&(
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+          {Object.entries(byUser).sort((a,b)=>b[1]-a[1]).map(([name,min])=>(
+            <span key={name} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#94a3b8",display:"flex",alignItems:"center",gap:5}}>
+              <span style={{width:16,height:16,borderRadius:"50%",background:"#05966933",border:"1px solid #05966966",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#059669",flexShrink:0}}>{(name[0]||"?").toUpperCase()}</span>
+              {name}&nbsp;·&nbsp;<strong style={{color:"#e2e8f0"}}>{fmtDur(min)}</strong>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {showForm&&(
+        <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:8,padding:"12px 14px",marginBottom:10}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8,alignItems:"flex-end"}}>
+            <div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Hours</div>
+              <input type="number" min="0" max="24" value={hrs} onChange={e=>setHrs(e.target.value)} placeholder="0"
+                style={{width:64,background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:13}}/>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Minutes</div>
+              <select value={mins} onChange={e=>setMins(e.target.value)}
+                style={{width:76,background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:13}}>
+                {[0,15,30,45].map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Date</div>
+              <input type="date" value={logDate} onChange={e=>setLogDate(e.target.value)}
+                style={{background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:13}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Notes (optional)</div>
+            <input type="text" value={notes} onChange={e=>setNotes(e.target.value)} placeholder="What did you work on?" maxLength={200}
+              style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:12,boxSizing:"border-box"}}/>
+          </div>
+          <button onClick={saveLog} disabled={saving||!canSave}
+            style={{background:"#059669",border:"none",borderRadius:6,padding:"6px 18px",color:"#fff",fontSize:12,fontWeight:700,cursor:canSave?"pointer":"not-allowed",opacity:saving||!canSave?0.5:1}}>
+            {saving?"Saving…":"Save Log"}
+          </button>
+        </div>
+      )}
+
+      {logs.length>0&&(
+        <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:220,overflowY:"auto"}}>
+          {logs.map(l=>(
+            <div key={l.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",background:"#1e293b",borderRadius:6,border:"1px solid #334155"}}>
+              <div style={{width:26,height:26,borderRadius:"50%",background:"#05966922",border:"1px solid #05966944",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#059669",flexShrink:0}}>
+                {(l.user_name?.[0]||"?").toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,fontWeight:700,color:"#d1d5db"}}>{l.user_name}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:"#059669",background:"#05966918",borderRadius:4,padding:"1px 6px"}}>{fmtDur(l.duration_minutes)}</span>
+                  <span style={{fontSize:10,color:"#6b7280"}}>{fmtDate(l.logged_date)}</span>
+                </div>
+                {l.notes&&<div style={{fontSize:11,color:"#94a3b8",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.notes}</div>}
+              </div>
+              {l.user_id===me.id&&<button onClick={()=>deleteLog(l.id)} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 4px",flexShrink:0}} title="Delete entry">✕</button>}
+            </div>
+          ))}
+        </div>
+      )}
+      {logs.length===0&&!showForm&&<div style={{fontSize:12,color:"#4b5563",textAlign:"center",padding:"12px 0"}}>No time logged yet — click "+ Log Time" to add</div>}
+    </div>
+  );
+}
+
 function TaskComments({taskId,projectId,me,users}){
   const [comments,setComments]=useState([]);
   const [input,setInput]=useState("");
@@ -6455,6 +6573,205 @@ function AttendancePage({users}){
     </div>
   );
 }
+// ─── TaskTimingPanel ─────────────────────────────────────────────────────────
+function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isClient,onEditTask}){
+  const [logs,setLogs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [fProj,setFProj]=useState("All");
+  const [fStatus,setFStatus]=useState("All");
+  const [sortBy,setSortBy]=useState("time");
+
+  const isEmployee=!isAdmin&&!isManager&&!isTeamLeader&&!isClient;
+  const projMap={};projects.forEach(p=>{projMap[p.id]=p;});
+
+  // Filter tasks by role
+  const myTasks=isEmployee
+    ? tasks.filter(t=>t.assignee===me.name||t.assignee===me.username||t.detailer===me.name||t.detailer===me.username||t.checker===me.name||t.checker===me.username)
+    : tasks.filter(t=>projects.some(p=>p.id===t.project_id));
+
+  useEffect(()=>{loadLogs();},[myTasks.length]);
+
+  async function loadLogs(){
+    setLoading(true);
+    try{
+      const projIds=[...new Set(myTasks.map(t=>t.project_id))].slice(0,60);
+      if(!projIds.length){setLogs([]);setLoading(false);return;}
+      let url=SUPA_URL+"/rest/v1/time_logs?select=*&order=logged_date.desc&limit=3000";
+      if(isEmployee)url+="&user_id=eq."+me.id;
+      else url+="&project_id=in.("+projIds.join(",")+")";
+      const res=await fetch(url,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+      const data=await res.json();
+      setLogs(Array.isArray(data)?data:[]);
+    }catch(e){setLogs([]);}
+    setLoading(false);
+  }
+
+  // Group logs by task_id
+  const byTask={};
+  logs.forEach(l=>{if(!byTask[l.task_id])byTask[l.task_id]={min:0,workers:{}};byTask[l.task_id].min+=(l.duration_minutes||0);byTask[l.task_id].workers[l.user_name]=(byTask[l.task_id].workers[l.user_name]||0)+(l.duration_minutes||0);});
+
+  // Build rows
+  let rows=myTasks.map(t=>({task:t,proj:projMap[t.project_id],totalMin:byTask[t.id]?.min||0,workers:Object.keys(byTask[t.id]?.workers||{})}));
+
+  // Apply filters
+  if(fProj!=="All")rows=rows.filter(r=>r.task.project_id===fProj);
+  if(fStatus!=="All")rows=rows.filter(r=>r.task.status===fStatus);
+  if(sortBy==="time")rows=[...rows].sort((a,b)=>b.totalMin-a.totalMin);
+  else if(sortBy==="status")rows=[...rows].sort((a,b)=>a.task.status.localeCompare(b.task.status));
+  else rows=[...rows].sort((a,b)=>a.task.title.localeCompare(b.task.title));
+
+  function fmtDur(min){if(!min)return"—";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
+  const SC={"Completed":"#059669","Done":"#059669","In Progress":"#3b82f6","Not Yet Started":"#6b7280","To Be Started":"#6b7280","On Hold":"#f59e0b","Hold":"#f59e0b"};
+  const totalAll=myTasks.reduce((s,t)=>s+(byTask[t.id]?.min||0),0);
+  const withTime=myTasks.filter(t=>(byTask[t.id]?.min||0)>0).length;
+  const uProjs=[...new Set(myTasks.map(t=>t.project_id))].map(id=>projMap[id]).filter(Boolean);
+  const uStats=[...new Set(myTasks.map(t=>t.status))].filter(Boolean).sort();
+
+  return(
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,marginBottom:24,marginTop:8}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            ⏱ Task Time Tracking
+            <span style={{fontSize:11,background:"#05966922",color:"#059669",borderRadius:10,padding:"2px 9px",fontWeight:700}}>{fmtDur(totalAll)} total</span>
+            {withTime>0&&<span style={{fontSize:11,background:"#33415522",color:"#94a3b8",borderRadius:10,padding:"2px 8px"}}>{withTime}/{myTasks.length} tasks logged</span>}
+          </div>
+          <div style={{fontSize:12,color:C.t3,marginTop:3}}>{isClient?"Your project tasks":"Tasks with time logged by your team"}</div>
+        </div>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+          {uProjs.length>1&&<select value={fProj} onChange={e=>setFProj(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 9px",color:C.t2,fontSize:12,fontFamily:"inherit"}}>
+            <option value="All">All Projects</option>{uProjs.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}
+          {uStats.length>1&&<select value={fStatus} onChange={e=>setFStatus(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 9px",color:C.t2,fontSize:12,fontFamily:"inherit"}}>
+            <option value="All">All Statuses</option>{uStats.map(s=><option key={s} value={s}>{s}</option>)}</select>}
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 9px",color:C.t2,fontSize:12,fontFamily:"inherit"}}>
+            <option value="time">⬇ Most Time</option><option value="status">Status</option><option value="title">Task Name</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ── Project roll-up cards (admin/manager/TL only) ── */}
+      {!isClient&&!loading&&uProjs.length>1&&(
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
+          {uProjs.map(p=>{
+            const pTasks=myTasks.filter(t=>t.project_id===p.id);
+            const pMin=pTasks.reduce((s,t)=>s+(byTask[t.id]?.min||0),0);
+            const pLogged=pTasks.filter(t=>(byTask[t.id]?.min||0)>0).length;
+            return(
+              <div key={p.id} onClick={()=>setFProj(fProj===p.id?"All":p.id)}
+                style={{background:fProj===p.id?p.color+"22":C.surface,border:`1px solid ${fProj===p.id?p.color:C.border}`,borderRadius:10,padding:"9px 14px",cursor:"pointer",transition:"all .15s",minWidth:140}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+                  <span style={{fontSize:11,fontWeight:700,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>{p.name}</span>
+                </div>
+                <div style={{fontSize:17,fontWeight:800,color:pMin>0?"#059669":C.t3}}>{fmtDur(pMin)}</div>
+                <div style={{fontSize:10,color:C.t3,marginTop:2}}>{pLogged}/{pTasks.length} tasks logged</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Excel export button ── */}
+      {!loading&&logs.length>0&&(isAdmin||isManager)&&(
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+          <button onClick={()=>{
+            const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="t"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="15" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="h"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="e"><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="o"><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="c"><Alignment ss:Horizontal="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ce"><Alignment ss:Horizontal="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="g"><Alignment ss:Horizontal="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style></Styles>';
+            let xml=xlsHead+'<Worksheet ss:Name="Task Time Logs"><Table>';
+            xml+='<Column ss:Width="160"/><Column ss:Width="140"/><Column ss:Width="100"/><Column ss:Width="110"/><Column ss:Width="80"/><Column ss:Width="200"/>';
+            xml+='<Row ss:Height="28"><Cell ss:MergeAcross="5" ss:StyleID="t"><Data ss:Type="String">Task Time Logs Export</Data></Cell></Row>';
+            xml+='<Row ss:Height="8"></Row>';
+            xml+='<Row ss:Height="20"><Cell ss:StyleID="h"><Data ss:Type="String">Task</Data></Cell><Cell ss:StyleID="h"><Data ss:Type="String">Project</Data></Cell><Cell ss:StyleID="h"><Data ss:Type="String">Employee</Data></Cell><Cell ss:StyleID="h"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="h"><Data ss:Type="String">Time</Data></Cell><Cell ss:StyleID="h"><Data ss:Type="String">Notes</Data></Cell></Row>';
+            const sortedLogs=[...logs].sort((a,b)=>a.logged_date<b.logged_date?1:-1);
+            sortedLogs.forEach((l,i)=>{
+              const t=tasks.find(x=>x.id===l.task_id);const p=projMap[l.project_id];
+              const even=i%2===0;const s=even?"e":"o";const sc=even?"ce":"c";
+              const hStr=fmtDur(l.duration_minutes);
+              xml+='<Row ss:Height="17">';
+              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(t?t.title:"")+'</Data></Cell>';
+              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(p?p.name:"")+'</Data></Cell>';
+              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(l.user_name||"")+'</Data></Cell>';
+              xml+='<Cell ss:StyleID="'+sc+'"><Data ss:Type="String">'+(l.logged_date||"")+'</Data></Cell>';
+              xml+='<Cell ss:StyleID="g"><Data ss:Type="String">'+hStr+'</Data></Cell>';
+              xml+='<Cell ss:StyleID="'+s+'"><Data ss:Type="String">'+(l.notes||"")+'</Data></Cell>';
+              xml+='</Row>';
+            });
+            xml+='</Table></Worksheet></Workbook>';
+            const blob=new Blob([xml],{type:"application/vnd.ms-excel"});
+            const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;
+            a.download="Task_Time_Logs_"+new Date().toISOString().slice(0,10)+".xls";a.click();URL.revokeObjectURL(url);
+          }} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 14px",color:C.t2,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}
+            onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+            📥 Export Excel
+          </button>
+        </div>
+      )}
+
+      {loading?(
+        <div style={{textAlign:"center",padding:28,color:C.t3,fontSize:13}}>Loading time logs…</div>
+      ):rows.length===0?(
+        <div style={{textAlign:"center",padding:28,color:C.t3,fontSize:13}}>No tasks found{fProj!=="All"||fStatus!=="All"?" — try clearing filters":""}</div>
+      ):(
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead>
+              <tr style={{borderBottom:`1px solid ${C.border}`}}>
+                {["Task","Project",isClient?"Worked By":"Who Worked","Time Logged","Status"].map(h=>(
+                  <th key={h} style={{textAlign:h==="Time Logged"||h==="Status"?"center":"left",padding:"7px 10px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0,60).map((r,i)=>{
+                const sc=SC[r.task.status]||C.t3;
+                return(
+                  <tr key={r.task.id} style={{borderBottom:`1px solid ${C.border}22`,cursor:!isClient?"pointer":"default",transition:"background .1s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                    onClick={!isClient&&onEditTask?()=>onEditTask(r.task):undefined}>
+                    <td style={{padding:"8px 10px",maxWidth:200}}>
+                      <div style={{fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:12}} title={r.task.title}>{r.task.title}</div>
+                      {r.task.due_date&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>Due {r.task.due_date}</div>}
+                    </td>
+                    <td style={{padding:"8px 10px",maxWidth:140}}>
+                      {r.proj&&<span style={{display:"flex",alignItems:"center",gap:5}}>
+                        <span style={{width:7,height:7,borderRadius:"50%",background:r.proj.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+                        <span style={{color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120,fontSize:12}}>{r.proj.name}</span>
+                      </span>}
+                    </td>
+                    <td style={{padding:"8px 10px"}}>
+                      {isClient?(
+                        r.workers.length>0
+                          ?<span style={{fontSize:11,background:"#33415544",color:"#94a3b8",borderRadius:6,padding:"2px 8px"}}>Our Team ({r.workers.length})</span>
+                          :<span style={{color:C.t3,fontSize:11}}>—</span>
+                      ):(
+                        <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                          {r.workers.length>0?r.workers.slice(0,3).map(w=>(
+                            <span key={w} style={{fontSize:10,background:"#05966918",color:"#059669",borderRadius:10,padding:"1px 7px",fontWeight:600,whiteSpace:"nowrap"}}>{w.split(" ")[0]}</span>
+                          )):<span style={{color:C.t3,fontSize:11}}>—</span>}
+                          {r.workers.length>3&&<span style={{fontSize:10,color:C.t3}}>+{r.workers.length-3}</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{padding:"8px 10px",textAlign:"center"}}>
+                      {r.totalMin>0
+                        ?<span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 9px",fontSize:12}}>{fmtDur(r.totalMin)}</span>
+                        :<span style={{color:C.t3,fontSize:11}}>—</span>}
+                    </td>
+                    <td style={{padding:"8px 10px",textAlign:"center"}}>
+                      <span style={{background:sc+"18",color:sc,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{r.task.status}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {rows.length>60&&<div style={{textAlign:"center",padding:"10px",color:C.t3,fontSize:12}}>Showing 60 of {rows.length} tasks · use filters to narrow down</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -7973,6 +8290,12 @@ export default function App(){
             </>)}
           </>
         )}
+        {view==="dashboard"&&<TaskTimingPanel
+          tasks={tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id))}
+          projects={accessibleProjects}
+          me={me} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}
+          onEditTask={t=>{set(t);stm(true);}}
+        />}
         {view==="dashboard"&&isAdmin&&(<AttendancePage users={users}/>)}
         {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
           <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
@@ -8191,6 +8514,7 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
+          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient}/>}
           {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
         </Modal>
       )}
