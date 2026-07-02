@@ -8257,107 +8257,130 @@ export default function App(){
                   </div>
                 </div>
               );
-              // ── CASE 3: Fullscreen split — project list (left) + tasks (right) ──
+              // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
               const splitProjects=qnClientProjects;
               const activeProj=qnProject||splitProjects[0]||null;
               const activeTasks=activeProj?tasks.filter(t=>t.project_id===activeProj.id):[];
-              // mobile: if qnProject explicitly set = show tasks, else show projects
               const mobShowTasks=isMobile&&!!qnProject;
+              const closePopup=()=>{setQnClient(null);setQnProject(null);};
+              const acPc=activeProj?.color||C.blue;
               return(
-                <div style={{position:"fixed",inset:0,zIndex:1500,background:C.bg,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-                  {/* ── Top bar ── */}
-                  <div style={{background:C.surface,borderBottom:`2px solid ${C.border}`,padding:isMobile?"10px 12px":"14px 24px",display:"flex",alignItems:"center",gap:10,flexShrink:0,minHeight:56}}>
-                    <button onClick={()=>{setQnClient(null);setQnProject(null);}} style={qB(false)}>← Back</button>
-                    {/* Breadcrumb */}
-                    <div style={{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,overflow:"hidden"}}>
-                      <span style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",flexShrink:0,cursor:"pointer"}} onClick={()=>{setQnClient(null);setQnProject(null);}}>Quick Nav</span>
-                      {qnClient&&<><span style={{color:C.t3,fontSize:15}}>›</span><span style={{fontSize:14,color:C.t1,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?120:300}}>{qnClient}</span></>}
-                      {!isAdminOrMgr&&<><span style={{color:C.t3,fontSize:15}}>›</span><span style={{fontSize:14,color:C.t2,fontWeight:700}}>My Projects</span></>}
-                      {activeProj&&<><span style={{color:C.t3,fontSize:15}}>›</span><span style={{fontSize:14,color:C.accent,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?100:320}}>{activeProj.name}</span></>}
+                /* ── Backdrop ── */
+                <div onClick={e=>{if(e.target===e.currentTarget)closePopup();}}
+                  style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
+                  {/* ── Modal box ── */}
+                  <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
+                    {/* ── Modal header ── */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
+                      {/* Breadcrumbs */}
+                      <div style={{flex:1,display:"flex",alignItems:"center",gap:isMobile?6:10,minWidth:0,flexWrap:"nowrap",overflow:"hidden"}}>
+                        <span style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Quick Nav</span>
+                        {qnClient&&<><span style={{color:C.border,fontSize:18,lineHeight:1,flexShrink:0}}>›</span>
+                          <span style={{fontSize:isMobile?12:14,color:C.t2,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?90:180,cursor:isAdminOrMgr?"pointer":"default"}} onClick={()=>isAdminOrMgr&&setQnProject(null)}>{qnClient}</span></>}
+                        {!isAdminOrMgr&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span><span style={{fontSize:13,color:C.t2,fontWeight:700,flexShrink:0}}>My Projects</span></>}
+                        {activeProj&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span>
+                          <span style={{fontSize:isMobile?12:14,color:acPc,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?100:280,flexShrink:1}}>{activeProj.name}</span>
+                          <span style={{fontSize:10,background:acPc+"22",color:acPc,border:`1px solid ${acPc}44`,borderRadius:20,padding:"2px 10px",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{activeTasks.length} tasks</span></>}
+                      </div>
+                      {/* Client Prev / Next */}
+                      {isAdminOrMgr&&!isMobile&&<div style={{display:"flex",gap:6,flexShrink:0}}>
+                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);}}} disabled={!canPrevCl}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canPrevCl?C.t1:C.t3,fontSize:12,cursor:canPrevCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canPrevCl?1:.4}}>← Prev</button>
+                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);}}} disabled={!canNextCl}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canNextCl?C.t1:C.t3,fontSize:12,cursor:canNextCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canNextCl?1:.4}}>Next →</button>
+                      </div>}
+                      {/* Close ✕ */}
+                      <button onClick={closePopup}
+                        style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",lineHeight:1}}
+                        onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
+                        onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
                     </div>
-                    {/* Client Prev/Next */}
-                    {isAdminOrMgr&&<div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);}}} disabled={!canPrevCl} style={{...qB(false),opacity:canPrevCl?1:.35,cursor:canPrevCl?"pointer":"not-allowed"}}>← Prev</button>
-                      <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);}}} disabled={!canNextCl} style={{...qB(false),opacity:canNextCl?1:.35,cursor:canNextCl?"pointer":"not-allowed"}}>Next →</button>
-                    </div>}
-                  </div>
-                  {/* ── Body ── */}
-                  <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-                    {/* LEFT: Project list */}
-                    {(!isMobile||!mobShowTasks)&&(
-                      <div style={{width:isMobile?"100%":300,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",background:C.surface,overflow:"hidden"}}>
-                        <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.border}`,fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".07em",flexShrink:0}}>
-                          Projects ({splitProjects.length})
-                        </div>
-                        <div style={{flex:1,overflowY:"auto",padding:"8px"}}>
-                          {splitProjects.map(p=>{
-                            const pt=tasks.filter(t=>t.project_id===p.id);
-                            const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                            const pc=p.color||C.blue;
-                            const isAct=activeProj?.id===p.id;
-                            return(
-                              <div key={p.id} onClick={()=>setQnProject(p)}
-                                style={{padding:"11px 12px",borderRadius:9,marginBottom:3,cursor:"pointer",background:isAct?pc+"22":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`4px solid ${pc}`,transition:"all .12s"}}>
-                                <div style={{fontSize:13,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:4,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                  <div style={{flex:1,height:3,background:C.bg,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                                  <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
-                                  <span style={{fontSize:10,color:C.t3,flexShrink:0}}>{pt.length}t</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                          {splitProjects.length===0&&<div style={{color:C.t3,fontSize:13,padding:"20px",textAlign:"center"}}>No projects</div>}
-                        </div>
-                      </div>
-                    )}
-                    {/* RIGHT: Task list */}
-                    {(!isMobile||mobShowTasks)&&(
-                      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-                        {/* Task panel header */}
-                        <div style={{padding:"12px 20px",borderBottom:`1px solid ${C.border}`,background:C.surface,flexShrink:0,display:"flex",alignItems:"center",gap:12}}>
-                          {isMobile&&<button onClick={()=>setQnProject(null)} style={{...qB(false),fontSize:12,padding:"5px 10px"}}>← Projects</button>}
-                          {activeProj?(
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontSize:isMobile?13:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProj.name}</div>
-                              <div style={{fontSize:11,color:C.t3,marginTop:2}}>{activeTasks.length} task{activeTasks.length!==1?"s":""}</div>
-                            </div>
-                          ):<div style={{color:C.t3,fontSize:13}}>← Select a project</div>}
-                        </div>
-                        {/* Tasks */}
-                        <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px":"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
-                          {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0"}}>Select a project from the list</div>}
-                          {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0"}}>No tasks in this project</div>}
-                          {activeTasks.map((t,i)=>{
-                            const sc=getStatusColor(t.status);
-                            const od=t.due_date&&t.due_date<today&&!isDone(t.status);
-                            return(
-                              <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"10px 12px":"13px 18px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"44":C.border}`,borderLeft:`4px solid ${sc}`,transition:"box-shadow .15s"}}
-                                onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 2px 12px ${sc}25`}
-                                onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
-                                <div style={{width:26,height:26,borderRadius:"50%",background:sc+"22",border:`1px solid ${sc}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontSize:isMobile?13:14,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                                    <span style={{fontSize:10,background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{t.status}</span>
-                                    {t.assignee&&<span style={{fontSize:11,color:C.t2}}>👤 {t.assignee}</span>}
-                                    {t.due_date&&<span style={{fontSize:11,color:od?C.red:C.t3}}>{od?"🔴":"📅"} {t.due_date}</span>}
-                                    {od&&<span style={{fontSize:10,background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 6px",fontWeight:800}}>OVERDUE</span>}
-                                    {t.priority&&<span style={{fontSize:10,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 6px"}}>{t.priority}</span>}
+                    {/* ── Modal body: split ── */}
+                    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+                      {/* LEFT: Project list */}
+                      {(!isMobile||!mobShowTasks)&&(
+                        <div style={{width:isMobile?"100%":280,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"88"}}>
+                          <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>
+                            Projects ({splitProjects.length})
+                          </div>
+                          <div style={{flex:1,overflowY:"auto",padding:"8px 6px"}}>
+                            {splitProjects.map(p=>{
+                              const pt=tasks.filter(t=>t.project_id===p.id);
+                              const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
+                              const pc=p.color||C.blue;
+                              const isAct=activeProj?.id===p.id;
+                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                              return(
+                                <div key={p.id} onClick={()=>setQnProject(p)}
+                                  style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s",position:"relative"}}>
+                                  <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,lineHeight:1.35,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
+                                    <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
+                                    <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
+                                    <span style={{fontSize:9,color:C.t3,flexShrink:0,background:C.surface,borderRadius:3,padding:"1px 4px"}}>{pt.length}t</span>
                                   </div>
+                                  {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
                                 </div>
-                                {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}}
-                                  style={{background:C.accent+"18",border:`1.5px solid ${C.accent}`,color:C.accent,fontSize:13,cursor:"pointer",borderRadius:8,padding:isMobile?"7px 10px":"8px 16px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap"}}
-                                  onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";}}
-                                  onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;}}>
-                                  ✏️{!isMobile&&" Edit"}
-                                </button>}
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                            {splitProjects.length===0&&<div style={{color:C.t3,fontSize:13,padding:"30px",textAlign:"center"}}>No projects</div>}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      {/* RIGHT: Task list */}
+                      {(!isMobile||mobShowTasks)&&(
+                        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"44"}}>
+                          {/* Task panel header */}
+                          <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:0,display:"flex",alignItems:"center",gap:10,background:C.card+"88"}}>
+                            {isMobile&&<button onClick={()=>setQnProject(null)} style={{...qB(false),fontSize:11,padding:"4px 9px"}}>← Back</button>}
+                            {activeProj?(
+                              <>
+                                <div style={{width:10,height:10,borderRadius:"50%",background:acPc,flexShrink:0}}/>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProj.name}</div>
+                                </div>
+                                <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{activeTasks.length} task{activeTasks.length!==1?"s":""}</span>
+                              </>
+                            ):<span style={{fontSize:13,color:C.t3}}>← Select a project</span>}
+                          </div>
+                          {/* Tasks scrollable */}
+                          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px":"14px 18px",display:"flex",flexDirection:"column",gap:7}}>
+                            {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
+                            {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks in this project</div>}
+                            {activeTasks.map((t,i)=>{
+                              const sc=getStatusColor(t.status);
+                              const od=t.due_date&&t.due_date<today&&!isDone(t.status);
+                              return(
+                                <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
+                                  onMouseEnter={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.boxShadow=`0 2px 10px ${sc}20`;}}
+                                  onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.boxShadow="";}}>
+                                  {/* Number */}
+                                  <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
+                                  {/* Content */}
+                                  <div style={{flex:1,minWidth:0}}>
+                                    <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
+                                    <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{t.status}</span>
+                                      {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
+                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
+                                      {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
+                                      {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
+                                    </div>
+                                  </div>
+                                  {/* Edit button */}
+                                  {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);closePopup();}}
+                                    style={{background:C.accent+"18",border:`1px solid ${C.accent}55`,color:C.accent,fontSize:12,cursor:"pointer",borderRadius:7,padding:isMobile?"6px 9px":"6px 14px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}
+                                    onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.accent;}}
+                                    onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;e.currentTarget.style.borderColor=C.accent+"55";}}>
+                                    <span>✏️</span>{!isMobile&&<span>Edit</span>}
+                                  </button>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -8864,318 +8887,4 @@ export default function App(){
                               {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                               {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
                               {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {t.due_date}</span>}
-                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {t.due_date}</span>}
-                            </div>
-                            {canEditTask&&<div style={{display:"flex",alignItems:"center",gap:6}}>
-                              <span style={{fontSize:10,color:C.t3,flexShrink:0}}>Move to:</span>
-                              <select value={t.status} onChange={e=>dropTask(t.id,e.target.value)}
-                                style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:getStatusColor(t.status),fontSize:11,fontWeight:700,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                                {kanbanCols.map(col=><option key={col} value={col}>{col}</option>)}
-                              </select>
-                            </div>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            ):(
-            <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-                selTasks={selTasks}
-                onToggleTask={canEdit?toggleTask:null}
-                taskFileCounts={taskFileCounts}
-                onFiles={t=>setFileTask(t)}
-              />))}
-            </div>
-            )}
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div>
-          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
-              }/>
-          </div>}
-          {isMobile?(
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
-                    </div>
-                    {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
-                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
-                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
-                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
-                  </div>
-                </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
-            </table>
-          </div>
-          )}
-          </div>
-        )}
-      </main>
-      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>}
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} taskFileCounts={taskFileCounts} onNav={(type,data)=>{
-        if(type==="project")navTo("list",data.id);
-        else if(type==="task")navTo("list",data.project_id);
-        else if(type==="user"){sfa(data.name);sv("list");sap(null);}
-        else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
-        else if(type==="file"){setFileTask(data);}
-      }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient}/>}
-          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const drill=dashDrill;
-      const lastDrill=drill[drill.length-1];
-      function closeDSM(){setDSM(null);setDDrill([]);}
-      function goBack(){setDDrill(d=>d.slice(0,-1));}
-      function drillInto(type,item){setDDrill(d=>[...d,{type,item}]);}
-
-      // ── Determine current view ──
-      let title="",color=C.accent,items=[],canDrill=false,drillType="",isTaskList=false;
-
-      if(!lastDrill){
-        // Root level
-        if(DSM==="users"){
-          title="👥 All Employees";color=C.accent;canDrill=true;drillType="employee";
-          items=users.filter(u=>u.role!=="Client").map(u=>{
-            const ut=tasks.filter(t=>t.assignee===u.name||t.detailer===u.name||t.checker===u.name);
-            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
-          });
-        } else if(DSM==="clients"){
-          title="🏢 All Clients";color=C.teal;canDrill=true;drillType="client";
-          items=clients.map(cl=>{
-            const cProjs=accessibleProjects.filter(p=>(p.client||"")===(cl.name||""));
-            return{label:cl.name,sub:`${cl.email||cl.phone||""} · ${cProjs.length} projects`,dot:C.teal,raw:cl};
-          });
-        } else if(DSM==="projects"){
-          title="📁 All Projects";color=C.blue;canDrill=true;drillType="project";
-          items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-        } else if(DSM==="completed"){
-          title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
-        } else if(DSM==="inprogress"){
-          title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:C.accent,raw:t};});
-        } else if(DSM==="team"){
-          title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
-          const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-          items=teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue,raw:{name}}));
-        }
-      } else if(lastDrill.type==="client"){
-        // Client → Projects
-        const cl=lastDrill.item;
-        title=`📁 ${cl.name} — Projects`;color=C.blue;canDrill=true;drillType="project";
-        items=accessibleProjects.filter(p=>(p.client||"")===(cl.name||"")).map(p=>({label:p.name,sub:`${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-      } else if(lastDrill.type==="project"){
-        // Project → Tasks
-        const proj=lastDrill.item;
-        title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
-      } else if(lastDrill.type==="employee"){
-        // Employee → Projects they work in
-        const emp=lastDrill.item;
-        const empName=emp.name||emp.username;
-        const empProjIds=new Set(tasks.filter(t=>t.assignee===empName||t.detailer===empName||t.checker===empName).map(t=>t.project_id));
-        title=`📁 ${empName} — Projects`;color=C.blue;canDrill=true;drillType="emp-project";
-        items=accessibleProjects.filter(p=>empProjIds.has(p.id)).map(p=>{
-          const empProjTasks=tasks.filter(t=>t.project_id===p.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName));
-          return{label:p.name,sub:`${p.client||"No client"} · ${empProjTasks.filter(t=>isDone(t.status)).length} done · ${empProjTasks.filter(t=>t.status==="In Progress").length} in progress`,dot:p.color||C.blue,raw:{proj:p,empName}};
-        });
-      } else if(lastDrill.type==="emp-project"){
-        // Employee+Project → Tasks
-        const {proj,empName}=lastDrill.item;
-        title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
-      }
-
-      return(
-        <div onClick={closeDSM} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:540,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${color}33,0 24px 60px #00000080`}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 20px",borderBottom:`1px solid ${C.border}`}}>
-              {drill.length>0&&<button onClick={goBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:13,cursor:"pointer",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontWeight:600}}>← Back</button>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:1}}>{items.length} item{items.length!==1?"s":""}{canDrill?" · click to drill down":""}</div>
-              </div>
-              <button onClick={closeDSM} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            {/* Breadcrumb */}
-            {drill.length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 20px",borderBottom:`1px solid ${C.border}22`,flexWrap:"wrap"}}>
-                <span onClick={()=>setDDrill([])} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:600}}>Home</span>
-                {drill.map((d,i)=>(
-                  <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontSize:11,color:C.t3}}>›</span>
-                    <span onClick={()=>setDDrill(drill.slice(0,i+1))} style={{fontSize:11,color:i===drill.length-1?C.t1:C.accent,cursor:i<drill.length-1?"pointer":"default",fontWeight:600}}>{d.item.name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* List */}
-            <div style={{overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {items.length===0
-                ?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>
-                :items.map((item,i)=>(
-                <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
-                  onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+                          
