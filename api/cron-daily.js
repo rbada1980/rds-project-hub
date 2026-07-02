@@ -162,8 +162,6 @@ export default async function handler(req, res) {
     }
 
     // ── Idempotency guard: refuse to run more than once per IST day ──────────
-    // This blocks the "Send Now" button AND prevents double-fires if Vercel
-    // somehow queues the cron twice. last_digest_date is written at the end.
     if (settingsMap["last_digest_date"] === today) {
       console.log(`Daily digest already ran for ${today} — skipping duplicate.`);
       return res.status(200).json({ message: `Already sent for ${today}. Next run tomorrow at 1 AM IST.` });
@@ -176,6 +174,29 @@ export default async function handler(req, res) {
     if (!allowedDays.includes(todayDow)) {
       console.log(`Daily digest skipped — ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days [${allowedDays}].`);
       return res.status(200).json({ message: `Skipped: today (${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]}) not in scheduled days.` });
+    }
+
+    // ── Stamp IMMEDIATELY — before any emails go out ──────────────────────────
+    // Moved here so that even if the function times out or Vercel retries,
+    // the next call is always blocked. This is the strict "once per day" lock.
+    try {
+      const patchRes = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date`, {
+        method: "PATCH",
+        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+        body: JSON.stringify({ value: today })
+      });
+      const patched = await patchRes.json();
+      if (!Array.isArray(patched) || patched.length === 0) {
+        await fetch(`${SUPA_URL}/rest/v1/settings`, {
+          method: "POST",
+          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+          body: JSON.stringify({ key: "last_digest_date", value: today })
+        });
+      }
+      console.log(`Stamped last_digest_date = ${today}`);
+    } catch (stampErr) {
+      console.error("CRITICAL: Could not stamp last_digest_date — aborting to prevent duplicate sends:", stampErr.message);
+      return res.status(500).json({ error: "Could not acquire send lock. Aborting." });
     }
 
     const [allTasks, projects, users] = await Promise.all([
@@ -218,26 +239,6 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
     }
 
-    // ── Stamp today so any repeat call is blocked for the rest of this IST day ──
-    try {
-      const patchRes = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date`, {
-        method: "PATCH",
-        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
-        body: JSON.stringify({ value: today })
-      });
-      const patched = await patchRes.json();
-      if (!Array.isArray(patched) || patched.length === 0) {
-        await fetch(`${SUPA_URL}/rest/v1/settings`, {
-          method: "POST",
-          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
-          body: JSON.stringify({ key: "last_digest_date", value: today })
-        });
-      }
-    } catch (stampErr) {
-      console.warn("Could not stamp last_digest_date:", stampErr.message);
-    }
-
-    console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
     console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
     return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
 
