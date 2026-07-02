@@ -3253,6 +3253,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const getRangeDates=()=>{
     const d=new Date(today);
     if(period==="today") return{from:today,to:today,label:"Today",icon:"📅",color:C.red};
+    if(period==="tomorrow"){const tm=addDays(today,1);return{from:tm,to:tm,label:"Tomorrow",icon:"🌅",color:C.green};}
     if(period==="this_week"){const ms=mondayOf(today);const se=sundayOf(today);return{from:ms,to:se,label:`This Week  ${ms} → ${se}`,icon:"📆",color:"#f59e0b"};}
     if(period==="next_week"){const nm=addDays(mondayOf(today),7);const ns=addDays(nm,6);return{from:nm,to:ns,label:`Next Week  ${nm} → ${ns}`,icon:"🗓",color:"#8b5cf6"};}
     if(period==="next_month"){const nm=new Date(d.getFullYear(),d.getMonth()+1,1);const ne=new Date(d.getFullYear(),d.getMonth()+2,0);const nms=nm.toISOString().slice(0,10);const nes=ne.toISOString().slice(0,10);return{from:nms,to:nes,label:`Next Month  ${nms} → ${nes}`,icon:"📅",color:"#06b6d4"};}
@@ -3326,6 +3327,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   const QUICK=[
     {id:"today",label:"Today",icon:"📅",color:C.red},
+    {id:"tomorrow",label:"Tomorrow",icon:"🌅",color:C.green},
     {id:"this_week",label:"This Week",icon:"📆",color:"#f59e0b"},
     {id:"next_week",label:"Next Week",icon:"🗓",color:"#8b5cf6"},
     {id:"next_month",label:"Next Month",icon:"📅",color:"#06b6d4"},
@@ -3344,6 +3346,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:22}}>
         {[
           {label:"Today",value:todayCount,color:todayCount>0?C.red:"#22c55e",icon:"📅",id:"today"},
+          {label:"Tomorrow",value:allTasks.filter(t=>inRange(t,addDays(today,1),addDays(today,1))).length,color:C.green,icon:"🌅",id:"tomorrow"},
           {label:"This Week",value:allTasks.filter(t=>inRange(t,mondayOf(today),sundayOf(today))).length,color:"#f59e0b",icon:"📆",id:"this_week"},
           {label:"Next Week",value:nextWeekCount,color:"#8b5cf6",icon:"🗓",id:"next_week"},
           {label:"Next Month",value:nextMonthCount,color:"#06b6d4",icon:"📅",id:"next_month"},
