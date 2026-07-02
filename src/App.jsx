@@ -8195,9 +8195,13 @@ export default function App(){
                   <option value="All">All Projects</option>
                   {accessibleProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
+                <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashClient!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Clients</option>
+                  {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
                 <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Assignees</option>
-                  {users.map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
+                  {users.filter(u=>u.role!=="Client").map(u=><option key={u.username} value={u.name}>{u.name}</option>)}
                 </select>
                 <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Statuses</option>
