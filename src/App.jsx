@@ -6842,7 +6842,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:(isAdmin||isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"],["workflows","⚙️","Workflows"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"],["workflows","⚙️","Workflows"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -7532,7 +7532,7 @@ export default function App(){
         {view==="capacity"&&(isAdmin||isManager||isTeamLeader)&&(
           <CapacityView tasks={tasks} users={users} projects={projects} canEdit={canEdit} onReassign={reassignTask}/>
         )}
-        {view==="workflows"&&(isAdmin||isManager)&&(
+        {view==="workflows"&&isAdmin&&(
           <WorkflowsPage workflows={workflows} onAdd={addWorkflow} onUpdate={updateWorkflow} onDelete={deleteWorkflow} onToggle={toggleWorkflow} users={users} saving={saving}/>
         )}
         {view==="gantt"&&!isClient&&(
