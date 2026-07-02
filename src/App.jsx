@@ -6772,6 +6772,265 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
   );
 }
 
+// ─── TimingsPage ─────────────────────────────────────────────────────────────
+function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isClient}){
+  const defTab=isClient?"projects":(isAdmin||isManager)?"employees":"myatt";
+  const [tab,setTab]=useState(defTab);
+  const [timeLogs,setTimeLogs]=useState([]);
+  const [attendance,setAttendance]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [month,setMonth]=useState(new Date().toISOString().slice(0,7));
+
+  const projMap={};projects.forEach(p=>{projMap[p.id]=p;});
+  const taskMap={};tasks.forEach(t=>{taskMap[t.id]=t;});
+
+  useEffect(()=>{loadData();},[month]);
+
+  async function loadData(){
+    setLoading(true);
+    const from=month+"-01";
+    const toD=new Date(month);toD.setMonth(toD.getMonth()+1);toD.setDate(0);
+    const to=toD.toISOString().slice(0,10);
+    const projIds=[...new Set(projects.map(p=>p.id))].slice(0,60);
+    // time_logs
+    let tlUrl=SUPA_URL+"/rest/v1/time_logs?select=*&logged_date=gte."+from+"&logged_date=lte."+to+"&order=logged_date.desc&limit=3000";
+    if(isClient||isTeamLeader){if(projIds.length)tlUrl+="&project_id=in.("+projIds.join(",")+")";}
+    else if(!isAdmin&&!isManager)tlUrl+="&user_id=eq."+me.id;
+    const tlRes=await fetch(tlUrl,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const tlData=await tlRes.json();
+    setTimeLogs(Array.isArray(tlData)?tlData:[]);
+    // attendance (not client)
+    if(!isClient){
+      let attUrl=SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+from+"&date=lte."+to+"&order=date.desc&limit=3000";
+      if(!isAdmin&&!isManager)attUrl+="&user_id=eq."+me.id;
+      const attRes=await fetch(attUrl,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+      const attData=await attRes.json();
+      setAttendance(Array.isArray(attData)?attData:[]);
+    }
+    setLoading(false);
+  }
+
+  function fmtDur(min){if(!min)return"—";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
+  function fmtTime(ts){if(!ts)return"—";return new Date(ts).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+
+  const SC={"Completed":"#059669","Done":"#059669","In Progress":"#3b82f6","Not Yet Started":"#6b7280","To Be Started":"#6b7280","On Hold":"#f59e0b","Hold":"#f59e0b"};
+
+  // Group by employee (attendance)
+  const byEmp={};
+  attendance.forEach(r=>{
+    if(!byEmp[r.user_name])byEmp[r.user_name]={days:0,workMin:0,breakMin:0};
+    byEmp[r.user_name].days++;byEmp[r.user_name].workMin+=(r.total_work_minutes||0);byEmp[r.user_name].breakMin+=(r.total_break_minutes||0);
+  });
+
+  // Group by project (time_logs)
+  const byProj={};
+  timeLogs.forEach(l=>{
+    if(!byProj[l.project_id])byProj[l.project_id]={min:0,tasks:new Set(),workers:new Set()};
+    byProj[l.project_id].min+=(l.duration_minutes||0);byProj[l.project_id].tasks.add(l.task_id);byProj[l.project_id].workers.add(l.user_name);
+  });
+
+  // Group by task (time_logs)
+  const byTask={};
+  timeLogs.forEach(l=>{
+    if(!byTask[l.task_id])byTask[l.task_id]={min:0,workers:{},projId:l.project_id};
+    byTask[l.task_id].min+=(l.duration_minutes||0);byTask[l.task_id].workers[l.user_name]=(byTask[l.task_id].workers[l.user_name]||0)+(l.duration_minutes||0);
+  });
+
+  const tabs=isClient
+    ?[["projects","📁","Projects"],["tasks","📋","Tasks"]]
+    :(isAdmin||isManager)
+      ?[["employees","👥","Employees"],["projects","📁","Projects"],["tasks","📋","Tasks"]]
+      :isTeamLeader
+        ?[["myatt","🕐","My Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"]]
+        :[["myatt","🕐","My Attendance"],["tasks","📋","My Tasks"]];
+
+  const TH=({children,center})=><th style={{textAlign:center?"center":"left",padding:"8px 12px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".05em",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{children}</th>;
+
+  return(
+    <div style={{maxWidth:1100,margin:"0 auto",paddingBottom:40}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>⏱ Timings</h2>
+          <p style={{margin:"4px 0 0",fontSize:13,color:C.t3}}>{isClient?"Your project & task time overview":(isAdmin||isManager)?"Full team attendance & task time logs":"Your time logs & project breakdown"}</p>
+        </div>
+        <input type="month" value={month} onChange={e=>setMonth(e.target.value)}
+          style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 13px",color:C.t1,fontSize:13,fontFamily:"inherit"}}/>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:2,marginBottom:20,borderBottom:`1px solid ${C.border}`}}>
+        {tabs.map(([id,icon,label])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            style={{background:"none",border:"none",borderBottom:`2px solid ${tab===id?C.accent:"transparent"}`,padding:"9px 18px",color:tab===id?C.accent:C.t3,fontSize:13,fontWeight:tab===id?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,marginBottom:-1,transition:"color .15s"}}>
+            {icon} {label}
+          </button>
+        ))}
+      </div>
+
+      {loading?(
+        <div style={{textAlign:"center",padding:60,color:C.t3,fontSize:14}}>Loading…</div>
+      ):(
+
+        /* ── EMPLOYEES TAB ── */
+        tab==="employees"?(
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                <thead><tr style={{background:C.surface}}><TH>Employee</TH><TH>Days Present</TH><TH>Total Work Hours</TH><TH>Total Break</TH><TH>Avg Hours/Day</TH></tr></thead>
+                <tbody>
+                  {Object.entries(byEmp).sort((a,b)=>b[1].workMin-a[1].workMin).map(([name,d],i)=>(
+                    <tr key={name} style={{background:i%2===0?"transparent":C.surface+"44",borderBottom:`1px solid ${C.border}22`}}>
+                      <td style={{padding:"9px 12px"}}><div style={{display:"flex",alignItems:"center",gap:9}}><span style={{width:30,height:30,borderRadius:"50%",background:C.accent+"22",border:`1px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:C.accent,flexShrink:0}}>{(name[0]||"?").toUpperCase()}</span><span style={{fontWeight:600,color:C.t1}}>{name}</span></div></td>
+                      <td style={{padding:"9px 12px"}}><span style={{fontWeight:600,color:C.blue}}>{d.days} days</span></td>
+                      <td style={{padding:"9px 12px"}}><span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"3px 10px"}}>{fmtDur(d.workMin)}</span></td>
+                      <td style={{padding:"9px 12px"}}><span style={{color:C.t3,fontSize:12}}>{fmtDur(d.breakMin)}</span></td>
+                      <td style={{padding:"9px 12px"}}><span style={{color:C.t2}}>{d.days>0?fmtDur(Math.round(d.workMin/d.days)):"—"}</span></td>
+                    </tr>
+                  ))}
+                  {!Object.keys(byEmp).length&&<tr><td colSpan={5} style={{textAlign:"center",padding:36,color:C.t3}}>No attendance records this month</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        /* ── MY ATTENDANCE TAB ── */
+        ):tab==="myatt"?(
+          <div>
+            <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+              {[
+                {label:"Days Present",val:attendance.length,color:C.blue},
+                {label:"Total Work Hours",val:fmtDur(attendance.reduce((s,r)=>s+(r.total_work_minutes||0),0)),color:"#059669"},
+                {label:"Total Break",val:fmtDur(attendance.reduce((s,r)=>s+(r.total_break_minutes||0),0)),color:C.t2},
+                {label:"Avg Hours/Day",val:attendance.length>0?fmtDur(Math.round(attendance.reduce((s,r)=>s+(r.total_work_minutes||0),0)/attendance.length)):"—",color:C.accent},
+              ].map(s=>(
+                <div key={s.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 18px",flex:"1 1 140px",minWidth:130}}>
+                  <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",marginBottom:5}}>{s.label}</div>
+                  <div style={{fontSize:22,fontWeight:800,color:s.color}}>{s.val}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead><tr style={{background:C.surface}}><TH>Date</TH><TH>Clock In</TH><TH>Clock Out</TH><TH>Work Hours</TH><TH>Break</TH><TH>Status</TH></tr></thead>
+                  <tbody>
+                    {attendance.map((r,i)=>{
+                      const sc=r.logout_at?"#059669":"#d97706";
+                      return(
+                        <tr key={r.id} style={{background:i%2===0?"transparent":C.surface+"44",borderBottom:`1px solid ${C.border}22`}}>
+                          <td style={{padding:"8px 12px",fontWeight:600,color:C.t1}}>{r.date}</td>
+                          <td style={{padding:"8px 12px",color:C.t2}}>{fmtTime(r.login_at)}</td>
+                          <td style={{padding:"8px 12px",color:C.t2}}>{fmtTime(r.logout_at)}</td>
+                          <td style={{padding:"8px 12px"}}><span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 9px"}}>{fmtDur(r.total_work_minutes)}</span></td>
+                          <td style={{padding:"8px 12px",color:C.t3,fontSize:12}}>{fmtDur(r.total_break_minutes)}</td>
+                          <td style={{padding:"8px 12px"}}><span style={{background:sc+"18",color:sc,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600}}>{r.logout_at?"Done":"Active"}</span></td>
+                        </tr>
+                      );
+                    })}
+                    {!attendance.length&&<tr><td colSpan={6} style={{textAlign:"center",padding:36,color:C.t3}}>No attendance records this month</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        /* ── PROJECTS TAB ── */
+        ):tab==="projects"?(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {projects.filter(p=>byProj[p.id]).sort((a,b)=>(byProj[b.id]?.min||0)-(byProj[a.id]?.min||0)).map(p=>{
+              const pd=byProj[p.id];
+              const pTasks=[...pd.tasks].map(id=>taskMap[id]).filter(Boolean).sort((a,b)=>(byTask[b.id]?.min||0)-(byTask[a.id]?.min||0));
+              return(
+                <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+                  <div style={{background:C.surface,padding:"12px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.border}`,flexWrap:"wrap"}}>
+                    <span style={{width:10,height:10,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/>
+                    <span style={{fontWeight:700,color:C.t1,fontSize:14,flex:1}}>{p.name}</span>
+                    <span style={{fontWeight:800,color:"#059669",fontSize:15,background:"#05966918",borderRadius:8,padding:"3px 12px"}}>{fmtDur(pd.min)}</span>
+                    <span style={{fontSize:11,color:C.t3}}>{pd.tasks.size} tasks · {isClient?"Our Team":pd.workers.size+" people"}</span>
+                  </div>
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                      <thead><tr style={{background:C.surface+"88"}}>
+                        <th style={{textAlign:"left",padding:"6px 14px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase"}}>Task</th>
+                        <th style={{textAlign:"left",padding:"6px 10px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase"}}>{isClient?"Worked By":"Who Worked"}</th>
+                        <th style={{textAlign:"center",padding:"6px 10px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase"}}>Hours</th>
+                        <th style={{textAlign:"center",padding:"6px 10px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase"}}>Status</th>
+                      </tr></thead>
+                      <tbody>
+                        {pTasks.map((t,i)=>{
+                          const td=byTask[t.id]||{min:0,workers:{}};const sc=SC[t.status]||C.t3;
+                          return(
+                            <tr key={t.id} style={{borderBottom:`1px solid ${C.border}22`,background:i%2===0?"transparent":C.surface+"44"}}>
+                              <td style={{padding:"7px 14px",fontWeight:600,color:C.t1,maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</td>
+                              <td style={{padding:"7px 10px"}}>
+                                {isClient
+                                  ?<span style={{fontSize:11,background:"#33415544",color:"#94a3b8",borderRadius:6,padding:"2px 8px"}}>Our Team ({Object.keys(td.workers).length})</span>
+                                  :<div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                                    {Object.entries(td.workers).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([w,wm])=>(
+                                      <span key={w} style={{fontSize:10,background:"#05966918",color:"#059669",borderRadius:10,padding:"1px 7px",fontWeight:600}} title={fmtDur(wm)}>{w.split(" ")[0]}</span>
+                                    ))}
+                                    {Object.keys(td.workers).length>3&&<span style={{fontSize:10,color:C.t3}}>+{Object.keys(td.workers).length-3}</span>}
+                                  </div>
+                                }
+                              </td>
+                              <td style={{padding:"7px 10px",textAlign:"center"}}>{td.min>0?<span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 8px"}}>{fmtDur(td.min)}</span>:<span style={{color:C.t3}}>—</span>}</td>
+                              <td style={{padding:"7px 10px",textAlign:"center"}}><span style={{background:sc+"18",color:sc,borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{t.status}</span></td>
+                            </tr>
+                          );
+                        })}
+                        {!pTasks.length&&<tr><td colSpan={4} style={{textAlign:"center",padding:16,color:C.t3,fontSize:12}}>No tasks with time logged</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+            {!projects.filter(p=>byProj[p.id]).length&&<div style={{textAlign:"center",padding:48,color:C.t3,fontSize:13}}>No project time logs this month</div>}
+          </div>
+
+        /* ── TASKS TAB ── */
+        ):tab==="tasks"?(
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                <thead><tr style={{background:C.surface}}>
+                  <TH>Task</TH><TH>Project</TH><TH>{isClient?"Worked By":"Who Worked"}</TH><TH center>Hours</TH><TH center>Status</TH>
+                </tr></thead>
+                <tbody>
+                  {Object.entries(byTask).sort((a,b)=>b[1].min-a[1].min).map(([tid,td],i)=>{
+                    const t=taskMap[tid];const p=projMap[td.projId];if(!t)return null;const sc=SC[t.status]||C.t3;
+                    return(
+                      <tr key={tid} style={{background:i%2===0?"transparent":C.surface+"44",borderBottom:`1px solid ${C.border}22`}}>
+                        <td style={{padding:"8px 12px",fontWeight:600,color:C.t1,maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</td>
+                        <td style={{padding:"8px 12px"}}>{p&&<span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:7,height:7,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/><span style={{color:C.t2,fontSize:12}}>{p.name}</span></span>}</td>
+                        <td style={{padding:"8px 12px"}}>
+                          {isClient
+                            ?<span style={{fontSize:11,background:"#33415544",color:"#94a3b8",borderRadius:6,padding:"2px 8px"}}>Our Team ({Object.keys(td.workers).length})</span>
+                            :<div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                              {Object.entries(td.workers).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([w,wm])=>(
+                                <span key={w} style={{fontSize:11,background:"#05966918",color:"#059669",borderRadius:10,padding:"1px 8px",fontWeight:600}} title={fmtDur(wm)}>{w.split(" ")[0]}</span>
+                              ))}
+                              {Object.keys(td.workers).length>3&&<span style={{fontSize:11,color:C.t3}}>+{Object.keys(td.workers).length-3}</span>}
+                            </div>
+                          }
+                        </td>
+                        <td style={{padding:"8px 12px",textAlign:"center"}}><span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"3px 10px"}}>{fmtDur(td.min)}</span></td>
+                        <td style={{padding:"8px 12px",textAlign:"center"}}><span style={{background:sc+"18",color:sc,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{t.status}</span></td>
+                      </tr>
+                    );
+                  })}
+                  {!Object.keys(byTask).length&&<tr><td colSpan={5} style={{textAlign:"center",padding:36,color:C.t3}}>No task time logs this month</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ):null
+      )}
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -7526,7 +7785,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"],["workflows","⚙️","Workflows"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"],["workflows","⚙️","Workflows"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["capacity","🗓","Capacity"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["gantt","📅","Timeline"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -8297,6 +8556,9 @@ export default function App(){
           onEditTask={t=>{set(t);stm(true);}}
         />}
         {view==="dashboard"&&isAdmin&&(<AttendancePage users={users}/>)}
+        {view==="timings"&&(
+          <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}/>
+        )}
         {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
           <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
         )}
