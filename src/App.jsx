@@ -5745,6 +5745,7 @@ function WarRoomPage({me,projects,users}){
 // TASK COMMENTS — with @mentions
 // ══════════════════════════════════════════════════════════
 function TaskTimeLogs({taskId,projectId,me,isClient}){
+  if(me?.role==="Admin"||me?.username===SUPER_ADMIN)return null;
   const [logs,setLogs]=useState([]);
   const [showForm,setShowForm]=useState(false);
   const [hrs,setHrs]=useState("");
