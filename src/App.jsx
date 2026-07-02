@@ -7074,6 +7074,7 @@ export default function App(){
   const [dashUser,sdsu]     = useState("All");
   const [dashProject,sdsp]  = useState("All");
   const [dashClient,sdsc]   = useState("All");
+  const [dashTask,sdst]     = useState("All");
   const [dashStatus,sdsst]  = useState("All");
   // ── Attendance ──
   const attRecRef=useRef(null);
@@ -7614,11 +7615,12 @@ export default function App(){
     return true;
   });
   const dashTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
-  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashStatus!=="All";
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All";
   const filteredDashTasks=dashTasks.filter(t=>{
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
     if(dashUser!=="All"&&t.assignee!==dashUser)return false;
     if(dashProject!=="All"&&t.project_id!==dashProject)return false;
+    if(dashTask!=="All"&&t.id!==dashTask)return false;
     if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
     if(dashClient!=="All"){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
     return true;
@@ -8191,23 +8193,32 @@ export default function App(){
                 style={{width:"100%",background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",display:"block",marginBottom:isMobile?8:0}}/>
               {/* Selects row */}
               <div style={{display:"flex",gap:isMobile?6:10,alignItems:"center",flexWrap:"wrap",marginTop:isMobile?0:8}}>
-                <select value={dashProject} onChange={e=>sdsp(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Projects</option>
-                  {accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <select value={dashClient} onChange={e=>sdsc(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashClient!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                {/* 1. All Clients */}
+                <select value={dashClient} onChange={e=>{sdsc(e.target.value);sdsp("All");sdst("All");sdsu("All");}} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashClient!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Clients</option>
                   {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
+                {/* 2. All Projects */}
+                <select value={dashProject} onChange={e=>{sdsp(e.target.value);sdst("All");}} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Projects</option>
+                  {accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                {/* 3. All Tasks */}
+                <select value={dashTask} onChange={e=>sdst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashTask!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashTask!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Tasks</option>
+                  {(()=>{const cPIds=new Set(accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=>p.id));return dashTasks.filter(t=>cPIds.has(t.project_id)&&(dashProject==="All"||t.project_id===dashProject)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=><option key={t.id} value={t.id}>{t.title}</option>);})()}
+                </select>
+                {/* 4. All Employees */}
                 <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Assignees</option>
+                  <option value="All">All Employees</option>
                   {(()=>{if(dashClient==="All")return users.filter(u=>u.role!=="Client").map(u=><option key={u.username} value={u.name}>{u.name}</option>);const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));const cAssignees=[...new Set(dashTasks.filter(t=>cPIds.has(t.project_id)).map(t=>t.assignee).filter(Boolean))].sort();return cAssignees.map(n=><option key={n} value={n}>{n}</option>);})()}
                 </select>
+                {/* 5. All Statuses */}
                 <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Statuses</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdsst("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
               </div>
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
@@ -8221,7 +8232,11 @@ export default function App(){
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
-            {(()=>{const _rp=dashProject!=="All"&&dashClient!=="All"&&!accessibleProjects.find(p=>p.id===dashProject&&(p.client||"Unassigned")===dashClient);if(_rp)sdsp("All");const _ru=dashUser!=="All"&&dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>cPIds.has(t.project_id)&&t.assignee===dashUser);})();if(_ru)sdsu("All");})()}
+            {(()=>{
+              const _rp=dashProject!=="All"&&dashClient!=="All"&&!accessibleProjects.find(p=>p.id===dashProject&&(p.client||"Unassigned")===dashClient);if(_rp)sdsp("All");
+              const _rt=dashTask!=="All"&&(dashProject!=="All"?!dashTasks.some(t=>t.id===dashTask&&t.project_id===dashProject):dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>t.id===dashTask&&cPIds.has(t.project_id));})());if(_rt)sdst("All");
+              const _ru=dashUser!=="All"&&dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>cPIds.has(t.project_id)&&t.assignee===dashUser);})();if(_ru)sdsu("All");
+            })()}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
               {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
@@ -8874,26 +8889,4 @@ export default function App(){
     <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
       {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
         <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",borde
