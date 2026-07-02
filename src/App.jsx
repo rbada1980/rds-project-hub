@@ -6203,8 +6203,11 @@ function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut}){
   );
 }
 // ─── AttendanceStats ──────────────────────────────────────────────────────────
-function AttendanceStats({stats,attRec,attBreak}){
+function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   const [tick,setTick]=useState(0);
+  const [modal,setModal]=useState(null);
+  const [modalRows,setModalRows]=useState([]);
+  const [modalLoading,setModalLoading]=useState(false);
   useEffect(()=>{
     if(!attRec||attRec.logout_at)return;
     const id=setInterval(()=>setTick(t=>t+1),30000);
@@ -6212,31 +6215,170 @@ function AttendanceStats({stats,attRec,attBreak}){
   },[attRec]);
   if(!stats)return null;
   function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h>0?h+"h "+String(mn).padStart(2,"0")+"m":mn+"m";}
+  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
   const now=Date.now();
   const loginMs=attRec&&!attRec.logout_at?new Date(attRec.login_at).getTime():null;
   const liveBrk=attRec&&attBreak&&!attRec.logout_at?Math.floor((now-new Date(attBreak.break_start).getTime())/60000):0;
   const rawMin=loginMs?Math.floor((now-loginMs)/60000):0;
   const todayLive=loginMs?Math.max(0,rawMin-(attRec.total_break_minutes||0)-liveBrk):(stats.todayMin||0);
+  const todayD=new Date();
+  const todayStr=todayD.toISOString().slice(0,10);
+  const ystStr=new Date(todayD.getTime()-86400000).toISOString().slice(0,10);
+  const dow=todayD.getDay();
+  const mon=new Date(todayD);mon.setDate(todayD.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+  const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
+  const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
+  const monStr=mon.toISOString().slice(0,10);
+  const lMonStr=lMon.toISOString().slice(0,10);
+  const lSunStr=lSun.toISOString().slice(0,10);
+  const mthStr=todayStr.slice(0,8)+"01";
+  const lMthStart=new Date(todayD.getFullYear(),todayD.getMonth()-1,1).toISOString().slice(0,10);
+  const lMthEnd=new Date(todayD.getFullYear(),todayD.getMonth(),0).toISOString().slice(0,10);
   const items=[
-    {label:"Today",min:todayLive,color:"#22c55e",icon:"📅"},
-    {label:"Yesterday",min:stats.yesterdayMin||0,color:"#3b82f6",icon:"📆"},
-    {label:"This Week",min:stats.thisWeekMin||0,color:"#a855f7",icon:"🗓"},
-    {label:"Last Week",min:stats.lastWeekMin||0,color:"#06b6d4",icon:"🗓"},
-    {label:"This Month",min:stats.thisMonthMin||0,color:"#f59e0b",icon:"📅"},
-    {label:"Last Month",min:stats.lastMonthMin||0,color:"#94a3b8",icon:"📆"},
+    {label:"Today",min:todayLive,color:"#22c55e",icon:"📅",from:todayStr,to:todayStr},
+    {label:"Yesterday",min:stats.yesterdayMin||0,color:"#3b82f6",icon:"📆",from:ystStr,to:ystStr},
+    {label:"This Week",min:stats.thisWeekMin||0,color:"#a855f7",icon:"🗓",from:monStr,to:todayStr},
+    {label:"Last Week",min:stats.lastWeekMin||0,color:"#06b6d4",icon:"🗓",from:lMonStr,to:lSunStr},
+    {label:"This Month",min:stats.thisMonthMin||0,color:"#f59e0b",icon:"📅",from:mthStr,to:todayStr},
+    {label:"Last Month",min:stats.lastMonthMin||0,color:"#94a3b8",icon:"📆",from:lMthStart,to:lMthEnd},
   ];
+  async function openModal(item){
+    setModal(item);setModalRows([]);setModalLoading(true);
+    let url=SUPA_URL+"/rest/v1/attendance?date=gte."+item.from+"&date=lte."+item.to+"&order=date.asc,user_name.asc&select=*&limit=500";
+    if(!isAdmin&&!isManager)url+="&user_id=eq."+me.id;
+    const res=await fetch(url,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const data=await res.json();
+    setModalRows(Array.isArray(data)?data:[]);
+    setModalLoading(false);
+  }
+  function exportXls(){
+    if(!modalRows.length)return;
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const S=`
+<Style ss:ID="h"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#1e2433" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2a3040"/></Borders></Style>
+<Style ss:ID="d"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
+<Style ss:ID="g"><Font ss:Name="Arial" ss:Size="10" ss:Color="#22c55e"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
+<Style ss:ID="b"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#3b82f6"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
+<Style ss:ID="y"><Font ss:Name="Arial" ss:Size="10" ss:Color="#f59e0b"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>`;
+    const hasEmp=(isAdmin||isManager);
+    const hdrs=["Date",...(hasEmp?["Employee"]:[]),"Clock In","Clock Out","Work Hours","Break (min)","Status"];
+    const hrow="<Row>"+hdrs.map(h=>"<Cell ss:StyleID=\"h\"><Data ss:Type=\"String\">"+esc(h)+"</Data></Cell>").join("")+"</Row>";
+    const drows=modalRows.map(r=>{
+      const cells=[
+        "<Cell ss:StyleID=\"d\"><Data ss:Type=\"String\">"+esc(r.date)+"</Data></Cell>",
+        ...(hasEmp?["<Cell ss:StyleID=\"d\"><Data ss:Type=\"String\">"+esc(r.user_name)+"</Data></Cell>"]:[] ),
+        "<Cell ss:StyleID=\"g\"><Data ss:Type=\"String\">"+esc(fmtTime(r.login_at))+"</Data></Cell>",
+        "<Cell ss:StyleID=\""+(r.logout_at?"d":"y")+"\"><Data ss:Type=\"String\">"+esc(fmtTime(r.logout_at))+"</Data></Cell>",
+        "<Cell ss:StyleID=\"b\"><Data ss:Type=\"String\">"+esc(fmtMin(r.total_work_minutes))+"</Data></Cell>",
+        "<Cell ss:StyleID=\"d\"><Data ss:Type=\"Number\">"+(r.total_break_minutes||0)+"</Data></Cell>",
+        "<Cell ss:StyleID=\""+(r.logout_at?"g":"y")+"\"><Data ss:Type=\"String\">"+(r.logout_at?"Done":"Active")+"</Data></Cell>",
+      ];
+      return "<Row>"+cells.join("")+"</Row>";
+    }).join("");
+    const xml="<?xml version=\"1.0\"?><?mso-application progid=\"Excel.Sheet\"?><Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"><Styles>"+S+"</Styles><Worksheet ss:Name=\"Attendance\"><Table>"+hrow+drows+"</Table></Worksheet></Workbook>";
+    const blob=new Blob([xml],{type:"application/vnd.ms-excel"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="attendance_"+(modal.label||"report").replace(/\s+/g,"_").toLowerCase()+".xls";a.click();
+  }
+  function getSummary(){
+    const byUser={};
+    modalRows.forEach(r=>{
+      if(!byUser[r.user_name])byUser[r.user_name]={name:r.user_name,totalWork:0,totalBreak:0,days:0};
+      byUser[r.user_name].totalWork+=(r.total_work_minutes||0);
+      byUser[r.user_name].totalBreak+=(r.total_break_minutes||0);
+      byUser[r.user_name].days++;
+    });
+    return Object.values(byUser).sort((a,b)=>a.name.localeCompare(b.name));
+  }
   return(
-    <div style={{marginBottom:24}}>
-      <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⏱ Your Work Hours</h2>
-      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:12}}>
-        {items.map(it=>(
-          <div key={it.label} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"14px 16px"}}>
-            <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>{it.icon} {it.label}</div>
-            <div style={{fontSize:20,fontWeight:800,color:it.color,fontFamily:"monospace"}}>{fmtMin(it.min)}</div>
-          </div>
-        ))}
+    <>
+      <div style={{marginBottom:24}}>
+        <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⏱ Your Work Hours</h2>
+        <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:12}}>
+          {items.map(it=>(
+            <div key={it.label} onClick={()=>openModal(it)}
+              style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"transform .15s,box-shadow .15s,border-color .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px #00000060";e.currentTarget.style.borderColor=it.color+"66";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor=C.border;}}>
+              <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>{it.icon} {it.label}</div>
+              <div style={{fontSize:20,fontWeight:800,color:it.color,fontFamily:"monospace"}}>{fmtMin(it.min)}</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:4}}>click to view →</div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+      {modal&&(
+        <div onClick={()=>setModal(null)} style={{position:"fixed",inset:0,background:"#00000088",zIndex:950,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:"1px solid "+C.border,borderRadius:16,width:"100%",maxWidth:860,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 60px #00000090"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",borderBottom:"1px solid "+C.border,flexShrink:0}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>⏱ {modal.label} — Attendance</div>
+                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{modal.from===modal.to?modal.from:modal.from+" to "+modal.to}</div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {(isAdmin||isManager)&&modalRows.length>0&&(
+                  <button onClick={exportXls} style={{...GBtn,padding:"6px 14px",fontSize:12,color:"#22c55e",borderColor:"#22c55e66"}}>⬇ Export Excel</button>
+                )}
+                <button onClick={()=>setModal(null)} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",padding:4,lineHeight:1}}>✕</button>
+              </div>
+            </div>
+            <div style={{overflowY:"auto",padding:"16px 20px",flex:1}}>
+              {modalLoading?(
+                <div style={{textAlign:"center",padding:48,color:C.t3,fontSize:14}}>Loading…</div>
+              ):modalRows.length===0?(
+                <div style={{textAlign:"center",padding:48,color:C.t3,fontSize:14}}>No records found for this period</div>
+              ):(
+                <>
+                  {(isAdmin||isManager)&&(()=>{
+                    const summ=getSummary();
+                    if(!summ.length)return null;
+                    return(
+                      <div style={{marginBottom:20}}>
+                        <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:".05em"}}>Summary by Employee</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
+                          {summ.map(s=>(
+                            <div key={s.name} style={{background:C.surface,borderRadius:10,padding:"10px 14px",border:"1px solid "+C.border}}>
+                              <div style={{fontWeight:700,color:C.t1,fontSize:13,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
+                              <div style={{fontSize:12,color:"#22c55e",marginBottom:2}}>Work: {fmtMin(s.totalWork)}</div>
+                              <div style={{fontSize:12,color:C.t3}}>Break: {s.totalBreak}m</div>
+                              <div style={{fontSize:11,color:C.t3}}>{s.days} day{s.days!==1?"s":""}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                      <thead>
+                        <tr style={{background:C.surface}}>
+                          {["Date",...((isAdmin||isManager)?["Employee"]:[]),"Clock In","Clock Out","Work Hours","Break","Status"].map(h=>(
+                            <th key={h} style={{padding:"9px 12px",textAlign:"left",color:C.t2,fontWeight:600,borderBottom:"1px solid "+C.border,whiteSpace:"nowrap"}}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {modalRows.map(r=>(
+                          <tr key={r.id} style={{borderBottom:"1px solid "+C.border+"44"}}>
+                            <td style={{padding:"8px 12px",color:C.t1,fontWeight:600}}>{r.date}</td>
+                            {(isAdmin||isManager)&&<td style={{padding:"8px 12px",color:C.t1}}>{r.user_name}</td>}
+                            <td style={{padding:"8px 12px",color:"#22c55e",fontFamily:"monospace"}}>{fmtTime(r.login_at)}</td>
+                            <td style={{padding:"8px 12px",color:r.logout_at?C.t2:"#f59e0b",fontFamily:"monospace"}}>{fmtTime(r.logout_at)}</td>
+                            <td style={{padding:"8px 12px",color:"#3b82f6",fontWeight:700,fontFamily:"monospace"}}>{fmtMin(r.total_work_minutes)}</td>
+                            <td style={{padding:"8px 12px",color:C.t3}}>{r.total_break_minutes||0}m</td>
+                            <td style={{padding:"8px 12px"}}><span style={{fontSize:11,fontWeight:700,color:r.logout_at?"#22c55e":"#f59e0b",background:r.logout_at?"#22c55e18":"#f59e0b18",border:"1px solid "+(r.logout_at?"#22c55e44":"#f59e0b44"),borderRadius:6,padding:"2px 8px"}}>{r.logout_at?"Done":"Active"}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p style={{margin:"8px 0 0",fontSize:12,color:C.t3}}>{modalRows.length} record{modalRows.length!==1?"s":""}</p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 // ─── AttendancePage ───────────────────────────────────────────────────────────
@@ -7326,7 +7468,7 @@ export default function App(){
             </span>
           </div>
         )}
-        {view==="dashboard"&&!isClient&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak}/>}
+        {view==="dashboard"&&!isClient&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
             me={me} tasks={tasks} projects={accessibleProjects} today={today}
