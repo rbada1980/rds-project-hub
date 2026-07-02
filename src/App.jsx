@@ -6514,8 +6514,9 @@ function AttendancePage({users}){
     let url=SUPA_URL+"/rest/v1/attendance?date=gte."+dateFrom+"&date=lte."+dateTo+"&order=date.desc,user_name.asc&select=*&limit=500";
     if(fUser!=="All"){const u=users.find(u=>u.name===fUser);if(u)url+="&user_id=eq."+u.id;}
     const res=await fetch(url,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const adminIds=new Set(users.filter(u=>u.role==="Admin").map(u=>u.id));
     const data=await res.json();
-    setRows(Array.isArray(data)?data:[]);
+    setRows(Array.isArray(data)?data.filter(r=>!adminIds.has(r.user_id)):[]);
     setLdng(false);
   }
   function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h+"h "+String(mn).padStart(2,"0")+"m";}
@@ -6527,7 +6528,7 @@ function AttendancePage({users}){
     const blob=new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="attendance_report.csv";a.click();
   }
-  const nonClients=users.filter(u=>u.role!=="Client");
+  const nonClients=users.filter(u=>u.role!=="Client"&&u.role!=="Admin");
   return(
     <div style={{marginTop:32,marginBottom:32}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
@@ -6804,8 +6805,9 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
       let attUrl=SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+from+"&date=lte."+to+"&order=date.desc&limit=3000";
       if(!isAdmin&&!isManager)attUrl+="&user_id=eq."+me.id;
       const attRes=await fetch(attUrl,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+      const adminIds=new Set(users.filter(u=>u.role==="Admin").map(u=>u.id));
       const attData=await attRes.json();
-      setAttendance(Array.isArray(attData)?attData:[]);
+      setAttendance(Array.isArray(attData)?attData.filter(r=>!adminIds.has(r.user_id)):[]);
     }
     setLoading(false);
   }
@@ -8008,9 +8010,9 @@ export default function App(){
                         onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
                     )}
                     {/* 7 — Working Hours (all non-client roles) */}
-                    {!isClient&&!isAdmin&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
-                    {!isClient&&!isAdmin&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
-                    {!isClient&&!isAdmin&&exportSec==="hours"&&(()=>{
+                    {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
+                    {!isClient&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
+                    {!isClient&&exportSec==="hours"&&(()=>{
                       const isOwnOnly=!isAdmin&&!isManager;
                       async function exportWH(fromStr,toStr,label){
                         try{
@@ -8019,7 +8021,8 @@ export default function App(){
                           if(fromStr)url+="&date=gte."+fromStr;
                           if(toStr)url+="&date=lte."+toStr;
                           const res=await fetch(url,{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-                          const rows=await res.json();
+                          const adminIds=new Set(users.filter(u=>u.role==="Admin").map(u=>u.id));
+                          const rows=(await res.json()).filter(r=>!adminIds.has(r.user_id));
                           function fmtTime(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
                           function fmtHrs(min){if(!min&&min!==0)return"";return Math.floor(min/60)+"h "+(min%60)+"m";}
                           const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
@@ -8904,29 +8907,4 @@ export default function App(){
         </div>
       </div>
     </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    </MobileCtx.Provider>
-  );
-}
+    <nav className="rds-bottom-n
