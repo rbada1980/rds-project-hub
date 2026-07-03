@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
-import * as XLSX from "xlsx";
+import XLSXStyle from "xlsx-js-style";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
 // email notifications removed — daily scheduled digest replaces per-update emails
@@ -1794,6 +1794,48 @@ function exportExcel(projects,tasks,label="Report"){
   const safe=label.replace(/[/\\:*?"<>|]/g," ").trim();
   const pct=(d,t)=>t?Math.round((d/t)*100)+"%":"0%";
 
+  // ── Palette ────────────────────────────────────────────────────────────────
+  const P={
+    orange:"F97316",green:"22C55E",blue:"3B82F6",red:"EF4444",
+    purple:"A855F7",teal:"14B8A6",dark:"1E2433",darker:"0F1117",
+    white:"FFFFFF",lgray:"F1F5F9",dgray:"64748B",
+    lgreen:"DCFCE7",lblue:"DBEAFE",lred:"FEE2E2",
+    lpurple:"EDE9FE",lyellow:"FEF9C3",lorange:"FFEDD5",lteal:"CCFBF1",
+    row1:"EFF6FF",row2:"FFFFFF",
+  };
+  const BD={style:"thin",color:{rgb:"CBD5E1"}};
+  const BDB={style:"thin",color:{rgb:"94A3B8"}};
+  const bdr={top:BD,bottom:BD,left:BD,right:BD};
+  const bdrB={top:BDB,bottom:BDB,left:BDB,right:BDB};
+
+  // ── Style builders ─────────────────────────────────────────────────────────
+  const sTitle=(bg,sz=14)=>({fill:{fgColor:{rgb:bg}},font:{bold:true,color:{rgb:P.white},sz,name:"Arial"},alignment:{horizontal:"left",vertical:"center",wrapText:false}});
+  const sHdr=(bg,sz=10,tc=P.white)=>({fill:{fgColor:{rgb:bg}},font:{bold:true,color:{rgb:tc},sz,name:"Arial"},alignment:{horizontal:"center",vertical:"center",wrapText:false},border:bdrB});
+  const sHdrL=(bg,tc=P.white)=>({fill:{fgColor:{rgb:bg}},font:{bold:true,color:{rgb:tc},sz:10,name:"Arial"},alignment:{horizontal:"left",vertical:"center"},border:bdrB});
+  const sKpi=(bg,tc,sz=20)=>({fill:{fgColor:{rgb:bg}},font:{bold:true,color:{rgb:tc},sz,name:"Arial"},alignment:{horizontal:"center",vertical:"center"},border:bdrB});
+  const sCell=(bg,tc="111827",bold=false,align="left")=>({fill:{fgColor:{rgb:bg}},font:{bold,color:{rgb:tc},sz:10,name:"Arial"},alignment:{horizontal:align,vertical:"center",wrapText:false},border:bdr});
+  const sCellC=(bg,tc,bold=false)=>sCell(bg,tc,bold,"center");
+  const sSecHdr=(bg)=>({fill:{fgColor:{rgb:bg}},font:{bold:true,color:{rgb:P.white},sz:11,name:"Arial"},alignment:{horizontal:"left",vertical:"center"},border:{top:BDB,bottom:BDB}});
+  const sEmpty=()=>({fill:{fgColor:{rgb:"F8FAFC"}}});
+
+  // ── Status → row background ───────────────────────────────────────────────
+  function statusBg(status,due){
+    if(isDone(status))return P.lgreen;
+    if(due&&due<today&&!isDone(status))return P.lred;
+    if(status==="In Progress")return P.lblue;
+    if(status==="Review")return P.lpurple;
+    if(status==="job canceled")return"F3F4F6";
+    return P.row1;
+  }
+  function statusTc(status,due){
+    if(isDone(status))return"166534";
+    if(due&&due<today&&!isDone(status))return"991B1B";
+    if(status==="In Progress")return"1E40AF";
+    if(status==="Review")return"6D28D9";
+    return"111827";
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
   const total=tasks.length;
   const done=tasks.filter(t=>isDone(t.status)).length;
   const inprog=tasks.filter(t=>t.status==="In Progress").length;
@@ -1802,89 +1844,205 @@ function exportExcel(projects,tasks,label="Report"){
   const cancl=tasks.filter(t=>t.status==="job canceled").length;
   const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
 
-  // Sheet 1 — Summary
-  const sumRows=[
-    ["RDS Project Hub — "+safe],
-    ["Generated: "+today],
-    [],
-    ["KEY METRICS","","","",""],
-    ["Total Tasks","Completed","In Progress","Review","Overdue"],
-    [total,done,inprog,review,overdue],
-    [],
-    ["STATUS","COUNT","% OF TOTAL"],
-    ["Completed",done,pct(done,total)],
-    ["In Progress",inprog,pct(inprog,total)],
-    ["Review",review,pct(review,total)],
-    ["Not Started",notStart,pct(notStart,total)],
-    ["Canceled",cancl,pct(cancl,total)],
-    ["Overdue",overdue,pct(overdue,total)],
-    [],
-    ["OVERALL COMPLETION",pct(done,total)],
+  // helper: apply styles row by row
+  function applyRow(ws,rIdx,styles){
+    styles.forEach((s,c)=>{
+      if(!s)return;
+      const addr=XLSXStyle.utils.encode_cell({r:rIdx,c});
+      if(!ws[addr])ws[addr]={v:"",t:"s"};
+      ws[addr].s=s;
+    });
+  }
+  function setCellStyle(ws,rIdx,cIdx,style){
+    const addr=XLSXStyle.utils.encode_cell({r:rIdx,c:cIdx});
+    if(!ws[addr])ws[addr]={v:"",t:"s"};
+    ws[addr].s=style;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SHEET 1 — SUMMARY
+  // ══════════════════════════════════════════════════════════════════════════
+  const sumData=[
+    ["RDS Project Hub — "+safe,"","","","",""],
+    ["Generated: "+today+"   |   "+total+" tasks   |   "+projects.length+" projects   |   "+pct(done,total)+" complete","","","","",""],
+    ["","","","","",""],
+    ["KEY METRICS","","","","",""],
+    ["Total Tasks","Completed","In Progress","Review","Overdue","Completion"],
+    [total,done,inprog,review,overdue,pct(done,total)],
+    ["","","","","",""],
+    ["STATUS BREAKDOWN","Count","% of Total","","",""],
+    ["Completed",done,pct(done,total),"","",""],
+    ["In Progress",inprog,pct(inprog,total),"","",""],
+    ["Review",review,pct(review,total),"","",""],
+    ["Not Started",notStart,pct(notStart,total),"","",""],
+    ["Canceled",cancl,pct(cancl,total),"","",""],
+    ["Overdue",overdue,pct(overdue,total),"","",""],
+    ["","","","","",""],
+    ["BY ASSIGNEE","Total","Done","Completion %","",""],
   ];
-  sumRows.push([]);
-  sumRows.push(["BY ASSIGNEE","TOTAL","DONE","COMPLETION %"]);
   const byA={};
   tasks.forEach(t=>{const a=t.assignee||"Unassigned";if(!byA[a])byA[a]={t:0,d:0};byA[a].t++;if(isDone(t.status))byA[a].d++;});
-  Object.entries(byA).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumRows.push([n,v.t,v.d,pct(v.d,v.t)]));
-  sumRows.push([]);
-  sumRows.push(["BY CLIENT","TOTAL","DONE","COMPLETION %"]);
+  const asnStart=sumData.length;
+  Object.entries(byA).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumData.push([n,v.t,v.d,pct(v.d,v.t),"",""]));
+  sumData.push(["","","","","",""]);
+  sumData.push(["BY CLIENT","Total","Done","Completion %","",""]);
+  const cliStart=sumData.length;
   const byC={};
   tasks.forEach(t=>{const p=projects.find(x=>x.id===t.project_id);const c=p?.client||"Unassigned";if(!byC[c])byC[c]={t:0,d:0};byC[c].t++;if(isDone(t.status))byC[c].d++;});
-  Object.entries(byC).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumRows.push([n,v.t,v.d,pct(v.d,v.t)]));
+  Object.entries(byC).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumData.push([n,v.t,v.d,pct(v.d,v.t),"",""]));
 
-  // Sheet 2 — All Tasks
-  const taskRows=[["#","Project","Client","Task Title","Assignee","Status","Priority","Start Date","Due Date","Overdue?","Description"]];
+  const ws1=XLSXStyle.utils.aoa_to_sheet(sumData);
+  ws1["!cols"]=[{wch:26},{wch:10},{wch:10},{wch:14},{wch:10},{wch:12}];
+  ws1["!rows"]=[{hpt:32},{hpt:18},{hpt:8},{hpt:22},{hpt:22},{hpt:38},{hpt:8},{hpt:22}];
+  ws1["!merges"]=[
+    {s:{r:0,c:0},e:{r:0,c:5}},{s:{r:1,c:0},e:{r:1,c:5}},
+    {s:{r:3,c:0},e:{r:3,c:5}},{s:{r:7,c:0},e:{r:7,c:5}},
+    {s:{r:15,c:0},e:{r:15,c:5}},{s:{r:asnStart+byA_len+1,c:0},e:{r:asnStart+byA_len+1,c:5}},
+  ];
+  const byA_len=Object.keys(byA).length;
+
+  // Row 0: Title
+  [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,0,c,sTitle(P.orange,15)));
+  // Row 1: Sub
+  [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,1,c,sCell("FFF7ED","7C3AED")));
+  // Row 3: KEY METRICS
+  [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,3,c,sHdr(P.dark)));
+  // Row 4: KPI headers
+  [sHdr(P.darker),sHdr(P.darker),sHdr(P.darker),sHdr(P.darker),sHdr(P.darker),sHdr(P.darker)].forEach((s,c)=>setCellStyle(ws1,4,c,s));
+  // Row 5: KPI values
+  [sCellC("FFEDD5",P.orange,true),sCellC(P.lgreen,"166534",true),sCellC(P.lblue,"1E40AF",true),sCellC(P.lpurple,"6D28D9",true),sCellC(P.lred,"991B1B",true),sCellC("F0FDF4","166534",true)].forEach((s,c)=>setCellStyle(ws1,5,c,s));
+  // Row 7: STATUS header
+  [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,7,c,sHdr(P.teal)));
+  // Status rows 8-13
+  [[P.lgreen,"166534"],[P.lblue,"1E40AF"],[P.lpurple,"6D28D9"],["F9FAFB","374151"],["FEF2F2","991B1B"],[P.lred,"991B1B"]].forEach(([bg,tc],i)=>{
+    setCellStyle(ws1,8+i,0,sCell(bg,tc,true));
+    setCellStyle(ws1,8+i,1,sCellC(bg,tc,true));
+    setCellStyle(ws1,8+i,2,sCellC(bg,tc));
+    [3,4,5].forEach(c=>setCellStyle(ws1,8+i,c,sCell(bg)));
+  });
+  // Row 15: BY ASSIGNEE
+  [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,15,c,sHdr(P.blue)));
+  for(let i=0;i<byA_len;i++){
+    const bg=i%2===0?P.row1:P.row2;
+    [0,1,2,3].forEach(c=>setCellStyle(ws1,16+i,c,c===0?sCell(bg,P.dark,true):sCellC(bg)));
+  }
+  // BY CLIENT header
+  const cliHdrRow=asnStart+byA_len+1;
+  [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,cliHdrRow,c,sHdr(P.purple)));
+  const byC_len=Object.keys(byC).length;
+  for(let i=0;i<byC_len;i++){
+    const bg=i%2===0?P.row1:P.row2;
+    [0,1,2,3].forEach(c=>setCellStyle(ws1,cliHdrRow+1+i,c,c===0?sCell(bg,P.dark,true):sCellC(bg)));
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SHEET 2 — ALL TASKS
+  // ══════════════════════════════════════════════════════════════════════════
+  const taskHdr=["#","Project","Client","Task Title","Assignee","Status","Priority","Start Date","Due Date","Overdue?","Description"];
+  const taskRows=[taskHdr];
   tasks.forEach((t,i)=>{
     const proj=projects.find(p=>p.id===t.project_id);
-    taskRows.push([i+1,proj?.name||"",proj?.client||"",t.title||"",t.assignee||"Unassigned",t.status||"",t.priority||"",t.start_date||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":"",t.description||""]);
+    const ovd=t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":"";
+    taskRows.push([i+1,proj?.name||"",proj?.client||"",t.title||"",t.assignee||"Unassigned",t.status||"",t.priority||"",t.start_date||"",t.due_date||"",ovd,t.description||""]);
+  });
+  const ws2=XLSXStyle.utils.aoa_to_sheet(taskRows);
+  ws2["!cols"]=[{wch:4},{wch:26},{wch:18},{wch:36},{wch:18},{wch:14},{wch:10},{wch:12},{wch:12},{wch:9},{wch:38}];
+  ws2["!rows"]=[{hpt:24}];
+  taskHdr.forEach((_,c)=>setCellStyle(ws2,0,c,sHdr(P.dark,10)));
+  tasks.forEach((t,i)=>{
+    const bg=statusBg(t.status,t.due_date);
+    const tc=statusTc(t.status,t.due_date);
+    const ovdTc=t.due_date&&t.due_date<today&&!isDone(t.status)?"991B1B":tc;
+    [sCellC(bg,tc),sCell(bg,tc),sCell(bg,tc),sCell(bg,tc),sCell(bg,tc,true),sCellC(bg,tc,true),sCellC(bg,tc),sCellC(bg,tc),sCellC(bg,tc),sCellC(P.lred,ovdTc,true),sCell(bg,tc)].forEach((s,c)=>setCellStyle(ws2,i+1,c,s));
   });
 
-  // Sheet 3 — By Project
-  const projRows=[["Project","Client","Total","Done","In Progress","Overdue","Completion %"]];
+  // ══════════════════════════════════════════════════════════════════════════
+  // SHEET 3 — BY PROJECT
+  // ══════════════════════════════════════════════════════════════════════════
+  const projHdr=["Project","Client","Total","Done","In Progress","Overdue","Completion %"];
+  const projDataRows=[projHdr];
   projects.forEach(p=>{
     const pt=tasks.filter(t=>t.project_id===p.id);
     if(!pt.length)return;
     const pd=pt.filter(t=>isDone(t.status)).length;
-    projRows.push([p.name||"",p.client||"",pt.length,pd,pt.filter(t=>t.status==="In Progress").length,pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length,pct(pd,pt.length)]);
+    projDataRows.push([p.name||"",p.client||"",pt.length,pd,pt.filter(t=>t.status==="In Progress").length,pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length,pct(pd,pt.length)]);
+  });
+  const ws3=XLSXStyle.utils.aoa_to_sheet(projDataRows);
+  ws3["!cols"]=[{wch:30},{wch:20},{wch:8},{wch:8},{wch:12},{wch:10},{wch:14}];
+  ws3["!rows"]=[{hpt:24}];
+  projHdr.forEach((_,c)=>setCellStyle(ws3,0,c,sHdr(P.orange,10)));
+  projDataRows.slice(1).forEach((row,i)=>{
+    const bg=i%2===0?P.row1:P.row2;
+    const done_pct=row[2]?Math.round((row[3]/row[2])*100):0;
+    const tc=done_pct===100?"166534":row[5]>0?"991B1B":"111827";
+    [sCell(bg,tc,true),sCell(bg),sCellC(bg,tc,true),sCellC(P.lgreen,"166534",true),sCellC(P.lblue,"1E40AF",true),sCellC(row[5]>0?P.lred:bg,row[5]>0?"991B1B":"111827",row[5]>0),sCellC(done_pct===100?P.lgreen:done_pct>=50?"FEF9C3":P.lred,done_pct===100?"166534":done_pct>=50?"854D0E":"991B1B",true)].forEach((s,c)=>setCellStyle(ws3,i+1,c,s));
   });
 
-  // Sheet 4 — By Assignee
-  const asnRows=[["Assignee","Project","Task","Status","Priority","Due Date","Overdue?"]];
+  // ══════════════════════════════════════════════════════════════════════════
+  // SHEET 4 — BY ASSIGNEE
+  // ══════════════════════════════════════════════════════════════════════════
+  const asnHdr2=["Assignee","Project","Task","Status","Priority","Due Date","Overdue?"];
+  const asnData=[asnHdr2];
   [...new Set(tasks.map(t=>t.assignee||"Unassigned"))].sort().forEach(name=>{
-    tasks.filter(t=>(t.assignee||"Unassigned")===name).forEach(t=>{
+    asnData.push([name+" ("+tasks.filter(t=>(t.assignee||"Unassigned")===name).length+" tasks)","","","","","",""]);
+    tasks.filter(t=>(t.assignee||"Unassigned")===name).forEach((t,i)=>{
       const proj=projects.find(p=>p.id===t.project_id);
-      asnRows.push([name,proj?.name||"",t.title||"",t.status||"",t.priority||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
+      asnData.push(["",proj?.name||"",t.title||"",t.status||"",t.priority||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
+    });
+  });
+  const ws4=XLSXStyle.utils.aoa_to_sheet(asnData);
+  ws4["!cols"]=[{wch:22},{wch:26},{wch:36},{wch:14},{wch:10},{wch:12},{wch:9}];
+  ws4["!rows"]=[{hpt:24}];
+  asnHdr2.forEach((_,c)=>setCellStyle(ws4,0,c,sHdr(P.blue,10)));
+  let asnRIdx=1;
+  [...new Set(tasks.map(t=>t.assignee||"Unassigned"))].sort().forEach(name=>{
+    [0,1,2,3,4,5,6].forEach(c=>setCellStyle(ws4,asnRIdx,c,sHdrL("1E3A5F")));
+    asnRIdx++;
+    tasks.filter(t=>(t.assignee||"Unassigned")===name).forEach((t,i)=>{
+      const bg=i%2===0?P.row1:P.row2;const bg2=statusBg(t.status,t.due_date);const tc=statusTc(t.status,t.due_date);
+      [sCell(bg),sCell(bg),sCell(bg),sCellC(bg2,tc,true),sCellC(bg),sCellC(bg),sCellC(t.due_date&&t.due_date<today&&!isDone(t.status)?P.lred:bg,t.due_date&&t.due_date<today&&!isDone(t.status)?"991B1B":"111827",true)].forEach((s,c)=>setCellStyle(ws4,asnRIdx,c,s));
+      asnRIdx++;
     });
   });
 
-  // Sheet 5 — By Client
-  const cliRows=[["Client","Project","Task","Assignee","Status","Due Date","Overdue?"]];
+  // ══════════════════════════════════════════════════════════════════════════
+  // SHEET 5 — BY CLIENT
+  // ══════════════════════════════════════════════════════════════════════════
+  const cliHdr2=["Client","Project","Task","Assignee","Status","Due Date","Overdue?"];
+  const cliData=[cliHdr2];
   [...new Set(projects.map(p=>p.client||"Unassigned"))].sort().forEach(cl=>{
+    cliData.push([cl+" ("+projects.filter(p=>(p.client||"Unassigned")===cl).length+" projects)","","","","","",""]);
     projects.filter(p=>(p.client||"Unassigned")===cl).forEach(p=>{
-      tasks.filter(t=>t.project_id===p.id).forEach(t=>{
-        cliRows.push([cl,p.name||"",t.title||"",t.assignee||"",t.status||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
+      tasks.filter(t=>t.project_id===p.id).forEach((t,i)=>{
+        cliData.push([cl,p.name||"",t.title||"",t.assignee||"",t.status||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
+      });
+    });
+  });
+  const ws5=XLSXStyle.utils.aoa_to_sheet(cliData);
+  ws5["!cols"]=[{wch:20},{wch:26},{wch:36},{wch:18},{wch:14},{wch:12},{wch:9}];
+  ws5["!rows"]=[{hpt:24}];
+  cliHdr2.forEach((_,c)=>setCellStyle(ws5,0,c,sHdr(P.teal,10)));
+  let cliRIdx=1;
+  [...new Set(projects.map(p=>p.client||"Unassigned"))].sort().forEach(cl=>{
+    [0,1,2,3,4,5,6].forEach(c=>setCellStyle(ws5,cliRIdx,c,sHdrL("134E4A")));
+    cliRIdx++;
+    projects.filter(p=>(p.client||"Unassigned")===cl).forEach(p=>{
+      tasks.filter(t=>t.project_id===p.id).forEach((t,i)=>{
+        const bg=i%2===0?P.row1:P.row2;const bg2=statusBg(t.status,t.due_date);const tc=statusTc(t.status,t.due_date);
+        [sCell(bg),sCell(bg),sCell(bg),sCell(bg),sCellC(bg2,tc,true),sCellC(bg),sCellC(t.due_date&&t.due_date<today&&!isDone(t.status)?P.lred:bg,t.due_date&&t.due_date<today&&!isDone(t.status)?"991B1B":"111827",true)].forEach((s,c)=>setCellStyle(ws5,cliRIdx,c,s));
+        cliRIdx++;
       });
     });
   });
 
-  // Build workbook
-  const wb=XLSX.utils.book_new();
-  const ws1=XLSX.utils.aoa_to_sheet(sumRows);
-  ws1["!cols"]=[{wch:28},{wch:10},{wch:10},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws1,"Summary");
-  const ws2=XLSX.utils.aoa_to_sheet(taskRows);
-  ws2["!cols"]=[{wch:4},{wch:28},{wch:18},{wch:38},{wch:18},{wch:14},{wch:10},{wch:12},{wch:12},{wch:9},{wch:40}];
-  XLSX.utils.book_append_sheet(wb,ws2,"All Tasks");
-  const ws3=XLSX.utils.aoa_to_sheet(projRows);
-  ws3["!cols"]=[{wch:30},{wch:20},{wch:8},{wch:8},{wch:12},{wch:10},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws3,"By Project");
-  const ws4=XLSX.utils.aoa_to_sheet(asnRows);
-  ws4["!cols"]=[{wch:20},{wch:28},{wch:38},{wch:14},{wch:10},{wch:12},{wch:9}];
-  XLSX.utils.book_append_sheet(wb,ws4,"By Assignee");
-  const ws5=XLSX.utils.aoa_to_sheet(cliRows);
-  ws5["!cols"]=[{wch:20},{wch:28},{wch:38},{wch:18},{wch:14},{wch:12},{wch:9}];
-  XLSX.utils.book_append_sheet(wb,ws5,"By Client");
-  XLSX.writeFile(wb,"RDS Report - "+safe+" - "+today+".xlsx");
+  // ── Build workbook ────────────────────────────────────────────────────────
+  const wb=XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(wb,ws1,"Summary");
+  XLSXStyle.utils.book_append_sheet(wb,ws2,"All Tasks");
+  XLSXStyle.utils.book_append_sheet(wb,ws3,"By Project");
+  XLSXStyle.utils.book_append_sheet(wb,ws4,"By Assignee");
+  XLSXStyle.utils.book_append_sheet(wb,ws5,"By Client");
+  XLSXStyle.writeFile(wb,"RDS Report - "+safe+" - "+today+".xlsx");
 }
 
 function ChangePasswordModal({me,onClose}){
