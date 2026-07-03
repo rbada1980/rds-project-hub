@@ -853,7 +853,7 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
           {fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:onFiles?"pointer":"default"}}>📎{fileCount}</span>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {task.due_date&&<span style={{fontSize:10,color:C.t3}}>{task.due_date}</span>}
+          {task.due_date&&<span style={{fontSize:10,color:C.t2}}>{task.due_date}</span>}
           {task.assignee?<Av name={task.assignee} size={22}/>:<span style={{fontSize:10,color:C.yellow}}>Unassigned</span>}
         </div>
       </div>
@@ -1035,7 +1035,7 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
         <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
           {project&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>📁 {project.name}</span>}
           {task.client&&<span style={{fontSize:12,color:C.t2}}>👤 {task.client}</span>}
-          {task.due_date&&<span style={{fontSize:12,color:C.t3}}>📅 Due {task.due_date}</span>}
+          {task.due_date&&<span style={{fontSize:12,color:C.t2}}>📅 Due {task.due_date}</span>}
           {task.priority&&<Bdg color={PRI_CLR[task.priority]||C.t2}>{task.priority}</Bdg>}
         </div>
         {(task.scope||task.detailer||task.checker)&&(
@@ -3355,7 +3355,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       {/* ── Header ── */}
       <div style={{marginBottom:20}}>
         <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📬 Submission List</h2>
-        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tasks and projects due for submission — filter by date range</p>
+        <p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Tasks and projects due for submission — filter by date range</p>
       </div>
 
       {/* ── Summary stat cards ── */}
@@ -3487,7 +3487,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       <span style={{fontSize:10,fontWeight:700,color:statusColor(t.status),background:statusColor(t.status)+"18",padding:"2px 7px",borderRadius:5}}>{t.status}</span>
                       {t.client_sub_date&&<span style={{fontSize:10,color:C.t3}}>📬 {t.client_sub_date}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t3}}>📅 {t.due_date}{isOverdue?" ⚠":""}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t2}}>📅 {t.due_date}{isOverdue?" ⚠":""}</span>}
                       {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                     </div>
                     {!isClient&&canEdit&&<button onClick={()=>onEdit&&onEdit(t)} style={{marginTop:8,background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
@@ -3802,7 +3802,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Workflow Automation</div>
-          <div style={{fontSize:12,color:C.t3,marginTop:2}}>Rules that fire automatically when task events happen</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:2}}>Rules that fire automatically when task events happen</div>
         </div>
         <button onClick={openAdd} style={{...GBtn,marginLeft:"auto",background:C.accent,color:"#fff",borderColor:C.accent}}>+ Add Rule</button>
       </div>
@@ -4042,7 +4042,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       <div style={{display:"flex",flexDirection:isMobile?"column":"row",justifyContent:"space-between",alignItems:isMobile?"flex-start":"flex-start",marginBottom:isMobile?14:26,gap:isMobile?10:0}}>
         <div>
           <h2 style={{margin:0,fontSize:isMobile?16:20,fontWeight:900,color:C.t1}}>📊 Business Analytics</h2>
-          {!isMobile&&<p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>}
+          {!isMobile&&<p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>}
         </div>
         <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3,flexShrink:0}}>
           {[["all",isMobile?"All":"All Time"],["quarter",isMobile?"Q":"Quarter"],["month",isMobile?"Mo":"Month"],["week",isMobile?"Wk":"Week"]].map(([v,l])=>(
@@ -4308,7 +4308,7 @@ function AnnouncementsPage({me,users,projects,canPost}){
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,gap:12,flexWrap:"wrap"}}>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📢 Announcements</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Company-wide and project updates</p>
+          <p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Company-wide and project updates</p>
         </div>
         {canPost&&(
           <button onClick={()=>setShowForm(v=>!v)}
@@ -6070,7 +6070,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Team Capacity Planning</div>
-          <div style={{fontSize:12,color:C.t3,marginTop:2}}>Workload heatmap — click a cell to see tasks — drag to reassign</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:2}}>Workload heatmap — click a cell to see tasks — drag to reassign</div>
         </div>
         <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
           <button onClick={()=>{setBaseDate(null);setWeekOffset(o=>o-1);}} style={GBtn}>Prev</button>
@@ -6184,7 +6184,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       {proj&&<span style={{fontSize:10,color:C.teal}}>{"📁 "+proj.name}</span>}
                       <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {(t.deadline||t.due_date)&&<span style={{fontSize:10,color:C.t3}}>{"📅 "+(t.deadline||t.due_date)}</span>}
+                      {(t.deadline||t.due_date)&&<span style={{fontSize:10,color:C.t2}}>{"📅 "+(t.deadline||t.due_date)}</span>}
                     </div>
                   </div>
                 </div>
@@ -6732,7 +6732,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
                     onClick={!isClient&&onEditTask?()=>onEditTask(r.task):undefined}>
                     <td style={{padding:"8px 10px",maxWidth:200}}>
                       <div style={{fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:12}} title={r.task.title}>{r.task.title}</div>
-                      {r.task.due_date&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>Due {r.task.due_date}</div>}
+                      {r.task.due_date&&<div style={{fontSize:10,color:C.t2,marginTop:1}}>Due {r.task.due_date}</div>}
                     </td>
                     <td style={{padding:"8px 10px",maxWidth:140}}>
                       {r.proj&&<span style={{display:"flex",alignItems:"center",gap:5}}>
@@ -6855,7 +6855,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>⏱ Timings</h2>
-          <p style={{margin:"4px 0 0",fontSize:13,color:C.t3}}>{isClient?"Your project & task time overview":(isAdmin||isManager)?"Full team attendance & task time logs":"Your time logs & project breakdown"}</p>
+          <p style={{margin:"4px 0 0",fontSize:13,color:C.t2}}>{isClient?"Your project & task time overview":(isAdmin||isManager)?"Full team attendance & task time logs":"Your time logs & project breakdown"}</p>
         </div>
         <input type="month" value={month} onChange={e=>setMonth(e.target.value)}
           style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 13px",color:C.t1,fontSize:13,fontFamily:"inherit"}}/>
@@ -8163,7 +8163,7 @@ export default function App(){
                 <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.accent+"22",border:`2px solid ${C.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.accent,fontWeight:800}}>{(me.name[0]||"A").toUpperCase()}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>System Administration Dashboard</h2>
-                  <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Full access to all projects, users, and clients</p>
+                  <p style={{margin:"3px 0 0",fontSize:13,color:C.t2}}>Welcome back, {me.name} · Full access to all projects, users, and clients</p>
                 </div>
                 <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                   {[{l:"Employees",v:users.length,c:C.accent,k:"users"},{l:"Clients",v:clients.length,c:C.teal,k:"clients"},{l:"Projects",v:accessibleProjects.length,c:C.blue,k:"projects"},{l:"Completion",v:(tasks.length?Math.round(tasks.filter(t=>t.status==="Completed"||t.status==="Done").length/tasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
@@ -8171,7 +8171,7 @@ export default function App(){
                       onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
                       onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
                       <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-                      <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l} ›</div>
+                      <div style={{fontSize:10,color:C.t2,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l} ›</div>
                     </div>
                   ))}
                 </div>
