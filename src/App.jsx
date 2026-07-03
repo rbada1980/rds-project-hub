@@ -8276,17 +8276,20 @@ export default function App(){
                 return p.name.toLowerCase().includes(ql)||pt.some(t=>t.title.toLowerCase().includes(ql)||(t.assignee||"").toLowerCase().includes(ql));
               });
               const activeProj=qnProject||splitProjects[0]||null;
+              // Normalize "To Do" → "Review" for display purposes in popup
+              const qnNormStatus=s=>s==="To Do"?"Review":s;
               // Filter tasks by search, employee, status
               const activeTasks=activeProj?tasks.filter(t=>{
                 if(t.project_id!==activeProj.id)return false;
-                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(t.status||"").toLowerCase().includes(ql))return false;}
+                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(qnNormStatus(t.status||"")).toLowerCase().includes(ql))return false;}
                 if(qnFilterEmployee!=="all"&&t.assignee!==qnFilterEmployee)return false;
-                if(qnFilterStatus!=="all"&&t.status!==qnFilterStatus)return false;
+                // "Review" filter also matches legacy "To Do" tasks
+                if(qnFilterStatus!=="all"&&qnNormStatus(t.status)!==qnFilterStatus)return false;
                 return true;
               }):[];
-              // Unique employees & statuses across all projects for this client
+              // Unique employees & statuses across all projects for this client (normalize "To Do"→"Review")
               const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
-              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean))].sort();
+              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean).map(qnNormStatus))].sort();
               const mobShowTasks=isMobile&&!!qnProject;
               const closePopup=()=>{setQnClient(null);setQnProject(null);};
               const acPc=activeProj?.color||C.blue;
@@ -8392,7 +8395,8 @@ export default function App(){
                             {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
                             {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks in this project</div>}
                             {activeTasks.map((t,i)=>{
-                              const sc=getStatusColor(t.status);
+                              const tDispStatus=qnNormStatus(t.status);
+                              const sc=getStatusColor(tDispStatus);
                               const od=t.due_date&&t.due_date<today&&!isDone(t.status);
                               return(
                                 <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
@@ -8404,7 +8408,7 @@ export default function App(){
                                   <div style={{flex:1,minWidth:0}}>
                                     <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
                                     <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{t.status}</span>
+                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
                                       {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
                                       {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
                                       {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
