@@ -8533,6 +8533,10 @@ function BackupCenter({me}){
   const [rpLabel,setRPL]=useState('');
   const [runningJob,setRJ]=useState(null);
   const [jobPct,setJP]=useState(0);
+  const [dlBackup,setDLB]=useState(false);
+  const [dlProgress,setDLP]=useState('');
+  const [restoreProgress,setRProg]=useState([]);
+  const [restoreResult,setRRes]=useState(null);
   const [alerts,setAlerts]=useState([
     {id:1,type:'warn',msg:'1 backup job failed on Jul 2 — Full Database',time:'2 days ago'},
     {id:2,type:'info',msg:'Weekly backup completed successfully — 11.8 GB',time:'4 days ago'},
@@ -8655,6 +8659,61 @@ function BackupCenter({me}){
 
   function updateIncStatus(id,newStatus){
     setInc(i=>i.map(x=>x.id===id?{...x,status:newStatus,resolved:newStatus==='Resolved'||newStatus==='Closed'?new Date().toISOString():x.resolved}:x));
+  }
+
+  const ALL_TABLES=['users','projects','tasks','task_files','task_comments','clients','notifications','announcements','workflows','war_room_messages','war_room_pins','war_room_reactions','war_room_reads','war_room_scheduled'];
+
+  async function downloadFullBackup(){
+    setDLB(true);
+    try{
+      const backup={version:'1.0',app:'RDS Project Hub',createdAt:new Date().toISOString(),tables:{}};
+      for(const t of ALL_TABLES){
+        setDLP('Exporting '+t+'...');
+        const{data,error}=await supabase.from(t).select('*');
+        backup.tables[t]=data||[];
+      }
+      backup.summary=Object.fromEntries(Object.entries(backup.tables).map(([k,v])=>[k,v.length]));
+      const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+      const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download='RDS_Backup_'+ts+'.json';a.click();
+      URL.revokeObjectURL(url);
+      const totalRows=Object.values(backup.tables).reduce((s,v)=>s+v.length,0);
+      setAudit(a=>[{id:Date.now(),action:'Full Backup Downloaded',detail:ALL_TABLES.length+' tables · '+totalRows+' records',user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);
+    }catch(e){console.error('Backup failed',e);}
+    finally{setDLB(false);setDLP('');}
+  }
+
+  function downloadSingleReport(label,data){
+    const blob=new Blob([JSON.stringify({report:label,exportedAt:new Date().toISOString(),data},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function restoreFromBackup(file){
+    if(!file)return;
+    setRRes(null);setRProg([]);
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      try{
+        const backup=JSON.parse(e.target.result);
+        if(!backup.tables||!backup.version){setRRes({error:'Invalid backup file. Please upload a file downloaded from this app.'});return;}
+        const results=[];
+        for(const[table,rows] of Object.entries(backup.tables)){
+          if(!rows||!rows.length){results.push({table,status:'skip',count:0});setRProg([...results]);continue;}
+          const{error}=await supabase.from(table).upsert(rows,{onConflict:'id',ignoreDuplicates:false});
+          results.push({table,status:error?'error':'success',count:rows.length,error:error?.message});
+          setRProg([...results]);
+        }
+        const failed=results.filter(r=>r.status==='error');
+        setRRes({success:failed.length===0,totalTables:results.length,totalRows:results.reduce((s,r)=>s+r.count,0),failed});
+        setAudit(a=>[{id:Date.now(),action:'Backup Restored',detail:results.length+' tables · '+results.reduce((s,r)=>s+r.count,0)+' records',user:me?.name||'Ramesh',time:new Date().toISOString(),status:failed.length===0?'Success':'Partial'},...a]);
+      }catch(err){setRRes({error:'Failed to parse backup: '+err.message});}
+    };
+    reader.readAsText(file);
   }
 
   const filteredJobs=jobs.filter(j=>(fType==='all'||j.type.toLowerCase()===fType)||(fStatus==='all'||j.status.toLowerCase()===fStatus.toLowerCase())||fType==='all').filter(j=>!search||(j.module+j.type+j.status).toLowerCase().includes(search.toLowerCase()));
@@ -9052,6 +9111,84 @@ function BackupCenter({me}){
 
       {/* ── REPORTS ── */}
       {tab==='reports'&&(<div>
+
+        {/* ── DOWNLOAD ALL REPORTS (Full Backup) ── */}
+        <div style={{...SB,marginBottom:20,border:`1px solid ${C.green}44`,background:C.green+'08'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14}}>
+            <div>
+              <div style={{fontWeight:800,color:C.t1,fontSize:16,marginBottom:4}}>📦 Download Full App Backup</div>
+              <div style={{fontSize:13,color:C.t2}}>Exports ALL data from Supabase — {ALL_TABLES.length} tables including users, projects, tasks, chat, clients, workflows and more.</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:4}}>Save this file safely. You can upload it below to restore your entire app data if anything goes wrong.</div>
+            </div>
+            <button onClick={downloadFullBackup} disabled={dlBackup} style={{background:C.green,border:'none',borderRadius:10,padding:'12px 28px',color:'#fff',fontSize:14,cursor:dlBackup?'not-allowed':'pointer',fontFamily:'inherit',fontWeight:700,flexShrink:0,opacity:dlBackup?0.7:1,minWidth:200,textAlign:'center'}}>
+              {dlBackup?('⏳ '+dlProgress||'Exporting...'):'⬇ Download All Reports'}
+            </button>
+          </div>
+          {dlBackup&&<div style={{marginTop:12}}>
+            <div style={{background:C.border,borderRadius:4,height:6}}><div style={{width:'100%',height:6,borderRadius:4,background:C.green,animation:'pulse 1s infinite'}}/></div>
+            <div style={{fontSize:12,color:C.t3,marginTop:6}}>{dlProgress}</div>
+          </div>}
+        </div>
+
+        {/* Individual Report Cards */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,marginBottom:20}}>
+          {[
+            {label:'Backup Report',icon:'💾',val:'47 jobs · 98% success',col:C.green,data:()=>({jobs,auditLogs,kpis})},
+            {label:'Recovery Report',icon:'♻️',val:'3 restores · 100% success',col:C.blue,data:()=>({restorePoints:rps,restoreHistory:auditLogs.filter(l=>l.action.includes('Restore'))})},
+            {label:'Storage Report',icon:'📊',val:'11.7 GB / 50 GB (23%)',col:C.purple,data:()=>({dbModules,fileTypes,docTypes,storageTotal:'50 GB',storageUsed:'11.7 GB'})},
+            {label:'Continuity Report',icon:'🛡',val:'5 plans · 3 incidents',col:C.accent,data:()=>({bcPlans,incidents,scenarios})},
+          ].map(r=>(
+            <div key={r.label} style={{...SB,padding:'16px',borderLeft:`3px solid ${r.col}`}}>
+              <div style={{fontSize:22,marginBottom:6}}>{r.icon}</div>
+              <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{r.label}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:4}}>{r.val}</div>
+              <button onClick={()=>downloadSingleReport(r.label,r.data())} style={{marginTop:10,background:r.col+'22',border:`1px solid ${r.col}44`,borderRadius:6,padding:'5px 12px',color:r.col,fontSize:11,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>Download</button>
+            </div>
+          ))}
+        </div>
+
+        {/* ── RESTORE FROM BACKUP ── */}
+        <div style={{...SB,marginBottom:20,border:`1px solid #f9731644`,background:'#f9731608'}}>
+          <div style={{fontWeight:800,color:C.t1,fontSize:15,marginBottom:6}}>⬆ Restore from Backup</div>
+          <div style={{fontSize:13,color:C.t2,marginBottom:14}}>Upload a backup file downloaded from this app. All tables will be restored to Supabase via upsert (existing records updated, new records inserted, no data deleted).</div>
+
+          {/* Upload Area */}
+          <label style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:`2px dashed ${C.border}`,borderRadius:10,padding:'28px',cursor:'pointer',background:C.card,marginBottom:14,transition:'border-color .2s',gap:8}}>
+            <input type="file" accept=".json" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)restoreFromBackup(f);e.target.value='';}}/>
+            <div style={{fontSize:36}}>📂</div>
+            <div style={{fontWeight:700,color:C.t1,fontSize:14}}>Click to upload backup file</div>
+            <div style={{fontSize:12,color:C.t3}}>Accepts .json files exported from this app · RDS_Backup_*.json</div>
+          </label>
+
+          {/* Restore Progress */}
+          {restoreProgress.length>0&&<div style={{marginBottom:14}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:13,marginBottom:10}}>Restore Progress:</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:8}}>
+              {restoreProgress.map(r=>(
+                <div key={r.table} style={{background:C.card,border:`1px solid ${r.status==='error'?'#ef444433':r.status==='skip'?C.border:'#22c55e33'}`,borderRadius:8,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:14}}>{r.status==='success'?'✅':r.status==='skip'?'⏭':'❌'}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{r.table}</div>
+                    <div style={{fontSize:11,color:C.t3}}>{r.status==='skip'?'Empty table skipped':r.status==='error'?r.error:(r.count+' records restored')}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>}
+
+          {/* Result Banner */}
+          {restoreResult&&<div style={{background:restoreResult.error?'#ef444412':restoreResult.success?'#22c55e12':'#f9731612',border:`1px solid ${restoreResult.error?'#ef4444':restoreResult.success?'#22c55e':'#f97316'}44`,borderRadius:10,padding:'14px 16px'}}>
+            {restoreResult.error
+              ?<div style={{color:'#ef4444',fontWeight:700,fontSize:13}}>❌ {restoreResult.error}</div>
+              :<div>
+                <div style={{fontWeight:800,color:restoreResult.success?'#22c55e':'#f97316',fontSize:14,marginBottom:4}}>{restoreResult.success?'✅ Restore Complete':'⚠ Restore Partial'}</div>
+                <div style={{fontSize:13,color:C.t2}}>{restoreResult.totalTables} tables · {restoreResult.totalRows} records restored</div>
+                {restoreResult.failed?.length>0&&<div style={{fontSize:12,color:'#ef4444',marginTop:6}}>Failed tables: {restoreResult.failed.map(f=>f.table).join(', ')}</div>}
+              </div>
+            }
+          </div>}
+        </div>
+
         {/* Search & Filter */}
         <div style={{...SB,marginBottom:20}}>
           <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
@@ -9068,23 +9205,6 @@ function BackupCenter({me}){
               <option value="failed">Failed</option>
             </select>
           </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,marginBottom:20}}>
-          {[
-            {label:'Backup Report',icon:'💾',val:'47 jobs · 98% success',col:C.green},
-            {label:'Recovery Report',icon:'♻️',val:'3 restores · 100% success',col:C.blue},
-            {label:'Storage Report',icon:'📊',val:'11.7 GB / 50 GB (23%)',col:C.purple},
-            {label:'Continuity Report',icon:'🛡',val:'5 plans · 3 incidents',col:C.accent},
-          ].map(r=>(
-            <div key={r.label} style={{...SB,padding:'16px',borderLeft:`3px solid ${r.col}`}}>
-              <div style={{fontSize:22,marginBottom:6}}>{r.icon}</div>
-              <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{r.label}</div>
-              <div style={{fontSize:12,color:C.t2,marginTop:4}}>{r.val}</div>
-              <button style={{marginTop:10,background:r.col+'22',border:`1px solid ${r.col}44`,borderRadius:6,padding:'5px 12px',color:r.col,fontSize:11,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>Download</button>
-            </div>
-          ))}
         </div>
 
         {/* Job History Table */}
