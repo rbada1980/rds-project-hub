@@ -8517,6 +8517,7 @@ function LiveTimerBar({timer,onPause,onStop}){
   );
 }
 
+
 // ══════════════════════════════════════════════════════════
 // BACKUP, DISASTER RECOVERY & BUSINESS CONTINUITY CENTER
 // ══════════════════════════════════════════════════════════
@@ -9166,6 +9167,7 @@ function BackupCenter({me}){
     </div>
   );
 }
+
 
 export default function App(){
   useEffect(()=>{
@@ -10311,7 +10313,7 @@ export default function App(){
             </span>
           </div>
         )}
-        {view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
+        {view==="backup"&&isAdmin&&<BackupCenter me={me}/> }
         {view==="dashboard"&&!isClient&&!isAdmin&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
