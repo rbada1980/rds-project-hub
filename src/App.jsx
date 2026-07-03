@@ -8364,7 +8364,7 @@ export default function App(){
                                   <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
                                     <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
                                     <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
-                                    <span style={{fontSize:9,color:C.t3,flexShrink:0,background:C.surface,borderRadius:3,padding:"1px 4px"}}>{pt.length}t</span>
+                                    <span style={{fontSize:9,color:C.t3,flexShrink:0,background:C.surface,borderRadius:3,padding:"1px 4px"}}>{pt.length} tasks</span>
                                   </div>
                                   {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
                                 </div>
