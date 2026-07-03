@@ -8623,11 +8623,11 @@ function BackupCenter({me}){
   ];
 
   const scenarios=[
-    {name:'Database Failure',icon:'🗄',rto:'4h',rpo:'24h',plan:'Restore from latest verified restore point',severity:'Critical',tested:'2026-05-15'},
-    {name:'File Corruption',icon:'📁',rto:'2h',rpo:'12h',plan:'Restore specific files from file backup archive',severity:'High',tested:'2026-06-01'},
-    {name:'Server Failure',icon:'🖥',rto:'2h',rpo:'4h',plan:'Activate standby server, restore last snapshot',severity:'Critical',tested:'2026-05-20'},
-    {name:'Accidental Deletion',icon:'🗑',rto:'30m',rpo:'1h',plan:'Single record restore from audit trail',severity:'Medium',tested:'2026-06-10'},
-    {name:'Security Incident',icon:'🔐',rto:'6h',rpo:'24h',plan:'Isolate, reset credentials, restore clean backup',severity:'Critical',tested:'2026-05-01'},
+    {name:'Database Failure',abbr:'DB',col:'#ef4444',rto:'4h',rpo:'24h',plan:'Restore from latest verified restore point',severity:'Critical',tested:'2026-05-15'},
+    {name:'File Corruption',abbr:'FC',col:'#f97316',rto:'2h',rpo:'12h',plan:'Restore specific files from file backup archive',severity:'High',tested:'2026-06-01'},
+    {name:'Server Failure',abbr:'SV',col:'#ef4444',rto:'2h',rpo:'4h',plan:'Activate standby server, restore last snapshot',severity:'Critical',tested:'2026-05-20'},
+    {name:'Accidental Deletion',abbr:'AD',col:'#eab308',rto:'30m',rpo:'1h',plan:'Single record restore from audit trail',severity:'Medium',tested:'2026-06-10'},
+    {name:'Security Incident',abbr:'SI',col:'#8b5cf6',rto:'6h',rpo:'24h',plan:'Isolate, reset credentials, restore clean backup',severity:'Critical',tested:'2026-05-01'},
   ];
 
   const SB={background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'20px'};
@@ -8996,22 +8996,23 @@ function BackupCenter({me}){
           <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:16}}>🚨 Recovery Scenarios</div>
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
             {scenarios.map(s=>(
-              <div key={s.name} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
-                <div style={{fontSize:24,flexShrink:0}}>{s.icon}</div>
+              <div key={s.name} style={{background:C.card,border:`1px solid ${s.col}33`,borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',gap:16,flexWrap:'wrap',borderLeft:`4px solid ${s.col}`}}>
+                <div style={{width:44,height:44,borderRadius:10,background:s.col+'22',border:`1px solid ${s.col}55`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:s.col,fontWeight:900,fontSize:13,letterSpacing:0.5}}>{s.abbr}</div>
                 <div style={{flex:1,minWidth:180}}>
                   <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{s.name}</div>
                   <div style={{fontSize:11,color:C.t3,marginTop:2}}>{s.plan}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:3}}>Last tested: {s.tested}</div>
                 </div>
-                <div style={{display:'flex',gap:12,flexWrap:'wrap',flexShrink:0}}>
-                  <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:16,fontWeight:800,color:'#f97316'}}>{s.rto}</div>
-                    <div style={{fontSize:10,color:C.t3}}>RTO</div>
+                <div style={{display:'flex',gap:14,flexWrap:'wrap',flexShrink:0,alignItems:'center'}}>
+                  <div style={{textAlign:'center',background:'#f9731618',border:'1px solid #f9731633',borderRadius:8,padding:'6px 12px',minWidth:48}}>
+                    <div style={{fontSize:15,fontWeight:800,color:'#f97316'}}>{s.rto}</div>
+                    <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>RTO</div>
                   </div>
-                  <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:16,fontWeight:800,color:'#ef4444'}}>{s.rpo}</div>
-                    <div style={{fontSize:10,color:C.t3}}>RPO</div>
+                  <div style={{textAlign:'center',background:'#ef444418',border:'1px solid #ef444433',borderRadius:8,padding:'6px 12px',minWidth:48}}>
+                    <div style={{fontSize:15,fontWeight:800,color:'#ef4444'}}>{s.rpo}</div>
+                    <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>RPO</div>
                   </div>
-                  <span style={{fontSize:10,fontWeight:700,color:priCol(s.severity),background:priCol(s.severity)+'22',borderRadius:5,padding:'2px 8px',alignSelf:'center'}}>{s.severity}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:priCol(s.severity),background:priCol(s.severity)+'22',border:`1px solid ${priCol(s.severity)}44`,borderRadius:6,padding:'4px 10px',alignSelf:'center'}}>{s.severity}</span>
                 </div>
               </div>
             ))}
@@ -11528,15 +11529,4 @@ export default function App(){
         <span style={{fontSize:21,lineHeight:1}}>···</span>
         <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
       </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}
