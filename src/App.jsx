@@ -5744,10 +5744,25 @@ function WarRoomPage({me,projects,users}){
 // ══════════════════════════════════════════════════════════
 // TASK COMMENTS — with @mentions
 // ══════════════════════════════════════════════════════════
-function TaskTimeLogs({taskId,projectId,me,isClient}){
+function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,timerStart=null,timerPause=null,timerStop=null}){
   if(me?.role==="Admin"||me?.username===SUPER_ADMIN)return null;
   const [logs,setLogs]=useState([]);
   const [showForm,setShowForm]=useState(false);
+  // Local tick for live timer display within this component
+  const [lTick,setLTick]=useState(0);
+  const isThisTask=activeTimer?.taskId===taskId;
+  useEffect(()=>{
+    if(!isThisTask||activeTimer?.isPaused)return;
+    const iv=setInterval(()=>setLTick(t=>t+1),1000);
+    return()=>clearInterval(iv);
+  },[isThisTask,activeTimer?.isPaused]);
+  function localElapsed(){
+    if(!activeTimer||!isThisTask)return 0;
+    if(activeTimer.isPaused)return activeTimer.pausedElapsed;
+    return activeTimer.pausedElapsed+Math.floor((Date.now()-activeTimer.startedAt)/1000);
+  }
+  function fmtSec(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return[h>0?String(h).padStart(2,"0"):null,String(m).padStart(2,"0"),String(sc).padStart(2,"0")].filter(Boolean).join(":");}
+  const lEl=localElapsed();
   const [hrs,setHrs]=useState("");
   const [mins,setMins]=useState("0");
   const [logDate,setLogDate]=useState(new Date().toISOString().slice(0,10));
@@ -5785,6 +5800,35 @@ function TaskTimeLogs({taskId,projectId,me,isClient}){
 
   return(
     <div style={{borderTop:"1px solid #ffffff18",marginTop:20,paddingTop:16}}>
+      {/* ── Live Timer control (only when task!=null and timer functions available) ── */}
+      {task&&timerStart&&!isClient&&(
+        <div style={{background:isThisTask?"#7c3aed18":"#1e293b",border:`1px solid ${isThisTask?"#7c3aed55":"#334155"}`,borderRadius:10,padding:"12px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:11,fontWeight:700,color:isThisTask?"#a78bfa":"#64748b",textTransform:"uppercase",letterSpacing:".07em",marginBottom:2}}>
+              {isThisTask?(activeTimer?.isPaused?"⏸ Timer Paused":"▶ Timer Running"):"⏱ Task Timer"}
+            </div>
+            {isThisTask&&<div style={{fontFamily:"monospace",fontSize:24,fontWeight:800,color:activeTimer?.isPaused?"#f59e0b":"#7c3aed",letterSpacing:"0.04em"}}>{fmtSec(lEl)}</div>}
+            {!isThisTask&&<div style={{fontSize:12,color:"#64748b"}}>Track time spent on this task</div>}
+          </div>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            {!isThisTask&&(
+              <button onClick={()=>timerStart(task)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>▶ Start Timer</button>
+            )}
+            {isThisTask&&!activeTimer?.isPaused&&(
+              <button onClick={()=>timerPause(true)} style={{background:"#f59e0b22",border:"1px solid #f59e0b55",borderRadius:7,padding:"7px 14px",color:"#f59e0b",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>⏸ Pause</button>
+            )}
+            {isThisTask&&activeTimer?.isPaused&&(
+              <button onClick={()=>timerPause(false)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 14px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>▶ Resume</button>
+            )}
+            {isThisTask&&(
+              <>
+                <button onClick={()=>timerStop(true).then(()=>loadLogs())} style={{background:"#05966922",border:"1px solid #05966955",borderRadius:7,padding:"7px 14px",color:"#059669",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>⏹ Save</button>
+                <button onClick={()=>timerStop(false)} title="Discard" style={{background:"#ef444418",border:"1px solid #ef444433",borderRadius:7,padding:"7px 10px",color:"#ef4444",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <div style={{fontSize:13,fontWeight:800,color:"#a0a0b0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           ⏱ Time Logged
@@ -7034,6 +7078,52 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
   );
 }
 
+// ── Live Task Timer Banner ─────────────────────────────────────────
+function LiveTimerBar({timer,onPause,onStop}){
+  const isMobile=useMobile();
+  const [tick,setTick]=useState(0);
+  useEffect(()=>{
+    if(!timer||timer.isPaused)return;
+    const iv=setInterval(()=>setTick(t=>t+1),1000);
+    return()=>clearInterval(iv);
+  },[timer?.taskId,timer?.isPaused]);
+  if(!timer)return null;
+  function elapsed(){
+    if(timer.isPaused)return timer.pausedElapsed;
+    return timer.pausedElapsed+Math.floor((Date.now()-timer.startedAt)/1000);
+  }
+  function fmt(s){
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+    return[h>0?String(h).padStart(2,"0"):null,String(m).padStart(2,"0"),String(sc).padStart(2,"0")].filter(Boolean).join(":");
+  }
+  const el=elapsed();
+  const isLong=el>=14400;// >4 hours
+  const isPaused=timer.isPaused;
+  const accentClr=isLong?"#ef4444":isPaused?"#f59e0b":"#7c3aed";
+  return(
+    <div style={{position:"fixed",bottom:isMobile?56:0,left:0,right:0,zIndex:2500,background:"#0f172a",borderTop:`2px solid ${accentClr}`,display:"flex",alignItems:"center",gap:isMobile?8:14,padding:isMobile?"8px 10px":"10px 20px",boxShadow:"0 -4px 32px #00000099"}}>
+      {/* Status dot */}
+      <div style={{width:9,height:9,borderRadius:"50%",background:accentClr,flexShrink:0,opacity:isPaused?0.5:1}}/>
+      {/* Info */}
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:10,color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>{isLong?"⚠️ TIMER >4 HRS":isPaused?"PAUSED":"TIMING NOW"}</div>
+        <div style={{fontSize:isMobile?12:13,fontWeight:700,color:"#f1f5f9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{timer.taskTitle}</div>
+      </div>
+      {/* Clock */}
+      <div style={{fontFamily:"monospace",fontSize:isMobile?17:22,fontWeight:800,color:accentClr,flexShrink:0,letterSpacing:"0.05em",minWidth:isMobile?60:80,textAlign:"right"}}>{fmt(el)}</div>
+      {/* Controls */}
+      <div style={{display:"flex",gap:5,flexShrink:0}}>
+        {isPaused
+          ?<button onClick={()=>onPause(false)} style={{background:accentClr,border:"none",borderRadius:7,padding:isMobile?"5px 10px":"6px 14px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>▶ Resume</button>
+          :<button onClick={()=>onPause(true)} style={{background:"#f59e0b22",border:"1px solid #f59e0b55",borderRadius:7,padding:isMobile?"5px 10px":"6px 14px",color:"#f59e0b",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>⏸ Pause</button>
+        }
+        <button onClick={()=>onStop(true)} style={{background:"#05966922",border:"1px solid #05966955",borderRadius:7,padding:isMobile?"5px 10px":"6px 14px",color:"#059669",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>⏹ Save</button>
+        <button onClick={()=>onStop(false)} title="Discard & stop" style={{background:"#ef444418",border:"1px solid #ef444433",borderRadius:7,padding:"6px 9px",color:"#ef4444",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+      </div>
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -7603,6 +7693,45 @@ export default function App(){
   const [qnSearch,setQnSearch]=useState("");// QuickNav search text
   const [qnFilterEmployee,setQnFilterEmployee]=useState("all");// QuickNav employee filter
   const [qnFilterStatus,setQnFilterStatus]=useState("all");// QuickNav status filter
+  // ── Live Task Timer ─────────────────────────────────────────────────
+  const [activeTimer,setActTmr]=useState(()=>{
+    try{const s=localStorage.getItem("rds_live_timer");return s?JSON.parse(s):null;}catch{return null;}
+  });
+  const timerRef=useRef(null);
+  timerRef.current=activeTimer;
+  function timerElapsed(t){
+    const T=t||timerRef.current;if(!T)return 0;
+    if(T.isPaused)return T.pausedElapsed;
+    return T.pausedElapsed+Math.floor((Date.now()-T.startedAt)/1000);
+  }
+  function fmtTimer(s){
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+    return[h>0?String(h).padStart(2,"0"):null,String(m).padStart(2,"0"),String(sc).padStart(2,"0")].filter(Boolean).join(":");
+  }
+  function saveTmrLS(t){if(t)localStorage.setItem("rds_live_timer",JSON.stringify(t));else localStorage.removeItem("rds_live_timer");}
+  function timerStart(task){
+    const cur=timerRef.current;
+    if(cur&&!cur.isPaused&&cur.taskId!==task.id){
+      sToast({msg:`⚠ Stop timer on "${cur.taskTitle}" first`,color:"#ef4444"});return;
+    }
+    const isResume=cur?.taskId===task.id&&cur.isPaused;
+    const t={taskId:task.id,projectId:task.project_id,taskTitle:task.title,startedAt:Date.now(),pausedElapsed:isResume?cur.pausedElapsed:0,isPaused:false,userId:me.id,userName:me.name};
+    setActTmr(t);saveTmrLS(t);
+  }
+  function timerPause(doPause=true){
+    const cur=timerRef.current;if(!cur)return;
+    const t={...cur,pausedElapsed:doPause?timerElapsed(cur):cur.pausedElapsed,isPaused:doPause,startedAt:doPause?cur.startedAt:Date.now()};
+    setActTmr(t);saveTmrLS(t);
+  }
+  async function timerStop(doSave=true){
+    const cur=timerRef.current;if(!cur)return;
+    const el=timerElapsed(cur);const mins=Math.max(1,Math.floor(el/60));
+    if(doSave&&el>=60){
+      await fetch(SUPA_URL+"/rest/v1/time_logs",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({task_id:cur.taskId,project_id:cur.projectId,user_id:cur.userId,user_name:cur.userName,duration_minutes:mins,logged_date:new Date().toISOString().slice(0,10),notes:"⏱ Timer auto-logged"})});
+      sToast({msg:`⏱ Logged ${fmtTimer(el)} — "${cur.taskTitle}"`,color:"#059669"});
+    }else if(doSave){sToast({msg:"Timer stopped (< 1 min — not logged)",color:"#f59e0b"});}
+    setActTmr(null);saveTmrLS(null);
+  }
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -9061,7 +9190,7 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
-          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient}/>}
+          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
           {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
         </Modal>
       )}
@@ -9246,6 +9375,8 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
+    {/* ── Live Timer floating bar ── */}
+    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
     </MobileCtx.Provider>
   );
 }
