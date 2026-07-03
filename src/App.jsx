@@ -3725,7 +3725,7 @@ function EmailDigestCard(){
   async function toggle(val){setEnabled(val);await upsertSetting("daily_digest_enabled",val?"true":"false");setMsg("Digest "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
   async function triggerNow(){
     setTriggering(true);setMsg(null);
-    try{const res=await fetch("/api/cron-daily",{method:"GET"});const data=await res.json();setMsg(res.ok?"Sent to "+(data.sent??0)+" recipient(s)":"Error: "+(data.error||"Unknown"));}
+    try{const res=await fetch("/api/cron-daily",{method:"GET"});const data=await res.json();setMsg(res.ok?(data.sent!=null?"Sent to "+data.sent+" recipient(s)":data.message||"Already sent today"):"Error: "+(data.error||"Unknown"));}
     catch(e){setMsg("Network error: "+e.message);}
     setTriggering(false);setTimeout(()=>setMsg(null),4000);
   }

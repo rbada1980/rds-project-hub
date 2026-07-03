@@ -177,22 +177,48 @@ export default async function handler(req, res) {
     }
 
     // ── Stamp IMMEDIATELY — before any emails go out ──────────────────────────
-    // Moved here so that even if the function times out or Vercel retries,
-    // the next call is always blocked. This is the strict "once per day" lock.
+    // IMPORTANT: We check both the HTTP status AND the returned rows.
+    // fetch() does NOT throw on 4xx/5xx — so a silent failure would skip the
+    // lock and allow a second run to send duplicates. We abort on any failure.
     try {
+      let stamped = false;
+
+      // Try UPDATE first (row may already exist from a prior month)
       const patchRes = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date`, {
         method: "PATCH",
         headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
         body: JSON.stringify({ value: today })
       });
-      const patched = await patchRes.json();
-      if (!Array.isArray(patched) || patched.length === 0) {
-        await fetch(`${SUPA_URL}/rest/v1/settings`, {
+      if (patchRes.ok) {
+        const patched = await patchRes.json();
+        if (Array.isArray(patched) && patched.length > 0) stamped = true;
+      }
+
+      if (!stamped) {
+        // Row doesn't exist yet — INSERT it; check HTTP status explicitly
+        const postRes = await fetch(`${SUPA_URL}/rest/v1/settings`, {
           method: "POST",
-          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
           body: JSON.stringify({ key: "last_digest_date", value: today })
         });
+        if (!postRes.ok) {
+          const errText = await postRes.text().catch(() => postRes.status);
+          console.error(`CRITICAL: POST last_digest_date failed (HTTP ${postRes.status}):`, errText);
+          return res.status(500).json({ error: "Could not acquire send lock. Aborting to prevent duplicates." });
+        }
+        const posted = await postRes.json();
+        if (!Array.isArray(posted) || posted.length === 0) {
+          console.error("CRITICAL: POST last_digest_date returned no rows — lock not confirmed");
+          return res.status(500).json({ error: "Could not verify send lock. Aborting to prevent duplicates." });
+        }
+        stamped = true;
       }
+
+      if (!stamped) {
+        console.error("CRITICAL: last_digest_date stamp could not be confirmed");
+        return res.status(500).json({ error: "Could not acquire send lock. Aborting." });
+      }
+
       console.log(`Stamped last_digest_date = ${today}`);
     } catch (stampErr) {
       console.error("CRITICAL: Could not stamp last_digest_date — aborting to prevent duplicate sends:", stampErr.message);
