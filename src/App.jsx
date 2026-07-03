@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
 // email notifications removed — daily scheduled digest replaces per-update emails
@@ -1791,17 +1792,8 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
 function exportExcel(projects,tasks,label="Report"){
   const today=new Date().toISOString().slice(0,10);
   const safe=label.replace(/[/\\:*?"<>|]/g," ").trim();
-  // ── helpers ──────────────────────────────────────────────────
-  const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  function cell(val,sid,merge=0,type="String"){
-    const m=merge?` ss:MergeAcross="${merge}"`:"";
-    return `<Cell ss:StyleID="${sid}"${m}><Data ss:Type="${type}">${esc(val)}</Data></Cell>`;
-  }
-  function numCell(val,sid){return `<Cell ss:StyleID="${sid}"><Data ss:Type="Number">${val}</Data></Cell>`;}
-  function row(h,...cells){return `<Row ss:Height="${h}">${cells.join("")}</Row>`;}
-  function emptyRow(h,sid,n=1){return `<Row ss:Height="${h}">${Array(n).fill(`<Cell ss:StyleID="${sid}"/>`).join("")}</Row>`;}
-  const BAR=(v,mx,w=24)=>{if(!mx)return"░".repeat(w);const f=Math.round((v/mx)*w);return"█".repeat(f)+"░".repeat(w-f);};
-  // ── stats ─────────────────────────────────────────────────────
+  const pct=(d,t)=>t?Math.round((d/t)*100)+"%":"0%";
+
   const total=tasks.length;
   const done=tasks.filter(t=>isDone(t.status)).length;
   const inprog=tasks.filter(t=>t.status==="In Progress").length;
@@ -1809,197 +1801,90 @@ function exportExcel(projects,tasks,label="Report"){
   const notStart=tasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const cancl=tasks.filter(t=>t.status==="job canceled").length;
   const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-  const pct=total?Math.round((done/total)*100):0;
-  const byA={};tasks.forEach(t=>{const a=t.assignee||"Unassigned";if(!byA[a])byA[a]={t:0,d:0};byA[a].t++;if(isDone(t.status))byA[a].d++;});
-  const asgns=Object.entries(byA).sort((a,b)=>b[1].t-a[1].t);
-  const byC={};tasks.forEach(t=>{const p=projects.find(x=>x.id===t.project_id);const c=p?.client||"Unassigned";if(!byC[c])byC[c]={t:0,d:0};byC[c].t++;if(isDone(t.status))byC[c].d++;});
-  const clnts=Object.entries(byC).filter(([,v])=>v.t>0).sort((a,b)=>b[1].t-a[1].t);
-  // ── styles ────────────────────────────────────────────────────
-  const S=`
-  <Style ss:ID="def"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="title"><Font ss:Name="Arial" ss:Size="22" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="sub"><Font ss:Name="Arial" ss:Size="11" ss:Color="#94A3B8"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="secHdr"><Font ss:Name="Arial" ss:Size="12" ss:Bold="1" ss:Color="#14B8A6"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tblHdr"><Font ss:Name="Arial" ss:Size="9" ss:Bold="1" ss:Color="#94A3B8"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="kpiLbl"><Font ss:Name="Arial" ss:Size="8" ss:Bold="1" ss:Color="#94A3B8"/><Interior ss:Color="#0F1117" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="kpiTotal"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#F97316"/></Borders></Style>
-  <Style ss:ID="kpiDone"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#4ADE80"/></Borders></Style>
-  <Style ss:ID="kpiProg"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#93C5FD"/></Borders></Style>
-  <Style ss:ID="kpiOvd"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#FCA5A5"/></Borders></Style>
-  <Style ss:ID="kpiPct"><Font ss:Name="Arial" ss:Size="30" ss:Bold="1" ss:Color="#86EFAC"/><Interior ss:Color="#14532D" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#86EFAC"/></Borders></Style>
-  <Style ss:ID="progBar"><Font ss:Name="Courier New" ss:Size="11" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="progBarOr"><Font ss:Name="Courier New" ss:Size="11" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="progBarRd"><Font ss:Name="Courier New" ss:Size="11" ss:Bold="1" ss:Color="#EF4444"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stDone"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stDoneC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="stDoneB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stProg"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stProgC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="stProgB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stRev"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stRevC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="stRevB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stNot"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stNotC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="stNotB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stCnx"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stCnxC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="stCnxB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stOvd"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="stOvdC"><Font ss:Name="Arial" ss:Size="13" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="stOvdB"><Font ss:Name="Courier New" ss:Size="9" ss:Color="#FCA5A5"/><Interior ss:Color="#450A0A" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEv"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOd"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvC"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdC"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvD"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdD"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvBG"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#22C55E"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdBG"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#22C55E"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvBO"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdBO"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#F97316"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvBR"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#94A3B8"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdBR"><Font ss:Name="Courier New" ss:Size="8" ss:Color="#94A3B8"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvP"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdP"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#22C55E"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvPO"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdPO"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F97316"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnEvPR"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#EF4444"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="asnOdPR"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#EF4444"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="hdrTask"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#F1F5F9"/><Interior ss:Color="#1E2433" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#14B8A6"/></Borders></Style>
-  <Style ss:ID="clientRow"><Font ss:Name="Arial" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#F97316" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="projRow"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#3B82F6" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tDone"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0A1F14" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tDoneB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#4ADE80"/><Interior ss:Color="#022C22" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tProg"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#0A1631" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tProgB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#93C5FD"/><Interior ss:Color="#172554" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tOvd"><Font ss:Name="Arial" ss:Size="10" ss:Color="#FCA5A5"/><Interior ss:Color="#1C0A0A" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tOvdB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#FCA5A5"/><Interior ss:Color="#7F1D1D" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tRev"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tRevB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#D8B4FE"/><Interior ss:Color="#2E1065" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tDef"><Font ss:Name="Arial" ss:Size="10" ss:Color="#F1F5F9"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="tDefB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#A8A29E"/><Interior ss:Color="#1C1917" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tCnxB"><Font ss:Name="Arial" ss:Size="10" ss:Bold="1" ss:Color="#F87171"/><Interior ss:Color="#1C0505" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tNum"><Font ss:Name="Arial" ss:Size="10" ss:Color="#94A3B8"/><Interior ss:Color="#171B26" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tNumD"><Font ss:Name="Arial" ss:Size="10" ss:Color="#94A3B8"/><Interior ss:Color="#0A1F14" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tNumP"><Font ss:Name="Arial" ss:Size="10" ss:Color="#94A3B8"/><Interior ss:Color="#0A1631" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="tNumO"><Font ss:Name="Arial" ss:Size="10" ss:Color="#FCA5A5"/><Interior ss:Color="#1C0A0A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-  <Style ss:ID="gap"><Interior ss:Color="#0F1117" ss:Pattern="Solid"/></Style>
-  `;
-  // ── Sheet 1: Analytics ─────────────────────────────────────
-  const bW=40;const bF=Math.round((pct/100)*bW);
-  const pbStyle=pct>=80?"progBar":pct>=50?"progBarOr":"progBarRd";
-  const maxSt=Math.max(done,inprog,review,notStart,cancl,overdue,1);
-  const stData=[
-    {lbl:"✅  Completed",cnt:done,s:"stDone",sc:"stDoneC",sb:"stDoneB"},
-    {lbl:"🔵  In Progress",cnt:inprog,s:"stProg",sc:"stProgC",sb:"stProgB"},
-    {lbl:"🟣  Review",cnt:review,s:"stRev",sc:"stRevC",sb:"stRevB"},
-    {lbl:"⚪  Not Started",cnt:notStart,s:"stNot",sc:"stNotC",sb:"stNotB"},
-    {lbl:"❌  Canceled",cnt:cancl,s:"stCnx",sc:"stCnxC",sb:"stCnxB"},
-    {lbl:"⚠   Overdue",cnt:overdue,s:"stOvd",sc:"stOvdC",sb:"stOvdB"},
+
+  // Sheet 1 — Summary
+  const sumRows=[
+    ["RDS Project Hub — "+safe],
+    ["Generated: "+today],
+    [],
+    ["KEY METRICS","","","",""],
+    ["Total Tasks","Completed","In Progress","Review","Overdue"],
+    [total,done,inprog,review,overdue],
+    [],
+    ["STATUS","COUNT","% OF TOTAL"],
+    ["Completed",done,pct(done,total)],
+    ["In Progress",inprog,pct(inprog,total)],
+    ["Review",review,pct(review,total)],
+    ["Not Started",notStart,pct(notStart,total)],
+    ["Canceled",cancl,pct(cancl,total)],
+    ["Overdue",overdue,pct(overdue,total)],
+    [],
+    ["OVERALL COMPLETION",pct(done,total)],
   ];
-  let dash=``;
-  dash+=`<Column ss:Width="18"/><Column ss:Width="150"/><Column ss:Width="65"/><Column ss:Width="55"/><Column ss:Width="160"/><Column ss:Width="70"/><Column ss:Width="18"/>`;
-  // title
-  dash+=`<Row ss:Height="8">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
-  dash+=`<Row ss:Height="42"><Cell ss:StyleID="gap"/>${cell("📊  RDS Project Hub — "+safe,"title",4)}<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("Generated: "+today+"   •   "+total+" tasks   |   "+projects.length+" projects   |   "+pct+"% complete","sub",4)}<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="10">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
-  // KPI section header
-  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  KEY METRICS","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
-  // KPI labels
-  dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>`;
-  dash+=cell("TOTAL TASKS","kpiLbl")+cell("COMPLETED","kpiLbl")+cell("IN PROGRESS","kpiLbl")+cell("OVERDUE","kpiLbl")+cell("COMPLETION %","kpiLbl");
-  dash+=`<Cell ss:StyleID="gap"/></Row>`;
-  // KPI values
-  dash+=`<Row ss:Height="58"><Cell ss:StyleID="gap"/>`;
-  dash+=numCell(total,"kpiTotal")+numCell(done,"kpiDone")+numCell(inprog,"kpiProg")+numCell(overdue,"kpiOvd")+cell(pct+"%","kpiPct");
-  dash+=`<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
-  // Progress bar
-  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  COMPLETION PROGRESS","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="30"><Cell ss:StyleID="gap"/>${cell("█".repeat(bF)+"░".repeat(bW-bF)+"   "+pct+"% Complete   ("+done+" of "+total+")",pbStyle,3)}${cell(done+" / "+total,"sub")}<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
-  // Status breakdown
-  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  STATUS BREAKDOWN","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>${cell("Status","tblHdr")+cell("Count","tblHdr")+cell("Share %","tblHdr")+cell("Progress Bar","tblHdr")+cell("","tblHdr")}<Cell ss:StyleID="gap"/></Row>`;
-  stData.forEach(s=>{
-    const share=total?Math.round((s.cnt/total)*100):0;
-    dash+=`<Row ss:Height="22"><Cell ss:StyleID="gap"/>`;
-    dash+=cell(s.lbl,s.s)+numCell(s.cnt,s.sc)+cell(share+"%",s.sc)+cell(BAR(s.cnt,maxSt,22),s.sb)+`<Cell ss:StyleID="${s.s}"/>`;
-    dash+=`<Cell ss:StyleID="gap"/></Row>`;
+  sumRows.push([]);
+  sumRows.push(["BY ASSIGNEE","TOTAL","DONE","COMPLETION %"]);
+  const byA={};
+  tasks.forEach(t=>{const a=t.assignee||"Unassigned";if(!byA[a])byA[a]={t:0,d:0};byA[a].t++;if(isDone(t.status))byA[a].d++;});
+  Object.entries(byA).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumRows.push([n,v.t,v.d,pct(v.d,v.t)]));
+  sumRows.push([]);
+  sumRows.push(["BY CLIENT","TOTAL","DONE","COMPLETION %"]);
+  const byC={};
+  tasks.forEach(t=>{const p=projects.find(x=>x.id===t.project_id);const c=p?.client||"Unassigned";if(!byC[c])byC[c]={t:0,d:0};byC[c].t++;if(isDone(t.status))byC[c].d++;});
+  Object.entries(byC).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumRows.push([n,v.t,v.d,pct(v.d,v.t)]));
+
+  // Sheet 2 — All Tasks
+  const taskRows=[["#","Project","Client","Task Title","Assignee","Status","Priority","Start Date","Due Date","Overdue?","Description"]];
+  tasks.forEach((t,i)=>{
+    const proj=projects.find(p=>p.id===t.project_id);
+    taskRows.push([i+1,proj?.name||"",proj?.client||"",t.title||"",t.assignee||"Unassigned",t.status||"",t.priority||"",t.start_date||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":"",t.description||""]);
   });
-  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
-  // Assignee breakdown
-  dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  ASSIGNEE BREAKDOWN","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
-  dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>${cell("Assignee","tblHdr")+cell("Tasks","tblHdr")+cell("Done","tblHdr")+cell("Progress Bar","tblHdr")+cell("Done %","tblHdr")}<Cell ss:StyleID="gap"/></Row>`;
-  asgns.slice(0,20).forEach(([name,v],i)=>{
-    const e=i%2===0;const cp=v.t?Math.round((v.d/v.t)*100):0;
-    const [sN,sC,sD,sP,sPc]=[e?"asnEv":"asnOd",e?"asnEvC":"asnOdC",e?"asnEvD":"asnOdD",cp>=80?(e?"asnEvBG":"asnOdBG"):cp>=50?(e?"asnEvBO":"asnOdBO"):(e?"asnEvBR":"asnOdBR"),cp>=80?(e?"asnEvP":"asnOdP"):cp>=50?(e?"asnEvPO":"asnOdPO"):(e?"asnEvPR":"asnOdPR")];
-    dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell(name,sN)+numCell(v.t,sC)+numCell(v.d,sD)+cell(BAR(v.d,v.t,22),sP)+cell(cp+"%",sPc)}<Cell ss:StyleID="gap"/></Row>`;
+
+  // Sheet 3 — By Project
+  const projRows=[["Project","Client","Total","Done","In Progress","Overdue","Completion %"]];
+  projects.forEach(p=>{
+    const pt=tasks.filter(t=>t.project_id===p.id);
+    if(!pt.length)return;
+    const pd=pt.filter(t=>isDone(t.status)).length;
+    projRows.push([p.name||"",p.client||"",pt.length,pd,pt.filter(t=>t.status==="In Progress").length,pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length,pct(pd,pt.length)]);
   });
-  dash+=`<Row ss:Height="14">${Array(7).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
-  // Client breakdown
-  if(clnts.length){
-    dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell("▸  CLIENT BREAKDOWN","secHdr",4)}<Cell ss:StyleID="gap"/></Row>`;
-    dash+=`<Row ss:Height="16"><Cell ss:StyleID="gap"/>${cell("Client","tblHdr")+cell("Tasks","tblHdr")+cell("Done","tblHdr")+cell("Progress Bar","tblHdr")+cell("Done %","tblHdr")}<Cell ss:StyleID="gap"/></Row>`;
-    clnts.forEach(([name,v],i)=>{
-      const e=i%2===0;const cp=v.t?Math.round((v.d/v.t)*100):0;
-      const [sN,sC,sD,sP,sPc]=[e?"asnEv":"asnOd",e?"asnEvC":"asnOdC",e?"asnEvD":"asnOdD",cp>=80?(e?"asnEvBG":"asnOdBG"):cp>=50?(e?"asnEvBO":"asnOdBO"):(e?"asnEvBR":"asnOdBR"),cp>=80?(e?"asnEvP":"asnOdP"):cp>=50?(e?"asnEvPO":"asnOdPO"):(e?"asnEvPR":"asnOdPR")];
-      dash+=`<Row ss:Height="20"><Cell ss:StyleID="gap"/>${cell(name,sN)+numCell(v.t,sC)+numCell(v.d,sD)+cell(BAR(v.d,v.t,22),sP)+cell(cp+"%",sPc)}<Cell ss:StyleID="gap"/></Row>`;
+
+  // Sheet 4 — By Assignee
+  const asnRows=[["Assignee","Project","Task","Status","Priority","Due Date","Overdue?"]];
+  [...new Set(tasks.map(t=>t.assignee||"Unassigned"))].sort().forEach(name=>{
+    tasks.filter(t=>(t.assignee||"Unassigned")===name).forEach(t=>{
+      const proj=projects.find(p=>p.id===t.project_id);
+      asnRows.push([name,proj?.name||"",t.title||"",t.status||"",t.priority||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
     });
-  }
-  // ── Sheet 2: Tasks ──────────────────────────────────────────
-  const clientGroups=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-  let taskSheet=``;
-  taskSheet+=`<Column ss:Width="30"/><Column ss:Width="200"/><Column ss:Width="120"/><Column ss:Width="60"/><Column ss:Width="90"/><Column ss:Width="60"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="70"/><Column ss:Width="80"/><Column ss:Width="90"/>`;
-  taskSheet+=`<Row ss:Height="28">${["#","Task","Project","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","Client"].map(h=>cell(h,"hdrTask")).join("")}</Row>`;
-  let n=1;
-  clientGroups.forEach(client=>{
-    const cP=projects.filter(p=>(p.client||"Unassigned")===client);
-    const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
-    if(!cT.length)return;
-    taskSheet+=`<Row ss:Height="22">${cell("CLIENT: "+client+"   ("+cP.length+" projects, "+cT.length+" tasks)","clientRow",11)}</Row>`;
-    cP.forEach(proj=>{
-      const pt=cT.filter(t=>t.project_id===proj.id);
-      if(!pt.length)return;
-      taskSheet+=`<Row ss:Height="18">${cell("  ▸ "+proj.name+"  ("+pt.length+" tasks)","projRow",11)}</Row>`;
-      pt.forEach(t=>{
-        const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
-        const isC=isDone(t.status);const isI=t.status==="In Progress";const isR=t.status==="Review";const isCx=t.status==="job canceled";
-        let rs="tDef",rsb="tDefB",rn_s="tNum";
-        if(ov){rs="tOvd";rsb="tOvdB";rn_s="tNumO";}
-        else if(isC){rs="tDone";rsb="tDoneB";rn_s="tNumD";}
-        else if(isI){rs="tProg";rsb="tProgB";rn_s="tNumP";}
-        else if(isR){rs="tRev";rsb="tRevB";}
-        else if(isCx){rsb="tCnxB";}
-        taskSheet+=`<Row ss:Height="20">`;
-        taskSheet+=numCell(n++,rn_s);
-        taskSheet+=cell(t.title||"",rs);
-        taskSheet+=cell(proj.name,rs);
-        taskSheet+=cell(t.scope||"—",rs);
-        taskSheet+=cell((t.status||"—")+(ov?" ⚠":""),rsb);
-        taskSheet+=cell(t.priority||"—",rs);
-        taskSheet+=cell(t.assignee||"Unassigned",rs);
-        taskSheet+=cell(t.detailer||"—",rs);
-        taskSheet+=cell(t.checker||"—",rs);
-        taskSheet+=cell(t.due_date||"—",ov?"tOvdB":rs);
-        taskSheet+=cell(t.client_sub_date||"—",rs);
-        taskSheet+=cell(client,rs);
-        taskSheet+=`</Row>`;
+  });
+
+  // Sheet 5 — By Client
+  const cliRows=[["Client","Project","Task","Assignee","Status","Due Date","Overdue?"]];
+  [...new Set(projects.map(p=>p.client||"Unassigned"))].sort().forEach(cl=>{
+    projects.filter(p=>(p.client||"Unassigned")===cl).forEach(p=>{
+      tasks.filter(t=>t.project_id===p.id).forEach(t=>{
+        cliRows.push([cl,p.name||"",t.title||"",t.assignee||"",t.status||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
       });
-      taskSheet+=`<Row ss:Height="5">${Array(12).fill(`<Cell ss:StyleID="gap"/>`).join("")}</Row>`;
     });
   });
-  // ── Build SpreadsheetML XML ──────────────────────────────────
-  const xml=`<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office"><Styles>${S}</Styles><Worksheet ss:Name="Analytics"><Table>${dash}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FitToPage/><Print><FitWidth>1</FitWidth></Print></WorksheetOptions></Worksheet><Worksheet ss:Name="Tasks"><Table>${taskSheet}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions></Worksheet></Workbook>`;
-  const blob=new Blob([xml],{type:"application/vnd.ms-excel;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="RDS Report - "+safe+" - "+today+".xls";
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+
+  // Build workbook
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet(sumRows);
+  ws1["!cols"]=[{wch:28},{wch:10},{wch:10},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Summary");
+  const ws2=XLSX.utils.aoa_to_sheet(taskRows);
+  ws2["!cols"]=[{wch:4},{wch:28},{wch:18},{wch:38},{wch:18},{wch:14},{wch:10},{wch:12},{wch:12},{wch:9},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,ws2,"All Tasks");
+  const ws3=XLSX.utils.aoa_to_sheet(projRows);
+  ws3["!cols"]=[{wch:30},{wch:20},{wch:8},{wch:8},{wch:12},{wch:10},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws3,"By Project");
+  const ws4=XLSX.utils.aoa_to_sheet(asnRows);
+  ws4["!cols"]=[{wch:20},{wch:28},{wch:38},{wch:14},{wch:10},{wch:12},{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws4,"By Assignee");
+  const ws5=XLSX.utils.aoa_to_sheet(cliRows);
+  ws5["!cols"]=[{wch:20},{wch:28},{wch:38},{wch:18},{wch:14},{wch:12},{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws5,"By Client");
+  XLSX.writeFile(wb,"RDS Report - "+safe+" - "+today+".xlsx");
 }
 
 function ChangePasswordModal({me,onClose}){
