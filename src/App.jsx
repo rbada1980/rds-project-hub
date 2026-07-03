@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
-import XLSXStyle from "xlsx-js-style";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
 // email notifications removed — daily scheduled digest replaces per-update emails
@@ -1848,13 +1847,13 @@ function exportExcel(projects,tasks,label="Report"){
   function applyRow(ws,rIdx,styles){
     styles.forEach((s,c)=>{
       if(!s)return;
-      const addr=XLSXStyle.utils.encode_cell({r:rIdx,c});
+      const addr=window.XLSX.utils.encode_cell({r:rIdx,c});
       if(!ws[addr])ws[addr]={v:"",t:"s"};
       ws[addr].s=s;
     });
   }
   function setCellStyle(ws,rIdx,cIdx,style){
-    const addr=XLSXStyle.utils.encode_cell({r:rIdx,c:cIdx});
+    const addr=window.XLSX.utils.encode_cell({r:rIdx,c:cIdx});
     if(!ws[addr])ws[addr]={v:"",t:"s"};
     ws[addr].s=style;
   }
@@ -1891,15 +1890,15 @@ function exportExcel(projects,tasks,label="Report"){
   tasks.forEach(t=>{const p=projects.find(x=>x.id===t.project_id);const c=p?.client||"Unassigned";if(!byC[c])byC[c]={t:0,d:0};byC[c].t++;if(isDone(t.status))byC[c].d++;});
   Object.entries(byC).sort((a,b)=>b[1].t-a[1].t).forEach(([n,v])=>sumData.push([n,v.t,v.d,pct(v.d,v.t),"",""]));
 
-  const ws1=XLSXStyle.utils.aoa_to_sheet(sumData);
+  const ws1=window.XLSX.utils.aoa_to_sheet(sumData);
   ws1["!cols"]=[{wch:26},{wch:10},{wch:10},{wch:14},{wch:10},{wch:12}];
   ws1["!rows"]=[{hpt:32},{hpt:18},{hpt:8},{hpt:22},{hpt:22},{hpt:38},{hpt:8},{hpt:22}];
+  const byA_len=Object.keys(byA).length;
   ws1["!merges"]=[
     {s:{r:0,c:0},e:{r:0,c:5}},{s:{r:1,c:0},e:{r:1,c:5}},
     {s:{r:3,c:0},e:{r:3,c:5}},{s:{r:7,c:0},e:{r:7,c:5}},
     {s:{r:15,c:0},e:{r:15,c:5}},{s:{r:asnStart+byA_len+1,c:0},e:{r:asnStart+byA_len+1,c:5}},
   ];
-  const byA_len=Object.keys(byA).length;
 
   // Row 0: Title
   [0,1,2,3,4,5].forEach(c=>setCellStyle(ws1,0,c,sTitle(P.orange,15)));
@@ -1945,7 +1944,7 @@ function exportExcel(projects,tasks,label="Report"){
     const ovd=t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":"";
     taskRows.push([i+1,proj?.name||"",proj?.client||"",t.title||"",t.assignee||"Unassigned",t.status||"",t.priority||"",t.start_date||"",t.due_date||"",ovd,t.description||""]);
   });
-  const ws2=XLSXStyle.utils.aoa_to_sheet(taskRows);
+  const ws2=window.XLSX.utils.aoa_to_sheet(taskRows);
   ws2["!cols"]=[{wch:4},{wch:26},{wch:18},{wch:36},{wch:18},{wch:14},{wch:10},{wch:12},{wch:12},{wch:9},{wch:38}];
   ws2["!rows"]=[{hpt:24}];
   taskHdr.forEach((_,c)=>setCellStyle(ws2,0,c,sHdr(P.dark,10)));
@@ -1967,7 +1966,7 @@ function exportExcel(projects,tasks,label="Report"){
     const pd=pt.filter(t=>isDone(t.status)).length;
     projDataRows.push([p.name||"",p.client||"",pt.length,pd,pt.filter(t=>t.status==="In Progress").length,pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length,pct(pd,pt.length)]);
   });
-  const ws3=XLSXStyle.utils.aoa_to_sheet(projDataRows);
+  const ws3=window.XLSX.utils.aoa_to_sheet(projDataRows);
   ws3["!cols"]=[{wch:30},{wch:20},{wch:8},{wch:8},{wch:12},{wch:10},{wch:14}];
   ws3["!rows"]=[{hpt:24}];
   projHdr.forEach((_,c)=>setCellStyle(ws3,0,c,sHdr(P.orange,10)));
@@ -1990,7 +1989,7 @@ function exportExcel(projects,tasks,label="Report"){
       asnData.push(["",proj?.name||"",t.title||"",t.status||"",t.priority||"",t.due_date||"",t.due_date&&t.due_date<today&&!isDone(t.status)?"YES":""]);
     });
   });
-  const ws4=XLSXStyle.utils.aoa_to_sheet(asnData);
+  const ws4=window.XLSX.utils.aoa_to_sheet(asnData);
   ws4["!cols"]=[{wch:22},{wch:26},{wch:36},{wch:14},{wch:10},{wch:12},{wch:9}];
   ws4["!rows"]=[{hpt:24}];
   asnHdr2.forEach((_,c)=>setCellStyle(ws4,0,c,sHdr(P.blue,10)));
@@ -2018,7 +2017,7 @@ function exportExcel(projects,tasks,label="Report"){
       });
     });
   });
-  const ws5=XLSXStyle.utils.aoa_to_sheet(cliData);
+  const ws5=window.XLSX.utils.aoa_to_sheet(cliData);
   ws5["!cols"]=[{wch:20},{wch:26},{wch:36},{wch:18},{wch:14},{wch:12},{wch:9}];
   ws5["!rows"]=[{hpt:24}];
   cliHdr2.forEach((_,c)=>setCellStyle(ws5,0,c,sHdr(P.teal,10)));
@@ -2036,13 +2035,13 @@ function exportExcel(projects,tasks,label="Report"){
   });
 
   // ── Build workbook ────────────────────────────────────────────────────────
-  const wb=XLSXStyle.utils.book_new();
-  XLSXStyle.utils.book_append_sheet(wb,ws1,"Summary");
-  XLSXStyle.utils.book_append_sheet(wb,ws2,"All Tasks");
-  XLSXStyle.utils.book_append_sheet(wb,ws3,"By Project");
-  XLSXStyle.utils.book_append_sheet(wb,ws4,"By Assignee");
-  XLSXStyle.utils.book_append_sheet(wb,ws5,"By Client");
-  XLSXStyle.writeFile(wb,"RDS Report - "+safe+" - "+today+".xlsx");
+  const wb=window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb,ws1,"Summary");
+  window.XLSX.utils.book_append_sheet(wb,ws2,"All Tasks");
+  window.XLSX.utils.book_append_sheet(wb,ws3,"By Project");
+  window.XLSX.utils.book_append_sheet(wb,ws4,"By Assignee");
+  window.XLSX.utils.book_append_sheet(wb,ws5,"By Client");
+  window.XLSX.writeFile(wb,"RDS Report - "+safe+" - "+today+".xlsx");
 }
 
 function ChangePasswordModal({me,onClose}){
