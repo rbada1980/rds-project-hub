@@ -7600,6 +7600,9 @@ export default function App(){
   const [dashDrill,setDDrill]=useState([]);// [{type,item}] breadcrumb stack
   const [qnClient,setQnClient]=useState(null);// QuickNav selected client
   const [qnProject,setQnProject]=useState(null);// QuickNav selected project
+  const [qnSearch,setQnSearch]=useState("");// QuickNav search text
+  const [qnFilterEmployee,setQnFilterEmployee]=useState("all");// QuickNav employee filter
+  const [qnFilterStatus,setQnFilterStatus]=useState("all");// QuickNav status filter
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -8220,7 +8223,7 @@ export default function App(){
                       const pct=cT.length?Math.round(cT.filter(t=>isDone(t.status)).length/cT.length*100):0;
                       const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
                       return(
-                        <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);}}
+                        <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
                           style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
                           onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
                           onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
@@ -8265,9 +8268,25 @@ export default function App(){
                 </div>
               );
               // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
-              const splitProjects=qnClientProjects;
+              // Filter projects by search term (name or any matching task)
+              const splitProjects=qnClientProjects.filter(p=>{
+                if(!qnSearch)return true;
+                const ql=qnSearch.toLowerCase();
+                const pt=tasks.filter(t=>t.project_id===p.id);
+                return p.name.toLowerCase().includes(ql)||pt.some(t=>t.title.toLowerCase().includes(ql)||(t.assignee||"").toLowerCase().includes(ql));
+              });
               const activeProj=qnProject||splitProjects[0]||null;
-              const activeTasks=activeProj?tasks.filter(t=>t.project_id===activeProj.id):[];
+              // Filter tasks by search, employee, status
+              const activeTasks=activeProj?tasks.filter(t=>{
+                if(t.project_id!==activeProj.id)return false;
+                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(t.status||"").toLowerCase().includes(ql))return false;}
+                if(qnFilterEmployee!=="all"&&t.assignee!==qnFilterEmployee)return false;
+                if(qnFilterStatus!=="all"&&t.status!==qnFilterStatus)return false;
+                return true;
+              }):[];
+              // Unique employees & statuses across all projects for this client
+              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
+              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean))].sort();
               const mobShowTasks=isMobile&&!!qnProject;
               const closePopup=()=>{setQnClient(null);setQnProject(null);};
               const acPc=activeProj?.color||C.blue;
@@ -8291,9 +8310,9 @@ export default function App(){
                       </div>
                       {/* Client Prev / Next */}
                       {isAdminOrMgr&&!isMobile&&<div style={{display:"flex",gap:6,flexShrink:0}}>
-                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);}}} disabled={!canPrevCl}
+                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canPrevCl}
                           style={{background:C.surface,border:`1px solid ${C.border}`,color:canPrevCl?C.t1:C.t3,fontSize:12,cursor:canPrevCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canPrevCl?1:.4}}>← Previous Client</button>
-                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);}}} disabled={!canNextCl}
+                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canNextCl}
                           style={{background:C.surface,border:`1px solid ${C.border}`,color:canNextCl?C.t1:C.t3,fontSize:12,cursor:canNextCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canNextCl?1:.4}}>Next Client →</button>
                       </div>}
                       {/* Close ✕ */}
@@ -8301,6 +8320,24 @@ export default function App(){
                         style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",lineHeight:1}}
                         onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
                         onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
+                    </div>
+                    {/* ── Search & Filter bar ── */}
+                    <div style={{display:"flex",gap:8,padding:"10px 18px",borderBottom:`1px solid ${C.border}`,background:C.bg+"88",flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",alignItems:"center"}}>
+                      <input placeholder="🔍 Search tasks or projects…" value={qnSearch} onChange={e=>setQnSearch(e.target.value)}
+                        style={{flex:2,minWidth:isMobile?"100%":160,background:C.surface,border:`1px solid ${qnSearch?C.accent:C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+                      <select value={qnFilterEmployee} onChange={e=>setQnFilterEmployee(e.target.value)}
+                        style={{flex:1,minWidth:120,background:C.surface,border:`1px solid ${qnFilterEmployee!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterEmployee!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
+                        <option value="all">All Employees</option>
+                        {qnAllEmployees.map(e=><option key={e} value={e}>{e}</option>)}
+                      </select>
+                      <select value={qnFilterStatus} onChange={e=>setQnFilterStatus(e.target.value)}
+                        style={{flex:1,minWidth:110,background:C.surface,border:`1px solid ${qnFilterStatus!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterStatus!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
+                        <option value="all">All Statuses</option>
+                        {qnAllStatuses.map(s=><option key={s} value={s}>{s}</option>)}
+                      </select>
+                      {(qnSearch||qnFilterEmployee!=="all"||qnFilterStatus!=="all")&&
+                        <button onClick={()=>{setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
+                          style={{background:C.red+"18",border:`1px solid ${C.red}44`,color:C.red,fontSize:11,cursor:"pointer",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>Clear ✕</button>}
                     </div>
                     {/* ── Modal body: split ── */}
                     <div style={{flex:1,display:"flex",overflow:"hidden"}}>
