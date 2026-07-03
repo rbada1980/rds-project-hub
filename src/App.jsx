@@ -2584,6 +2584,7 @@ function stateToUrl(v,pid,client,projs=[]){
   }
   if(v==='list')return'/tasks';
   if(v==='kanban')return'/kanban';
+  if(v==='backup')return'/backup';
   if(v==='workflows')return'/workflows';
   if(v==='analytics')return'/analytics';
   if(v==='submissions')return'/submissions';
@@ -2596,6 +2597,7 @@ function urlToState(path,projs=[]){
   if(!path||path==='/'||path==='/dashboard')return{view:'dashboard',pid:null,client:null};
   if(path==='/tasks')return{view:'list',pid:null,client:null};
   if(path==='/kanban')return{view:'kanban',pid:null,client:null};
+  if(path==='/backup')return{view:'backup',pid:null,client:null};
   if(path==='/workflows')return{view:'workflows',pid:null,client:null};
   if(path==='/analytics')return{view:'analytics',pid:null,client:null};
   if(path==='/submissions')return{view:'submissions',pid:null,client:null};
@@ -2631,6 +2633,8 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
     crumbs.push({label:'📊 Analytics',active:true});
   }else if(view==='workflows'){
     crumbs.push({label:'⚙️ Workflows',active:true});
+  }else if(view==='backup'){
+    crumbs.push({label:'🛡 Backup & Recovery',active:true});
   }else if(view==='submissions'){
     crumbs.push({label:'📬 Submission List',active:true});
   }else if(view==='announcements'){
@@ -8513,6 +8517,656 @@ function LiveTimerBar({timer,onPause,onStop}){
   );
 }
 
+// ══════════════════════════════════════════════════════════
+// BACKUP, DISASTER RECOVERY & BUSINESS CONTINUITY CENTER
+// ══════════════════════════════════════════════════════════
+function BackupCenter({me}){
+  const [tab,setTab]=useState('dashboard');
+  const [search,setSearch]=useState('');
+  const [fType,setFT]=useState('all');
+  const [fStatus,setFS]=useState('all');
+  const [showNewInc,setSNI]=useState(false);
+  const [showNewRP,setSNRP]=useState(false);
+  const [showRestore,setShowR]=useState(null);
+  const [incForm,setIF]=useState({title:'',type:'Database Failure',desc:'',priority:'High'});
+  const [rpLabel,setRPL]=useState('');
+  const [runningJob,setRJ]=useState(null);
+  const [jobPct,setJP]=useState(0);
+  const [alerts,setAlerts]=useState([
+    {id:1,type:'warn',msg:'1 backup job failed on Jul 2 — Full Database',time:'2 days ago'},
+    {id:2,type:'info',msg:'Weekly backup completed successfully — 11.8 GB',time:'4 days ago'},
+    {id:3,type:'info',msg:'Monthly backup completed — Jun 01 snapshot verified',time:'32 days ago'},
+  ]);
+  const [incidents,setInc]=useState([
+    {id:1,title:'Supabase connection timeout during peak load',type:'Database Failure',status:'Resolved',priority:'Critical',created:'2026-06-28T09:15:00Z',resolved:'2026-06-28T11:42:00Z',rca:'Connection pool exhausted — 25 concurrent users',resolution:'Increased Supabase connection pool limit. Added retry logic.'},
+    {id:2,title:'Storage bucket ACL misconfiguration',type:'Security Incident',status:'Closed',priority:'High',created:'2026-06-15T14:22:00Z',resolved:'2026-06-15T15:10:00Z',rca:'IAM policy change during maintenance window',resolution:'Reverted policy. Added change-control checklist.'},
+    {id:3,title:'Scheduled backup missed at 2:00 AM',type:'Application Failure',status:'Investigating',priority:'Medium',created:'2026-07-02T02:05:00Z',resolved:null,rca:'',resolution:''},
+  ]);
+  const [rps,setRPs]=useState([
+    {id:1,label:'Pre-deploy snapshot — Jul 03',type:'Manual',created:'2026-07-03T08:00:00Z',size:'10.2 GB',modules:['Database','Files','Documents'],status:'Verified'},
+    {id:2,label:'Daily auto — Jul 03',type:'Auto',created:'2026-07-03T02:00:00Z',size:'9.8 GB',modules:['Database','Files','Documents'],status:'Verified'},
+    {id:3,label:'Daily auto — Jul 02',type:'Auto',created:'2026-07-02T02:00:00Z',size:'9.6 GB',modules:['Database','Files','Documents'],status:'Failed'},
+    {id:4,label:'Daily auto — Jul 01',type:'Auto',created:'2026-07-01T02:00:00Z',size:'9.5 GB',modules:['Database','Files','Documents'],status:'Verified'},
+    {id:5,label:'Weekly auto — Jun 29',type:'Auto',created:'2026-06-29T02:00:00Z',size:'9.4 GB',modules:['Full System'],status:'Verified'},
+    {id:6,label:'Monthly auto — Jun 01',type:'Auto',created:'2026-06-01T02:00:00Z',size:'8.9 GB',modules:['Full System'],status:'Verified'},
+  ]);
+  const [auditLogs,setAudit]=useState([
+    {id:1,action:'Backup Created',detail:'Daily auto — Full Database',user:'System',time:'2026-07-03T02:00:00Z',status:'Success'},
+    {id:2,action:'Backup Created',detail:'Daily auto — File Storage',user:'System',time:'2026-07-03T02:04:00Z',status:'Success'},
+    {id:3,action:'Backup Created',detail:'Daily auto — Documents',user:'System',time:'2026-07-03T02:16:00Z',status:'Success'},
+    {id:4,action:'Restore Point Created',detail:'Pre-deploy snapshot — Jul 03',user:'Ramesh',time:'2026-07-03T08:00:00Z',status:'Success'},
+    {id:5,action:'Backup Failed',detail:'Daily auto — Full Database (Jul 02)',user:'System',time:'2026-07-02T02:00:45Z',status:'Failed'},
+    {id:6,action:'Recovery Test Executed',detail:'Database restore simulation',user:'Ramesh',time:'2026-06-28T10:00:00Z',status:'Success'},
+    {id:7,action:'Restore Completed',detail:'Restored settings from Jul 01 snapshot',user:'Ramesh',time:'2026-06-27T14:30:00Z',status:'Success'},
+  ]);
+
+  const jobs=[
+    {id:1,type:'Daily',module:'Full Database',status:'Success',started:'2026-07-03T02:00:00Z',dur:'4m 32s',size:'2.4 GB',ret:'30 days'},
+    {id:2,type:'Daily',module:'File Storage',status:'Success',started:'2026-07-03T02:04:00Z',dur:'12m 15s',size:'8.1 GB',ret:'30 days'},
+    {id:3,type:'Daily',module:'Documents',status:'Success',started:'2026-07-03T02:16:00Z',dur:'3m 42s',size:'1.2 GB',ret:'30 days'},
+    {id:4,type:'Weekly',module:'Full System',status:'Success',started:'2026-06-29T02:00:00Z',dur:'28m 10s',size:'11.8 GB',ret:'12 weeks'},
+    {id:5,type:'Daily',module:'Full Database',status:'Failed',started:'2026-07-02T02:00:00Z',dur:'0m 45s',size:'—',ret:'—'},
+    {id:6,type:'Daily',module:'File Storage',status:'Success',started:'2026-07-01T02:04:00Z',dur:'11m 50s',size:'7.9 GB',ret:'30 days'},
+    {id:7,type:'Monthly',module:'Full System',status:'Success',started:'2026-06-01T02:00:00Z',dur:'42m 08s',size:'8.9 GB',ret:'12 months'},
+  ];
+
+  const kpis=[
+    {label:'Last Backup',value:'Today 2:16 AM',sub:'3 jobs completed',icon:'🕐',col:'#22c55e'},
+    {label:'Backup Status',value:'Healthy',sub:'All systems normal',icon:'✅',col:'#22c55e'},
+    {label:'Storage Used',value:'11.7 GB',sub:'of 50 GB (23%)',icon:'💾',col:'#3b82f6'},
+    {label:'Recovery Points',value:'6',sub:'5 verified · 1 failed',icon:'📍',col:'#a855f7'},
+    {label:'Failed Backups',value:'1',sub:'Last 30 days',icon:'❌',col:'#ef4444'},
+    {label:'Successful',value:'47',sub:'Last 30 days',icon:'✅',col:'#22c55e'},
+    {label:'System Health',value:'98%',sub:'All services operational',icon:'❤️',col:'#22c55e'},
+  ];
+
+  const bcPlans=[
+    {id:1,name:'Application Failure',priority:'Critical',rto:'2h',rpo:'1h',status:'Active',lastTested:'2026-06-01',steps:['Identify affected service','Activate standby instance','Notify all stakeholders','Restore from latest backup','Verify data integrity','Update incident log']},
+    {id:2,name:'Database Failure',priority:'Critical',rto:'4h',rpo:'24h',status:'Active',lastTested:'2026-05-15',steps:['Stop all write operations','Assess data loss scope','Restore from verified restore point','Validate integrity','Resume operations','Publish post-mortem']},
+    {id:3,name:'Internet / Cloud Failure',priority:'High',rto:'1h',rpo:'4h',status:'Active',lastTested:'2026-06-10',steps:['Switch to offline LAN mode','Notify all employees','Queue pending sync operations','Monitor connectivity','Resume sync on restore','Verify data consistency']},
+    {id:4,name:'Security Incident',priority:'Critical',rto:'6h',rpo:'24h',status:'Active',lastTested:'2026-05-01',steps:['Isolate affected systems','Reset all credentials immediately','Audit all access logs','Restore from clean pre-incident snapshot','Patch vulnerability','Notify affected parties']},
+    {id:5,name:'Cloud Service Failure',priority:'High',rto:'4h',rpo:'12h',status:'Active',lastTested:'2026-06-20',steps:['Activate local fallback server','Enable offline-first mode','Notify employees of offline status','Queue all data for later sync','Monitor cloud provider status','Sync and validate on restore']},
+  ];
+
+  const dbModules=[
+    {name:'Users & Auth',key:'users',icon:'👥',lastBackup:'Today 2:00 AM',size:'12 MB',status:'Success'},
+    {name:'Projects',key:'projects',icon:'📁',lastBackup:'Today 2:00 AM',size:'34 MB',status:'Success'},
+    {name:'Chat Data',key:'chat',icon:'💬',lastBackup:'Today 2:00 AM',size:'218 MB',status:'Success'},
+    {name:'CRM Data',key:'crm',icon:'🤝',lastBackup:'Today 2:00 AM',size:'89 MB',status:'Success'},
+    {name:'Finance Data',key:'finance',icon:'💰',lastBackup:'Today 2:00 AM',size:'156 MB',status:'Success'},
+    {name:'HRMS Data',key:'hrms',icon:'🏢',lastBackup:'Today 2:00 AM',size:'44 MB',status:'Success'},
+    {name:'Approvals',key:'approvals',icon:'✅',lastBackup:'Today 2:00 AM',size:'28 MB',status:'Success'},
+    {name:'Audit Logs',key:'audit',icon:'📋',lastBackup:'Today 2:00 AM',size:'67 MB',status:'Success'},
+  ];
+
+  const fileTypes=[
+    {name:'PDF Files',icon:'📄',count:342,size:'2.1 GB',status:'Success'},
+    {name:'DWG Files',icon:'📐',count:1204,size:'4.8 GB',status:'Success'},
+    {name:'RVT Files',icon:'🏗',count:87,size:'3.2 GB',status:'Success'},
+    {name:'IFC Files',icon:'🔷',count:56,size:'1.4 GB',status:'Success'},
+    {name:'ZIP Files',icon:'🗜',count:23,size:'0.9 GB',status:'Success'},
+    {name:'Images',icon:'🖼',count:891,size:'1.7 GB',status:'Success'},
+    {name:'Documents',icon:'📝',count:215,size:'0.3 GB',status:'Success'},
+  ];
+
+  const docTypes=[
+    {name:'Engineering Drawings',icon:'📐',count:432,lastBackup:'Today 2:04 AM',status:'Success'},
+    {name:'Deliverables',icon:'📦',count:187,lastBackup:'Today 2:04 AM',status:'Success'},
+    {name:'Reports',icon:'📊',count:95,lastBackup:'Today 2:04 AM',status:'Success'},
+    {name:'Invoices',icon:'🧾',count:234,lastBackup:'Today 2:04 AM',status:'Success'},
+    {name:'Contracts',icon:'📜',count:67,lastBackup:'Today 2:04 AM',status:'Success'},
+  ];
+
+  const scenarios=[
+    {name:'Database Failure',icon:'🗄',rto:'4h',rpo:'24h',plan:'Restore from latest verified restore point',severity:'Critical',tested:'2026-05-15'},
+    {name:'File Corruption',icon:'📁',rto:'2h',rpo:'12h',plan:'Restore specific files from file backup archive',severity:'High',tested:'2026-06-01'},
+    {name:'Server Failure',icon:'🖥',rto:'2h',rpo:'4h',plan:'Activate standby server, restore last snapshot',severity:'Critical',tested:'2026-05-20'},
+    {name:'Accidental Deletion',icon:'🗑',rto:'30m',rpo:'1h',plan:'Single record restore from audit trail',severity:'Medium',tested:'2026-06-10'},
+    {name:'Security Incident',icon:'🔐',rto:'6h',rpo:'24h',plan:'Isolate, reset credentials, restore clean backup',severity:'Critical',tested:'2026-05-01'},
+  ];
+
+  const SB={background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'20px'};
+  const statusCol=(s)=>s==='Success'?'#22c55e':s==='Failed'?'#ef4444':s==='Running'?'#3b82f6':s==='Verified'?'#22c55e':s==='Active'?'#22c55e':s==='Investigating'?'#eab308':s==='Resolved'||s==='Closed'?'#22c55e':'#94a3b8';
+  const priCol=(p)=>p==='Critical'?'#ef4444':p==='High'?'#f97316':p==='Medium'?'#eab308':'#22c55e';
+  const fmtDate=(d)=>d?new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+
+  function runManualJob(label){
+    setRJ(label);setJP(0);
+    let p=0;
+    const iv=setInterval(()=>{p+=Math.random()*15;if(p>=100){p=100;clearInterval(iv);setRJ(null);setJP(0);setAudit(a=>[{id:Date.now(),action:'Backup Created',detail:label+' — Manual',user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);}setJP(Math.min(Math.round(p),100));},400);
+  }
+
+  function addRestorePoint(){
+    if(!rpLabel.trim())return;
+    const np={id:Date.now(),label:rpLabel,type:'Manual',created:new Date().toISOString(),size:'~10 GB',modules:['Database','Files','Documents'],status:'Verified'};
+    setRPs(r=>[np,...r]);
+    setAudit(a=>[{id:Date.now(),action:'Restore Point Created',detail:rpLabel,user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);
+    setRPL('');setSNRP(false);
+  }
+
+  function addIncident(){
+    if(!incForm.title.trim())return;
+    const ni={id:Date.now(),...incForm,status:'Open',created:new Date().toISOString(),resolved:null,rca:'',resolution:''};
+    setInc(i=>[ni,...i]);
+    setAudit(a=>[{id:Date.now(),action:'Incident Created',detail:incForm.title,user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Open'},...a]);
+    setIF({title:'',type:'Database Failure',desc:'',priority:'High'});setSNI(false);
+  }
+
+  function updateIncStatus(id,newStatus){
+    setInc(i=>i.map(x=>x.id===id?{...x,status:newStatus,resolved:newStatus==='Resolved'||newStatus==='Closed'?new Date().toISOString():x.resolved}:x));
+  }
+
+  const filteredJobs=jobs.filter(j=>(fType==='all'||j.type.toLowerCase()===fType)||(fStatus==='all'||j.status.toLowerCase()===fStatus.toLowerCase())||fType==='all').filter(j=>!search||(j.module+j.type+j.status).toLowerCase().includes(search.toLowerCase()));
+
+  const tabs=[['dashboard','📊','Dashboard'],['backups','💾','Backups'],['restore','♻️','Restore'],['disaster','🚨','Disaster Recovery'],['continuity','🛡','Business Continuity'],['reports','📋','Reports']];
+
+  return(
+    <div style={{height:'100%',overflow:'auto',padding:'0 24px 40px',boxSizing:'border-box'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,paddingTop:4,flexWrap:'wrap',gap:12}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:C.t1}}>🛡 Backup, Disaster Recovery & Business Continuity</div>
+          <div style={{fontSize:13,color:C.t2,marginTop:2}}>Enterprise-grade data protection · RPO: 24h · RTO: 4h · 47 successful backups this month</div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>runManualJob('Full System')} disabled={!!runningJob} style={{background:C.accent+'22',border:`1px solid ${C.accent}55`,borderRadius:8,padding:'8px 16px',color:C.accent,fontSize:13,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
+            {runningJob?`⏳ ${jobPct}%`:'▶ Run Backup Now'}
+          </button>
+          <button onClick={()=>setSNRP(true)} style={{background:C.blue+'22',border:`1px solid ${C.blue}55`,borderRadius:8,padding:'8px 16px',color:C.blue,fontSize:13,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>📍 Create Restore Point</button>
+        </div>
+      </div>
+
+      {/* Running Job Banner */}
+      {runningJob&&<div style={{background:'#3b82f622',border:'1px solid #3b82f655',borderRadius:10,padding:'12px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:16}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.blue,marginBottom:6}}>⏳ Running: {runningJob}</div>
+          <div style={{background:C.border,borderRadius:4,height:6}}><div style={{width:jobPct+'%',height:6,borderRadius:4,background:C.blue,transition:'width .4s'}}/></div>
+        </div>
+        <div style={{fontSize:22,fontWeight:800,color:C.blue}}>{jobPct}%</div>
+      </div>}
+
+      {/* Tabs */}
+      <div style={{display:'flex',gap:4,marginBottom:24,borderBottom:`1px solid ${C.border}`,flexWrap:'wrap'}}>
+        {tabs.map(([k,ico,lbl])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{background:'none',border:'none',borderBottom:tab===k?`2px solid ${C.accent}`:'2px solid transparent',padding:'10px 16px',color:tab===k?C.accent:C.t2,fontSize:13,fontWeight:tab===k?700:500,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:6,transition:'all .15s',marginBottom:-1}}>
+            {ico} {lbl}
+          </button>
+        ))}
+      </div>
+
+      {/* ── DASHBOARD ── */}
+      {tab==='dashboard'&&(<div>
+        {/* KPI Cards */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:14,marginBottom:24}}>
+          {kpis.map(k=>(
+            <div key={k.label} style={{...SB,padding:'16px 18px',borderLeft:`3px solid ${k.col}`}}>
+              <div style={{fontSize:22,marginBottom:6}}>{k.icon}</div>
+              <div style={{fontSize:22,fontWeight:800,color:k.col}}>{k.value}</div>
+              <div style={{fontSize:11,color:C.t2,marginTop:2,fontWeight:700,textTransform:'uppercase',letterSpacing:0.5}}>{k.label}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:2}}>{k.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Storage Bar */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:14}}>💾 Storage Usage</div>
+            <div style={{fontSize:12,color:C.t2}}>11.7 GB of 50 GB used</div>
+          </div>
+          <div style={{background:C.border,borderRadius:6,height:10,marginBottom:10}}>
+            <div style={{width:'23%',height:10,borderRadius:6,background:`linear-gradient(90deg,${C.blue},${C.teal})`}}/>
+          </div>
+          <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+            {[['Database','2.4 GB','#3b82f6'],['Files','14.4 GB','#a855f7'],['Documents','1.2 GB','#14b8a6'],['Free','32.0 GB','#2a3040']].map(([l,v,c])=>(
+              <div key={l} style={{display:'flex',alignItems:'center',gap:6}}>
+                <div style={{width:10,height:10,borderRadius:'50%',background:c}}/>
+                <span style={{fontSize:12,color:C.t2}}>{l}: <span style={{color:C.t1,fontWeight:600}}>{v}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+          {/* Recent Jobs */}
+          <div style={SB}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:14}}>🕐 Recent Backup Jobs</div>
+            {jobs.slice(0,6).map(j=>(
+              <div key={j.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{j.module}</div>
+                  <div style={{fontSize:11,color:C.t3}}>{j.type} · {fmtDate(j.started)}</div>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:11,color:C.t2}}>{j.size}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:statusCol(j.status),background:statusCol(j.status)+'22',borderRadius:5,padding:'2px 7px'}}>{j.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Alerts */}
+          <div style={SB}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:14}}>🔔 Alerts</div>
+            {alerts.map(a=>(
+              <div key={a.id} style={{background:a.type==='warn'?'#ef444412':'#3b82f612',border:`1px solid ${a.type==='warn'?'#ef444433':'#3b82f633'}`,borderRadius:8,padding:'10px 12px',marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:a.type==='warn'?'#ef4444':'#3b82f6'}}>{a.type==='warn'?'⚠ Warning':'ℹ Info'}</div>
+                <div style={{fontSize:12,color:C.t1,marginTop:2}}>{a.msg}</div>
+                <div style={{fontSize:11,color:C.t3,marginTop:4}}>{a.time}</div>
+              </div>
+            ))}
+
+            {/* Health Monitor */}
+            <div style={{marginTop:12}}>
+              <div style={{fontWeight:700,color:C.t1,fontSize:13,marginBottom:10}}>⚡ System Health</div>
+              {[['Backup Service','Online',true],['Sync Agent','Online',true],['Storage Bucket','Online',true],['Recovery Engine','Online',true],['Alert System','Online',true]].map(([s,st,ok])=>(
+                <div key={s} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:`1px solid ${C.border}`}}>
+                  <span style={{fontSize:12,color:C.t2}}>{s}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:ok?'#22c55e':'#ef4444',background:(ok?'#22c55e':'#ef4444')+'22',borderRadius:5,padding:'2px 7px'}}>{st}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>)}
+
+      {/* ── BACKUPS ── */}
+      {tab==='backups'&&(<div>
+        {/* Schedule */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:16}}>⏰ Automated Backup Schedule</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14}}>
+            {[
+              {type:'Daily',time:'2:00 AM',keep:'30 Days',next:'Tomorrow 2:00 AM',col:'#22c55e',icon:'📅'},
+              {type:'Weekly',time:'Sun 2:00 AM',keep:'12 Weeks',next:'Jun 6 2:00 AM',col:'#3b82f6',icon:'📆'},
+              {type:'Monthly',time:'1st 2:00 AM',keep:'12 Months',next:'Aug 1 2:00 AM',col:'#a855f7',icon:'🗓'},
+              {type:'Yearly',time:'Jan 1 2:00 AM',keep:'7 Years',next:'Jan 1 2027',col:'#f97316',icon:'📊'},
+            ].map(s=>(
+              <div key={s.type} style={{background:C.card,border:`1px solid ${s.col}44`,borderRadius:10,padding:'16px',borderTop:`3px solid ${s.col}`}}>
+                <div style={{fontSize:20,marginBottom:6}}>{s.icon}</div>
+                <div style={{fontWeight:700,color:C.t1,fontSize:14}}>{s.type} Backup</div>
+                <div style={{fontSize:12,color:C.t2,marginTop:4}}>⏱ {s.time}</div>
+                <div style={{fontSize:12,color:C.t2}}>🗂 Keep: {s.keep}</div>
+                <div style={{fontSize:12,color:s.col,marginTop:4}}>Next: {s.next}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* DB Backups */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:15}}>🗄 Database Backups</div>
+            <button onClick={()=>runManualJob('Full Database')} disabled={!!runningJob} style={{background:'#22c55e22',border:'1px solid #22c55e44',borderRadius:7,padding:'6px 14px',color:'#22c55e',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>▶ Backup All</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:10}}>
+            {dbModules.map(m=>(
+              <div key={m.key} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+                <div style={{fontSize:22}}>{m.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:C.t1}}>{m.name}</div>
+                  <div style={{fontSize:11,color:C.t3}}>Last: {m.lastBackup} · {m.size}</div>
+                </div>
+                <span style={{fontSize:10,fontWeight:700,color:statusCol(m.status),background:statusCol(m.status)+'22',borderRadius:5,padding:'2px 6px'}}>{m.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* File Backups */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:15}}>📁 File Backups</div>
+            <button onClick={()=>runManualJob('File Storage')} disabled={!!runningJob} style={{background:'#a855f722',border:'1px solid #a855f744',borderRadius:7,padding:'6px 14px',color:'#a855f7',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>▶ Backup Files</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
+            {fileTypes.map(f=>(
+              <div key={f.name} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+                <div style={{fontSize:22}}>{f.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:C.t1}}>{f.name}</div>
+                  <div style={{fontSize:11,color:C.t3}}>{f.count} files · {f.size}</div>
+                </div>
+                <span style={{fontSize:10,fontWeight:700,color:statusCol(f.status),background:statusCol(f.status)+'22',borderRadius:5,padding:'2px 6px'}}>{f.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Document Backups */}
+        <div style={SB}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:15}}>📄 Document Backups</div>
+            <button onClick={()=>runManualJob('Documents')} disabled={!!runningJob} style={{background:'#14b8a622',border:'1px solid #14b8a644',borderRadius:7,padding:'6px 14px',color:'#14b8a6',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>▶ Backup Docs</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:10}}>
+            {docTypes.map(d=>(
+              <div key={d.name} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+                <div style={{fontSize:22}}>{d.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:C.t1}}>{d.name}</div>
+                  <div style={{fontSize:11,color:C.t3}}>{d.count} files · {d.lastBackup}</div>
+                </div>
+                <span style={{fontSize:10,fontWeight:700,color:statusCol(d.status),background:statusCol(d.status)+'22',borderRadius:5,padding:'2px 6px'}}>{d.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>)}
+
+      {/* ── RESTORE ── */}
+      {tab==='restore'&&(<div>
+        {/* Restore Options */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:16}}>♻️ Restore Options</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12}}>
+            {[
+              {label:'Entire System',icon:'🖥',col:'#ef4444',desc:'Full system restore from a snapshot'},
+              {label:'Module',icon:'🧩',col:'#f97316',desc:'Restore a specific module only'},
+              {label:'Database',icon:'🗄',col:'#3b82f6',desc:'Restore database tables'},
+              {label:'Files',icon:'📁',col:'#a855f7',desc:'Restore specific file types'},
+              {label:'Single Record',icon:'📌',col:'#22c55e',desc:'Restore one deleted or changed record'},
+            ].map(o=>(
+              <button key={o.label} onClick={()=>setShowR(o.label)} style={{background:o.col+'11',border:`1px solid ${o.col}44`,borderRadius:10,padding:'16px',cursor:'pointer',textAlign:'left',fontFamily:'inherit',transition:'all .15s'}}>
+                <div style={{fontSize:24,marginBottom:6}}>{o.icon}</div>
+                <div style={{fontWeight:700,color:o.col,fontSize:13}}>{o.label}</div>
+                <div style={{fontSize:11,color:C.t3,marginTop:4}}>{o.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {showRestore&&<div style={{...SB,marginBottom:20,border:`1px solid ${C.accent}44`,background:C.accent+'08'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{fontWeight:700,color:C.accent,fontSize:14}}>♻️ Restore: {showRestore}</div>
+            <button onClick={()=>setShowR(null)} style={{background:'none',border:'none',color:C.t3,fontSize:18,cursor:'pointer'}}>✕</button>
+          </div>
+          <div style={{fontSize:13,color:C.t2,marginBottom:14}}>Select a restore point to recover from:</div>
+          {rps.filter(r=>r.status==='Verified').map(r=>(
+            <div key={r.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:C.t1}}>{r.label}</div>
+                <div style={{fontSize:11,color:C.t3}}>Created: {fmtDate(r.created)} · {r.size} · {r.modules.join(', ')}</div>
+              </div>
+              <button onClick={()=>{setAudit(a=>[{id:Date.now(),action:'Restore Started',detail:`${showRestore} from "${r.label}"`,user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);setShowR(null);}} style={{background:'#22c55e22',border:'1px solid #22c55e44',borderRadius:7,padding:'6px 14px',color:'#22c55e',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>Restore</button>
+            </div>
+          ))}
+        </div>}
+
+        {/* Restore Points */}
+        <div style={SB}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:15}}>📍 Restore Points</div>
+            <button onClick={()=>setSNRP(true)} style={{background:'#3b82f622',border:'1px solid #3b82f644',borderRadius:7,padding:'6px 14px',color:'#3b82f6',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>+ Manual Restore Point</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:12}}>
+            {rps.map(r=>(
+              <div key={r.id} style={{background:C.card,border:`1px solid ${r.status==='Verified'?'#22c55e33':r.status==='Failed'?'#ef444433':C.border}`,borderRadius:10,padding:'14px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                  <div style={{fontWeight:700,color:C.t1,fontSize:13,flex:1,paddingRight:8}}>{r.label}</div>
+                  <span style={{fontSize:10,fontWeight:700,color:statusCol(r.status),background:statusCol(r.status)+'22',borderRadius:5,padding:'2px 7px',flexShrink:0}}>{r.status}</span>
+                </div>
+                <div style={{fontSize:11,color:C.t3}}>📅 {fmtDate(r.created)}</div>
+                <div style={{fontSize:11,color:C.t3}}>💾 {r.size} · {r.type}</div>
+                <div style={{fontSize:11,color:C.t3,marginTop:2}}>{r.modules.join(' · ')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>)}
+
+      {/* ── DISASTER RECOVERY ── */}
+      {tab==='disaster'&&(<div>
+        {/* RPO / RTO */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+          <div style={{...SB,borderTop:`3px solid #ef4444`,textAlign:'center'}}>
+            <div style={{fontSize:36,fontWeight:900,color:'#ef4444'}}>24h</div>
+            <div style={{fontWeight:700,color:C.t1,marginTop:4}}>RPO — Recovery Point Objective</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:6}}>Maximum acceptable data loss. Daily backups at 2:00 AM ensure no more than 24 hours of data can be lost in any failure scenario.</div>
+          </div>
+          <div style={{...SB,borderTop:`3px solid #f97316`,textAlign:'center'}}>
+            <div style={{fontSize:36,fontWeight:900,color:'#f97316'}}>4h</div>
+            <div style={{fontWeight:700,color:C.t1,marginTop:4}}>RTO — Recovery Time Objective</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:6}}>Maximum acceptable downtime. Recovery procedures are designed to restore full operations within 4 hours of any critical failure.</div>
+          </div>
+        </div>
+
+        {/* Recovery Scenarios */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:16}}>🚨 Recovery Scenarios</div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {scenarios.map(s=>(
+              <div key={s.name} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+                <div style={{fontSize:24,flexShrink:0}}>{s.icon}</div>
+                <div style={{flex:1,minWidth:180}}>
+                  <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{s.name}</div>
+                  <div style={{fontSize:11,color:C.t3,marginTop:2}}>{s.plan}</div>
+                </div>
+                <div style={{display:'flex',gap:12,flexWrap:'wrap',flexShrink:0}}>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:16,fontWeight:800,color:'#f97316'}}>{s.rto}</div>
+                    <div style={{fontSize:10,color:C.t3}}>RTO</div>
+                  </div>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:16,fontWeight:800,color:'#ef4444'}}>{s.rpo}</div>
+                    <div style={{fontSize:10,color:C.t3}}>RPO</div>
+                  </div>
+                  <span style={{fontSize:10,fontWeight:700,color:priCol(s.severity),background:priCol(s.severity)+'22',borderRadius:5,padding:'2px 8px',alignSelf:'center'}}>{s.severity}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recovery Testing */}
+        <div style={SB}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:15}}>🧪 Recovery Testing</div>
+            <button onClick={()=>{runManualJob('Recovery Simulation');setAudit(a=>[{id:Date.now(),action:'Recovery Test Executed',detail:'Full system recovery simulation',user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);}} disabled={!!runningJob} style={{background:'#a855f722',border:'1px solid #a855f744',borderRadius:7,padding:'6px 14px',color:'#a855f7',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>▶ Run Simulation</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:12}}>
+            {[
+              {name:'Recovery Simulation',icon:'🎮',lastRun:'2026-06-28',result:'Pass',dur:'18m 22s'},
+              {name:'Backup Validation',icon:'✔️',lastRun:'2026-07-03',result:'Pass',dur:'4m 10s'},
+              {name:'Restore Testing',icon:'♻️',lastRun:'2026-06-27',result:'Pass',dur:'12m 55s'},
+            ].map(t=>(
+              <div key={t.name} style={{background:C.card,border:'1px solid #22c55e33',borderRadius:10,padding:'14px'}}>
+                <div style={{fontSize:22,marginBottom:6}}>{t.icon}</div>
+                <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{t.name}</div>
+                <div style={{fontSize:11,color:C.t3,marginTop:4}}>Last run: {t.lastRun}</div>
+                <div style={{fontSize:11,color:C.t3}}>Duration: {t.dur}</div>
+                <span style={{display:'inline-block',marginTop:6,fontSize:10,fontWeight:700,color:'#22c55e',background:'#22c55e22',borderRadius:5,padding:'2px 8px'}}>{t.result}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>)}
+
+      {/* ── BUSINESS CONTINUITY ── */}
+      {tab==='continuity'&&(<div>
+        {/* BC Plans */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:16}}>🛡 Business Continuity Plans</div>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {bcPlans.map(p=>(
+              <details key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden'}}>
+                <summary style={{padding:'14px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:12,listStyle:'none'}}>
+                  <span style={{fontSize:10,fontWeight:700,color:priCol(p.priority),background:priCol(p.priority)+'22',borderRadius:5,padding:'2px 8px'}}>{p.priority}</span>
+                  <span style={{fontWeight:700,color:C.t1,fontSize:13,flex:1}}>{p.name}</span>
+                  <div style={{display:'flex',gap:16,fontSize:12}}>
+                    <span style={{color:'#f97316'}}>RTO: <strong>{p.rto}</strong></span>
+                    <span style={{color:'#ef4444'}}>RPO: <strong>{p.rpo}</strong></span>
+                    <span style={{color:'#22c55e',fontSize:10,fontWeight:700,background:'#22c55e22',borderRadius:5,padding:'2px 8px'}}>{p.status}</span>
+                  </div>
+                </summary>
+                <div style={{padding:'0 16px 14px',borderTop:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:11,color:C.t3,marginBottom:10,paddingTop:10}}>Last tested: {p.lastTested}</div>
+                  <div style={{fontWeight:600,color:C.t2,fontSize:12,marginBottom:8}}>Recovery Steps:</div>
+                  {p.steps.map((s,i)=>(
+                    <div key={i} style={{display:'flex',gap:10,marginBottom:6,alignItems:'flex-start'}}>
+                      <div style={{width:20,height:20,borderRadius:'50%',background:C.accent+'22',border:`1px solid ${C.accent}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:10,fontWeight:700,color:C.accent}}>{i+1}</div>
+                      <span style={{fontSize:12,color:C.t1,paddingTop:1}}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+
+        {/* Incidents */}
+        <div style={SB}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:15}}>🚨 Incident Management</div>
+            <button onClick={()=>setSNI(true)} style={{background:C.accent+'22',border:`1px solid ${C.accent}44`,borderRadius:7,padding:'6px 14px',color:C.accent,fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>+ New Incident</button>
+          </div>
+          <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+            {['All','Open','Investigating','Resolved','Closed'].map(s=>(
+              <button key={s} onClick={()=>{}} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:'4px 12px',color:C.t2,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>{s} <span style={{color:C.t3}}>({s==='All'?incidents.length:incidents.filter(i=>i.status===s).length})</span></button>
+            ))}
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {incidents.map(inc=>(
+              <div key={inc.id} style={{background:C.card,border:`1px solid ${inc.status==='Open'?'#ef444433':inc.status==='Investigating'?'#eab30833':C.border}`,borderRadius:10,padding:'14px 16px'}}>
+                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{inc.title}</div>
+                    <div style={{fontSize:11,color:C.t3,marginTop:2}}>{inc.type} · Created: {fmtDate(inc.created)}</div>
+                  </div>
+                  <div style={{display:'flex',gap:6,flexShrink:0,flexWrap:'wrap'}}>
+                    <span style={{fontSize:10,fontWeight:700,color:priCol(inc.priority),background:priCol(inc.priority)+'22',borderRadius:5,padding:'2px 7px'}}>{inc.priority}</span>
+                    <select value={inc.status} onChange={e=>updateIncStatus(inc.id,e.target.value)} style={{background:C.bg,border:`1px solid ${statusCol(inc.status)}55`,borderRadius:6,padding:'2px 8px',color:statusCol(inc.status),fontSize:11,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>
+                      {['Open','Investigating','Resolved','Closed'].map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {inc.rca&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}><strong style={{color:C.t3}}>RCA:</strong> {inc.rca}</div>}
+                {inc.resolution&&<div style={{fontSize:12,color:'#22c55e'}}><strong style={{color:C.t3}}>Resolution:</strong> {inc.resolution}</div>}
+                {inc.resolved&&<div style={{fontSize:11,color:C.t3,marginTop:4}}>Resolved: {fmtDate(inc.resolved)}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>)}
+
+      {/* ── REPORTS ── */}
+      {tab==='reports'&&(<div>
+        {/* Search & Filter */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search backups, restore points, events..." style={{flex:1,minWidth:220,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'8px 14px',color:C.t1,fontSize:13,fontFamily:'inherit',outline:'none'}}/>
+            <select value={fType} onChange={e=>setFT(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'8px 12px',color:C.t1,fontSize:13,fontFamily:'inherit'}}>
+              <option value="all">All Types</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <select value={fStatus} onChange={e=>setFS(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'8px 12px',color:C.t1,fontSize:13,fontFamily:'inherit'}}>
+              <option value="all">All Status</option>
+              <option value="success">Success</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,marginBottom:20}}>
+          {[
+            {label:'Backup Report',icon:'💾',val:'47 jobs · 98% success',col:C.green},
+            {label:'Recovery Report',icon:'♻️',val:'3 restores · 100% success',col:C.blue},
+            {label:'Storage Report',icon:'📊',val:'11.7 GB / 50 GB (23%)',col:C.purple},
+            {label:'Continuity Report',icon:'🛡',val:'5 plans · 3 incidents',col:C.accent},
+          ].map(r=>(
+            <div key={r.label} style={{...SB,padding:'16px',borderLeft:`3px solid ${r.col}`}}>
+              <div style={{fontSize:22,marginBottom:6}}>{r.icon}</div>
+              <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{r.label}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:4}}>{r.val}</div>
+              <button style={{marginTop:10,background:r.col+'22',border:`1px solid ${r.col}44`,borderRadius:6,padding:'5px 12px',color:r.col,fontSize:11,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>Download</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Job History Table */}
+        <div style={{...SB,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:14}}>📋 Backup Job History</div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead><tr style={{borderBottom:`1px solid ${C.border}`}}>
+                {['Type','Module','Status','Started','Duration','Size','Retention'].map(h=>(
+                  <th key={h} style={{padding:'8px 10px',textAlign:'left',color:C.t3,fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {filteredJobs.map(j=>(
+                  <tr key={j.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:'8px 10px',color:C.t2}}>{j.type}</td>
+                    <td style={{padding:'8px 10px',color:C.t1,fontWeight:600}}>{j.module}</td>
+                    <td style={{padding:'8px 10px'}}><span style={{fontSize:10,fontWeight:700,color:statusCol(j.status),background:statusCol(j.status)+'22',borderRadius:5,padding:'2px 7px'}}>{j.status}</span></td>
+                    <td style={{padding:'8px 10px',color:C.t3,whiteSpace:'nowrap'}}>{fmtDate(j.started)}</td>
+                    <td style={{padding:'8px 10px',color:C.t2}}>{j.dur}</td>
+                    <td style={{padding:'8px 10px',color:C.t2}}>{j.size}</td>
+                    <td style={{padding:'8px 10px',color:C.t3}}>{j.ret}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Audit Logs */}
+        <div style={SB}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:14}}>🔍 Audit Logs</div>
+          <div style={{display:'flex',flexDirection:'column',gap:0}}>
+            {auditLogs.filter(l=>!search||(l.action+l.detail+l.user).toLowerCase().includes(search.toLowerCase())).map((l,i)=>(
+              <div key={l.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'10px 0',borderBottom:i<auditLogs.length-1?`1px solid ${C.border}`:'none'}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:statusCol(l.status),marginTop:4,flexShrink:0}}/>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                    <span style={{fontWeight:700,fontSize:12,color:C.t1}}>{l.action}</span>
+                    <span style={{fontSize:10,fontWeight:700,color:statusCol(l.status),background:statusCol(l.status)+'22',borderRadius:5,padding:'1px 6px'}}>{l.status}</span>
+                  </div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>{l.detail}</div>
+                  <div style={{fontSize:11,color:C.t3,marginTop:1}}>By {l.user} · {fmtDate(l.time)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>)}
+
+      {/* ── MODALS ── */}
+      {showNewRP&&<div style={{position:'fixed',inset:0,background:'#00000080',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:'28px',width:400,maxWidth:'90vw'}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:16,marginBottom:18}}>📍 Create Restore Point</div>
+          <input value={rpLabel} onChange={e=>setRPL(e.target.value)} placeholder="Label (e.g. Pre-deployment snapshot)" style={{width:'100%',background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',color:C.t1,fontSize:13,fontFamily:'inherit',outline:'none',boxSizing:'border-box',marginBottom:14}}/>
+          <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+            <button onClick={()=>setSNRP(false)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'8px 18px',color:C.t2,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancel</button>
+            <button onClick={addRestorePoint} style={{background:C.accent,border:'none',borderRadius:8,padding:'8px 18px',color:'#fff',fontSize:13,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>Create</button>
+          </div>
+        </div>
+      </div>}
+
+      {showNewInc&&<div style={{position:'fixed',inset:0,background:'#00000080',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:'28px',width:460,maxWidth:'90vw'}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:16,marginBottom:18}}>🚨 New Incident</div>
+          <input value={incForm.title} onChange={e=>setIF(f=>({...f,title:e.target.value}))} placeholder="Incident title" style={{width:'100%',background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',color:C.t1,fontSize:13,fontFamily:'inherit',outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+          <select value={incForm.type} onChange={e=>setIF(f=>({...f,type:e.target.value}))} style={{width:'100%',background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',color:C.t1,fontSize:13,fontFamily:'inherit',marginBottom:10,boxSizing:'border-box'}}>
+            {['Database Failure','File Corruption','Server Failure','Accidental Deletion','Security Incident','Application Failure','Internet Failure','Cloud Service Failure'].map(t=><option key={t}>{t}</option>)}
+          </select>
+          <select value={incForm.priority} onChange={e=>setIF(f=>({...f,priority:e.target.value}))} style={{width:'100%',background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',color:C.t1,fontSize:13,fontFamily:'inherit',marginBottom:10,boxSizing:'border-box'}}>
+            {['Critical','High','Medium','Low'].map(p=><option key={p}>{p}</option>)}
+          </select>
+          <textarea value={incForm.desc} onChange={e=>setIF(f=>({...f,desc:e.target.value}))} placeholder="Describe the incident..." rows={3} style={{width:'100%',background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',color:C.t1,fontSize:13,fontFamily:'inherit',outline:'none',resize:'vertical',boxSizing:'border-box',marginBottom:14}}/>
+          <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+            <button onClick={()=>setSNI(false)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'8px 18px',color:C.t2,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancel</button>
+            <button onClick={addIncident} style={{background:'#ef4444',border:'none',borderRadius:8,padding:'8px 18px',color:'#fff',fontSize:13,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>Create Incident</button>
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -9319,7 +9973,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -9393,7 +10047,7 @@ export default function App(){
               const hr=new Date().getHours();
               const greet=hr<12?"Good Morning":hr<17?"Good Afternoon":"Good Evening";
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
+              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="backup"?"Backup, Disaster Recovery & Business Continuity":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
                 <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
                 <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
@@ -9657,6 +10311,7 @@ export default function App(){
             </span>
           </div>
         )}
+        {view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
@@ -9690,1076 +10345,4 @@ export default function App(){
                 </div>
                 <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                   {[{l:"Employees",v:users.length,c:C.accent,k:"users"},{l:"Clients",v:clients.length,c:C.teal,k:"clients"},{l:"Projects",v:accessibleProjects.length,c:C.blue,k:"projects"},{l:"Completion",v:(tasks.length?Math.round(tasks.filter(t=>t.status==="Completed"||t.status==="Done").length/tasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
-                    <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
-                      <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-                      <div style={{fontSize:10,color:C.t2,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l} ›</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {!isAdmin&&isManager&&(
-              <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${"#f59e0b"}11 100%)`,border:`1px solid ${"#f59e0b"}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #f59e0b`}}>
-                <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:"#f59e0b22",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#f59e0b",fontWeight:800}}>{(me.name[0]||"M").toUpperCase()}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>Project Management Dashboard</h2>
-                  <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Managing {accessibleProjects.length} active project{accessibleProjects.length!==1?"s":""}</p>
-                </div>
-                <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-                  {[{l:"Projects",v:accessibleProjects.length,c:"#f59e0b",k:"projects"},{l:"Team Size",v:[...new Set(dashTasks.map(t=>t.assignee).filter(Boolean))].length,c:C.blue,k:"team"},{l:"In Progress",v:dashTasks.filter(t=>t.status==="In Progress").length,c:C.accent,k:"inprogress"},{l:"Completion",v:(dashTasks.length?Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
-                    <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none;"}}>
-                      <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-                      <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* ── Quick Navigation Panel ── */}
-            {(()=>{
-              const isAdminOrMgr=isAdmin||isManager;
-              const allQnClients=isAdminOrMgr?[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort():[];
-              const qnClientProjects=qnClient?accessibleProjects.filter(p=>(p.client||"Unassigned")===qnClient):accessibleProjects;
-              // shared button style
-              const qB=(hi)=>({background:hi?C.accent:C.card,border:`1px solid ${hi?C.accent:C.border}`,color:hi?"#fff":C.t2,fontSize:13,cursor:"pointer",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",transition:"all .15s"});
-              const qClientIdx=allQnClients.indexOf(qnClient);
-              const canPrevCl=isAdminOrMgr&&qClientIdx>0;
-              const canNextCl=isAdminOrMgr&&qClientIdx<allQnClients.length-1;
-              // ── CASE 1: Admin/Manager, no client selected → stat-card style ──
-              if(isAdminOrMgr&&!qnClient){
-                const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
-                return(
-                  <div style={{marginBottom:16}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                    <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:18,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
-                    <span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{allQnClients.length} clients</span>
-                  </div>
-                  <div style={{display:"flex",gap:isMobile?10:14,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
-                    {allQnClients.map((cl,i)=>{
-                      const cc=clColors[i%clColors.length];
-                      const cP=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);
-                      const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
-                      const pct=cT.length?Math.round(cT.filter(t=>isDone(t.status)).length/cT.length*100):0;
-                      const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                      return(
-                        <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
-                          onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
-                          onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
-                          <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
-                          <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
-                          <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
-                          {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
-                          <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
-                        </div>
-                      );
-                    })}
-                    {allQnClients.length===0&&<div style={{color:C.t3,fontSize:13,padding:"18px"}}>No clients found</div>}
-                  </div>
-                  </div>
-                );
-              }
-              // ── CASE 2: Non-admin, no project selected → inline project cards ──
-              if(!isAdminOrMgr&&!qnProject) return(
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?"12px":"14px 20px",marginBottom:16}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12}}>⚡ Quick Nav — Select a Project</div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-                    {qnClientProjects.map(p=>{
-                      const pt=tasks.filter(t=>t.project_id===p.id);
-                      const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                      const pc=p.color||C.blue;
-                      return(
-                        <div key={p.id} onClick={()=>setQnProject(p)}
-                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"all .15s",borderLeft:`4px solid ${pc}`}}
-                          onMouseEnter={e=>{e.currentTarget.style.background=pc+"18";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=pc;}}
-                          onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.transform="";e.currentTarget.style.borderColor=C.border;}}>
-                          <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                          <div style={{height:3,background:C.surface,borderRadius:2,marginBottom:5,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                          <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:pc,fontWeight:700}}>{pt.length} tasks</span>
-                            <span style={{fontSize:11,color:C.green,fontWeight:700}}>{pct}%</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {qnClientProjects.length===0&&<div style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects found</div>}
-                  </div>
-                </div>
-              );
-              // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
-              // Filter projects by search term (name or any matching task)
-              const splitProjects=qnClientProjects.filter(p=>{
-                if(!qnSearch)return true;
-                const ql=qnSearch.toLowerCase();
-                const pt=tasks.filter(t=>t.project_id===p.id);
-                return p.name.toLowerCase().includes(ql)||pt.some(t=>t.title.toLowerCase().includes(ql)||(t.assignee||"").toLowerCase().includes(ql));
-              });
-              const activeProj=qnProject||splitProjects[0]||null;
-              // Normalize "To Do" → "Review" for display purposes in popup
-              const qnNormStatus=s=>s==="To Do"?"Review":s;
-              // Filter tasks by search, employee, status
-              const activeTasks=activeProj?tasks.filter(t=>{
-                if(t.project_id!==activeProj.id)return false;
-                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(qnNormStatus(t.status||"")).toLowerCase().includes(ql))return false;}
-                if(qnFilterEmployee!=="all"&&t.assignee!==qnFilterEmployee)return false;
-                // "Review" filter also matches legacy "To Do" tasks
-                if(qnFilterStatus!=="all"&&qnNormStatus(t.status)!==qnFilterStatus)return false;
-                return true;
-              }):[];
-              // Unique employees & statuses across all projects for this client (normalize "To Do"→"Review")
-              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
-              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean).map(qnNormStatus))].sort();
-              const mobShowTasks=isMobile&&!!qnProject;
-              const closePopup=()=>{setQnClient(null);setQnProject(null);};
-              const acPc=activeProj?.color||C.blue;
-              return(
-                /* ── Backdrop ── */
-                <div onClick={e=>{if(e.target===e.currentTarget)closePopup();}}
-                  style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
-                  {/* ── Modal box ── */}
-                  <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
-                    {/* ── Modal header ── */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
-                      {/* Breadcrumbs */}
-                      <div style={{flex:1,display:"flex",alignItems:"center",gap:isMobile?6:10,minWidth:0,flexWrap:"nowrap",overflow:"hidden"}}>
-                        <span style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Quick Nav</span>
-                        {qnClient&&<><span style={{color:C.border,fontSize:18,lineHeight:1,flexShrink:0}}>›</span>
-                          <span style={{fontSize:isMobile?12:14,color:C.t2,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?90:180,cursor:isAdminOrMgr?"pointer":"default"}} onClick={()=>isAdminOrMgr&&setQnProject(null)}>{qnClient}</span></>}
-                        {!isAdminOrMgr&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span><span style={{fontSize:13,color:C.t2,fontWeight:700,flexShrink:0}}>My Projects</span></>}
-                        {activeProj&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span>
-                          <span style={{fontSize:isMobile?12:14,color:acPc,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?100:280,flexShrink:1}}>{activeProj.name}</span>
-                          <span style={{fontSize:10,background:acPc+"22",color:acPc,border:`1px solid ${acPc}44`,borderRadius:20,padding:"2px 10px",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{activeTasks.length} tasks</span></>}
-                      </div>
-                      {/* Client Prev / Next */}
-                      {isAdminOrMgr&&!isMobile&&<div style={{display:"flex",gap:6,flexShrink:0}}>
-                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canPrevCl}
-                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canPrevCl?C.t1:C.t3,fontSize:12,cursor:canPrevCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canPrevCl?1:.4}}>← Previous Client</button>
-                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canNextCl}
-                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canNextCl?C.t1:C.t3,fontSize:12,cursor:canNextCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canNextCl?1:.4}}>Next Client →</button>
-                      </div>}
-                      {/* Close ✕ */}
-                      <button onClick={closePopup}
-                        style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",lineHeight:1}}
-                        onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
-                        onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
-                    </div>
-                    {/* ── Search & Filter bar ── */}
-                    <div style={{display:"flex",gap:8,padding:"10px 18px",borderBottom:`1px solid ${C.border}`,background:C.bg+"88",flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",alignItems:"center"}}>
-                      <input placeholder="🔍 Search tasks or projects…" value={qnSearch} onChange={e=>setQnSearch(e.target.value)}
-                        style={{flex:2,minWidth:isMobile?"100%":160,background:C.surface,border:`1px solid ${qnSearch?C.accent:C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-                      <select value={qnFilterEmployee} onChange={e=>setQnFilterEmployee(e.target.value)}
-                        style={{flex:1,minWidth:120,background:C.surface,border:`1px solid ${qnFilterEmployee!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterEmployee!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
-                        <option value="all">All Employees</option>
-                        {qnAllEmployees.map(e=><option key={e} value={e}>{e}</option>)}
-                      </select>
-                      <select value={qnFilterStatus} onChange={e=>setQnFilterStatus(e.target.value)}
-                        style={{flex:1,minWidth:110,background:C.surface,border:`1px solid ${qnFilterStatus!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterStatus!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
-                        <option value="all">All Statuses</option>
-                        {qnAllStatuses.map(s=><option key={s} value={s}>{s}</option>)}
-                      </select>
-                      {(qnSearch||qnFilterEmployee!=="all"||qnFilterStatus!=="all")&&
-                        <button onClick={()=>{setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-                          style={{background:C.red+"18",border:`1px solid ${C.red}44`,color:C.red,fontSize:11,cursor:"pointer",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>Clear ✕</button>}
-                    </div>
-                    {/* ── Modal body: split ── */}
-                    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-                      {/* LEFT: Project list */}
-                      {(!isMobile||!mobShowTasks)&&(
-                        <div style={{width:isMobile?"100%":280,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"88"}}>
-                          <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>
-                            Projects ({splitProjects.length})
-                          </div>
-                          <div style={{flex:1,overflowY:"auto",padding:"8px 6px"}}>
-                            {splitProjects.map(p=>{
-                              const pt=tasks.filter(t=>t.project_id===p.id);
-                              const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                              const pc=p.color||C.blue;
-                              const isAct=activeProj?.id===p.id;
-                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                              return(
-                                <div key={p.id} onClick={()=>setQnProject(p)}
-                                  style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s",position:"relative"}}>
-                                  <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,lineHeight:1.35,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
-                                    <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                                    <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
-                                    <span style={{fontSize:10,color:C.t1,flexShrink:0,background:C.surface,borderRadius:4,padding:"2px 6px",fontWeight:600,border:`1px solid ${C.border}`}}>{pt.length} tasks</span>
-                                  </div>
-                                  {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
-                                </div>
-                              );
-                            })}
-                            {splitProjects.length===0&&<div style={{color:C.t3,fontSize:13,padding:"30px",textAlign:"center"}}>No projects</div>}
-                          </div>
-                        </div>
-                      )}
-                      {/* RIGHT: Task list */}
-                      {(!isMobile||mobShowTasks)&&(
-                        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"44"}}>
-                          {/* Task panel header */}
-                          <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:0,display:"flex",alignItems:"center",gap:10,background:C.card+"88"}}>
-                            {isMobile&&<button onClick={()=>setQnProject(null)} style={{...qB(false),fontSize:11,padding:"4px 9px"}}>← Back</button>}
-                            {activeProj?(
-                              <>
-                                <div style={{width:10,height:10,borderRadius:"50%",background:acPc,flexShrink:0}}/>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProj.name}</div>
-                                </div>
-                                <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{activeTasks.length} task{activeTasks.length!==1?"s":""}</span>
-                              </>
-                            ):<span style={{fontSize:13,color:C.t3}}>← Select a project</span>}
-                          </div>
-                          {/* Tasks scrollable */}
-                          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px":"14px 18px",display:"flex",flexDirection:"column",gap:7}}>
-                            {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
-                            {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks in this project</div>}
-                            {activeTasks.map((t,i)=>{
-                              const tDispStatus=qnNormStatus(t.status);
-                              const sc=getStatusColor(tDispStatus);
-                              const od=t.due_date&&t.due_date<today&&!isDone(t.status);
-                              return(
-                                <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
-                                  onMouseEnter={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.boxShadow=`0 2px 10px ${sc}20`;}}
-                                  onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.boxShadow="";}}>
-                                  {/* Number */}
-                                  <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
-                                  {/* Content */}
-                                  <div style={{flex:1,minWidth:0}}>
-                                    <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                                    <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
-                                      {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
-                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
-                                      {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
-                                      {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
-                                    </div>
-                                  </div>
-                                  {/* Edit button */}
-                                  {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}}
-                                    style={{background:C.accent+"18",border:`1px solid ${C.accent}55`,color:C.accent,fontSize:12,cursor:"pointer",borderRadius:7,padding:isMobile?"6px 9px":"6px 14px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}
-                                    onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.accent;}}
-                                    onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;e.currentTarget.style.borderColor=C.accent+"55";}}>
-                                    <span>✏️</span>{!isMobile&&<span>Edit</span>}
-                                  </button>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-            {/* ── Clean Filter Bar ── */}
-            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
-              {/* Search - full width on mobile */}
-              <input placeholder="🔍 Search tasks or projects…" value={dashSearch} onChange={e=>sdss(e.target.value)}
-                style={{width:"100%",background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",display:"block",marginBottom:isMobile?8:0}}/>
-              {/* Selects row */}
-              <div style={{display:"flex",gap:isMobile?6:10,alignItems:"center",flexWrap:"wrap",marginTop:isMobile?0:8}}>
-                {/* 1. All Clients */}
-                <select value={dashClient} onChange={e=>{sdsc(e.target.value);sdsp("All");sdst("All");sdsu("All");}} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashClient!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Clients</option>
-                  {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-                {/* 2. All Projects */}
-                <select value={dashProject} onChange={e=>{sdsp(e.target.value);sdst("All");}} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Projects</option>
-                  {accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                {/* 3. All Tasks */}
-                <select value={dashTask} onChange={e=>sdst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashTask!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashTask!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Tasks</option>
-                  {(()=>{const cPIds=new Set(accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=>p.id));return dashTasks.filter(t=>cPIds.has(t.project_id)&&(dashProject==="All"||t.project_id===dashProject)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=><option key={t.id} value={t.id}>{t.title}</option>);})()}
-                </select>
-                {/* 4. All Employees */}
-                <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Employees</option>
-                  {(()=>{
-                    if(dashClient==="All"&&dashProject==="All")return users.filter(u=>u.role!=="Client").map(u=><option key={u.username} value={u.name}>{u.name}</option>);
-                    const scopeTasks=dashProject!=="All"?dashTasks.filter(t=>t.project_id===dashProject):(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return dashTasks.filter(t=>cPIds.has(t.project_id));})();
-                    return[...new Set(scopeTasks.map(t=>t.assignee).filter(Boolean))].sort().map(n=><option key={n} value={n}>{n}</option>);
-                  })()}
-                </select>
-                {/* 5. All Statuses */}
-                <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Statuses</option>
-                  {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
-              </div>
-            </div>
-            {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
-                        {/* ── Stat Cards ── */}
-            <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
-            </div>
-            {/* ── 1. Projects Overview ── */}
-            {(()=>{
-              const _rp=dashProject!=="All"&&dashClient!=="All"&&!accessibleProjects.find(p=>p.id===dashProject&&(p.client||"Unassigned")===dashClient);if(_rp)sdsp("All");
-              const _rt=dashTask!=="All"&&(dashProject!=="All"?!dashTasks.some(t=>t.id===dashTask&&t.project_id===dashProject):dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>t.id===dashTask&&cPIds.has(t.project_id));})());if(_rt)sdst("All");
-              const _ru=dashUser!=="All"&&dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>cPIds.has(t.project_id)&&t.assignee===dashUser);})();if(_ru)sdsu("All");
-            })()}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-              {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
-                onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
-                onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
-            </div>
-
-            {isMobile?(
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {accessibleProjects.filter(p=>{
-                  if(dashClient!=="All"&&(p.client||"Unassigned")!==dashClient)return false;
-                  if(dashProject!=="All"&&p.id!==dashProject)return false;
-                  if(dashUser!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.assignee===dashUser))return false;
-                  if(dashTask!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.id===dashTask))return false;
-                  if(dashStatus!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&(dashStatus==="Not Yet Started"?(t.status==="Not Yet Started"||t.status==="To Be Started"):t.status===dashStatus)))return false;
-                  if(searchProj&&!p.name.toLowerCase().includes(searchProj.toLowerCase()))return false;
-                  return true;
-                }).map(p=>{
-                  const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                  const pd=pt.filter(t=>isDone(t.status)).length;
-                  const pip=pt.filter(t=>t.status==="In Progress").length;
-                  const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                  return(
-                    <div key={p.id} onClick={()=>navTo('list',p.id)}
-                      style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${p.color}`}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
-                        <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                        <span style={{fontSize:13,fontWeight:800,color:p.color,flexShrink:0}}>{pv}%</span>
-                      </div>
-                      <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${pv}%`,background:p.color,borderRadius:2}}/>
-                      </div>
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                        {p.client&&<span style={{fontSize:11,color:C.teal}}>🏢 {p.client}</span>}
-                        <span style={{fontSize:11,color:C.green}}>✅ {pd}</span>
-                        <span style={{fontSize:11,color:C.blue}}>🔄 {pip}</span>
-                        {pov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700}}>⚠ {pov} overdue</span>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} tasks →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ):(
-              (()=>{
-                const grpd={};
-                const ungrouped=[];
-                const dashFilteredProjects=accessibleProjects.filter(p=>{
-                  if(dashClient!=="All"&&(p.client||"Unassigned")!==dashClient)return false;
-                  if(dashProject!=="All"&&p.id!==dashProject)return false;
-                  if(dashUser!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.assignee===dashUser))return false;
-                  if(dashTask!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.id===dashTask))return false;
-                  if(dashStatus!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&(dashStatus==="Not Yet Started"?(t.status==="Not Yet Started"||t.status==="To Be Started"):t.status===dashStatus)))return false;
-                  return true;
-                });
-                dashFilteredProjects.forEach(p=>{
-                  if(p.group_name){if(!grpd[p.group_name])grpd[p.group_name]=[];grpd[p.group_name].push(p);}
-                  else ungrouped.push(p);
-                });
-                const hasGroups=Object.keys(grpd).length>0;
-                function ProjGrid({projs}){return(
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:16}}>
-                  {projs.map(p=>{
-                const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length;
-                const pip=pt.filter(t=>t.status==="In Progress").length;
-                const ptd=pt.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
-                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
-                const projSelected=selProjects.has(p.id);
-                return(
-                  <div key={p.id} style={{background:projSelected?C.accent+"18":C.card,border:`1px solid ${projSelected?C.accent:C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative"}}
-                    onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
-                      <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
-                        {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
-                          style={{marginTop:2,width:18,height:18,borderRadius:4,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
-                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#ffffff",lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                        {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
-                        <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
-                      {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
-                    </div>
-                    <Pb v={pv} color={p.color} h={7}/>
-                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
-                      <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
-                      </div>
-                      <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{ptd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
-                      </div>
-                      <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
-                      </div>
-                    </div>
-                    {assignees.length>0&&(
-                      <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
-                      </div>
-                    )}
-                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
-                  </div>
-                );
-              })}
-                  </div>
-                );}
-                return(<>
-                  {hasGroups&&Object.entries(grpd).sort((a,b)=>a[0].localeCompare(b[0])).map(([gname,gprojs])=>{
-                    const gt=tasks.filter(t=>gprojs.some(p=>p.id===t.project_id));
-                    const gd=gt.filter(t=>isDone(t.status)).length;
-                    const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                    const gpct=gt.length?Math.round(gd/gt.length*100):0;
-                    const [gopen,setGOpen]=React.useState(true);
-                    return(
-                      <div key={gname} style={{marginBottom:22}}>
-                        <div onClick={()=>setGOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.card,border:`1px solid ${gov>0?C.red+"55":C.teal+"44"}`,borderRadius:gopen?"12px 12px 0 0":"12px",cursor:"pointer",userSelect:"none",marginBottom:0}}>
-                          <span style={{fontSize:14,fontWeight:700,color:C.teal,transition:"transform .18s",display:"inline-block",transform:gopen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{gname}</div>
-                            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{gprojs.length} project{gprojs.length!==1?"s":""} · {gt.length} tasks</div>
-                          </div>
-                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                            <span style={{fontSize:13,fontWeight:800,color:gpct>=80?C.green:gpct>=50?C.accent:C.red}}>{gpct}%</span>
-                            {gov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 8px"}}>⚠ {gov} overdue</span>}
-                          </div>
-                        </div>
-                        {gopen&&<div style={{border:`1px solid ${C.teal}44`,borderTop:"none",borderRadius:"0 0 12px 12px",padding:"16px 16px 4px 16px",background:"#ffffff08",marginBottom:4}}>
-                          <ProjGrid projs={gprojs}/>
-                        </div>}
-                      </div>
-                    );
-                  })}
-                  {ungrouped.length>0&&<>
-                    {hasGroups&&<h3 style={{margin:"4px 0 14px",fontSize:13,fontWeight:700,color:C.t3,letterSpacing:".05em",textTransform:"uppercase"}}>Ungrouped Projects</h3>}
-                    <ProjGrid projs={ungrouped}/>
-                  </>}
-                </>);
-              })()
-            )}
-                        {/* Unassigned Projects removed for admin/manager */}
-            {/* ── 2. Recent Tasks removed for admin/manager ── */}
-            {false&&isMobile&&<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} onClick={()=>{set(t);stm(true);}}
-                    style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"11px 13px",cursor:"pointer",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6,marginBottom:5}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),flexShrink:0}}>{t.status}</span>
-                    </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                      {pj&&<span style={{fontSize:11,color:C.teal}}>📁 {pj.name}</span>}
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ {t.checker}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,marginLeft:"auto"}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
-            {false&&!isMobile&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const clr=pj?.color||C.accent;
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{set(t);stm(true);}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                      <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,marginLeft:10,whiteSpace:"nowrap"}}>{pj?.name||"—"}</span>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
-                    </div>
-                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
-                      <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                      </div>
-                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                      </div>
-                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
-            {/* ── 2. Client-wise Overview — hidden for admin/manager (shown in QuickNav) ── */}
-            {/* ── 3. Employee Overview (Admin/Manager) ── */}
-            {(()=>{
-              const staff=users.filter(u=>u.role!=="Client"&&u.username!==me.username);
-              if(!staff.length)return null;
-              return(
-                <>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                  <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>👥 Employee Overview</h2>
-                  <span style={{fontSize:12,color:C.t3}}>{staff.length} team member{staff.length!==1?"s":""} · click to manage</span>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(220px,100%),1fr))",gap:12,marginBottom:28}}>
-                  {staff.map(u=>{
-                    const uTasks=dashTasks.filter(t=>userMatchesStr(u,t.assignee)||userMatchesStr(u,t.detailer)||userMatchesStr(u,t.checker));
-                    const done=uTasks.filter(t=>isDone(t.status)).length;
-                    const inProg=uTasks.filter(t=>t.status==="In Progress").length;
-                    const overdue=uTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                    const pct=uTasks.length?Math.round(done/uTasks.length*100):0;
-                    const hue=u.name.charCodeAt(0)*17%360;
-                    return(
-                      <div key={u.id} style={{background:C.card,border:`1px solid ${overdue>0?C.red+"44":C.border}`,borderRadius:12,padding:16,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
-                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px #00000055";}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                          <div style={{width:40,height:40,borderRadius:"50%",background:`hsl(${hue},55%,40%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff",flexShrink:0}}>{u.name.charAt(0).toUpperCase()}</div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
-                            <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
-                          </div>
-                        </div>
-                        <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:10,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${pct}%`,background:`hsl(${hue},55%,45%)`,borderRadius:2,transition:"width .4s"}}/>
-                        </div>
-                        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-                          <span style={{fontSize:10,background:C.green+"22",color:C.green,border:`1px solid ${C.green}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>✅ {done}</span>
-                          <span style={{fontSize:10,background:C.blue+"22",color:C.blue,border:`1px solid ${C.blue}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>🔄 {inProg}</span>
-                          {overdue>0&&<span style={{fontSize:10,background:C.red+"22",color:C.red,border:`1px solid ${C.red}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>⚠ {overdue}</span>}
-                          <span style={{fontSize:10,color:C.t3,marginLeft:"auto"}}>{uTasks.length} tasks · {pct}%</span>
-                        </div>
-                        <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>{sfa(u.name);sv("kanban");sap(null);}}
-                            style={{flex:1,background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8,padding:"7px 0",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit",transition:"background .15s"}}
-                            onMouseEnter={e=>e.currentTarget.style.background=C.accent+"33"}
-                            onMouseLeave={e=>e.currentTarget.style.background=C.accent+"18"}>
-                            📋 Kanban
-                          </button>
-                          <button onClick={()=>{sfa(u.name);sv("list");sap(null);}}
-                            style={{flex:1,background:C.blue+"18",border:`1px solid ${C.blue}44`,borderRadius:8,padding:"7px 0",fontSize:11,fontWeight:700,color:C.blue,cursor:"pointer",fontFamily:"inherit",transition:"background .15s"}}
-                            onMouseEnter={e=>e.currentTarget.style.background=C.blue+"33"}
-                            onMouseLeave={e=>e.currentTarget.style.background=C.blue+"18"}>
-                            📄 List
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                </>
-              );
-            })()}
-            {/* ── 4. Team Attendance Report (Admin/Manager) ── */}
-            {(isAdmin||isManager)&&<AttendancePage users={users}/>}
-            {/* ── 4. Overdue Tasks ── */}
-            {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-                {overdueTasks.map(t=>{
-                  const pj=projects.find(p=>p.id===t.project_id);
-                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                  return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
-                      onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
-                      </div>
-                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
-                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      </div>
-                      <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
-                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
-                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                        </div>
-                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
-                        </div>
-                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                        </div>
-                      </div>
-                      {team.length>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="dashboard"&&!isAdmin&&!isManager&&<TaskTimingPanel
-          tasks={tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id))}
-          projects={accessibleProjects}
-          me={me} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}
-          onEditTask={t=>{set(t);stm(true);}}
-        />}
-        {view==="timings"&&(
-          <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}/>
-        )}
-        {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
-          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
-        )}
-        {view==="workflows"&&isAdmin&&(
-          <WorkflowsPage workflows={workflows} onAdd={addWorkflow} onUpdate={updateWorkflow} onDelete={deleteWorkflow} onToggle={toggleWorkflow} users={users} saving={saving}/>
-        )}
-        {view==="submissions"&&!isClient&&(
-          <SubmissionsPage
-            projects={accessibleProjects}
-            tasks={tasks}
-            today={today}
-            isClient={isClient}
-            clientName={me?.client_name||""}
-            canEdit={canEdit}
-            onEdit={t=>{set(t);stm(true);}}
-          />
-        )}
-        {view==="announcements"&&!isClient&&(
-          <AnnouncementsPage
-            me={me}
-            users={users}
-            projects={accessibleProjects}
-            canPost={isAdmin||isManager}
-          />
-        )}
-        {view==="warroom"&&!isClient&&(
-          <WarRoomPage
-            me={me}
-            projects={accessibleProjects}
-            users={users}
-          />
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-              <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-                onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-                onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-                extraOptions={ALL_STATUSES.filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))}/>
-            </div>}
-            {isMobile?(
-              <div>
-                {/* Mobile kanban: tab strip + task list for selected column */}
-                <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:10,marginBottom:12,WebkitOverflowScrolling:"touch"}}>
-                  {kanbanCols.map(col=>{
-                    const cnt=filtered.filter(t=>t.status===col).length;
-                    const active=mobKanCol===col;
-                    return(
-                      <button key={col} onClick={()=>setMobKanCol(col)}
-                        style={{flexShrink:0,background:active?C.accent:C.card,border:`1px solid ${active?C.accent:C.border}`,borderRadius:20,padding:"7px 14px",fontSize:11,fontWeight:700,color:active?"#fff":C.t2,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-                        {col}
-                        <span style={{background:active?"#ffffff33":C.accent+"22",color:active?"#fff":C.accent,borderRadius:8,padding:"1px 6px",fontSize:10,fontWeight:700}}>{cnt}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Task list for active column */}
-                {(()=>{
-                  const colTasks=filtered.filter(t=>t.status===mobKanCol);
-                  if(colTasks.length===0)return(<div style={{textAlign:"center",padding:"40px 16px",color:C.t3,fontSize:13}}>No tasks in "{mobKanCol}"</div>);
-                  return(
-                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {colTasks.map(t=>{
-                        const proj=projects.find(p=>p.id===t.project_id);
-                        const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                        const canEditTask=canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker));
-                        return(
-                          <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                              <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                              {canEditTask&&<button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>}
-                            </div>
-                            {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:canEditTask?8:0}}>
-                              {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                              {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
-                              {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                              {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {t.due_date}</span>}
-                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {t.due_date}</span>}
-                            </div>
-                            {canEditTask&&<div style={{display:"flex",alignItems:"center",gap:6}}>
-                              <span style={{fontSize:10,color:C.t3,flexShrink:0}}>Move to:</span>
-                              <select value={t.status} onChange={e=>dropTask(t.id,e.target.value)}
-                                style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:getStatusColor(t.status),fontSize:11,fontWeight:700,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                                {kanbanCols.map(col=><option key={col} value={col}>{col}</option>)}
-                              </select>
-                            </div>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            ):(
-            <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-                selTasks={selTasks}
-                onToggleTask={canEdit?toggleTask:null}
-                taskFileCounts={taskFileCounts}
-                onFiles={t=>setFileTask(t)}
-              />))}
-            </div>
-            )}
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div>
-          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
-              }/>
-          </div>}
-          {isMobile?(
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
-                    </div>
-                    {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
-                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
-                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
-                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
-                  </div>
-                </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
-            </table>
-          </div>
-          )}
-          </div>
-        )}
-      </main>
-      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>}
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} taskFileCounts={taskFileCounts} onNav={(type,data)=>{
-        if(type==="project")navTo("list",data.id);
-        else if(type==="task")navTo("list",data.project_id);
-        else if(type==="user"){sfa(data.name);sv("list");sap(null);}
-        else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
-        else if(type==="file"){setFileTask(data);}
-      }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
-          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const drill=dashDrill;
-      const lastDrill=drill[drill.length-1];
-      function closeDSM(){setDSM(null);setDDrill([]);}
-      function goBack(){setDDrill(d=>d.slice(0,-1));}
-      function drillInto(type,item){setDDrill(d=>[...d,{type,item}]);}
-
-      // ── Determine current view ──
-      let title="",color=C.accent,items=[],canDrill=false,drillType="",isTaskList=false;
-
-      if(!lastDrill){
-        // Root level
-        if(DSM==="users"){
-          title="👥 All Employees";color=C.accent;canDrill=true;drillType="employee";
-          items=users.filter(u=>u.role!=="Client").map(u=>{
-            const ut=tasks.filter(t=>t.assignee===u.name||t.detailer===u.name||t.checker===u.name);
-            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
-          });
-        } else if(DSM==="clients"){
-          title="🏢 All Clients";color=C.teal;canDrill=true;drillType="client";
-          items=clients.map(cl=>{
-            const cProjs=accessibleProjects.filter(p=>(p.client||"")===(cl.name||""));
-            return{label:cl.name,sub:`${cl.email||cl.phone||""} · ${cProjs.length} projects`,dot:C.teal,raw:cl};
-          });
-        } else if(DSM==="projects"){
-          title="📁 All Projects";color=C.blue;canDrill=true;drillType="project";
-          items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-        } else if(DSM==="completed"){
-          title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
-        } else if(DSM==="inprogress"){
-          title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:C.accent,raw:t};});
-        } else if(DSM==="team"){
-          title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
-          const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-          items=teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue,raw:{name}}));
-        }
-      } else if(lastDrill.type==="client"){
-        // Client → Projects
-        const cl=lastDrill.item;
-        title=`📁 ${cl.name} — Projects`;color=C.blue;canDrill=true;drillType="project";
-        items=accessibleProjects.filter(p=>(p.client||"")===(cl.name||"")).map(p=>({label:p.name,sub:`${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-      } else if(lastDrill.type==="project"){
-        // Project → Tasks
-        const proj=lastDrill.item;
-        title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
-      } else if(lastDrill.type==="employee"){
-        // Employee → Projects they work in
-        const emp=lastDrill.item;
-        const empName=emp.name||emp.username;
-        const empProjIds=new Set(tasks.filter(t=>t.assignee===empName||t.detailer===empName||t.checker===empName).map(t=>t.project_id));
-        title=`📁 ${empName} — Projects`;color=C.blue;canDrill=true;drillType="emp-project";
-        items=accessibleProjects.filter(p=>empProjIds.has(p.id)).map(p=>{
-          const empProjTasks=tasks.filter(t=>t.project_id===p.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName));
-          return{label:p.name,sub:`${p.client||"No client"} · ${empProjTasks.filter(t=>isDone(t.status)).length} done · ${empProjTasks.filter(t=>t.status==="In Progress").length} in progress`,dot:p.color||C.blue,raw:{proj:p,empName}};
-        });
-      } else if(lastDrill.type==="emp-project"){
-        // Employee+Project → Tasks
-        const {proj,empName}=lastDrill.item;
-        title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
-      }
-
-      return(
-        <div onClick={closeDSM} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:540,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${color}33,0 24px 60px #00000080`}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 20px",borderBottom:`1px solid ${C.border}`}}>
-              {drill.length>0&&<button onClick={goBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:13,cursor:"pointer",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontWeight:600}}>← Back</button>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:1}}>{items.length} item{items.length!==1?"s":""}{canDrill?" · click to drill down":""}</div>
-              </div>
-              <button onClick={closeDSM} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            {/* Breadcrumb */}
-            {drill.length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 20px",borderBottom:`1px solid ${C.border}22`,flexWrap:"wrap"}}>
-                <span onClick={()=>setDDrill([])} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:600}}>Home</span>
-                {drill.map((d,i)=>(
-                  <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontSize:11,color:C.t3}}>›</span>
-                    <span onClick={()=>setDDrill(drill.slice(0,i+1))} style={{fontSize:11,color:i===drill.length-1?C.t1:C.accent,cursor:i<drill.length-1?"pointer":"default",fontWeight:600}}>{d.item.name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* List */}
-            <div style={{overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {items.length===0
-                ?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>
-                :items.map((item,i)=>(
-                <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
-                  onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+                    <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer
