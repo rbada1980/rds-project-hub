@@ -6818,10 +6818,1345 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
   );
 }
 
+// ─── GamificationBoard ───────────────────────────────────────────────────────
+function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager,month}){
+  const isMobile=useMobile();
+  const [goalMins,setGoalMins]=useState(null);
+  const [editGoal,setEditGoal]=useState(false);
+  const [goalInput,setGoalInput]=useState("");
+  const [msg,setMsg]=useState(null);
+
+  function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+
+  // Load team goal from settings
+  useEffect(()=>{
+    fetch(SUPA_URL+"/rest/v1/settings?key=eq.gamification_goal_"+month,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}})
+      .then(r=>r.ok?r.json():[]).then(rows=>{
+        const row=Array.isArray(rows)&&rows[0];
+        if(row)setGoalMins(Number(row.value)||null);
+      }).catch(()=>{});
+  },[month]);
+
+  async function saveGoal(){
+    const mins=parseFloat(goalInput)*60;if(!mins)return;
+    const key="gamification_goal_"+month;const val=String(Math.round(mins));
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+key,{
+      method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value:val})
+    });
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){
+      await fetch(SUPA_URL+"/rest/v1/settings",{
+        method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key,value:val})
+      });
+    }
+    setGoalMins(Math.round(mins));setEditGoal(false);
+    setMsg("Goal set ✓");setTimeout(()=>setMsg(null),2500);
+  }
+
+  // Per-employee stats
+  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name);
+
+  function empStats(name){
+    const myLogs=timeLogs.filter(l=>l.user_name===name);
+    const totalMins=myLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+    const myTasks=tasks.filter(t=>t.assignee===name);
+    const done=myTasks.filter(t=>t.status==="Completed"||t.status==="Done");
+    const today=new Date().toISOString().slice(0,10);
+    const onTime=done.filter(t=>t.due_date&&(t.updated_at||"").slice(0,10)<=t.due_date).length;
+    const projSet=new Set(myLogs.map(l=>l.project_id).filter(Boolean));
+    // Streak
+    const attDates=new Set(attendance.filter(r=>r.user_name===name).map(r=>r.date));
+    let streak=0;const cur=new Date();
+    for(let i=0;i<90;i++){
+      const ds=cur.toISOString().slice(0,10);const dow=cur.getDay();
+      if(dow!==0&&dow!==6){if(attDates.has(ds))streak++;else if(streak>0)break;}
+      cur.setDate(cur.getDate()-1);
+    }
+    return{totalMins,done:done.length,onTime,projCount:projSet.size,streak};
+  }
+
+  const scored=empList.map(n=>({name:n,...empStats(n)}));
+
+  // Awards
+  const topHours=scored.sort((a,b)=>b.totalMins-a.totalMins)[0];
+  const topDone=[...scored].sort((a,b)=>b.done-a.done)[0];
+  const topStreak=[...scored].sort((a,b)=>b.streak-a.streak)[0];
+  const topOnTime=[...scored].sort((a,b)=>b.onTime-a.onTime)[0];
+  const topAllRounder=[...scored].sort((a,b)=>b.projCount-a.projCount)[0];
+
+  const awards=[
+    {trophy:"🏆",title:"Top Performer",winner:topHours?.name,stat:topHours?fmtH(topHours.totalMins)+" logged":"—",color:"#fbbf24"},
+    {trophy:"⚡",title:"Fast Finisher",winner:topDone?.name,stat:topDone?topDone.done+" tasks done":"—",color:"#34d399"},
+    {trophy:"🎯",title:"Deadline Crusher",winner:topOnTime?.name,stat:topOnTime?topOnTime.onTime+" on-time":"—",color:"#60a5fa"},
+    {trophy:"🔥",title:"Streak Champion",winner:topStreak?.name,stat:topStreak?topStreak.streak+"-day streak":"—",color:"#f87171"},
+    {trophy:"🌟",title:"All Rounder",winner:topAllRounder?.name,stat:topAllRounder?topAllRounder.projCount+" projects":"—",color:"#a78bfa"},
+  ];
+
+  // Leaderboard
+  const leaderboard=[...scored].sort((a,b)=>b.totalMins-a.totalMins);
+
+  // Badges per person
+  function getBadges(s){
+    const b=[];
+    if(s.streak>=5)b.push({icon:"🔥",label:"Perfect Week"});
+    if(s.streak>=14)b.push({icon:"💎",label:"Fortnight Fire"});
+    if(s.onTime>=3)b.push({icon:"🎯",label:"Deadline Crusher"});
+    if(s.done>=5)b.push({icon:"⚡",label:"Speed Runner"});
+    if(s.projCount>=3)b.push({icon:"🌟",label:"All Rounder"});
+    if(s.totalMins>=4800)b.push({icon:"💪",label:"80h Club"});
+    return b;
+  }
+
+  // Team total
+  const teamTotal=timeLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+  const goalPct=goalMins?Math.min(Math.round(teamTotal/goalMins*100),100):null;
+
+  return(
+    <div>
+      {msg&&<div style={{background:"#05966922",border:"1px solid #05966944",borderRadius:8,padding:"8px 14px",color:"#34d399",fontSize:13,fontWeight:600,marginBottom:12}}>{msg}</div>}
+
+      {/* Team Goal Progress */}
+      <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:18,marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+          <div>
+            <div style={{fontWeight:700,color:C.t1,fontSize:14}}>🎯 Team Monthly Goal</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{fmtH(teamTotal)} logged{goalMins?" / "+fmtH(goalMins)+" target":""}</div>
+          </div>
+          {(isAdmin||isManager)&&(
+            editGoal?(
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <input value={goalInput} onChange={e=>setGoalInput(e.target.value)} type="number" placeholder="Hours target" autoFocus
+                  style={{width:80,background:C.surface,border:"1px solid "+C.accent,borderRadius:7,padding:"5px 8px",color:C.t1,fontSize:13}}
+                  onKeyDown={e=>{if(e.key==="Enter")saveGoal();if(e.key==="Escape")setEditGoal(false);}}/>
+                <button onClick={saveGoal} style={{background:C.accent,border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700}}>Set</button>
+                <button onClick={()=>setEditGoal(false)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:7,padding:"5px 8px",color:C.t2,cursor:"pointer",fontSize:12}}>✕</button>
+              </div>
+            ):(
+              <button onClick={()=>{setEditGoal(true);setGoalInput(goalMins?String(Math.round(goalMins/60)):"");}}
+                style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"6px 12px",color:C.t2,cursor:"pointer",fontSize:12}}>
+                {goalMins?"✏️ Edit Goal":"＋ Set Goal"}
+              </button>
+            )
+          )}
+        </div>
+        {goalMins?(
+          <>
+            <div style={{height:12,background:C.surface,borderRadius:6,overflow:"hidden",position:"relative"}}>
+              <div style={{height:"100%",width:goalPct+"%",background:goalPct>=100?"#fbbf24":goalPct>=75?"#34d399":"#7c3aed",borderRadius:6,transition:"width .4s",position:"relative"}}>
+                {goalPct>=100&&<div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(45deg,#ffffff20 0,#ffffff20 5px,transparent 5px,transparent 10px)",borderRadius:6}}/>}
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:11}}>
+              <span style={{color:goalPct>=100?"#fbbf24":"#7c3aed",fontWeight:700}}>{goalPct}% {goalPct>=100?"🎉 GOAL REACHED!":""}</span>
+              <span style={{color:C.t3}}>{goalMins-teamTotal>0?fmtH(goalMins-teamTotal)+" to go":"Exceeded!"}</span>
+            </div>
+          </>
+        ):(
+          <div style={{padding:"8px 0",fontSize:12,color:C.t3}}>{isAdmin||isManager?"Set a team goal to track progress →":"Waiting for a goal to be set"}</div>
+        )}
+      </div>
+
+      {/* Monthly Awards */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:14}}>
+        {awards.map(a=>(
+          <div key={a.title} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:14,textAlign:"center"}}>
+            <div style={{fontSize:28,marginBottom:4}}>{a.trophy}</div>
+            <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>{a.title}</div>
+            <div style={{fontWeight:700,color:a.color,fontSize:13,marginBottom:2}}>{a.winner||"—"}</div>
+            <div style={{fontSize:10,color:C.t2}}>{a.stat}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Leaderboard */}
+      <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid "+C.border,fontWeight:700,color:C.t1,fontSize:13}}>🏅 Leaderboard — {month}</div>
+        {leaderboard.map((e,i)=>{
+          const badges=getBadges(e);const isMe=e.name===me.name;
+          const pct=leaderboard[0]?.totalMins?Math.round(e.totalMins/leaderboard[0].totalMins*100):0;
+          const rankIcon=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);
+          return(
+            <div key={e.name} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<leaderboard.length-1?"1px solid "+C.border+"44":"none",background:isMe?C.accent+"08":"transparent"}}>
+              <div style={{width:28,textAlign:"center",fontSize:i<3?18:12,color:i<3?"":"#64748b",fontWeight:700,flexShrink:0}}>{rankIcon}</div>
+              <div style={{width:28,height:28,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:C.accent,fontSize:12,flexShrink:0}}>{e.name[0]}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,color:C.t1,fontSize:13}}>{e.name}{isMe&&<span style={{marginLeft:5,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:10,padding:"1px 6px"}}>You</span>}</div>
+                <div style={{height:4,background:C.surface,borderRadius:2,marginTop:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:pct+"%",background:i===0?"#fbbf24":i===1?"#94a3b8":i===2?"#c2853a":"#7c3aed",borderRadius:2}}/>
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{fmtH(e.totalMins)}</div>
+                <div style={{fontSize:10,color:C.t3}}>{e.done} tasks · {e.streak}d streak</div>
+              </div>
+              {badges.length>0&&(
+                <div style={{display:"flex",gap:3,flexShrink:0}}>
+                  {badges.slice(0,3).map(b=><span key={b.label} title={b.label} style={{fontSize:14}}>{b.icon}</span>)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {!leaderboard.length&&<div style={{padding:32,textAlign:"center",color:C.t3,fontSize:12}}>No time logs this month yet</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── CapacityPlanner ─────────────────────────────────────────────────────────
+function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,isManager,month}){
+  const isMobile=useMobile();
+  const [weekOffset,setWeekOffset]=useState(0);
+  const [leaves,setLeaves]=useState({});   // { "Name_date": true }
+  const [leaveLoaded,setLeaveLoaded]=useState(false);
+  const [msg,setMsg]=useState(null);
+
+  function getWeekStart(offset=0){
+    const d=new Date();const day=d.getDay();
+    d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);d.setHours(0,0,0,0);return d;
+  }
+  function fmtDate(d){return d.toISOString().slice(0,10);}
+  function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+
+  const weekStart=getWeekStart(weekOffset);
+  const weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
+  const weekStartStr=fmtDate(weekStart);
+  const weekEndStr=fmtDate(weekEnd);
+  const fmtRange=weekStart.toLocaleDateString("en-IN",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});
+
+  const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
+  const DOW=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  // Load leaves from settings
+  useEffect(()=>{
+    fetch(SUPA_URL+"/rest/v1/settings?key=eq.capacity_leaves",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}})
+      .then(r=>r.ok?r.json():[]).then(rows=>{
+        const row=Array.isArray(rows)&&rows[0];
+        try{if(row)setLeaves(JSON.parse(row.value));}catch{}
+        setLeaveLoaded(true);
+      }).catch(()=>setLeaveLoaded(true));
+  },[]);
+
+  async function toggleLeave(empName,dateStr){
+    const key=empName+"__"+dateStr;
+    const updated={...leaves};
+    if(updated[key])delete updated[key];else updated[key]=true;
+    setLeaves(updated);
+    const val=JSON.stringify(updated);
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.capacity_leaves",{
+      method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value:val})
+    });
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){
+      await fetch(SUPA_URL+"/rest/v1/settings",{
+        method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key:"capacity_leaves",value:val})
+      });
+    }
+  }
+
+  // Filter logs for this week
+  const weekLogs=timeLogs.filter(l=>l.logged_date>=weekStartStr&&l.logged_date<=weekEndStr);
+
+  // Hours per employee per day
+  const empDayMap={};
+  weekLogs.forEach(l=>{
+    const k=l.user_name+"__"+l.logged_date;
+    empDayMap[k]=(empDayMap[k]||0)+(l.duration_minutes||0);
+  });
+
+  // Hours per employee this week
+  const empWeekMins={};
+  weekLogs.forEach(l=>{empWeekMins[l.user_name]=(empWeekMins[l.user_name]||0)+(l.duration_minutes||0);});
+
+  const canManage=isAdmin||isManager;
+  const empList=canManage
+    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name).sort()
+    :[me.name];
+
+  // Overloaded: >45h/week (2700 min)
+  const overloaded=empList.filter(n=>(empWeekMins[n]||0)>2700);
+
+  // Active tasks per employee (In Progress or Not Yet Started, assigned)
+  const activeTasks=tasks.filter(t=>t.status==="In Progress"||t.status==="Not Yet Started");
+  const empActiveTasks={};
+  activeTasks.forEach(t=>{if(t.assignee){if(!empActiveTasks[t.assignee])empActiveTasks[t.assignee]=[];empActiveTasks[t.assignee].push(t);}});
+
+  // Velocity forecast per project (hours/week based on this month's logs)
+  const projMap={};projects.forEach(p=>{projMap[p.id]=p;});
+  const weeksInMonth=4.33;
+  const projForecast=projects.map(p=>{
+    const pLogs=timeLogs.filter(l=>l.project_id===p.id);
+    const totalMins=pLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+    const weeklyMins=totalMins/weeksInMonth;
+    const remaining=tasks.filter(t=>t.project_id===p.id&&t.status!=="Completed"&&t.status!=="Done");
+    const avgTaskMins=totalMins>0&&(tasks.filter(t=>t.project_id===p.id&&(t.status==="Completed"||t.status==="Done")).length>0)
+      ?(totalMins/tasks.filter(t=>t.project_id===p.id&&(t.status==="Completed"||t.status==="Done")).length)
+      :0;
+    const remainingMins=remaining.length*(avgTaskMins||120); // default 2h per task
+    const weeksLeft=weeklyMins>0?remainingMins/weeklyMins:null;
+    const eta=weeksLeft!=null?(()=>{const d=new Date();d.setDate(d.getDate()+Math.ceil(weeksLeft*7));return d.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});})():null;
+    return{...p,remaining:remaining.length,weeklyMins,weeksLeft,eta};
+  }).filter(p=>p.remaining>0).sort((a,b)=>(a.weeksLeft??999)-(b.weeksLeft??999));
+
+  return(
+    <div>
+      {msg&&<div style={{background:"#05966922",border:"1px solid #05966944",borderRadius:8,padding:"8px 14px",color:"#34d399",fontSize:13,fontWeight:600,marginBottom:12}}>{msg}</div>}
+
+      {/* Week Navigator */}
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        <button onClick={()=>setWeekOffset(o=>o-1)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"6px 12px",color:C.t1,cursor:"pointer",fontSize:13}}>← Prev</button>
+        <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:10,padding:"6px 16px",fontWeight:700,color:C.t1,fontSize:13}}>📅 {fmtRange}</div>
+        <button onClick={()=>setWeekOffset(o=>o+1)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"6px 12px",color:C.t1,cursor:"pointer",fontSize:13}}>Next →</button>
+        {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{background:"#3b82f622",border:"1px solid #3b82f644",borderRadius:8,padding:"6px 12px",color:"#60a5fa",cursor:"pointer",fontSize:12}}>This Week</button>}
+      </div>
+
+      {/* Overload alerts */}
+      {overloaded.length>0&&(
+        <div style={{background:"#ef444411",border:"1px solid #ef444433",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:16}}>⚠️</span>
+          <span style={{fontWeight:700,color:"#f87171",fontSize:13}}>{overloaded.length} employee{overloaded.length>1?"s":""} overloaded this week (&gt;45h):</span>
+          {overloaded.map(n=>(
+            <span key={n} style={{background:"#ef444422",color:"#f87171",borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:600}}>{n} · {fmtH(empWeekMins[n])}</span>
+          ))}
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 340px",gap:12}}>
+        {/* Weekly planner grid */}
+        <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+          <div style={{padding:"12px 16px",borderBottom:"1px solid "+C.border,fontWeight:700,color:C.t1,fontSize:13}}>📋 Weekly Planner</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+              <thead>
+                <tr style={{background:C.surface}}>
+                  <th style={{padding:"8px 12px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,borderBottom:"1px solid "+C.border,width:120}}>Employee</th>
+                  {weekDays.map((d,i)=>{
+                    const isToday=d===fmtDate(new Date());const dayNum=new Date(d+"T00:00:00").getDate();
+                    return(
+                      <th key={d} style={{padding:"6px 4px",textAlign:"center",fontSize:10,color:isToday?C.accent:C.t3,fontWeight:700,borderBottom:"1px solid "+C.border,minWidth:56}}>
+                        {DOW[i]}<br/><span style={{fontSize:11,color:isToday?C.accent:C.t2}}>{dayNum}</span>
+                      </th>
+                    );
+                  })}
+                  <th style={{padding:"8px 8px",textAlign:"center",fontSize:11,color:C.t3,fontWeight:700,borderBottom:"1px solid "+C.border}}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {empList.map((empName,ei)=>{
+                  const weekMins=empWeekMins[empName]||0;const isOver=weekMins>2700;
+                  return(
+                    <tr key={empName} style={{background:ei%2===0?"transparent":C.surface+"44",borderBottom:"1px solid "+C.border+"44"}}>
+                      <td style={{padding:"8px 12px",fontWeight:600,color:C.t1,fontSize:12,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {empName.split(" ")[0]}
+                        {(empActiveTasks[empName]||[]).length>0&&<span title={empActiveTasks[empName].length+" active tasks"} style={{marginLeft:4,fontSize:10,background:"#3b82f622",color:"#60a5fa",borderRadius:10,padding:"1px 5px"}}>{empActiveTasks[empName].length}t</span>}
+                      </td>
+                      {weekDays.map(d=>{
+                        const mins=empDayMap[empName+"__"+d]||0;
+                        const isLeave=leaves[empName+"__"+d];
+                        const isWeekend=new Date(d+"T00:00:00").getDay()===0||new Date(d+"T00:00:00").getDay()===6;
+                        const isToday=d===fmtDate(new Date());
+                        const bg=isLeave?"#f59e0b18":isWeekend?"#ffffff08":isToday?C.accent+"11":"transparent";
+                        return(
+                          <td key={d} style={{padding:"4px 2px",textAlign:"center",background:bg,cursor:canManage?"pointer":"default"}}
+                            onClick={()=>{if(canManage)toggleLeave(empName,d);}}>
+                            {isLeave?(
+                              <span title="Leave" style={{fontSize:14}}>🏖️</span>
+                            ):mins>0?(
+                              <div>
+                                <div style={{height:3,borderRadius:2,background:`rgba(5,150,105,${0.3+Math.min(mins/480,1)*0.7})`,margin:"2px 4px"}}/>
+                                <span style={{fontSize:10,fontWeight:600,color:mins>480?"#f87171":"#34d399"}}>{fmtH(mins)}</span>
+                              </div>
+                            ):(
+                              <span style={{fontSize:11,color:C.border}}>—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td style={{padding:"6px 8px",textAlign:"center"}}>
+                        <span style={{background:isOver?"#ef444422":weekMins>0?"#05966922":C.surface,color:isOver?"#f87171":weekMins>0?"#34d399":C.t3,borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>
+                          {weekMins>0?fmtH(weekMins):"—"}{isOver?" ⚠️":""}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {canManage&&<div style={{padding:"8px 14px",borderTop:"1px solid "+C.border,fontSize:11,color:C.t3}}>💡 Click any cell to mark/unmark leave 🏖️</div>}
+        </div>
+
+        {/* Velocity forecast */}
+        <div>
+          <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+            <div style={{padding:"12px 16px",borderBottom:"1px solid "+C.border,fontWeight:700,color:C.t1,fontSize:13}}>🔮 Completion Forecast</div>
+            {projForecast.length===0?(
+              <div style={{padding:24,textAlign:"center",color:C.t3,fontSize:12}}>All projects on track!</div>
+            ):(
+              <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+                {projForecast.slice(0,8).map(p=>{
+                  const urgent=p.weeksLeft!=null&&p.weeksLeft<=2;
+                  return(
+                    <div key={p.id} style={{background:C.surface,borderRadius:8,padding:"9px 11px",borderLeft:"3px solid "+(urgent?"#ef4444":p.color||C.accent)}}>
+                      <div style={{fontWeight:600,color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                      <div style={{fontSize:11,color:C.t2,marginTop:3}}>
+                        {p.remaining} task{p.remaining!==1?"s":""} left
+                        {p.eta&&<span style={{color:urgent?"#f87171":C.t2}}> · ETA {p.eta}</span>}
+                        {p.weeksLeft!=null&&<span style={{color:urgent?"#f87171":"#34d399"}}> ({Math.ceil(p.weeksLeft)} wk{Math.ceil(p.weeksLeft)!==1?"s":""})</span>}
+                        {!p.eta&&<span style={{color:C.t3}}> · No velocity data</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AutomatedReports ────────────────────────────────────────────────────────
+function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,isManager,month}){
+  const [msg,setMsg]=useState(null);
+  const CURRENCY="₹";
+
+  function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-IN",{maximumFractionDigits:0});}
+
+  // ── 1. Payroll CSV ────────────────────────────────────────────────────────
+  async function downloadPayrollCsv(){
+    // Load rates from settings
+    const empNames=users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name);
+    const rateKeys=empNames.map(n=>"emp_rate__"+n.replace(/\s+/g," "));
+    const rateMap={};
+    if(rateKeys.length){
+      const r=await fetch(SUPA_URL+"/rest/v1/settings?key=in.("+rateKeys.join(",")+")",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+      const rows=r.ok?await r.json():[];
+      (Array.isArray(rows)?rows:[]).forEach(row=>{rateMap[row.key.replace("emp_rate__","")]=Number(row.value)||0;});
+    }
+    const byEmp={};
+    timeLogs.forEach(l=>{
+      if(!byEmp[l.user_name])byEmp[l.user_name]={mins:0,logs:0};
+      byEmp[l.user_name].mins+=(l.duration_minutes||0);byEmp[l.user_name].logs++;
+    });
+    const lines=["Employee,Hours,Rate/hr,Amount (INR),Log Entries"];
+    Object.entries(byEmp).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([n,d])=>{
+      const h=(d.mins/60).toFixed(2);const rate=rateMap[n]||0;const amt=(d.mins/60*rate).toFixed(0);
+      lines.push(`"${n}",${h},${rate},${amt},${d.logs}`);
+    });
+    const totalH=(Object.values(byEmp).reduce((s,d)=>s+d.mins,0)/60).toFixed(2);
+    const totalAmt=Object.entries(byEmp).reduce((s,[n,d])=>s+(d.mins/60*(rateMap[n]||0)),0).toFixed(0);
+    lines.push(`"TOTAL",${totalH},,${totalAmt},`);
+    const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`payroll_${month}.csv`;a.click();
+    setMsg("Payroll CSV downloaded ✓");setTimeout(()=>setMsg(null),3000);
+  }
+
+  // ── 2. Overtime report (print) ────────────────────────────────────────────
+  function printOvertime(){
+    // Find days where any employee logged > 8h (480 min)
+    const dayMap={};
+    timeLogs.forEach(l=>{
+      const k=l.logged_date+"__"+l.user_name;
+      dayMap[k]=(dayMap[k]||0)+(l.duration_minutes||0);
+    });
+    const overtimeEntries=Object.entries(dayMap).filter(([,m])=>m>480).map(([k,m])=>{
+      const[date,name]=k.split("__");return{date,name,mins:m};
+    }).sort((a,b)=>b.mins-a.mins);
+    const rows=overtimeEntries.map(e=>`<tr><td>${e.date}</td><td>${e.name}</td><td>${fmtH(e.mins)}</td><td style="color:#ef4444;font-weight:700">+${fmtH(e.mins-480)}</td></tr>`).join("");
+    const html=`<html><head><title>Overtime Report</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th,td{padding:9px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:700}.none{padding:24px;text-align:center;color:#888;font-style:italic}</style></head>
+    <body><h2>⚠️ Overtime Report</h2><p>Month: ${month} &nbsp;·&nbsp; Days with &gt;8 hours logged</p>
+    <table><thead><tr><th>Date</th><th>Employee</th><th>Hours Logged</th><th>Overtime</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" class="none">No overtime this month 🎉</td></tr>'}</tbody></table>
+    <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString()} · RDS Project Hub</p>
+    </body></html>`;
+    const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
+  }
+
+  // ── 3. Monthly project summary (print) ────────────────────────────────────
+  function printProjectSummary(){
+    const projMap={};projects.forEach(p=>{projMap[p.id]=p;});
+    const byProj={};
+    timeLogs.forEach(l=>{
+      if(!byProj[l.project_id])byProj[l.project_id]={mins:0,workers:new Set()};
+      byProj[l.project_id].mins+=(l.duration_minutes||0);byProj[l.project_id].workers.add(l.user_name);
+    });
+    const projRows=Object.entries(byProj).sort((a,b)=>b[1].mins-a[1].mins).map(([pid,d])=>{
+      const p=projMap[pid];if(!p)return"";
+      const tasksDone=tasks.filter(t=>t.project_id===pid&&(t.status==="Completed"||t.status==="Done")).length;
+      const tasksTotal=tasks.filter(t=>t.project_id===pid).length;
+      return`<tr><td>${p.name}</td><td>${fmtH(d.mins)}</td><td>${d.workers.size}</td><td>${tasksDone}/${tasksTotal}</td></tr>`;
+    }).join("");
+    const totalMins=timeLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+    const html=`<html><head><title>Monthly Summary</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th,td{padding:9px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:700}tfoot td{font-weight:700;background:#fafafa}</style></head>
+    <body><h2>📁 Monthly Project Summary</h2><p>Month: ${month} &nbsp;·&nbsp; Total: ${fmtH(totalMins)}</p>
+    <table><thead><tr><th>Project</th><th>Hours</th><th>Team Size</th><th>Tasks Done</th></tr></thead>
+    <tbody>${projRows}</tbody>
+    <tfoot><tr><td><strong>Total</strong></td><td>${fmtH(totalMins)}</td><td>—</td><td>—</td></tr></tfoot></table>
+    <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString()} · RDS Project Hub</p>
+    </body></html>`;
+    const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
+  }
+
+  // ── 4. Employee summary CSV ───────────────────────────────────────────────
+  function downloadEmployeeSummary(){
+    const byEmp={};
+    timeLogs.forEach(l=>{
+      if(!byEmp[l.user_name])byEmp[l.user_name]={mins:0,projects:new Set(),tasks:new Set()};
+      byEmp[l.user_name].mins+=(l.duration_minutes||0);
+      byEmp[l.user_name].projects.add(l.project_id);
+      byEmp[l.user_name].tasks.add(l.task_id);
+    });
+    const attMap={};
+    attendance.forEach(r=>{
+      if(!attMap[r.user_name])attMap[r.user_name]=0;
+      attMap[r.user_name]++;
+    });
+    const lines=["Employee,Hours Logged,Projects Worked,Tasks Logged,Attendance Days"];
+    Object.entries(byEmp).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([n,d])=>{
+      lines.push(`"${n}",${(d.mins/60).toFixed(2)},${d.projects.size},${d.tasks.size},${attMap[n]||0}`);
+    });
+    const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`employee_summary_${month}.csv`;a.click();
+    setMsg("Employee summary downloaded ✓");setTimeout(()=>setMsg(null),3000);
+  }
+
+  // Overtime count for badge
+  const overtimeCount=(()=>{
+    const dm={};timeLogs.forEach(l=>{const k=l.logged_date+"__"+l.user_name;dm[k]=(dm[k]||0)+(l.duration_minutes||0);});
+    return Object.values(dm).filter(m=>m>480).length;
+  })();
+
+  const REPORT_CARDS=[
+    {
+      icon:"💵",title:"Payroll Export",desc:"Hours × rate per employee — open in Excel",
+      badge:null,badgeClr:"#34d399",
+      action:downloadPayrollCsv,actionLabel:"⬇ Download CSV",color:"#059669",
+    },
+    {
+      icon:"📁",title:"Project Summary",desc:"Monthly breakdown by project — print / PDF",
+      badge:null,badgeClr:"#60a5fa",
+      action:printProjectSummary,actionLabel:"🖨️ Print / PDF",color:"#3b82f6",
+    },
+    {
+      icon:"⚠️",title:"Overtime Report",desc:overtimeCount+" day"+(overtimeCount!==1?"s":"")+">8hrs logged",
+      badge:overtimeCount>0?overtimeCount:null,badgeClr:"#f87171",
+      action:printOvertime,actionLabel:"🖨️ Print / PDF",color:overtimeCount>0?"#ef4444":"#6b7280",
+    },
+    {
+      icon:"📊",title:"Employee Summary",desc:"Hours, projects, tasks per person this month",
+      badge:null,badgeClr:"#a78bfa",
+      action:downloadEmployeeSummary,actionLabel:"⬇ Download CSV",color:"#7c3aed",
+    },
+  ];
+
+  return(
+    <div>
+      {msg&&<div style={{background:"#05966922",border:"1px solid #05966944",borderRadius:8,padding:"8px 14px",color:"#34d399",fontSize:13,fontWeight:600,marginBottom:12}}>{msg}</div>}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
+        {REPORT_CARDS.map(rc=>(
+          <div key={rc.title} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:18,borderTop:"3px solid "+rc.color}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:24,marginBottom:4}}>{rc.icon}</div>
+                <div style={{fontWeight:700,color:C.t1,fontSize:14}}>{rc.title}</div>
+                <div style={{fontSize:12,color:C.t2,marginTop:3}}>{rc.desc}</div>
+              </div>
+              {rc.badge!=null&&<span style={{background:rc.badgeClr+"22",color:rc.badgeClr,borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:700,flexShrink:0}}>{rc.badge}</span>}
+            </div>
+            <button onClick={rc.action} style={{background:rc.color+"22",border:"1px solid "+rc.color+"44",borderRadius:8,padding:"8px 16px",color:rc.color,cursor:"pointer",fontSize:13,fontWeight:700,width:"100%",marginTop:4}}>
+              {rc.actionLabel}
+            </button>
+          </div>
+        ))}
+      </div>
+      {/* Info note */}
+      <div style={{marginTop:16,background:C.surface,border:"1px solid "+C.border,borderRadius:10,padding:"12px 14px",fontSize:12,color:C.t2}}>
+        💡 All reports use data from the selected month ({month}). Payroll amounts depend on hourly rates set in the Budget tab.
+      </div>
+    </div>
+  );
+}
+
+// ─── ProjectBudget ───────────────────────────────────────────────────────────
+function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,month}){
+  const isMobile=useMobile();
+  const [budgets,setBudgets]=useState({});   // { proj_id: {est_hours} }
+  const [rates,setRates]=useState({});       // { user_name_key: rate_per_hour }
+  const [editing,setEditing]=useState(null); // project id being edited
+  const [editHours,setEditHours]=useState("");
+  const [editingRate,setEditingRate]=useState(null);
+  const [editRateVal,setEditRateVal]=useState("");
+  const [showBilling,setShowBilling]=useState(false);
+  const [msg,setMsg]=useState(null);
+
+  const CURRENCY="₹";
+
+  function rateKey(uName){return"emp_rate__"+uName.replace(/\s+/g," ");}
+  function budgetKey(pid){return"budget__proj_"+pid;}
+
+  // Load budgets + rates from settings
+  useEffect(()=>{
+    const budgetKeys=projects.map(p=>budgetKey(p.id));
+    const rateKeys=users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>rateKey(u.name));
+    const allKeys=[...budgetKeys,...rateKeys];
+    if(!allKeys.length)return;
+    fetch(SUPA_URL+"/rest/v1/settings?key=in.("+allKeys.join(",")+")",{
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+    }).then(r=>r.ok?r.json():[]).then(rows=>{
+      const bm={};const rm={};
+      (Array.isArray(rows)?rows:[]).forEach(r=>{
+        if(r.key.startsWith("budget__proj_")){try{bm[r.key.replace("budget__proj_","")]=JSON.parse(r.value);}catch{}}
+        else if(r.key.startsWith("emp_rate__")){rm[r.key.replace("emp_rate__","")]=Number(r.value)||0;}
+      });
+      setBudgets(bm);setRates(rm);
+    }).catch(()=>{});
+  },[projects.length,users.length]);
+
+  async function upsertSetting(key,value){
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
+      method:"PATCH",
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value:String(value)})
+    });
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){
+      await fetch(SUPA_URL+"/rest/v1/settings",{
+        method:"POST",
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key,value:String(value)})
+      });
+    }
+  }
+
+  async function saveBudget(pid){
+    const est=parseFloat(editHours)||0;
+    await upsertSetting(budgetKey(pid),JSON.stringify({est_hours:est}));
+    setBudgets(prev=>({...prev,[pid]:{est_hours:est}}));
+    setEditing(null);setMsg("Budget saved ✓");setTimeout(()=>setMsg(null),2500);
+  }
+  async function saveRate(uName){
+    const rate=parseFloat(editRateVal)||0;
+    await upsertSetting(rateKey(uName),rate);
+    setRates(prev=>({...prev,[uName]:rate}));
+    setEditingRate(null);setMsg("Rate saved ✓");setTimeout(()=>setMsg(null),2500);
+  }
+
+  function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-IN",{maximumFractionDigits:0});}
+
+  // Build per-project stats
+  const projStats=projects.map(p=>{
+    const pLogs=timeLogs.filter(l=>l.project_id===p.id);
+    const actualMins=pLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+    const actualH=actualMins/60;
+    const est=budgets[p.id]?.est_hours||0;
+    const burnPct=est>0?Math.min(Math.round(actualH/est*100),999):null;
+    // Cost = sum of (worker_hours * their_rate)
+    const workerMins={};
+    pLogs.forEach(l=>{workerMins[l.user_name]=(workerMins[l.user_name]||0)+(l.duration_minutes||0);});
+    const cost=Object.entries(workerMins).reduce((s,[n,m])=>s+((m/60)*(rates[n]||0)),0);
+    const estCost=est>0?Object.entries(workerMins).reduce((s,[n])=>s+((budgets[p.id]?.est_hours||0)*(rates[n]||0)/Object.keys(workerMins).length),0):0;
+    return{...p,actualMins,actualH,est,burnPct,cost,workerMins};
+  }).sort((a,b)=>b.actualMins-a.actualMins);
+
+  // Billing report HTML
+  function printBilling(){
+    const rows=projStats.map(p=>`
+      <tr>
+        <td>${p.name}</td>
+        <td>${fmtH(p.actualMins)}</td>
+        <td>${p.est>0?p.est+"h":"—"}</td>
+        <td>${p.burnPct!=null?p.burnPct+"%":"—"}</td>
+        <td>${p.cost>0?fmtMoney(p.cost):"—"}</td>
+      </tr>`).join("");
+    const totalCost=projStats.reduce((s,p)=>s+p.cost,0);
+    const totalH=fmtH(projStats.reduce((s,p)=>s+p.actualMins,0));
+    const html=`<html><head><title>Project Billing Report</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th,td{padding:9px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:700}tfoot td{font-weight:700;background:#fafafa}.total{font-size:15px;color:#059669}</style></head>
+    <body><h2>📊 Project Billing Report</h2><p>Month: ${month} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; RDS Project Hub</p>
+    <table><thead><tr><th>Project</th><th>Hours Logged</th><th>Est. Hours</th><th>Burn %</th><th>Cost</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td><strong>Total</strong></td><td>${totalH}</td><td>—</td><td>—</td><td class="total">${fmtMoney(totalCost)}</td></tr></tfoot></table>
+    </body></html>`;
+    const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
+  }
+
+  const canEdit=isAdmin||isManager;
+  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client");
+
+  return(
+    <div>
+      {/* Header actions */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <div style={{fontSize:13,color:C.t2}}>Track estimated hours, burn rate, and project costs</div>
+        <div style={{display:"flex",gap:8}}>
+          {canEdit&&<button onClick={()=>setShowBilling(!showBilling)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"6px 14px",color:C.t2,cursor:"pointer",fontSize:12}}>💰 {showBilling?"Hide":"Set"} Rates</button>}
+          <button onClick={printBilling} style={{background:"#7c3aed22",border:"1px solid #7c3aed44",borderRadius:8,padding:"6px 14px",color:"#a78bfa",cursor:"pointer",fontSize:12}}>🖨️ Billing Report</button>
+        </div>
+        {msg&&<div style={{background:"#05966922",border:"1px solid #05966944",borderRadius:8,padding:"5px 12px",color:"#34d399",fontSize:12,fontWeight:600}}>{msg}</div>}
+      </div>
+
+      {/* Hourly rate editor (admin only) */}
+      {showBilling&&canEdit&&(
+        <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:16,marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:10}}>💰 Hourly Rates ({CURRENCY}/hr)</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+            {empList.map(u=>(
+              <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,background:C.surface,borderRadius:8,padding:"8px 10px"}}>
+                <div style={{width:24,height:24,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:C.accent,flexShrink:0}}>{u.name[0]}</div>
+                <div style={{flex:1,fontSize:12,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                {editingRate===u.name?(
+                  <div style={{display:"flex",gap:4}}>
+                    <input value={editRateVal} onChange={e=>setEditRateVal(e.target.value)} style={{width:64,background:C.card,border:"1px solid "+C.accent,borderRadius:6,padding:"3px 6px",color:C.t1,fontSize:12}} autoFocus onKeyDown={e=>{if(e.key==="Enter")saveRate(u.name);if(e.key==="Escape")setEditingRate(null);}}/>
+                    <button onClick={()=>saveRate(u.name)} style={{background:C.accent,border:"none",borderRadius:6,padding:"3px 8px",color:"#fff",cursor:"pointer",fontSize:11}}>✓</button>
+                    <button onClick={()=>setEditingRate(null)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:6,padding:"3px 6px",color:C.t2,cursor:"pointer",fontSize:11}}>✕</button>
+                  </div>
+                ):(
+                  <button onClick={()=>{setEditingRate(u.name);setEditRateVal(rates[u.name]||"");}} style={{background:"none",border:"1px solid "+C.border,borderRadius:6,padding:"3px 8px",color:rates[u.name]?C.t1:C.t3,cursor:"pointer",fontSize:11,minWidth:52}}>
+                    {rates[u.name]?CURRENCY+rates[u.name]:"Set rate"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Project budget cards */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(320px,1fr))",gap:12}}>
+        {projStats.map(p=>{
+          const burnOk=p.burnPct!=null&&p.burnPct<=80;
+          const burnWarn=p.burnPct!=null&&p.burnPct>80&&p.burnPct<=100;
+          const burnOver=p.burnPct!=null&&p.burnPct>100;
+          const barClr=burnOver?"#ef4444":burnWarn?"#f59e0b":"#059669";
+          const isEditingThis=editing===p.id;
+          return(
+            <div key={p.id} style={{background:C.card,border:"1px solid "+(burnOver?"#ef444444":C.border),borderRadius:12,padding:16,borderTop:"3px solid "+(p.color||C.accent)}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.t1,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>{fmtH(p.actualMins)} logged{p.cost>0&&canEdit?" · "+fmtMoney(p.cost):""}</div>
+                </div>
+                {p.burnPct!=null&&(
+                  <span style={{background:(burnOver?"#ef444422":burnWarn?"#f59e0b22":"#05966922"),color:barClr,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,flexShrink:0}}>
+                    {p.burnPct}% burned
+                  </span>
+                )}
+              </div>
+
+              {/* Burn bar */}
+              {p.est>0&&(
+                <div style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2,marginBottom:4}}>
+                    <span>{fmtH(p.actualMins)} actual</span>
+                    <span>{p.est}h estimated</span>
+                  </div>
+                  <div style={{height:8,background:C.surface,borderRadius:4,overflow:"hidden",position:"relative"}}>
+                    <div style={{height:"100%",width:Math.min(p.burnPct,100)+"%",background:barClr,borderRadius:4,transition:"width .3s"}}/>
+                    {p.burnPct>100&&<div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(45deg,#ef444420 0,#ef444420 5px,transparent 5px,transparent 10px)",borderRadius:4}}/>}
+                  </div>
+                  {burnOver&&<div style={{fontSize:10,color:"#f87171",marginTop:3}}>⚠️ {p.burnPct-100}% over budget</div>}
+                </div>
+              )}
+
+              {/* Set estimated hours (admin/manager) */}
+              {canEdit&&(
+                <div style={{borderTop:"1px solid "+C.border,paddingTop:10,marginTop:p.est===0?0:0}}>
+                  {isEditingThis?(
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <input value={editHours} onChange={e=>setEditHours(e.target.value)} placeholder="Estimated hours" type="number" min="0"
+                        style={{flex:1,background:C.surface,border:"1px solid "+C.accent,borderRadius:7,padding:"6px 9px",color:C.t1,fontSize:13}}
+                        autoFocus onKeyDown={e=>{if(e.key==="Enter")saveBudget(p.id);if(e.key==="Escape")setEditing(null);}}/>
+                      <button onClick={()=>saveBudget(p.id)} style={{background:C.accent,border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700}}>Save</button>
+                      <button onClick={()=>setEditing(null)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:7,padding:"6px 10px",color:C.t2,cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>
+                  ):(
+                    <button onClick={()=>{setEditing(p.id);setEditHours(p.est||"");}}
+                      style={{background:C.surface,border:"1px solid "+C.border,borderRadius:7,padding:"5px 12px",color:p.est?C.t2:"#3b82f6",cursor:"pointer",fontSize:12,width:"100%"}}>
+                      {p.est?"✏️ Edit estimate ("+p.est+"h)":"＋ Set estimated hours"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Workers */}
+              {Object.keys(p.workerMins).length>0&&(
+                <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:4}}>
+                  {Object.entries(p.workerMins).sort((a,b)=>b[1]-a[1]).map(([n,m])=>(
+                    <span key={n} title={n+" · "+fmtH(m)+(rates[n]?" · "+fmtMoney((m/60)*rates[n]):"")}
+                      style={{fontSize:10,background:C.surface,border:"1px solid "+C.border,borderRadius:20,padding:"2px 8px",color:C.t2}}>
+                      {n.split(" ")[0]} · {fmtH(m)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── EmployeeScorecard ───────────────────────────────────────────────────────
+function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager,month}){
+  const isMobile=useMobile();
+  const [selected,setSelected]=useState(null);
+
+  function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+
+  // Compute metrics per employee
+  function metrics(uName){
+    const myTasks=tasks.filter(t=>t.assignee===uName);
+    const done=myTasks.filter(t=>t.status==="Completed"||t.status==="Done");
+    const inProg=myTasks.filter(t=>t.status==="In Progress");
+    const today=new Date().toISOString().slice(0,10);
+    const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&t.status!=="Completed"&&t.status!=="Done");
+    const doneWithDue=done.filter(t=>t.due_date);
+    // on-time: completed task where due_date >= completed date (use updated_at as proxy)
+    const onTime=doneWithDue.filter(t=>(t.updated_at||"").slice(0,10)<=t.due_date);
+    const onTimeRate=doneWithDue.length>0?Math.round(onTime.length/doneWithDue.length*100):null;
+
+    // Hours from timeLogs (month-scoped)
+    const myLogs=timeLogs.filter(l=>l.user_name===uName);
+    const totalMins=myLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
+
+    // Attendance this month
+    const myAtt=attendance.filter(r=>r.user_name===uName&&(r.date||"").startsWith(month));
+    const attDays=myAtt.length;
+
+    // Streak: consecutive workdays with attendance (most recent first)
+    const attDates=new Set(attendance.filter(r=>r.user_name===uName).map(r=>r.date));
+    let streak=0;const cur=new Date();
+    for(let i=0;i<90;i++){
+      const ds=cur.toISOString().slice(0,10);
+      const dow=cur.getDay();
+      if(dow!==0&&dow!==6){if(attDates.has(ds))streak++;else if(streak>0)break;}
+      cur.setDate(cur.getDate()-1);
+    }
+
+    // Score: weighted
+    const compRate=myTasks.length>0?Math.round(done.length/myTasks.length*100):0;
+    const score=Math.min(Math.round(compRate*0.45+(onTimeRate??compRate)*0.35+Math.min(streak*3,20)),100);
+    return{done:done.length,total:myTasks.length,inProg:inProg.length,overdue:overdue.length,onTimeRate,totalMins,attDays,streak,compRate,score};
+  }
+
+  function scoreBadge(score){
+    if(score>=85)return{label:"⭐ Excellent",bg:"#05966922",color:"#34d399"};
+    if(score>=65)return{label:"👍 Good",bg:"#3b82f622",color:"#60a5fa"};
+    if(score>=40)return{label:"📈 Fair",bg:"#f59e0b22",color:"#fbbf24"};
+    return{label:"⚠️ Needs Attention",bg:"#ef444422",color:"#f87171"};
+  }
+
+  // Build list: admin/manager see all non-admin employees; others see just themselves
+  const empList=(isAdmin||isManager)
+    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name).sort()
+    :[me.name];
+
+  const scored=empList.map(n=>({name:n,...metrics(n)})).sort((a,b)=>b.score-a.score);
+  const teamAvgScore=scored.length?Math.round(scored.reduce((s,e)=>s+e.score,0)/scored.length):0;
+
+  const detail=selected?scored.find(e=>e.name===selected):null;
+
+  return(
+    <div>
+      {/* Team overview bar (admin/manager only) */}
+      {(isAdmin||isManager)&&(
+        <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
+          {[
+            {label:"Team Avg Score",val:teamAvgScore+"%",color:"#a78bfa"},
+            {label:"Total Hours",val:fmtH(timeLogs.reduce((s,l)=>s+(l.duration_minutes||0),0)),color:"#34d399"},
+            {label:"Tasks Done",val:tasks.filter(t=>t.status==="Completed"||t.status==="Done").length,color:"#60a5fa"},
+            {label:"Employees",val:empList.length,color:"#f59e0b"},
+          ].map(s=>(
+            <div key={s.label} style={{background:C.card,border:"1px solid "+C.border,borderRadius:10,padding:"10px 16px",flex:"1 1 110px",minWidth:100}}>
+              <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{s.label}</div>
+              <div style={{fontSize:20,fontWeight:800,color:s.color}}>{s.val}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Scorecard grid */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+        {scored.map((e,rank)=>{
+          const badge=scoreBadge(e.score);
+          const isMe=e.name===me.name;
+          const isExpanded=selected===e.name;
+          return(
+            <div key={e.name} onClick={()=>setSelected(isExpanded?null:e.name)}
+              style={{background:C.card,border:"1px solid "+(isExpanded?C.accent+"55":C.border),borderRadius:12,padding:16,cursor:"pointer",transition:"border-color .2s"}}>
+              {/* Rank + Name */}
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:rank===0?"#fbbf2422":rank===1?"#94a3b822":C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:rank===0?"#fbbf24":rank===1?"#94a3b8":C.t3,flexShrink:0}}>
+                  {rank===0?"🥇":rank===1?"🥈":rank===2?"🥉":"#"+(rank+1)}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.t1,fontSize:14}}>{e.name}{isMe&&<span style={{marginLeft:6,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:10,padding:"1px 7px"}}>You</span>}</div>
+                  <span style={{background:badge.bg,color:badge.color,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700}}>{badge.label}</span>
+                </div>
+                {/* Score donut (simple) */}
+                <div style={{position:"relative",width:44,height:44,flexShrink:0}}>
+                  <svg viewBox="0 0 36 36" style={{width:44,height:44,transform:"rotate(-90deg)"}}>
+                    <circle cx={18} cy={18} r={14} fill="none" stroke={C.surface} strokeWidth={4}/>
+                    <circle cx={18} cy={18} r={14} fill="none" stroke={badge.color} strokeWidth={4}
+                      strokeDasharray={`${e.score*0.88} 88`} strokeLinecap="round"/>
+                  </svg>
+                  <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:badge.color}}>{e.score}</div>
+                </div>
+              </div>
+
+              {/* Key metrics */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                {[
+                  {icon:"✅",label:"Tasks Done",val:e.done+"/"+e.total},
+                  {icon:"⏱️",label:"Hours",val:fmtH(e.totalMins)},
+                  {icon:"🎯",label:"On-Time",val:e.onTimeRate!=null?e.onTimeRate+"%":"—"},
+                  {icon:"🔥",label:"Streak",val:e.streak+" days"},
+                ].map(m=>(
+                  <div key={m.label} style={{background:C.surface,borderRadius:8,padding:"7px 9px"}}>
+                    <div style={{fontSize:10,color:C.t3}}>{m.icon} {m.label}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginTop:2}}>{m.val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Expanded detail */}
+              {isExpanded&&(
+                <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid "+C.border}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    {[
+                      {label:"In Progress",val:e.inProg,color:"#3b82f6"},
+                      {label:"Overdue",val:e.overdue,color:e.overdue>0?"#ef4444":C.t3},
+                      {label:"Completion Rate",val:e.compRate+"%",color:e.compRate>=70?"#34d399":"#fbbf24"},
+                      {label:"Attendance Days",val:e.attDays+" days",color:"#a78bfa"},
+                    ].map(s=>(
+                      <div key={s.label} style={{background:C.card+"aa",borderRadius:7,padding:"6px 9px",border:"1px solid "+C.border}}>
+                        <div style={{fontSize:10,color:C.t3,marginBottom:2}}>{s.label}</div>
+                        <div style={{fontSize:13,fontWeight:700,color:s.color}}>{s.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Personal best message */}
+                  {e.score>=85&&<div style={{marginTop:10,background:"#05966911",border:"1px solid #05966933",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#34d399",fontWeight:600}}>🌟 Outstanding performance this month!</div>}
+                  {e.streak>=7&&<div style={{marginTop:6,background:"#f59e0b11",border:"1px solid #f59e0b33",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#fbbf24",fontWeight:600}}>🔥 {e.streak}-day attendance streak — keep it up!</div>}
+                  {e.overdue>0&&<div style={{marginTop:6,background:"#ef444411",border:"1px solid #ef444433",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#f87171"}}>{e.overdue} task{e.overdue>1?"s":""} overdue — action needed</div>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── TimesheetApprovals ──────────────────────────────────────────────────────
+function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
+  const isMobile=useMobile();
+  const [weekOffset,setWeekOffset]=useState(0);
+  const [tsData,setTsData]=useState({});
+  const [loading,setLoading]=useState(false);
+  const [rejectNote,setRejectNote]=useState("");
+  const [showRejectFor,setShowRejectFor]=useState(null);
+  const [expanded,setExpanded]=useState(null);
+  const [msg,setMsg]=useState(null);
+
+  function getWeekStart(offset=0){
+    const d=new Date();const day=d.getDay();
+    d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);
+    d.setHours(0,0,0,0);return d;
+  }
+  function fmtDate(d){return d.toISOString().slice(0,10);}
+  function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+  function fmtDay(ds){return new Date(ds+"T00:00:00").toLocaleDateString("en-IN",{weekday:"short",month:"short",day:"numeric"});}
+
+  const weekStart=getWeekStart(weekOffset);
+  const weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
+  const weekStartStr=fmtDate(weekStart);
+  const weekEndStr=fmtDate(weekEnd);
+
+  const weekLogs=timeLogs.filter(l=>l.logged_date>=weekStartStr&&l.logged_date<=weekEndStr);
+
+  const byEmp={};
+  weekLogs.forEach(l=>{
+    if(!byEmp[l.user_name])byEmp[l.user_name]={mins:0,tasks:new Set(),days:{},logs:[]};
+    byEmp[l.user_name].mins+=(l.duration_minutes||0);
+    byEmp[l.user_name].tasks.add(l.task_id);
+    if(!byEmp[l.user_name].days[l.logged_date])byEmp[l.user_name].days[l.logged_date]=0;
+    byEmp[l.user_name].days[l.logged_date]+=(l.duration_minutes||0);
+    byEmp[l.user_name].logs.push(l);
+  });
+
+  function tsKey(n){return"ts__"+n.replace(/\s+/g,"_")+"__"+weekStartStr;}
+  function getTs(n){return tsData[tsKey(n)]||{status:"Draft"};}
+
+  useEffect(()=>{
+    const empNames=Object.keys(byEmp);
+    if(!empNames.length){setTsData({});return;}
+    const keys=empNames.map(n=>tsKey(n));
+    setLoading(true);
+    fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.join(",")+")",{
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+    }).then(r=>r.ok?r.json():[]).then(rows=>{
+      const m={};
+      (Array.isArray(rows)?rows:[]).forEach(r=>{try{m[r.key]=JSON.parse(r.value);}catch{m[r.key]={status:"Draft"};}});
+      setTsData(m);
+    }).catch(()=>{}).finally(()=>setLoading(false));
+  },[weekStartStr,weekLogs.length]);
+
+  async function upsertTs(empName,payload){
+    const key=tsKey(empName);const value=JSON.stringify(payload);
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
+      method:"PATCH",
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value})
+    });
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){
+      await fetch(SUPA_URL+"/rest/v1/settings",{
+        method:"POST",
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key,value})
+      });
+    }
+    setTsData(prev=>({...prev,[key]:payload}));
+  }
+
+  function toast(m){setMsg(m);setTimeout(()=>setMsg(null),3000);}
+
+  async function doSubmit(empName){
+    const ex=getTs(empName);
+    await upsertTs(empName,{...ex,status:"Submitted",submitted_at:new Date().toISOString()});
+    toast("Timesheet submitted ✓");
+  }
+  async function doApprove(empName){
+    const ex=getTs(empName);
+    await upsertTs(empName,{...ex,status:"Approved",approved_by:me.name,approved_at:new Date().toISOString()});
+    toast("Approved ✓");
+  }
+  async function doReject(empName){
+    const ex=getTs(empName);
+    await upsertTs(empName,{...ex,status:"Rejected",rejected_by:me.name,rejected_at:new Date().toISOString(),note:rejectNote});
+    setShowRejectFor(null);setRejectNote("");
+    toast("Rejected with note");
+  }
+
+  function printTs(empName){
+    const em=byEmp[empName];const ts=getTs(empName);
+    const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
+    const rows=weekDays.map(d=>"<tr><td>"+fmtDay(d)+"</td><td>"+(em&&em.days[d]?fmtH(em.days[d]):"-")+"</td></tr>").join("");
+    const fmtRange=weekStart.toLocaleDateString("en-IN",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});
+    const html="<html><head><title>Timesheet — "+empName+"</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:8px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:600}tfoot td{font-weight:700;background:#fafafa}</style></head><body><h2>Timesheet — "+empName+"</h2><p>Week: "+fmtRange+" &nbsp;|&nbsp; Status: "+ts.status+(ts.approved_by?" &nbsp;|&nbsp; Approved by: "+ts.approved_by:"")+"</p><table><thead><tr><th>Day</th><th>Hours Logged</th></tr></thead><tbody>"+rows+"</tbody><tfoot><tr><td>Total</td><td>"+(em?fmtH(em.mins):"0h")+"</td></tr></tfoot></table><p style='margin-top:24px;font-size:11px;color:#999'>Printed "+new Date().toLocaleString()+" &nbsp;·&nbsp; RDS Project Hub</p></body></html>";
+    const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
+  }
+
+  const SC_TS={
+    Draft:{bg:"#33415518",color:"#94a3b8",label:"Draft"},
+    Submitted:{bg:"#0ea5e922",color:"#38bdf8",label:"⏳ Submitted"},
+    Approved:{bg:"#05966922",color:"#34d399",label:"✓ Approved"},
+    Rejected:{bg:"#ef444422",color:"#f87171",label:"✕ Rejected"},
+  };
+
+  const canManage=isAdmin||isManager;
+  const displayEmps=canManage
+    ?Object.keys(byEmp).sort()
+    :[me.name].filter(n=>byEmp[n]);
+
+  const fmtRange=weekStart.toLocaleDateString("en-IN",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});
+  const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
+
+  return(
+    <div>
+      {/* Week Navigator */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setWeekOffset(o=>o-1)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"6px 12px",color:C.t1,cursor:"pointer",fontSize:13}}>← Prev</button>
+          <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:10,padding:"6px 16px",fontWeight:700,color:C.t1,fontSize:13,minWidth:isMobile?0:200,textAlign:"center"}}>
+            📅 {fmtRange}
+          </div>
+          <button onClick={()=>setWeekOffset(o=>o+1)} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"6px 12px",color:C.t1,cursor:"pointer",fontSize:13}}>Next →</button>
+          {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{background:"#3b82f622",border:"1px solid #3b82f644",borderRadius:8,padding:"6px 12px",color:"#60a5fa",cursor:"pointer",fontSize:12}}>This Week</button>}
+        </div>
+        {msg&&<div style={{background:"#05966922",border:"1px solid #05966944",borderRadius:8,padding:"6px 14px",color:"#34d399",fontSize:13,fontWeight:600}}>{msg}</div>}
+      </div>
+
+      {/* Empty state */}
+      {!weekLogs.length&&(
+        <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:48,textAlign:"center",color:C.t3}}>
+          <div style={{fontSize:32,marginBottom:8}}>📋</div>
+          <div style={{fontWeight:600,color:C.t2,marginBottom:4}}>No time logs for this week</div>
+          <div style={{fontSize:12}}>Time logs will appear here once tracked via the timer</div>
+        </div>
+      )}
+
+      {/* Employee cards */}
+      {displayEmps.filter(n=>byEmp[n]).map(empName=>{
+        const em=byEmp[empName];
+        const ts=getTs(empName);
+        const sc=SC_TS[ts.status]||SC_TS.Draft;
+        const isMe=empName===me.name;
+        const isApproved=ts.status==="Approved";
+        const isExpanded=expanded===empName;
+
+        return(
+          <div key={empName} style={{background:C.card,border:"1px solid "+(isApproved?"#05966944":C.border),borderRadius:12,marginBottom:10,overflow:"hidden"}}>
+            {/* Header row — click to expand */}
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",cursor:"pointer",userSelect:"none"}} onClick={()=>setExpanded(isExpanded?null:empName)}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:C.accent,fontSize:14,flexShrink:0}}>{empName[0]}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:C.t1,fontSize:14}}>{empName}{isMe&&<span style={{marginLeft:6,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:10,padding:"1px 7px"}}>You</span>}</div>
+                <div style={{fontSize:12,color:C.t2,marginTop:2}}>{fmtH(em.mins)} logged · {em.tasks.size} task{em.tasks.size!==1?"s":""}</div>
+              </div>
+              {ts.status==="Rejected"&&ts.note&&<span style={{fontSize:11,color:"#f87171",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}} title={ts.note}>"{ts.note}"</span>}
+              <span style={{background:sc.bg,color:sc.color,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{sc.label}</span>
+              <span style={{color:C.t3,fontSize:11,flexShrink:0}}>{isExpanded?"▲":"▼"}</span>
+            </div>
+
+            {/* Expanded detail */}
+            {isExpanded&&(
+              <div style={{borderTop:"1px solid "+C.border,padding:"14px 18px"}}>
+                {/* 7-day grid */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:16}}>
+                  {weekDays.map(d=>{
+                    const mins=em.days[d]||0;
+                    const label=new Date(d+"T00:00:00").toLocaleDateString("en-IN",{weekday:"short"});
+                    const dayNum=new Date(d+"T00:00:00").getDate();
+                    const isToday=d===fmtDate(new Date());
+                    const pct=Math.min(mins/480,1);
+                    return(
+                      <div key={d} style={{background:C.surface,borderRadius:8,padding:"8px 4px",textAlign:"center",border:"1px solid "+(isToday?C.accent+"66":C.border)}}>
+                        <div style={{fontSize:10,color:C.t3,fontWeight:600,marginBottom:1}}>{label}</div>
+                        <div style={{fontSize:11,color:C.t3}}>{dayNum}</div>
+                        {mins>0?(
+                          <>
+                            <div style={{height:3,borderRadius:2,background:"rgba(5,150,105,"+(0.3+pct*0.7)+")",margin:"4px 2px"}}/>
+                            <div style={{fontSize:11,fontWeight:700,color:"#34d399"}}>{fmtH(mins)}</div>
+                          </>
+                        ):(
+                          <div style={{fontSize:12,color:C.t3,marginTop:4}}>—</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Actions */}
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                  {isMe&&(ts.status==="Draft"||ts.status==="Rejected")&&(
+                    <button onClick={e=>{e.stopPropagation();doSubmit(empName);}} style={{background:"#3b82f6",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:700}}>📤 Submit Timesheet</button>
+                  )}
+                  {canManage&&ts.status==="Submitted"&&(
+                    <>
+                      <button onClick={e=>{e.stopPropagation();doApprove(empName);}} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:700}}>✓ Approve</button>
+                      <button onClick={e=>{e.stopPropagation();setShowRejectFor(empName);}} style={{background:"#ef4444",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:700}}>✕ Reject</button>
+                    </>
+                  )}
+                  {isApproved&&(
+                    <span style={{fontSize:12,color:"#34d399",display:"flex",alignItems:"center",gap:4}}>🔒 Approved by {ts.approved_by} · {new Date(ts.approved_at).toLocaleDateString("en-IN")}</span>
+                  )}
+                  <div style={{marginLeft:"auto"}}>
+                    <button onClick={e=>{e.stopPropagation();printTs(empName);}} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"7px 14px",color:C.t2,cursor:"pointer",fontSize:12}}>🖨️ Print / PDF</button>
+                  </div>
+                </div>
+
+                {/* Reject dialog */}
+                {showRejectFor===empName&&(
+                  <div style={{marginTop:12,background:"#ef444411",border:"1px solid #ef444433",borderRadius:10,padding:14}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#f87171",marginBottom:8}}>Rejection note (optional)</div>
+                    <textarea
+                      value={rejectNote}
+                      onChange={e=>setRejectNote(e.target.value)}
+                      onClick={e=>e.stopPropagation()}
+                      placeholder="What needs to be corrected?"
+                      style={{width:"100%",minHeight:60,background:C.surface,border:"1px solid #ef444444",borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}
+                    />
+                    <div style={{display:"flex",gap:8,marginTop:8}}>
+                      <button onClick={e=>{e.stopPropagation();doReject(empName);}} style={{background:"#ef4444",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:700}}>Confirm Reject</button>
+                      <button onClick={e=>{e.stopPropagation();setShowRejectFor(null);setRejectNote("");}} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"7px 14px",color:C.t2,cursor:"pointer",fontSize:12}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── TimingsCharts ───────────────────────────────────────────────────────────
+function TimingsCharts({timeLogs,projects,month,isClient}){
+  const projMap={};projects.forEach(p=>{projMap[p.id]=p;});
+  function fmtH(m){if(!m)return"0h";const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
+  function pxy(cx,cy,r,deg){const rad=(deg-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};}
+
+  // 1. Hours per employee
+  const empMap={};
+  timeLogs.forEach(l=>{empMap[l.user_name]=(empMap[l.user_name]||0)+(l.duration_minutes||0);});
+  const empData=Object.entries(empMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxEmp=Math.max(...empData.map(d=>d[1]),1);
+
+  // 2. Donut: time by project
+  const pMin={};
+  timeLogs.forEach(l=>{if(l.project_id)pMin[l.project_id]=(pMin[l.project_id]||0)+(l.duration_minutes||0);});
+  const projData=Object.entries(pMin).map(([id,min])=>({id,min,name:projMap[id]?.name||"Unknown",color:projMap[id]?.color||C.blue})).sort((a,b)=>b.min-a.min).slice(0,8);
+  const totMin=projData.reduce((s,d)=>s+d.min,0);
+  let ang=0;
+  const slices=projData.map(d=>{const deg=totMin>0?d.min/totMin*360:0;const s={...d,sa:ang,ea:ang+deg};ang+=deg;return s;});
+
+  // 3. Daily heatmap
+  const dayMap={};
+  timeLogs.forEach(l=>{dayMap[l.logged_date]=(dayMap[l.logged_date]||0)+(l.duration_minutes||0);});
+  const maxDay=Math.max(...Object.values(dayMap),1);
+  const[yr,mo]=month.split("-").map(Number);
+  const dim=new Date(yr,mo,0).getDate();
+  const fdow=new Date(yr,mo-1,1).getDay();
+  const calCells=[...Array(fdow).fill(null),...Array.from({length:dim},(_,i)=>i+1)];
+
+  // 4. Weekly trend
+  const wkMap={};
+  timeLogs.forEach(l=>{const d=new Date(l.logged_date);const w=Math.ceil(d.getDate()/7);wkMap[w]=(wkMap[w]||0)+(l.duration_minutes||0);});
+  const numWks=Math.ceil(dim/7);
+  const wkData=Array.from({length:numWks},(_,i)=>({week:i+1,min:wkMap[i+1]||0}));
+  const maxWk=Math.max(...wkData.map(d=>d.min),1);
+
+  const COLS=["#7c3aed","#3b82f6","#14b8a6","#f97316","#ec4899","#22c55e","#eab308","#ef4444","#a855f7","#06b6d4"];
+  const DOW=["Su","Mo","Tu","We","Th","Fr","Sa"];
+  const CARD={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px"};
+  const NONE=<div style={{textAlign:"center",padding:"36px 0",color:C.t3,fontSize:13}}>No time logs this month</div>;
+
+  return(
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+
+      {/* ── 1. Bar: hours per employee ── */}
+      {!isClient&&(
+        <div style={{...CARD,gridColumn:"1/-1"}}>
+          <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:2}}>📊 Hours per Employee</div>
+          <div style={{fontSize:11,color:C.t2,marginBottom:16}}>Total time logged this month · top {empData.length} contributors</div>
+          {empData.length===0?NONE:empData.map(([name,min],i)=>(
+            <div key={name} style={{marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <span style={{fontSize:12,fontWeight:600,color:C.t1}}>{name}</span>
+                <span style={{fontSize:12,fontWeight:700,color:COLS[i%COLS.length]}}>{fmtH(min)}</span>
+              </div>
+              <div style={{height:9,background:C.surface,borderRadius:5,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${(min/maxEmp)*100}%`,background:COLS[i%COLS.length],borderRadius:5,transition:"width .5s ease"}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 2. Donut: time by project ── */}
+      <div style={CARD}>
+        <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:2}}>🍩 Time by Project</div>
+        <div style={{fontSize:11,color:C.t2,marginBottom:14}}>Hours breakdown across projects</div>
+        {projData.length===0?NONE:(
+          <div style={{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
+            <svg viewBox="0 0 160 160" style={{width:140,height:140,flexShrink:0}}>
+              {slices.map(s=>{
+                if(s.ea-s.sa<0.5)return null;
+                const CX=80,CY=80,R=68,IN=42;
+                const st=pxy(CX,CY,R,s.sa),en=pxy(CX,CY,R,s.ea);
+                const ist=pxy(CX,CY,IN,s.sa),ien=pxy(CX,CY,IN,s.ea);
+                const lg=s.ea-s.sa>180?1:0;
+                return <path key={s.id} d={`M${st.x.toFixed(2)},${st.y.toFixed(2)} A${R},${R} 0 ${lg},1 ${en.x.toFixed(2)},${en.y.toFixed(2)} L${ien.x.toFixed(2)},${ien.y.toFixed(2)} A${IN},${IN} 0 ${lg},0 ${ist.x.toFixed(2)},${ist.y.toFixed(2)} Z`} fill={s.color} opacity={0.9}/>;
+              })}
+              <text x="80" y="77" textAnchor="middle" fontSize="14" fontWeight="800" fill="#f1f5f9">{Math.floor(totMin/60)}h</text>
+              <text x="80" y="91" textAnchor="middle" fontSize="9" fill="#94a3b8">total</text>
+            </svg>
+            <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:7}}>
+              {slices.map(s=>(
+                <div key={s.id} style={{display:"flex",alignItems:"center",gap:7}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:s.color,flexShrink:0}}/>
+                  <div style={{flex:1,fontSize:11,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
+                  <div style={{fontSize:11,fontWeight:700,color:C.t1,flexShrink:0}}>{fmtH(s.min)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── 3. Heatmap calendar ── */}
+      <div style={CARD}>
+        <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:2}}>📅 Daily Work Intensity</div>
+        <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Hours logged per day — darker = more time</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:4}}>
+          {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:9,color:C.t3,fontWeight:700}}>{d}</div>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+          {calCells.map((day,i)=>{
+            if(!day)return <div key={"e"+i} style={{aspectRatio:"1"}}/>;
+            const ds=`${month}-${String(day).padStart(2,"0")}`;
+            const m=dayMap[ds]||0;
+            const bg=m===0?C.surface:`rgba(34,197,94,${0.15+(m/maxDay)*0.8})`;
+            return(
+              <div key={day} title={`${ds}: ${fmtH(m)}`}
+                style={{aspectRatio:"1",borderRadius:4,background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:m>0?"#f1f5f9":C.t3,fontWeight:m>0?700:400,cursor:"default"}}>
+                {day}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:4,marginTop:10,justifyContent:"flex-end"}}>
+          <span style={{fontSize:10,color:C.t3,marginRight:2}}>Less</span>
+          {[0.15,0.35,0.55,0.75,0.95].map(op=>(
+            <div key={op} style={{width:12,height:12,borderRadius:3,background:`rgba(34,197,94,${op})`}}/>
+          ))}
+          <span style={{fontSize:10,color:C.t3,marginLeft:2}}>More</span>
+        </div>
+      </div>
+
+      {/* ── 4. Weekly trend line ── */}
+      <div style={CARD}>
+        <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:2}}>📈 Weekly Trend</div>
+        <div style={{fontSize:11,color:C.t2,marginBottom:10}}>Total hours logged per week this month</div>
+        {wkData.every(d=>d.min===0)?NONE:(()=>{
+          const W=280,H=130,PL=36,PR=10,PT=14,PB=28;
+          const cW=W-PL-PR,cH=H-PT-PB,n=wkData.length;
+          const pts=wkData.map((d,i)=>({...d,x:PL+(n>1?i*(cW/(n-1)):cW/2),y:PT+cH-(d.min/maxWk)*cH}));
+          const pline=pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+          const area=[`${pts[0].x},${PT+cH}`,...pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`),`${pts[n-1].x},${PT+cH}`].join(" ");
+          const yMax=Math.ceil(maxWk/60);
+          return(
+            <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto"}}>
+              {[0,Math.round(yMax/2),yMax].map((h,i)=>{const y=PT+cH-(h/Math.max(yMax,1))*cH;return(
+                <g key={i}>
+                  <line x1={PL} y1={y} x2={W-PR} y2={y} stroke="#2a3040" strokeWidth={0.5}/>
+                  <text x={PL-4} y={y+3} textAnchor="end" fontSize={8} fill="#475569">{h}h</text>
+                </g>
+              );})}
+              <polygon points={area} fill="#7c3aed18"/>
+              <polyline points={pline} fill="none" stroke="#7c3aed" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+              {pts.map((p,i)=>(
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r={4} fill="#7c3aed" stroke="#0f1117" strokeWidth={2}/>
+                  <text x={p.x} y={H-2} textAnchor="middle" fontSize={9} fill="#94a3b8">Wk{p.week}</text>
+                  {p.min>0&&<text x={p.x} y={p.y-8} textAnchor="middle" fontSize={9} fill="#a78bfa">{Math.floor(p.min/60)}h</text>}
+                </g>
+              ))}
+            </svg>
+          );
+        })()}
+      </div>
+
+    </div>
+  );
+}
+
 // ─── TimingsPage ─────────────────────────────────────────────────────────────
 function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isClient}){
-  const defTab=isClient?"projects":(isAdmin||isManager)?"employees":"myatt";
-  const [tab,setTab]=useState(defTab);
+  const [group,setGroup]=useState("timings"); // "timings" | "analytics"
+  const [tab,setTab]=useState(isClient?"projects":(isAdmin||isManager)?"employees":"myatt");
   const [timeLogs,setTimeLogs]=useState([]);
   const [attendance,setAttendance]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -6883,13 +8218,28 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
     byTask[l.task_id].min+=(l.duration_minutes||0);byTask[l.task_id].workers[l.user_name]=(byTask[l.task_id].workers[l.user_name]||0)+(l.duration_minutes||0);
   });
 
-  const tabs=isClient
+  // ── Tab groups ──────────────────────────────────────────────────────────────
+  const timingsTabs=isClient
     ?[["projects","📁","Projects"],["tasks","📋","Tasks"]]
     :(isAdmin||isManager)
-      ?[["employees","👥","Employees"],["projects","📁","Projects"],["tasks","📋","Tasks"]]
+      ?[["employees","👥","Employees"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"],["capacity","📅","Capacity"]]
       :isTeamLeader
-        ?[["myatt","🕐","My Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"]]
-        :[["myatt","🕐","My Attendance"],["tasks","📋","My Tasks"]];
+        ?[["myatt","🕐","My Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"]]
+        :[["myatt","🕐","My Attendance"],["tasks","📋","My Tasks"],["timesheets","📝","Timesheets"]];
+
+  const analyticsTabs=isClient
+    ?[["charts","📊","Charts"]]
+    :(isAdmin||isManager)
+      ?[["charts","📊","Charts"],["scorecards","🏅","Scorecards"],["budget","💰","Budget"],["reports","📤","Reports"],["gamification","🏆","Awards"]]
+      :[["charts","📊","Charts"],["scorecards","🏅","Scorecards"],["gamification","🏆","Awards"]];
+
+  const tabs=group==="timings"?timingsTabs:analyticsTabs;
+
+  function switchGroup(g){
+    setGroup(g);
+    const newTabs=g==="timings"?timingsTabs:analyticsTabs;
+    setTab(newTabs[0][0]);
+  }
 
   const TH=({children,center})=><th style={{textAlign:center?"center":"left",padding:"8px 12px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".05em",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{children}</th>;
 
@@ -6905,11 +8255,21 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
           style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 13px",color:C.t1,fontSize:13,fontFamily:"inherit"}}/>
       </div>
 
-      {/* Tabs */}
-      <div style={{display:"flex",gap:2,marginBottom:20,borderBottom:`1px solid ${C.border}`}}>
+      {/* Group toggle */}
+      <div style={{display:"flex",gap:6,marginBottom:12,background:C.surface,borderRadius:10,padding:4,alignSelf:"flex-start",width:"fit-content"}}>
+        {[["timings","⏱","Timings"],["analytics","📊","Analytics"]].map(([g,icon,label])=>(
+          <button key={g} onClick={()=>switchGroup(g)}
+            style={{background:group===g?C.accent:"transparent",border:"none",borderRadius:7,padding:"7px 18px",color:group===g?"#fff":C.t2,fontSize:13,fontWeight:group===g?700:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+            {icon} {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{display:"flex",gap:2,marginBottom:20,borderBottom:`1px solid ${C.border}`,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         {tabs.map(([id,icon,label])=>(
           <button key={id} onClick={()=>setTab(id)}
-            style={{background:"none",border:"none",borderBottom:`2px solid ${tab===id?C.accent:"transparent"}`,padding:"9px 18px",color:tab===id?C.accent:C.t3,fontSize:13,fontWeight:tab===id?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,marginBottom:-1,transition:"color .15s"}}>
+            style={{background:"none",border:"none",borderBottom:`2px solid ${tab===id?C.accent:"transparent"}`,padding:"9px 16px",color:tab===id?C.accent:C.t3,fontSize:13,fontWeight:tab===id?700:400,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,marginBottom:-1,transition:"color .15s",whiteSpace:"nowrap",flexShrink:0}}>
             {icon} {label}
           </button>
         ))}
@@ -7072,6 +8432,34 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
               </table>
             </div>
           </div>
+
+        /* ── CHARTS TAB ── */
+        ):tab==="charts"?(
+          <TimingsCharts timeLogs={timeLogs} projects={projects} month={month} isClient={isClient}/>
+
+        /* ── TIMESHEETS TAB ── */
+        ):tab==="timesheets"?(
+          <TimesheetApprovals timeLogs={timeLogs} me={me} users={users} isAdmin={isAdmin} isManager={isManager} isClient={isClient}/>
+
+        /* ── SCORECARDS TAB ── */
+        ):tab==="scorecards"?(
+          <EmployeeScorecard timeLogs={timeLogs} tasks={tasks} users={users} me={me} attendance={attendance} isAdmin={isAdmin} isManager={isManager} month={month}/>
+
+        /* ── BUDGET TAB ── */
+        ):tab==="budget"?(
+          <ProjectBudget timeLogs={timeLogs} projects={projects} users={users} me={me} isAdmin={isAdmin} isManager={isManager} isClient={isClient} month={month}/>
+
+        /* ── REPORTS TAB ── */
+        ):tab==="reports"?(
+          <AutomatedReports timeLogs={timeLogs} projects={projects} users={users} tasks={tasks} me={me} attendance={attendance} isAdmin={isAdmin} isManager={isManager} month={month}/>
+
+        /* ── CAPACITY TAB ── */
+        ):tab==="capacity"?(
+          <CapacityPlanner timeLogs={timeLogs} tasks={tasks} projects={projects} users={users} me={me} attendance={attendance} isAdmin={isAdmin} isManager={isManager} month={month}/>
+
+        /* ── GAMIFICATION TAB ── */
+        ):tab==="gamification"?(
+          <GamificationBoard timeLogs={timeLogs} tasks={tasks} users={users} me={me} attendance={attendance} isAdmin={isAdmin} isManager={isManager} month={month}/>
         ):null
       )}
     </div>
@@ -8300,1083 +9688,4 @@ export default function App(){
                       onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
                       onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
                       <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-                      <div style={{fontSize:10,color:C.t2,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l} ›</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {!isAdmin&&isManager&&(
-              <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${"#f59e0b"}11 100%)`,border:`1px solid ${"#f59e0b"}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid #f59e0b`}}>
-                <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:"#f59e0b22",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#f59e0b",fontWeight:800}}>{(me.name[0]||"M").toUpperCase()}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>Project Management Dashboard</h2>
-                  <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Managing {accessibleProjects.length} active project{accessibleProjects.length!==1?"s":""}</p>
-                </div>
-                <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-                  {[{l:"Projects",v:accessibleProjects.length,c:"#f59e0b",k:"projects"},{l:"Team Size",v:[...new Set(dashTasks.map(t=>t.assignee).filter(Boolean))].length,c:C.blue,k:"team"},{l:"In Progress",v:dashTasks.filter(t=>t.status==="In Progress").length,c:C.accent,k:"inprogress"},{l:"Completion",v:(dashTasks.length?Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
-                    <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none;"}}>
-                      <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
-                      <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* ── Quick Navigation Panel ── */}
-            {(()=>{
-              const isAdminOrMgr=isAdmin||isManager;
-              const allQnClients=isAdminOrMgr?[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort():[];
-              const qnClientProjects=qnClient?accessibleProjects.filter(p=>(p.client||"Unassigned")===qnClient):accessibleProjects;
-              // shared button style
-              const qB=(hi)=>({background:hi?C.accent:C.card,border:`1px solid ${hi?C.accent:C.border}`,color:hi?"#fff":C.t2,fontSize:13,cursor:"pointer",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",transition:"all .15s"});
-              const qClientIdx=allQnClients.indexOf(qnClient);
-              const canPrevCl=isAdminOrMgr&&qClientIdx>0;
-              const canNextCl=isAdminOrMgr&&qClientIdx<allQnClients.length-1;
-              // ── CASE 1: Admin/Manager, no client selected → stat-card style ──
-              if(isAdminOrMgr&&!qnClient){
-                const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
-                return(
-                  <div style={{marginBottom:16}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                    <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:18,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
-                    <span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{allQnClients.length} clients</span>
-                  </div>
-                  <div style={{display:"flex",gap:isMobile?10:14,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
-                    {allQnClients.map((cl,i)=>{
-                      const cc=clColors[i%clColors.length];
-                      const cP=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);
-                      const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
-                      const pct=cT.length?Math.round(cT.filter(t=>isDone(t.status)).length/cT.length*100):0;
-                      const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                      return(
-                        <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
-                          onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
-                          onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
-                          <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
-                          <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
-                          <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
-                          {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
-                          <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
-                        </div>
-                      );
-                    })}
-                    {allQnClients.length===0&&<div style={{color:C.t3,fontSize:13,padding:"18px"}}>No clients found</div>}
-                  </div>
-                  </div>
-                );
-              }
-              // ── CASE 2: Non-admin, no project selected → inline project cards ──
-              if(!isAdminOrMgr&&!qnProject) return(
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?"12px":"14px 20px",marginBottom:16}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12}}>⚡ Quick Nav — Select a Project</div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-                    {qnClientProjects.map(p=>{
-                      const pt=tasks.filter(t=>t.project_id===p.id);
-                      const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                      const pc=p.color||C.blue;
-                      return(
-                        <div key={p.id} onClick={()=>setQnProject(p)}
-                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"all .15s",borderLeft:`4px solid ${pc}`}}
-                          onMouseEnter={e=>{e.currentTarget.style.background=pc+"18";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=pc;}}
-                          onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.transform="";e.currentTarget.style.borderColor=C.border;}}>
-                          <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                          <div style={{height:3,background:C.surface,borderRadius:2,marginBottom:5,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                          <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:pc,fontWeight:700}}>{pt.length} tasks</span>
-                            <span style={{fontSize:11,color:C.green,fontWeight:700}}>{pct}%</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {qnClientProjects.length===0&&<div style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects found</div>}
-                  </div>
-                </div>
-              );
-              // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
-              // Filter projects by search term (name or any matching task)
-              const splitProjects=qnClientProjects.filter(p=>{
-                if(!qnSearch)return true;
-                const ql=qnSearch.toLowerCase();
-                const pt=tasks.filter(t=>t.project_id===p.id);
-                return p.name.toLowerCase().includes(ql)||pt.some(t=>t.title.toLowerCase().includes(ql)||(t.assignee||"").toLowerCase().includes(ql));
-              });
-              const activeProj=qnProject||splitProjects[0]||null;
-              // Normalize "To Do" → "Review" for display purposes in popup
-              const qnNormStatus=s=>s==="To Do"?"Review":s;
-              // Filter tasks by search, employee, status
-              const activeTasks=activeProj?tasks.filter(t=>{
-                if(t.project_id!==activeProj.id)return false;
-                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(qnNormStatus(t.status||"")).toLowerCase().includes(ql))return false;}
-                if(qnFilterEmployee!=="all"&&t.assignee!==qnFilterEmployee)return false;
-                // "Review" filter also matches legacy "To Do" tasks
-                if(qnFilterStatus!=="all"&&qnNormStatus(t.status)!==qnFilterStatus)return false;
-                return true;
-              }):[];
-              // Unique employees & statuses across all projects for this client (normalize "To Do"→"Review")
-              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
-              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean).map(qnNormStatus))].sort();
-              const mobShowTasks=isMobile&&!!qnProject;
-              const closePopup=()=>{setQnClient(null);setQnProject(null);};
-              const acPc=activeProj?.color||C.blue;
-              return(
-                /* ── Backdrop ── */
-                <div onClick={e=>{if(e.target===e.currentTarget)closePopup();}}
-                  style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
-                  {/* ── Modal box ── */}
-                  <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
-                    {/* ── Modal header ── */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
-                      {/* Breadcrumbs */}
-                      <div style={{flex:1,display:"flex",alignItems:"center",gap:isMobile?6:10,minWidth:0,flexWrap:"nowrap",overflow:"hidden"}}>
-                        <span style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Quick Nav</span>
-                        {qnClient&&<><span style={{color:C.border,fontSize:18,lineHeight:1,flexShrink:0}}>›</span>
-                          <span style={{fontSize:isMobile?12:14,color:C.t2,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?90:180,cursor:isAdminOrMgr?"pointer":"default"}} onClick={()=>isAdminOrMgr&&setQnProject(null)}>{qnClient}</span></>}
-                        {!isAdminOrMgr&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span><span style={{fontSize:13,color:C.t2,fontWeight:700,flexShrink:0}}>My Projects</span></>}
-                        {activeProj&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span>
-                          <span style={{fontSize:isMobile?12:14,color:acPc,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?100:280,flexShrink:1}}>{activeProj.name}</span>
-                          <span style={{fontSize:10,background:acPc+"22",color:acPc,border:`1px solid ${acPc}44`,borderRadius:20,padding:"2px 10px",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{activeTasks.length} tasks</span></>}
-                      </div>
-                      {/* Client Prev / Next */}
-                      {isAdminOrMgr&&!isMobile&&<div style={{display:"flex",gap:6,flexShrink:0}}>
-                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canPrevCl}
-                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canPrevCl?C.t1:C.t3,fontSize:12,cursor:canPrevCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canPrevCl?1:.4}}>← Previous Client</button>
-                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canNextCl}
-                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canNextCl?C.t1:C.t3,fontSize:12,cursor:canNextCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canNextCl?1:.4}}>Next Client →</button>
-                      </div>}
-                      {/* Close ✕ */}
-                      <button onClick={closePopup}
-                        style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",lineHeight:1}}
-                        onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
-                        onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
-                    </div>
-                    {/* ── Search & Filter bar ── */}
-                    <div style={{display:"flex",gap:8,padding:"10px 18px",borderBottom:`1px solid ${C.border}`,background:C.bg+"88",flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",alignItems:"center"}}>
-                      <input placeholder="🔍 Search tasks or projects…" value={qnSearch} onChange={e=>setQnSearch(e.target.value)}
-                        style={{flex:2,minWidth:isMobile?"100%":160,background:C.surface,border:`1px solid ${qnSearch?C.accent:C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-                      <select value={qnFilterEmployee} onChange={e=>setQnFilterEmployee(e.target.value)}
-                        style={{flex:1,minWidth:120,background:C.surface,border:`1px solid ${qnFilterEmployee!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterEmployee!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
-                        <option value="all">All Employees</option>
-                        {qnAllEmployees.map(e=><option key={e} value={e}>{e}</option>)}
-                      </select>
-                      <select value={qnFilterStatus} onChange={e=>setQnFilterStatus(e.target.value)}
-                        style={{flex:1,minWidth:110,background:C.surface,border:`1px solid ${qnFilterStatus!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterStatus!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
-                        <option value="all">All Statuses</option>
-                        {qnAllStatuses.map(s=><option key={s} value={s}>{s}</option>)}
-                      </select>
-                      {(qnSearch||qnFilterEmployee!=="all"||qnFilterStatus!=="all")&&
-                        <button onClick={()=>{setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-                          style={{background:C.red+"18",border:`1px solid ${C.red}44`,color:C.red,fontSize:11,cursor:"pointer",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>Clear ✕</button>}
-                    </div>
-                    {/* ── Modal body: split ── */}
-                    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-                      {/* LEFT: Project list */}
-                      {(!isMobile||!mobShowTasks)&&(
-                        <div style={{width:isMobile?"100%":280,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"88"}}>
-                          <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>
-                            Projects ({splitProjects.length})
-                          </div>
-                          <div style={{flex:1,overflowY:"auto",padding:"8px 6px"}}>
-                            {splitProjects.map(p=>{
-                              const pt=tasks.filter(t=>t.project_id===p.id);
-                              const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                              const pc=p.color||C.blue;
-                              const isAct=activeProj?.id===p.id;
-                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                              return(
-                                <div key={p.id} onClick={()=>setQnProject(p)}
-                                  style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s",position:"relative"}}>
-                                  <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,lineHeight:1.35,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
-                                    <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                                    <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
-                                    <span style={{fontSize:9,color:C.t3,flexShrink:0,background:C.surface,borderRadius:3,padding:"1px 4px"}}>{pt.length} tasks</span>
-                                  </div>
-                                  {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
-                                </div>
-                              );
-                            })}
-                            {splitProjects.length===0&&<div style={{color:C.t3,fontSize:13,padding:"30px",textAlign:"center"}}>No projects</div>}
-                          </div>
-                        </div>
-                      )}
-                      {/* RIGHT: Task list */}
-                      {(!isMobile||mobShowTasks)&&(
-                        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"44"}}>
-                          {/* Task panel header */}
-                          <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:0,display:"flex",alignItems:"center",gap:10,background:C.card+"88"}}>
-                            {isMobile&&<button onClick={()=>setQnProject(null)} style={{...qB(false),fontSize:11,padding:"4px 9px"}}>← Back</button>}
-                            {activeProj?(
-                              <>
-                                <div style={{width:10,height:10,borderRadius:"50%",background:acPc,flexShrink:0}}/>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProj.name}</div>
-                                </div>
-                                <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{activeTasks.length} task{activeTasks.length!==1?"s":""}</span>
-                              </>
-                            ):<span style={{fontSize:13,color:C.t3}}>← Select a project</span>}
-                          </div>
-                          {/* Tasks scrollable */}
-                          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px":"14px 18px",display:"flex",flexDirection:"column",gap:7}}>
-                            {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
-                            {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks in this project</div>}
-                            {activeTasks.map((t,i)=>{
-                              const tDispStatus=qnNormStatus(t.status);
-                              const sc=getStatusColor(tDispStatus);
-                              const od=t.due_date&&t.due_date<today&&!isDone(t.status);
-                              return(
-                                <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
-                                  onMouseEnter={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.boxShadow=`0 2px 10px ${sc}20`;}}
-                                  onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.boxShadow="";}}>
-                                  {/* Number */}
-                                  <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
-                                  {/* Content */}
-                                  <div style={{flex:1,minWidth:0}}>
-                                    <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                                    <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
-                                      {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
-                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
-                                      {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
-                                      {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
-                                    </div>
-                                  </div>
-                                  {/* Edit button */}
-                                  {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}}
-                                    style={{background:C.accent+"18",border:`1px solid ${C.accent}55`,color:C.accent,fontSize:12,cursor:"pointer",borderRadius:7,padding:isMobile?"6px 9px":"6px 14px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}
-                                    onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.accent;}}
-                                    onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;e.currentTarget.style.borderColor=C.accent+"55";}}>
-                                    <span>✏️</span>{!isMobile&&<span>Edit</span>}
-                                  </button>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-            {/* ── Clean Filter Bar ── */}
-            <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
-              {/* Search - full width on mobile */}
-              <input placeholder="🔍 Search tasks or projects…" value={dashSearch} onChange={e=>sdss(e.target.value)}
-                style={{width:"100%",background:C.surface,border:`1px solid ${dashSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",display:"block",marginBottom:isMobile?8:0}}/>
-              {/* Selects row */}
-              <div style={{display:"flex",gap:isMobile?6:10,alignItems:"center",flexWrap:"wrap",marginTop:isMobile?0:8}}>
-                {/* 1. All Clients */}
-                <select value={dashClient} onChange={e=>{sdsc(e.target.value);sdsp("All");sdst("All");sdsu("All");}} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashClient!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashClient!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Clients</option>
-                  {[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort().map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-                {/* 2. All Projects */}
-                <select value={dashProject} onChange={e=>{sdsp(e.target.value);sdst("All");}} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashProject!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashProject!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Projects</option>
-                  {accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                {/* 3. All Tasks */}
-                <select value={dashTask} onChange={e=>sdst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashTask!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashTask!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Tasks</option>
-                  {(()=>{const cPIds=new Set(accessibleProjects.filter(p=>dashClient==="All"||(p.client||"Unassigned")===dashClient).map(p=>p.id));return dashTasks.filter(t=>cPIds.has(t.project_id)&&(dashProject==="All"||t.project_id===dashProject)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=><option key={t.id} value={t.id}>{t.title}</option>);})()}
-                </select>
-                {/* 4. All Employees */}
-                <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Employees</option>
-                  {(()=>{
-                    if(dashClient==="All"&&dashProject==="All")return users.filter(u=>u.role!=="Client").map(u=><option key={u.username} value={u.name}>{u.name}</option>);
-                    const scopeTasks=dashProject!=="All"?dashTasks.filter(t=>t.project_id===dashProject):(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return dashTasks.filter(t=>cPIds.has(t.project_id));})();
-                    return[...new Set(scopeTasks.map(t=>t.assignee).filter(Boolean))].sort().map(n=><option key={n} value={n}>{n}</option>);
-                  })()}
-                </select>
-                {/* 5. All Statuses */}
-                <select value={dashStatus} onChange={e=>sdsst(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashStatus!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashStatus!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Statuses</option>
-                  {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
-              </div>
-            </div>
-            {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
-                        {/* ── Stat Cards ── */}
-            <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
-            </div>
-            {/* ── 1. Projects Overview ── */}
-            {(()=>{
-              const _rp=dashProject!=="All"&&dashClient!=="All"&&!accessibleProjects.find(p=>p.id===dashProject&&(p.client||"Unassigned")===dashClient);if(_rp)sdsp("All");
-              const _rt=dashTask!=="All"&&(dashProject!=="All"?!dashTasks.some(t=>t.id===dashTask&&t.project_id===dashProject):dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>t.id===dashTask&&cPIds.has(t.project_id));})());if(_rt)sdst("All");
-              const _ru=dashUser!=="All"&&dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>cPIds.has(t.project_id)&&t.assignee===dashUser);})();if(_ru)sdsu("All");
-            })()}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
-              {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
-                onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
-                onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
-            </div>
-
-            {isMobile?(
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {accessibleProjects.filter(p=>{
-                  if(dashClient!=="All"&&(p.client||"Unassigned")!==dashClient)return false;
-                  if(dashProject!=="All"&&p.id!==dashProject)return false;
-                  if(dashUser!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.assignee===dashUser))return false;
-                  if(dashTask!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.id===dashTask))return false;
-                  if(dashStatus!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&(dashStatus==="Not Yet Started"?(t.status==="Not Yet Started"||t.status==="To Be Started"):t.status===dashStatus)))return false;
-                  if(searchProj&&!p.name.toLowerCase().includes(searchProj.toLowerCase()))return false;
-                  return true;
-                }).map(p=>{
-                  const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                  const pd=pt.filter(t=>isDone(t.status)).length;
-                  const pip=pt.filter(t=>t.status==="In Progress").length;
-                  const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                  return(
-                    <div key={p.id} onClick={()=>navTo('list',p.id)}
-                      style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${p.color}`}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
-                        <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                        <span style={{fontSize:13,fontWeight:800,color:p.color,flexShrink:0}}>{pv}%</span>
-                      </div>
-                      <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${pv}%`,background:p.color,borderRadius:2}}/>
-                      </div>
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                        {p.client&&<span style={{fontSize:11,color:C.teal}}>🏢 {p.client}</span>}
-                        <span style={{fontSize:11,color:C.green}}>✅ {pd}</span>
-                        <span style={{fontSize:11,color:C.blue}}>🔄 {pip}</span>
-                        {pov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700}}>⚠ {pov} overdue</span>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} tasks →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ):(
-              (()=>{
-                const grpd={};
-                const ungrouped=[];
-                const dashFilteredProjects=accessibleProjects.filter(p=>{
-                  if(dashClient!=="All"&&(p.client||"Unassigned")!==dashClient)return false;
-                  if(dashProject!=="All"&&p.id!==dashProject)return false;
-                  if(dashUser!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.assignee===dashUser))return false;
-                  if(dashTask!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&t.id===dashTask))return false;
-                  if(dashStatus!=="All"&&!dashTasks.some(t=>t.project_id===p.id&&(dashStatus==="Not Yet Started"?(t.status==="Not Yet Started"||t.status==="To Be Started"):t.status===dashStatus)))return false;
-                  return true;
-                });
-                dashFilteredProjects.forEach(p=>{
-                  if(p.group_name){if(!grpd[p.group_name])grpd[p.group_name]=[];grpd[p.group_name].push(p);}
-                  else ungrouped.push(p);
-                });
-                const hasGroups=Object.keys(grpd).length>0;
-                function ProjGrid({projs}){return(
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:16}}>
-                  {projs.map(p=>{
-                const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
-                const pd=pt.filter(t=>isDone(t.status)).length;
-                const pip=pt.filter(t=>t.status==="In Progress").length;
-                const ptd=pt.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
-                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
-                const projSelected=selProjects.has(p.id);
-                return(
-                  <div key={p.id} style={{background:projSelected?C.accent+"18":C.card,border:`1px solid ${projSelected?C.accent:C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative"}}
-                    onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
-                      <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
-                        {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
-                          style={{marginTop:2,width:18,height:18,borderRadius:4,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
-                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#ffffff",lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                        {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
-                        <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {p.client}</span>}
-                      {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 Due {p.deadline}</span>}
-                    </div>
-                    <Pb v={pv} color={p.color} h={7}/>
-                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginTop:14}}>
-                      <div style={{background:C.green+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.green}}>{pd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Done</div>
-                      </div>
-                      <div style={{background:C.blue+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.blue}}>{pip}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>In Progress</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:C.t2}}>{ptd}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Pending</div>
-                      </div>
-                      <div style={{background:C.red+"18",borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:800,color:pov>0?C.red:C.t3}}>{pov}</div>
-                        <div style={{fontSize:10,color:C.t3,marginTop:2}}>Overdue</div>
-                      </div>
-                    </div>
-                    {assignees.length>0&&(
-                      <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
-                      </div>
-                    )}
-                    <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} task{pt.length!==1?"s":""} total · click to view →</div>
-                  </div>
-                );
-              })}
-                  </div>
-                );}
-                return(<>
-                  {hasGroups&&Object.entries(grpd).sort((a,b)=>a[0].localeCompare(b[0])).map(([gname,gprojs])=>{
-                    const gt=tasks.filter(t=>gprojs.some(p=>p.id===t.project_id));
-                    const gd=gt.filter(t=>isDone(t.status)).length;
-                    const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                    const gpct=gt.length?Math.round(gd/gt.length*100):0;
-                    const [gopen,setGOpen]=React.useState(true);
-                    return(
-                      <div key={gname} style={{marginBottom:22}}>
-                        <div onClick={()=>setGOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.card,border:`1px solid ${gov>0?C.red+"55":C.teal+"44"}`,borderRadius:gopen?"12px 12px 0 0":"12px",cursor:"pointer",userSelect:"none",marginBottom:0}}>
-                          <span style={{fontSize:14,fontWeight:700,color:C.teal,transition:"transform .18s",display:"inline-block",transform:gopen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{gname}</div>
-                            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{gprojs.length} project{gprojs.length!==1?"s":""} · {gt.length} tasks</div>
-                          </div>
-                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                            <span style={{fontSize:13,fontWeight:800,color:gpct>=80?C.green:gpct>=50?C.accent:C.red}}>{gpct}%</span>
-                            {gov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 8px"}}>⚠ {gov} overdue</span>}
-                          </div>
-                        </div>
-                        {gopen&&<div style={{border:`1px solid ${C.teal}44`,borderTop:"none",borderRadius:"0 0 12px 12px",padding:"16px 16px 4px 16px",background:"#ffffff08",marginBottom:4}}>
-                          <ProjGrid projs={gprojs}/>
-                        </div>}
-                      </div>
-                    );
-                  })}
-                  {ungrouped.length>0&&<>
-                    {hasGroups&&<h3 style={{margin:"4px 0 14px",fontSize:13,fontWeight:700,color:C.t3,letterSpacing:".05em",textTransform:"uppercase"}}>Ungrouped Projects</h3>}
-                    <ProjGrid projs={ungrouped}/>
-                  </>}
-                </>);
-              })()
-            )}
-                        {/* Unassigned Projects removed for admin/manager */}
-            {/* ── 2. Recent Tasks removed for admin/manager ── */}
-            {false&&isMobile&&<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} onClick={()=>{set(t);stm(true);}}
-                    style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"11px 13px",cursor:"pointer",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6,marginBottom:5}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),flexShrink:0}}>{t.status}</span>
-                    </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                      {pj&&<span style={{fontSize:11,color:C.teal}}>📁 {pj.name}</span>}
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ {t.checker}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,marginLeft:"auto"}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
-            {false&&!isMobile&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const clr=pj?.color||C.accent;
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{set(t);stm(true);}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                      <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,marginLeft:10,whiteSpace:"nowrap"}}>{pj?.name||"—"}</span>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
-                    </div>
-                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
-                      <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                      </div>
-                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                      </div>
-                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
-            {/* ── 2. Client-wise Overview — hidden for admin/manager (shown in QuickNav) ── */}
-            {/* ── 3. Employee Overview (Admin/Manager) ── */}
-            {(()=>{
-              const staff=users.filter(u=>u.role!=="Client"&&u.username!==me.username);
-              if(!staff.length)return null;
-              return(
-                <>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                  <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>👥 Employee Overview</h2>
-                  <span style={{fontSize:12,color:C.t3}}>{staff.length} team member{staff.length!==1?"s":""} · click to manage</span>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(220px,100%),1fr))",gap:12,marginBottom:28}}>
-                  {staff.map(u=>{
-                    const uTasks=dashTasks.filter(t=>userMatchesStr(u,t.assignee)||userMatchesStr(u,t.detailer)||userMatchesStr(u,t.checker));
-                    const done=uTasks.filter(t=>isDone(t.status)).length;
-                    const inProg=uTasks.filter(t=>t.status==="In Progress").length;
-                    const overdue=uTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                    const pct=uTasks.length?Math.round(done/uTasks.length*100):0;
-                    const hue=u.name.charCodeAt(0)*17%360;
-                    return(
-                      <div key={u.id} style={{background:C.card,border:`1px solid ${overdue>0?C.red+"44":C.border}`,borderRadius:12,padding:16,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
-                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px #00000055";}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                          <div style={{width:40,height:40,borderRadius:"50%",background:`hsl(${hue},55%,40%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:"#fff",flexShrink:0}}>{u.name.charAt(0).toUpperCase()}</div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
-                            <div style={{fontSize:10,color:C.t3}}>{u.role}</div>
-                          </div>
-                        </div>
-                        <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:10,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${pct}%`,background:`hsl(${hue},55%,45%)`,borderRadius:2,transition:"width .4s"}}/>
-                        </div>
-                        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-                          <span style={{fontSize:10,background:C.green+"22",color:C.green,border:`1px solid ${C.green}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>✅ {done}</span>
-                          <span style={{fontSize:10,background:C.blue+"22",color:C.blue,border:`1px solid ${C.blue}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>🔄 {inProg}</span>
-                          {overdue>0&&<span style={{fontSize:10,background:C.red+"22",color:C.red,border:`1px solid ${C.red}33`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>⚠ {overdue}</span>}
-                          <span style={{fontSize:10,color:C.t3,marginLeft:"auto"}}>{uTasks.length} tasks · {pct}%</span>
-                        </div>
-                        <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>{sfa(u.name);sv("kanban");sap(null);}}
-                            style={{flex:1,background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:8,padding:"7px 0",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit",transition:"background .15s"}}
-                            onMouseEnter={e=>e.currentTarget.style.background=C.accent+"33"}
-                            onMouseLeave={e=>e.currentTarget.style.background=C.accent+"18"}>
-                            📋 Kanban
-                          </button>
-                          <button onClick={()=>{sfa(u.name);sv("list");sap(null);}}
-                            style={{flex:1,background:C.blue+"18",border:`1px solid ${C.blue}44`,borderRadius:8,padding:"7px 0",fontSize:11,fontWeight:700,color:C.blue,cursor:"pointer",fontFamily:"inherit",transition:"background .15s"}}
-                            onMouseEnter={e=>e.currentTarget.style.background=C.blue+"33"}
-                            onMouseLeave={e=>e.currentTarget.style.background=C.blue+"18"}>
-                            📄 List
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                </>
-              );
-            })()}
-            {/* ── 4. Team Attendance Report (Admin/Manager) ── */}
-            {(isAdmin||isManager)&&<AttendancePage users={users}/>}
-            {/* ── 4. Overdue Tasks ── */}
-            {overdueTasks.length>0&&(<>
-              <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-                {overdueTasks.map(t=>{
-                  const pj=projects.find(p=>p.id===t.project_id);
-                  const daysOver=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));
-                  const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                  return(
-                    <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${C.red}`,transition:"transform .15s,box-shadow .15s"}}
-                      onClick={()=>{set(t);stm(true);}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                        <span style={{background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,marginLeft:10,whiteSpace:"nowrap"}}>{daysOver}d late</span>
-                      </div>
-                      <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                        {pj&&<span style={{fontSize:12,color:pj.color||C.accent,fontWeight:600}}>📁 {pj.name}</span>}
-                        {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      </div>
-                      <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
-                        <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                          <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                        </div>
-                        <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                          <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                        </div>
-                        <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
-                        </div>
-                        <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                          <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                        </div>
-                      </div>
-                      {team.length>0&&(
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                          <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                          {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                        </div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                        <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
-          </>
-        )}
-        {view==="dashboard"&&!isAdmin&&!isManager&&<TaskTimingPanel
-          tasks={tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id))}
-          projects={accessibleProjects}
-          me={me} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}
-          onEditTask={t=>{set(t);stm(true);}}
-        />}
-        {view==="timings"&&(
-          <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}/>
-        )}
-        {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
-          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
-        )}
-        {view==="capacity"&&(isAdmin||isManager||isTeamLeader)&&(
-          <CapacityView tasks={tasks} users={users} projects={projects} canEdit={canEdit} onReassign={reassignTask}/>
-        )}
-        {view==="workflows"&&isAdmin&&(
-          <WorkflowsPage workflows={workflows} onAdd={addWorkflow} onUpdate={updateWorkflow} onDelete={deleteWorkflow} onToggle={toggleWorkflow} users={users} saving={saving}/>
-        )}
-        {view==="gantt"&&!isClient&&(
-          <GanttPage
-            projects={accessibleProjects}
-            tasks={tasks}
-            today={today}
-            onSelectProject={pid=>{navTo("list",pid);}}
-          />
-        )}
-        {view==="submissions"&&!isClient&&(
-          <SubmissionsPage
-            projects={accessibleProjects}
-            tasks={tasks}
-            today={today}
-            isClient={isClient}
-            clientName={me?.client_name||""}
-            canEdit={canEdit}
-            onEdit={t=>{set(t);stm(true);}}
-          />
-        )}
-        {view==="announcements"&&!isClient&&(
-          <AnnouncementsPage
-            me={me}
-            users={users}
-            projects={accessibleProjects}
-            canPost={isAdmin||isManager}
-          />
-        )}
-        {view==="warroom"&&!isClient&&(
-          <WarRoomPage
-            me={me}
-            projects={accessibleProjects}
-            users={users}
-          />
-        )}
-        {view==="kanban"&&(
-          <>
-            {activeClient&&(<div style={{marginBottom:16,padding:"10px 16px",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:13,color:C.t2}}>Client filter:</span><Bdg color={C.teal}>{activeClient}</Bdg><button onClick={()=>sac(null)} style={{...GBtn,padding:"4px 10px",fontSize:12,marginLeft:"auto"}}>✕ Clear</button></div>)}
-            {canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-              <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-                onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-                onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-                extraOptions={ALL_STATUSES.filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))}/>
-            </div>}
-            {isMobile?(
-              <div>
-                {/* Mobile kanban: tab strip + task list for selected column */}
-                <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:10,marginBottom:12,WebkitOverflowScrolling:"touch"}}>
-                  {kanbanCols.map(col=>{
-                    const cnt=filtered.filter(t=>t.status===col).length;
-                    const active=mobKanCol===col;
-                    return(
-                      <button key={col} onClick={()=>setMobKanCol(col)}
-                        style={{flexShrink:0,background:active?C.accent:C.card,border:`1px solid ${active?C.accent:C.border}`,borderRadius:20,padding:"7px 14px",fontSize:11,fontWeight:700,color:active?"#fff":C.t2,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-                        {col}
-                        <span style={{background:active?"#ffffff33":C.accent+"22",color:active?"#fff":C.accent,borderRadius:8,padding:"1px 6px",fontSize:10,fontWeight:700}}>{cnt}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Task list for active column */}
-                {(()=>{
-                  const colTasks=filtered.filter(t=>t.status===mobKanCol);
-                  if(colTasks.length===0)return(<div style={{textAlign:"center",padding:"40px 16px",color:C.t3,fontSize:13}}>No tasks in "{mobKanCol}"</div>);
-                  return(
-                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {colTasks.map(t=>{
-                        const proj=projects.find(p=>p.id===t.project_id);
-                        const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                        const canEditTask=canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker));
-                        return(
-                          <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                              <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                              {canEditTask&&<button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>}
-                            </div>
-                            {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:canEditTask?8:0}}>
-                              {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                              {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
-                              {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                              {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {t.due_date}</span>}
-                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {t.due_date}</span>}
-                            </div>
-                            {canEditTask&&<div style={{display:"flex",alignItems:"center",gap:6}}>
-                              <span style={{fontSize:10,color:C.t3,flexShrink:0}}>Move to:</span>
-                              <select value={t.status} onChange={e=>dropTask(t.id,e.target.value)}
-                                style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:getStatusColor(t.status),fontSize:11,fontWeight:700,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                                {kanbanCols.map(col=><option key={col} value={col}>{col}</option>)}
-                              </select>
-                            </div>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            ):(
-            <div className="rds-kanban-wrap" style={{display:"flex",gap:14,overflow:"auto",paddingBottom:16}}>
-              {kanbanCols.map(col=>(<KCol key={col} status={col} tasks={filtered.filter(t=>t.status===col)} projects={projects}
-                onEdit={t=>{set(t);stm(true);}}
-                onDelete={canEdit?delTask:()=>{}}
-                onDrop={dropTask}
-                canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
-                canDelete={canEdit}
-                selTasks={selTasks}
-                onToggleTask={canEdit?toggleTask:null}
-                taskFileCounts={taskFileCounts}
-                onFiles={t=>setFileTask(t)}
-              />))}
-            </div>
-            )}
-          </>
-        )}
-        {view=="clientprojects"&&canEdit&&(()=>{
-          const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
-          const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
-          const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
-          return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
-                <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
-              </div>
-              <ClientProjectSearch
-                projects={cpProjects} tasks={cpTasks} assignees={cpAssignees}
-                today={today} isAdmin={isAdmin} canEdit={canEdit}
-                onViewTasks={pid=>navTo('list',pid)}
-                onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
-                onEditTask={t=>{set(t);stm(true);}}
-              />
-            </div>
-          );
-        })()}
-        {view==="list"&&(
-          <div>
-          {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-            <GmailSelect selectedCount={selTasks.size} total={filtered.length}
-              onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
-              onSelectNone={()=>{setSelTasks(new Set());setBSO(false);}}
-              extraOptions={["Completed","In Progress","Not Yet Started","To Be Started"].filter(s=>filtered.some(t=>t.status===s)).map(s=>({label:s,action:()=>{setBSO(true);setSelTasks(new Set(filtered.filter(t=>t.status===s).map(t=>t.id)));}}))
-              }/>
-          </div>}
-          {isMobile?(
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
-                    </div>
-                    {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
-                  <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
-                    style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
-                    {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
-                  </div>
-                </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
-            </table>
-          </div>
-          )}
-          </div>
-        )}
-      </main>
-      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>}
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} taskFileCounts={taskFileCounts} onNav={(type,data)=>{
-        if(type==="project")navTo("list",data.id);
-        else if(type==="task")navTo("list",data.project_id);
-        else if(type==="user"){sfa(data.name);sv("list");sap(null);}
-        else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
-        else if(type==="file"){setFileTask(data);}
-      }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
-          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const drill=dashDrill;
-      const lastDrill=drill[drill.length-1];
-      function closeDSM(){setDSM(null);setDDrill([]);}
-      function goBack(){setDDrill(d=>d.slice(0,-1));}
-      function drillInto(type,item){setDDrill(d=>[...d,{type,item}]);}
-
-      // ── Determine current view ──
-      let title="",color=C.accent,items=[],canDrill=false,drillType="",isTaskList=false;
-
-      if(!lastDrill){
-        // Root level
-        if(DSM==="users"){
-          title="👥 All Employees";color=C.accent;canDrill=true;drillType="employee";
-          items=users.filter(u=>u.role!=="Client").map(u=>{
-            const ut=tasks.filter(t=>t.assignee===u.name||t.detailer===u.name||t.checker===u.name);
-            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
-          });
-        } else if(DSM==="clients"){
-          title="🏢 All Clients";color=C.teal;canDrill=true;drillType="client";
-          items=clients.map(cl=>{
-            const cProjs=accessibleProjects.filter(p=>(p.client||"")===(cl.name||""));
-            return{label:cl.name,sub:`${cl.email||cl.phone||""} · ${cProjs.length} projects`,dot:C.teal,raw:cl};
-          });
-        } else if(DSM==="projects"){
-          title="📁 All Projects";color=C.blue;canDrill=true;drillType="project";
-          items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-        } else if(DSM==="completed"){
-          title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
-        } else if(DSM==="inprogress"){
-          title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:C.accent,raw:t};});
-        } else if(DSM==="team"){
-          title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
-          const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-          items=teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue,raw:{name}}));
-        }
-      } else if(lastDrill.type==="client"){
-        // Client → Projects
-        const cl=lastDrill.item;
-        title=`📁 ${cl.name} — Projects`;color=C.blue;canDrill=true;drillType="project";
-        items=accessibleProjects.filter(p=>(p.client||"")===(cl.name||"")).map(p=>({label:p.name,sub:`${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-      } else if(lastDrill.type==="project"){
-        // Project → Tasks
-        const proj=lastDrill.item;
-        title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
-      } else if(lastDrill.type==="employee"){
-        // Employee → Projects they work in
-        const emp=lastDrill.item;
-        const empName=emp.name||emp.username;
-        const empProjIds=new Set(tasks.filter(t=>t.assignee===empName||t.detailer===empName||t.checker===empName).map(t=>t.project_id));
-        title=`📁 ${empName} — Projects`;color=C.blue;canDrill=true;drillType="emp-project";
-        items=accessibleProjects.filter(p=>empProjIds.has(p.id)).map(p=>{
-          const empProjTasks=tasks.filter(t=>t.project_id===p.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName));
-          return{label:p.name,sub:`${p.client||"No client"} · ${empProjTasks.filter(t=>isDone(t.status)).length} done · ${empProjTasks.filter(t=>t.status==="In Progress").length} in progress`,dot:p.color||C.blue,raw:{proj:p,empName}};
-        });
-      } else if(lastDrill.type==="emp-project"){
-        // Employee+Project → Tasks
-        const {proj,empName}=lastDrill.item;
-        title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
-      }
-
-      return(
-        <div onClick={closeDSM} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:540,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${color}33,0 24px 60px #00000080`}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 20px",borderBottom:`1px solid ${C.border}`}}>
-              {drill.length>0&&<button onClick={goBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:13,cursor:"pointer",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontWeight:600}}>← Back</button>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:1}}>{items.length} item{items.length!==1?"s":""}{canDrill?" · click to drill down":""}</div>
-              </div>
-              <button onClick={closeDSM} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            {/* Breadcrumb */}
-            {drill.length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 20px",borderBottom:`1px solid ${C.border}22`,flexWrap:"wrap"}}>
-                <span onClick={()=>setDDrill([])} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:600}}>Home</span>
-                {drill.map((d,i)=>(
-                  <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontSize:11,color:C.t3}}>›</span>
-                    <span onClick={()=>setDDrill(drill.slice(0,i+1))} style={{fontSize:11,color:i===drill.length-1?C.t1:C.accent,cursor:i<drill.length-1?"pointer":"default",fontWeight:600}}>{d.item.name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* List */}
-            <div style={{overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {items.length===0
-                ?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>
-                :items.map((item,i)=>(
-                <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
-                  onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+                      <div style={{fontSize:10,color:C.t2
