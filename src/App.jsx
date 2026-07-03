@@ -1993,11 +1993,13 @@ function exportExcel(projects,tasks,label="Report"){
   });
   // ── Build SpreadsheetML XML ──────────────────────────────────
   const xml=`<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office"><Styles>${S}</Styles><Worksheet ss:Name="Analytics"><Table>${dash}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FitToPage/><Print><FitWidth>1</FitWidth></Print></WorksheetOptions></Worksheet><Worksheet ss:Name="Tasks"><Table>${taskSheet}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions></Worksheet></Workbook>`;
-  const b64=btoa(unescape(encodeURIComponent(xml)));
+  const blob=new Blob([xml],{type:"application/vnd.ms-excel;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href="data:application/vnd.ms-excel;base64,"+b64;
+  a.href=url;
   a.download="RDS Report - "+safe+" - "+today+".xls";
   document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function ChangePasswordModal({me,onClose}){
@@ -3239,11 +3241,13 @@ function exportSubmissionList(projects,tasks,today){
   writeSection(`Today's Submissions — ${today}`,todayTasks);
   writeSection(`This Week (${wsStr} → ${weStr})`,weekTasks);
   html+=`</table></body></html>`;
-  const b64=btoa(unescape(encodeURIComponent(html)));
+  const blob2=new Blob([html],{type:"application/vnd.ms-excel;charset=utf-8"});
+  const url2=URL.createObjectURL(blob2);
   const a=document.createElement("a");
-  a.href="data:application/vnd.ms-excel;base64,"+b64;
+  a.href=url2;
   a.download=`RDS_Submission_List_${today}.xls`;
   a.click();
+  URL.revokeObjectURL(url2);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11527,17 +11531,4 @@ export default function App(){
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
         {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
         <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}
