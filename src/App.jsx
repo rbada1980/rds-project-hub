@@ -3706,7 +3706,16 @@ function EmailDigestCard(){
   async function toggle(val){setEnabled(val);await upsertSetting("daily_digest_enabled",val?"true":"false");setMsg("Digest "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
   async function triggerNow(){
     setTriggering(true);setMsg(null);
-    try{const res=await fetch("/api/cron-daily",{method:"GET"});const data=await res.json();setMsg(res.ok?(data.sent!=null?"Sent to "+data.sent+" recipient(s)":data.message||"Already sent today"):"Error: "+(data.error||"Unknown"));}
+    try{
+      const res=await fetch("/api/cron-daily",{method:"GET"});
+      const data=await res.json();
+      if(res.ok && data.sent!=null){
+        // Stamp last_digest_date using authenticated Supabase client (bypasses RLS anon restriction)
+        const today=new Date(new Date().getTime()+5.5*60*60*1000).toISOString().slice(0,10);
+        await supabase.from('settings').upsert({key:'last_digest_date',value:today},{onConflict:'key'}).catch(()=>{});
+      }
+      setMsg(res.ok?(data.sent!=null?"Sent to "+data.sent+" recipient(s)":data.message||"Already sent today"):"Error: "+(data.error||"Unknown"));
+    }
     catch(e){setMsg("Network error: "+e.message);}
     setTriggering(false);setTimeout(()=>setMsg(null),4000);
   }
@@ -11516,13 +11525,4 @@ export default function App(){
       </button>}
       {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,backgroun

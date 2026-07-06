@@ -4,6 +4,9 @@
 
 const SUPA_URL  = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY  = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+// Service role key bypasses RLS — used for writing last_digest_date (anon key is blocked by RLS INSERT policy)
+// Add SUPABASE_SERVICE_KEY to Vercel env vars: Supabase dashboard → Project Settings → API → service_role
+const SUPA_WRITE_KEY = process.env.SUPABASE_SERVICE_KEY || SUPA_KEY;
 const NOTIFY_URL = `${SUPA_URL}/functions/v1/notify`;
 
 async function supaFetch(path) {
@@ -183,10 +186,10 @@ export default async function handler(req, res) {
     // The idempotency CHECK above (read) still prevents re-runs on the same day
     // once the row exists and the stamp succeeds at least once.
     try {
-      // Try UPDATE first (row may already exist)
+      // Try UPDATE first (row may already exist). Use SUPA_WRITE_KEY (service role bypasses RLS).
       const patchRes = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date`, {
         method: "PATCH",
-        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+        headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
         body: JSON.stringify({ value: today })
       });
       let stamped = false;
@@ -196,10 +199,10 @@ export default async function handler(req, res) {
       }
 
       if (!stamped) {
-        // Row doesn't exist — try INSERT (may fail if RLS blocks anon writes)
+        // Row doesn't exist — INSERT it. Service role key bypasses RLS INSERT restriction.
         const postRes = await fetch(`${SUPA_URL}/rest/v1/settings`, {
           method: "POST",
-          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+          headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
           body: JSON.stringify({ key: "last_digest_date", value: today })
         });
         if (postRes.ok) {
@@ -263,6 +266,4 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Daily cron error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}
+    return res.status(500).json({ error: er
