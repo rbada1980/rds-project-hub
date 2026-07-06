@@ -266,4 +266,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Daily cron error:", err);
-    return res.status(500).json({ error: er
+    return res.status(500).json({ error: err.message });
+  }
+}
