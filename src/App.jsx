@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { createLocalClient } from "./localApi.js";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
 // email notifications removed — daily scheduled digest replaces per-update emails
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
-const supabase = createClient(SUPA_URL, SUPA_KEY);
+const IS_LOCAL = typeof window!=="undefined" && (window.location.port==="3000" || window.location.port==="8080");
+const LOCAL_BASE = IS_LOCAL ? `http://${typeof window!=="undefined"?window.location.hostname:"192.168.0.159"}:${typeof window!=="undefined"?window.location.port:"8080"}` : "";
+const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
 
 const C = {
@@ -160,6 +163,12 @@ function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
   async function upload(e){
     const file=e.target.files?.[0];if(!file)return;
     su(true);
+    if(IS_LOCAL){
+      const fd=new FormData();fd.append("file",file);fd.append("task_id",task.id);fd.append("project_id",task.project_id||"");fd.append("uploaded_by",me.name||me.username);
+      try{const r=await fetch(LOCAL_BASE+"/api/task-files",{method:"POST",body:fd});const j=await r.json();if(j.error){alert("Upload failed: "+j.error.message);su(false);return;}}
+      catch(ex){alert("Upload failed: "+ex.message);su(false);return;}
+      e.target.value="";su(false);load();return;
+    }
     const path=`${task.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
     const{error:se}=await supabase.storage.from("task-files").upload(path,file,{contentType:file.type,upsert:false});
     if(se){alert("Upload failed: "+se.message);su(false);return;}
@@ -169,8 +178,12 @@ function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
   }
   async function del(f){
     if(!confirm(`Delete "${f.file_name}"?`))return;
-    await supabase.storage.from("task-files").remove([f.storage_path]);
-    await supabase.from("task_files").delete().eq("id",f.id);
+    if(IS_LOCAL){
+      await fetch(LOCAL_BASE+"/api/task-files/"+f.id,{method:"DELETE"});
+    } else {
+      await supabase.storage.from("task-files").remove([f.storage_path]);
+      await supabase.from("task_files").delete().eq("id",f.id);
+    }
     sf(fs=>{const next=fs.filter(x=>x.id!==f.id);if(onCountChange)onCountChange(task.id,next.length);return next;});
   }
   const canDel=f=>canEdit||f.uploaded_by===me.name||f.uploaded_by===me.username;
@@ -1368,7 +1381,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
     </div>
   );
 }
-function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject}){
+function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,onViewProject}){
   const isMobile=useMobile();
   const matchesMe=v=>userMatchesStr(me,v);
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
@@ -1505,11 +1518,11 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
                 {hasF&&<span style={{fontSize:12,color:"#8b5cf6"}}>Filtered</span>}
               </div>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date"].map(h=>(
+                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","Actions"].map(h=>(
                   <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{ft.length===0
-                  ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+                  ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
                   :ft.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
@@ -1520,6 +1533,10 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onViewProject})
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                    <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                      <button onClick={e=>{e.stopPropagation();onEditTask(t);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit",marginRight:6}}>✏️ Edit</button>
+                      {onDeleteTask&&<button onClick={e=>{e.stopPropagation();onDeleteTask(t.id);}} style={{background:"#450a0a",color:C.red,border:`1px solid ${C.red}44`,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}}>🗑 Delete</button>}
+                    </td>
                   </tr>);})}</tbody>
               </table>
             </div>
@@ -5097,9 +5114,13 @@ function WarRoomPage({me,projects,users}){
     if(mediaFile){
       setUploading(true);
       const ext=mediaFile.name.split(".").pop()||"bin";
-      const fname=`warroom_${capturedCid}_${Date.now()}.${ext}`;
-      const{error:ue}=await supabase.storage.from("war-room-videos").upload(fname,mediaFile,{contentType:mediaFile.type,upsert:false});
-      if(!ue){const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);video_url=pub.publicUrl;}
+      if(IS_LOCAL){
+        try{const fd=new FormData();fd.append("video",mediaFile);const r=await fetch(LOCAL_BASE+"/api/war-room/video-upload",{method:"POST",body:fd});const j=await r.json();if(j.data?.video_url)video_url=j.data.video_url;}catch{}
+      } else {
+        const fname=`warroom_${capturedCid}_${Date.now()}.${ext}`;
+        const{error:ue}=await supabase.storage.from("war-room-videos").upload(fname,mediaFile,{contentType:mediaFile.type,upsert:false});
+        if(!ue){const{data:pub}=supabase.storage.from("war-room-videos").getPublicUrl(fname);video_url=pub.publicUrl;}
+      }
       setMediaFile(null);setMediaPreview(null);setUploading(false);
     }
     if(video_url)setMessages(prev=>prev.map(m=>m.id===tempId?{...m,video_url}:m));
@@ -10434,6 +10455,7 @@ export default function App(){
           <TeamLeaderDashboard
             me={me} tasks={tasks} projects={accessibleProjects} today={today}
             onEditTask={t=>{set(t);stm(true);}}
+            onDeleteTask={delTask}
             onViewProject={pid=>navTo('list',pid)}
           />
         )}

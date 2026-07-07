@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RDS Sync Report</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0f1117;color:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;padding:24px;}
+  .header{display:flex;align-items:center;gap:14px;margin-bottom:28px;}
+  .logo{font-size:28px;font-weight:900;color:#f97316;}
+  .subtitle{color:#94a3b8;font-size:13px;margin-top:2px;}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;}
+  .badge.success{background:#14532d44;color:#4ade80;border:1px solid #14532d;}
+  .badge.partial{background:#78350f44;color:#fcd34d;border:1px solid #78350f;}
+  .badge.failed{background:#450a0a44;color:#fca5a5;border:1px solid #7f1d1d;}
+  .badge.pending{background:#1e293b;color:#94a3b8;border:1px solid #334155;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px;}
+  .card{background:#171b26;border:1px solid #2a3040;border-radius:12px;padding:20px;border-top:3px solid #f97316;}
+  .card.green{border-top-color:#22c55e;}
+  .card.red{border-top-color:#ef4444;}
+  .card.blue{border-top-color:#3b82f6;}
+  .card.purple{border-top-color:#a855f7;}
+  .card-label{color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
+  .card-value{color:#fff;font-size:30px;font-weight:800;margin:8px 0 4px;}
+  .card-sub{color:#94a3b8;font-size:12px;}
+  .section{background:#171b26;border:1px solid #2a3040;border-radius:12px;padding:20px;margin-bottom:20px;}
+  .section-title{font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  table{width:100%;border-collapse:collapse;}
+  th{color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;text-align:left;border-bottom:1px solid #2a3040;}
+  td{padding:10px 12px;font-size:13px;border-bottom:1px solid #1e2433;}
+  tr:last-child td{border-bottom:none;}
+  .tbl-name{color:#f1f5f9;font-weight:600;}
+  .tbl-ok{color:#4ade80;}
+  .tbl-fail{color:#fca5a5;}
+  .tbl-skip{color:#475569;}
+  .bar-wrap{width:120px;height:6px;background:#2a3040;border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;}
+  .bar-fill{height:100%;border-radius:3px;background:#22c55e;transition:width .4s;}
+  .bar-fill.warn{background:#f97316;}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:#f97316;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+  .btn:hover{opacity:.85;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #2a3040;}
+  .btn-ghost:hover{color:#f1f5f9;border-color:#475569;}
+  .actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .msg{padding:12px 16px;border-radius:8px;font-size:13px;font-weight:600;margin-top:14px;display:none;}
+  .msg.show{display:block;}
+  .msg.ok{background:#14532d44;color:#4ade80;border:1px solid #14532d;}
+  .msg.err{background:#450a0a44;color:#fca5a5;border:1px solid #7f1d1d;}
+  .msg.running{background:#1e3a5f44;color:#93c5fd;border:1px solid #1e3a5f;}
+  .next-sync{color:#94a3b8;font-size:13px;}
+  .next-sync span{color:#f97316;font-weight:700;}
+  .refresh-note{color:#475569;font-size:11px;margin-top:6px;}
+  .progress-log{background:#0f1117;border:1px solid #2a3040;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#94a3b8;max-height:200px;overflow-y:auto;margin-top:12px;display:none;}
+  .progress-log.show{display:block;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .dot.green{background:#22c55e;}
+  .dot.red{background:#ef4444;}
+  .dot.yellow{background:#eab308;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">📊 RDS Sync Report</div>
+    <div class="subtitle">Local PostgreSQL → Supabase · Auto-sync at 2:00 AM IST daily</div>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="cards" id="cards">
+  <div class="card" id="card-status">
+    <div class="card-label">Status</div>
+    <div class="card-value" id="val-status">—</div>
+    <div class="card-sub" id="val-time">Loading…</div>
+  </div>
+  <div class="card green">
+    <div class="card-label">Records Synced</div>
+    <div class="card-value" id="val-synced">—</div>
+    <div class="card-sub" id="val-failed-sub">—</div>
+  </div>
+  <div class="card blue">
+    <div class="card-label">Duration</div>
+    <div class="card-value" id="val-duration">—</div>
+    <div class="card-sub">seconds</div>
+  </div>
+  <div class="card purple">
+    <div class="card-label">Next Auto-Sync</div>
+    <div class="card-value" id="val-next">2:00 AM</div>
+    <div class="card-sub" id="val-next-sub">IST daily</div>
+  </div>
+</div>
+
+<!-- Actions -->
+<div class="section">
+  <div class="section-title">⚡ Manual Sync</div>
+  <div class="actions">
+    <button class="btn" id="btn-sync" onclick="triggerSync()">🔄 Sync Now</button>
+    <button class="btn btn-ghost" onclick="loadReport()">↻ Refresh Report</button>
+    <div class="next-sync">Last updated: <span id="val-loaded">—</span></div>
+  </div>
+  <div class="msg" id="sync-msg"></div>
+  <div class="progress-log" id="progress-log"></div>
+</div>
+
+<!-- Table Breakdown -->
+<div class="section">
+  <div class="section-title">📋 Table Breakdown</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Table</th>
+        <th>Synced</th>
+        <th>Total</th>
+        <th>Progress</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <tr><td colspan="5" style="color:#475569;text-align:center;padding:24px;">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="refresh-note">⟳ This page auto-refreshes every 60 seconds</div>
+
+<script>
+  let syncing = false;
+
+  async function loadReport() {
+    try {
+      const r = await fetch('/api/sync-report');
+      const d = await r.json();
+      renderReport(d);
+      document.getElementById('val-loaded').textContent = new Date().toLocaleTimeString('en-IN');
+    } catch(e) {
+      document.getElementById('val-status').textContent = 'Error';
+    }
+  }
+
+  function fmt(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  function renderReport(d) {
+    if (d.status === 'no_sync_yet') {
+      document.getElementById('val-status').textContent = 'No sync yet';
+      document.getElementById('val-time').textContent = 'Run first sync below';
+      document.getElementById('val-synced').textContent = '0';
+      document.getElementById('val-failed-sub').textContent = '';
+      document.getElementById('val-duration').textContent = '—';
+      document.getElementById('table-body').innerHTML =
+        '<tr><td colspan="5" style="color:#475569;text-align:center;padding:24px;">No sync report yet — click Sync Now</td></tr>';
+      return;
+    }
+
+    // Status card
+    const statusEl = document.getElementById('val-status');
+    const card = document.getElementById('card-status');
+    if (d.status === 'success') {
+      statusEl.innerHTML = '<span class="badge success">✅ Success</span>';
+      card.style.borderTopColor = '#22c55e';
+    } else if (d.status === 'partial') {
+      statusEl.innerHTML = '<span class="badge partial">⚠️ Partial</span>';
+      card.style.borderTopColor = '#eab308';
+    } else {
+      statusEl.innerHTML = '<span class="badge failed">❌ Failed</span>';
+      card.style.borderTopColor = '#ef4444';
+    }
+
+    document.getElementById('val-time').textContent = 'Last: ' + fmt(d.timestamp);
+    document.getElementById('val-synced').textContent = (d.total_synced || 0).toLocaleString();
+    document.getElementById('val-failed-sub').textContent =
+      d.total_failed > 0 ? `⚠️ ${d.total_failed} failed` : '0 failures';
+    document.getElementById('val-duration').textContent = d.duration_sec || '—';
+
+    // Next sync countdown
+    updateNextSync();
+
+    // Table breakdown
+    if (!d.tables?.length) return;
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = d.tables.map(t => {
+      const pct = t.total > 0 ? Math.round((t.synced / t.total) * 100) : 0;
+      const ok  = t.failed === 0 && t.total > 0;
+      const skip = t.total === 0;
+      const icon = skip ? '⏭' : (ok ? '✅' : (t.synced > 0 ? '⚠️' : '❌'));
+      const barColor = pct === 100 ? '' : 'warn';
+      return `
+        <tr>
+          <td class="tbl-name">${t.table}</td>
+          <td class="${ok||skip ? 'tbl-ok' : (t.synced>0?'':'tbl-fail')}">${t.synced}</td>
+          <td class="tbl-skip">${t.total}</td>
+          <td>
+            ${!skip ? `<div class="bar-wrap"><div class="bar-fill ${barColor}" style="width:${pct}%"></div></div> <span style="font-size:11px;color:#475569;margin-left:6px">${pct}%</span>` : '<span style="color:#475569;font-size:11px">empty</span>'}
+          </td>
+          <td>${icon} ${t.error ? `<span style="color:#fca5a5;font-size:11px">${t.error.slice(0,50)}</span>` : (skip?'<span class="tbl-skip">no data</span>':'')}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function updateNextSync() {
+    const now = new Date();
+    const next = new Date();
+    next.setHours(2, 0, 0, 0);
+    // IST offset: we display in local time since user is IST
+    if (now.getHours() >= 2) next.setDate(next.getDate() + 1);
+    const diff = next - now;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    document.getElementById('val-next-sub').textContent = `in ${h}h ${m}m`;
+  }
+
+  async function triggerSync() {
+    if (syncing) return;
+    syncing = true;
+    const btn = document.getElementById('btn-sync');
+    const msg = document.getElementById('sync-msg');
+    const log = document.getElementById('progress-log');
+    btn.disabled = true;
+    btn.textContent = '⏳ Syncing…';
+    msg.className = 'msg running show';
+    msg.textContent = '🔄 Sync in progress — this takes about 3-5 seconds…';
+    log.className = 'progress-log show';
+    log.textContent = 'Starting sync...\n';
+
+    const start = Date.now();
+    try {
+      const r = await fetch('/api/sync-now', { method: 'POST' });
+      const d = await r.json();
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+
+      if (d.ok) {
+        const rep = d.report;
+        msg.className = 'msg ok show';
+        msg.textContent = `✅ Sync complete in ${rep.duration_sec}s — ${rep.total_synced} records synced, ${rep.total_failed} failed`;
+        log.textContent = rep.tables.map(t =>
+          t.total === 0 ? `  ⏭  ${t.table.padEnd(24)} empty`
+          : t.failed === 0 ? `  ✅ ${t.table.padEnd(24)} ${t.synced}/${t.total} synced`
+          : `  ⚠️  ${t.table.padEnd(24)} ${t.synced}/${t.total} synced, ${t.failed} failed`
+        ).join('\n');
+        renderReport(rep);
+      } else {
+        msg.className = 'msg err show';
+        msg.textContent = '❌ Sync failed: ' + (d.error || 'Unknown error');
+        log.textContent = 'Error: ' + (d.error || 'Unknown');
+      }
+    } catch(e) {
+      msg.className = 'msg err show';
+      msg.textContent = '❌ Network error: ' + e.message;
+      log.textContent = 'Network error: ' + e.message;
+    }
+
+    btn.disabled = false;
+    btn.textContent = '🔄 Sync Now';
+    syncing = false;
+    setTimeout(() => { msg.className = 'msg'; }, 8000);
+  }
+
+  // Load on start, auto-refresh every 60s
+  loadReport();
+  setInterval(loadReport, 60000);
+  setInterval(updateNextSync, 60000);
+</script>
+</body>
+</html>
