@@ -56,26 +56,43 @@ const TABLE_CONFIG = [
   { table: "war_room_scheduled", conflict: "id" },
   { table: "settings",           conflict: "key", excludeFromRow: ["id"], excludeFromPull: ["id"] },
   { table: "attendance",         conflict: "id" },
-  { table: "breaks",             conflict: "id" },
+  { table: "breaks",             conflict: "id", excludeFromRow: ["created_at"] },
   { table: "time_logs",          conflict: "id" },
 ];
 
+// ── Helper: get local column names & types ───────────────────
+async function getLocalSchema(table) {
+  try {
+    const r = await pool.query(
+      `SELECT column_name, data_type FROM information_schema.columns
+       WHERE table_schema='public' AND table_name=$1`, [table]
+    );
+    const schema = {};
+    for (const row of r.rows) schema[row.column_name] = row.data_type;
+    return schema;
+  } catch { return null; }
+}
+
 // ── Phase 1: Pull FROM Supabase → Local ─────────────────────
 async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull }) {
-  const skipCols = excludeFromPull !== undefined ? excludeFromPull : excludeFromRow;
+  const skipCols    = excludeFromPull !== undefined ? excludeFromPull : excludeFromRow;
   const conflictCols = conflict.split(",").map(c => c.trim());
 
-  // Fetch all rows via direct REST API (more reliable than JS client for reads)
+  // Check local table exists
+  const localSchema = await getLocalSchema(table);
+  if (!localSchema || Object.keys(localSchema).length === 0) {
+    console.log(`   ⏭  ← ${table.padEnd(24)} not in local DB, skipping`);
+    return { table, pulled: 0, failed: 0, total: 0, note: "no local table" };
+  }
+
+  // Fetch all rows via direct REST API
   let allRows = [];
   const PAGE = 1000;
   let offset = 0;
   while (true) {
     const url = `${SUPA_URL}/rest/v1/${table}?select=*&limit=${PAGE}&offset=${offset}`;
     const res = await fetch(url, {
-      headers: {
-        "apikey":         SUPA_KEY,
-        "Authorization":  `Bearer ${SUPA_KEY}`,
-      }
+      headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
     });
     if (!res.ok) {
       const txt = await res.text();
@@ -92,37 +109,38 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
     return { table, pulled: 0, failed: 0, total: 0, note: "empty" };
   }
 
-  let pulled = 0, failed = 0;
-  const BATCH = 100;
+  // Only use columns that exist in BOTH Supabase response AND local table
+  const supabaseCols = Object.keys(allRows[0]);
+  const cols = supabaseCols.filter(c => !skipCols.includes(c) && localSchema.hasOwnProperty(c));
 
-  // Determine columns from first row (excluding skipped columns)
-  const sampleFiltered = {};
-  for (const [k] of Object.entries(allRows[0])) {
-    if (!skipCols.includes(k)) sampleFiltered[k] = true;
-  }
-  const cols = Object.keys(sampleFiltered);
-  if (!cols.length) return { table, pulled: 0, failed: 0, total: allRows.length };
+  if (!cols.length) return { table, pulled: 0, failed: 0, total: allRows.length, note: "no matching cols" };
 
   const sets = cols
     .filter(c => !conflictCols.includes(c))
     .map(c => `"${c}" = EXCLUDED."${c}"`);
-
   const conflictClause = `ON CONFLICT (${conflictCols.map(c => `"${c}"`).join(", ")})`;
   const updateClause   = sets.length ? `DO UPDATE SET ${sets.join(", ")}` : "DO NOTHING";
+
+  let pulled = 0, failed = 0;
+  const BATCH = 100;
 
   for (let i = 0; i < allRows.length; i += BATCH) {
     const batch = allRows.slice(i, i + BATCH);
     try {
-      // Build multi-row INSERT: ($1,$2,...),($n+1,$n+2,...), ...
-      const values  = [];
-      const rowPhs  = [];
-      let   counter = 1;
+      const values = [], rowPhs = [];
+      let counter = 1;
 
       for (const row of batch) {
         const ph = [];
         for (const c of cols) {
-          const v = row[c];
-          values.push(v instanceof Date ? v.toISOString() : v);
+          let v = row[c];
+          // Convert JS arrays/objects → JSON string (avoids pg sending as PG array literal)
+          if (v !== null && v !== undefined && typeof v === "object" && !(v instanceof Date)) {
+            v = JSON.stringify(v);
+          } else if (v instanceof Date) {
+            v = v.toISOString();
+          }
+          values.push(v);
           ph.push(`$${counter++}`);
         }
         rowPhs.push(`(${ph.join(", ")})`);
@@ -133,11 +151,10 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
         VALUES ${rowPhs.join(", ")}
         ${conflictClause} ${updateClause}
       `;
-
       await pool.query(sql, values);
       pulled += batch.length;
     } catch (e) {
-      console.log(`   ⚠️  ${table} pull batch ${Math.floor(i/BATCH)+1}: ${e.message.slice(0, 100)}`);
+      console.log(`   ⚠️  ${table} pull batch ${Math.floor(i/BATCH)+1}: ${e.message.slice(0, 120)}`);
       failed += batch.length;
     }
   }
