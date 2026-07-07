@@ -65,20 +65,27 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
   const skipCols = excludeFromPull !== undefined ? excludeFromPull : excludeFromRow;
   const conflictCols = conflict.split(",").map(c => c.trim());
 
-  // Fetch all rows from Supabase (paginated)
+  // Fetch all rows via direct REST API (more reliable than JS client for reads)
   let allRows = [];
   const PAGE = 1000;
-  let from = 0;
+  let offset = 0;
   while (true) {
-    const { data, error } = await supabase
-      .from(table)
-      .select("*")
-      .range(from, from + PAGE - 1);
-    if (error) throw new Error(`Supabase fetch: ${error.message}`);
-    if (!data || data.length === 0) break;
+    const url = `${SUPA_URL}/rest/v1/${table}?select=*&limit=${PAGE}&offset=${offset}`;
+    const res = await fetch(url, {
+      headers: {
+        "apikey":         SUPA_KEY,
+        "Authorization":  `Bearer ${SUPA_KEY}`,
+      }
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt.slice(0, 120)}`);
+    }
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) break;
     allRows = allRows.concat(data);
     if (data.length < PAGE) break;
-    from += PAGE;
+    offset += PAGE;
   }
 
   if (!allRows.length) {
