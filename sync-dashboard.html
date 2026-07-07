@@ -172,9 +172,11 @@
     }
 
     document.getElementById('val-time').textContent = 'Last: ' + fmt(d.timestamp);
-    document.getElementById('val-synced').textContent = (d.total_synced || 0).toLocaleString();
+    const pushed = d.total_pushed || d.total_synced || 0;
+    const pulled = d.total_pulled || 0;
+    document.getElementById('val-synced').textContent = (pushed + pulled).toLocaleString();
     document.getElementById('val-failed-sub').textContent =
-      d.total_failed > 0 ? `⚠️ ${d.total_failed} failed` : '0 failures';
+      d.total_failed > 0 ? `⚠️ ${d.total_failed} failed` : `↓${pulled.toLocaleString()} pulled · ↑${pushed.toLocaleString()} pushed`;
     document.getElementById('val-duration').textContent = d.duration_sec || '—';
 
     // Next sync countdown
@@ -184,16 +186,19 @@
     if (!d.tables?.length) return;
     const tbody = document.getElementById('table-body');
     tbody.innerHTML = d.tables.map(t => {
-      const pct = t.total > 0 ? Math.round((t.synced / t.total) * 100) : 0;
-      const ok  = t.failed === 0 && t.total > 0;
-      const skip = t.total === 0;
-      const icon = skip ? '⏭' : (ok ? '✅' : (t.synced > 0 ? '⚠️' : '❌'));
+      const pushed = t.synced || 0;
+      const pulled = t.pulled || 0;
+      const total  = t.total  || 0;
+      const pct    = total > 0 ? Math.round((pushed / total) * 100) : 0;
+      const ok     = t.failed === 0 && total > 0;
+      const skip   = total === 0;
+      const icon   = skip ? '⏭' : (ok ? '✅' : (pushed > 0 ? '⚠️' : '❌'));
       const barColor = pct === 100 ? '' : 'warn';
       return `
         <tr>
           <td class="tbl-name">${t.table}</td>
-          <td class="${ok||skip ? 'tbl-ok' : (t.synced>0?'':'tbl-fail')}">${t.synced}</td>
-          <td class="tbl-skip">${t.total}</td>
+          <td class="${ok||skip ? 'tbl-ok' : (pushed>0?'':'tbl-fail')}">↑${pushed} ↓${pulled}</td>
+          <td class="tbl-skip">${total}</td>
           <td>
             ${!skip ? `<div class="bar-wrap"><div class="bar-fill ${barColor}" style="width:${pct}%"></div></div> <span style="font-size:11px;color:#475569;margin-left:6px">${pct}%</span>` : '<span style="color:#475569;font-size:11px">empty</span>'}
           </td>
@@ -236,11 +241,13 @@
       if (d.ok) {
         const rep = d.report;
         msg.className = 'msg ok show';
-        msg.textContent = `✅ Sync complete in ${rep.duration_sec}s — ${rep.total_synced} records synced, ${rep.total_failed} failed`;
+        const pushed = rep.total_pushed || rep.total_synced || 0;
+        const pulled = rep.total_pulled || 0;
+        msg.textContent = `✅ Sync complete in ${rep.duration_sec}s — ↓${pulled} pulled, ↑${pushed} pushed, ${rep.total_failed} failed`;
         log.textContent = rep.tables.map(t =>
           t.total === 0 ? `  ⏭  ${t.table.padEnd(24)} empty`
-          : t.failed === 0 ? `  ✅ ${t.table.padEnd(24)} ${t.synced}/${t.total} synced`
-          : `  ⚠️  ${t.table.padEnd(24)} ${t.synced}/${t.total} synced, ${t.failed} failed`
+          : t.failed === 0 ? `  ✅ ${t.table.padEnd(24)} ↑${t.synced}/${t.total} pushed · ↓${t.pulled||0} pulled`
+          : `  ⚠️  ${t.table.padEnd(24)} ↑${t.synced}/${t.total} pushed, ${t.failed} failed`
         ).join('\n');
         renderReport(rep);
       } else {
