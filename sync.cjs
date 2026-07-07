@@ -86,38 +86,52 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
   }
 
   let pulled = 0, failed = 0;
+  const BATCH = 100;
 
-  for (const row of allRows) {
+  // Determine columns from first row (excluding skipped columns)
+  const sampleFiltered = {};
+  for (const [k] of Object.entries(allRows[0])) {
+    if (!skipCols.includes(k)) sampleFiltered[k] = true;
+  }
+  const cols = Object.keys(sampleFiltered);
+  if (!cols.length) return { table, pulled: 0, failed: 0, total: allRows.length };
+
+  const sets = cols
+    .filter(c => !conflictCols.includes(c))
+    .map(c => `"${c}" = EXCLUDED."${c}"`);
+
+  const conflictClause = `ON CONFLICT (${conflictCols.map(c => `"${c}"`).join(", ")})`;
+  const updateClause   = sets.length ? `DO UPDATE SET ${sets.join(", ")}` : "DO NOTHING";
+
+  for (let i = 0; i < allRows.length; i += BATCH) {
+    const batch = allRows.slice(i, i + BATCH);
     try {
-      // Build filtered row (skip locally-managed columns like SERIAL ids)
-      const filtered = {};
-      for (const [k, v] of Object.entries(row)) {
-        if (skipCols.includes(k)) continue;
-        // Convert null-ish dates, keep nulls as null
-        filtered[k] = v instanceof Date ? v.toISOString() : v;
+      // Build multi-row INSERT: ($1,$2,...),($n+1,$n+2,...), ...
+      const values  = [];
+      const rowPhs  = [];
+      let   counter = 1;
+
+      for (const row of batch) {
+        const ph = [];
+        for (const c of cols) {
+          const v = row[c];
+          values.push(v instanceof Date ? v.toISOString() : v);
+          ph.push(`$${counter++}`);
+        }
+        rowPhs.push(`(${ph.join(", ")})`);
       }
-
-      const cols = Object.keys(filtered);
-      if (!cols.length) continue;
-
-      const vals  = Object.values(filtered);
-      const ph    = cols.map((_, i) => `$${i + 1}`);
-      const sets  = cols
-        .filter(c => !conflictCols.includes(c))
-        .map(c => `"${c}" = EXCLUDED."${c}"`);
 
       const sql = `
         INSERT INTO "${table}" (${cols.map(c => `"${c}"`).join(", ")})
-        VALUES (${ph.join(", ")})
-        ON CONFLICT (${conflictCols.map(c => `"${c}"`).join(", ")})
-        ${sets.length ? `DO UPDATE SET ${sets.join(", ")}` : "DO NOTHING"}
+        VALUES ${rowPhs.join(", ")}
+        ${conflictClause} ${updateClause}
       `;
 
-      await pool.query(sql, vals);
-      pulled++;
+      await pool.query(sql, values);
+      pulled += batch.length;
     } catch (e) {
-      console.log(`   ⚠️  ${table} pull row: ${e.message.slice(0, 100)}`);
-      failed++;
+      console.log(`   ⚠️  ${table} pull batch ${Math.floor(i/BATCH)+1}: ${e.message.slice(0, 100)}`);
+      failed += batch.length;
     }
   }
 
