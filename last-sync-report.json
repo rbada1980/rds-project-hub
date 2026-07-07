@@ -1,145 +1,125 @@
 {
-  "timestamp": "2026-07-07T12:30:46.750Z",
-  "ist_time": "2026-07-07 18:00:46 IST",
-  "duration_sec": 10.8,
-  "total_synced": 2118,
-  "total_pushed": 1059,
-  "total_pulled": 1059,
-  "total_failed": 0,
-  "status": "success",
+  "timestamp": "2026-07-07T12:35:18.007Z",
+  "ist_time": "2026-07-07 18:05:18 IST",
+  "duration_sec": 6.8,
+  "total_synced": 1056,
+  "total_failed": 3,
+  "status": "partial",
   "tables": [
     {
       "table": "users",
       "synced": 29,
       "failed": 0,
-      "total": 29,
-      "pulled": 29
+      "total": 29
     },
     {
       "table": "clients",
       "synced": 3,
       "failed": 0,
-      "total": 3,
-      "pulled": 3
+      "total": 3
     },
     {
       "table": "projects",
       "synced": 73,
       "failed": 0,
-      "total": 73,
-      "pulled": 73
+      "total": 73
     },
     {
       "table": "tasks",
       "synced": 687,
       "failed": 0,
-      "total": 687,
-      "pulled": 687
+      "total": 687
     },
     {
       "table": "task_files",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     },
     {
       "table": "task_comments",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     },
     {
       "table": "notifications",
       "synced": 240,
       "failed": 0,
-      "total": 240,
-      "pulled": 240
+      "total": 240
     },
     {
       "table": "announcements",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     },
     {
       "table": "workflows",
       "synced": 3,
       "failed": 0,
-      "total": 3,
-      "pulled": 3
+      "total": 3
     },
     {
       "table": "war_room_messages",
       "synced": 1,
       "failed": 0,
-      "total": 1,
-      "pulled": 1
+      "total": 1
     },
     {
       "table": "war_room_pins",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     },
     {
       "table": "war_room_reactions",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     },
     {
       "table": "war_room_reads",
       "synced": 3,
       "failed": 0,
-      "total": 3,
-      "pulled": 3
+      "total": 3
     },
     {
       "table": "war_room_scheduled",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     },
     {
       "table": "settings",
       "synced": 5,
       "failed": 0,
-      "total": 5,
-      "pulled": 5
+      "total": 5
     },
     {
       "table": "attendance",
       "synced": 12,
       "failed": 0,
-      "total": 12,
-      "pulled": 12
+      "total": 12
     },
     {
       "table": "breaks",
-      "synced": 3,
-      "failed": 0,
-      "total": 3,
-      "pulled": 3
+      "synced": 0,
+      "failed": 3,
+      "total": 3
     },
     {
       "table": "time_logs",
       "synced": 0,
       "failed": 0,
       "total": 0,
-      "note": "empty",
-      "pulled": 0
+      "note": "empty"
     }
   ]
 }
