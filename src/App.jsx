@@ -1390,6 +1390,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
   const [selMember,setSM]=useState(null); // selected team member for drill-down
   const [memberSF,setMSF]=useState("All"); // status filter for member tasks
   const [tlStatModal,setTSM]=useState(null);
+  const [tlClient,setTLClient]=useState(null); // selected client card filter
 
   // Tasks where I'm detailer (my review work)
   const detailerTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&matchesMe(t.detailer));
@@ -1480,12 +1481,50 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>{setTab("all");setSF("Overdue");}}/>
       </div>
 
+      {/* Our Clients */}
+      {(()=>{
+        const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
+        const allClients=[...new Set(projects.map(p=>p.client||"").filter(Boolean))].sort();
+        if(!allClients.length)return null;
+        return(
+          <div style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:18,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
+              <span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{allClients.length} clients</span>
+              {tlClient&&<button onClick={()=>{setTLClient(null);setSDT(false);}} style={{marginLeft:"auto",background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:12,borderRadius:6,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>✕ Clear filter</button>}
+            </div>
+            <div style={{display:"flex",gap:isMobile?10:14,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
+              {allClients.map((cl,i)=>{
+                const cc=clColors[i%clColors.length];
+                const cP=projects.filter(p=>(p.client||"")===cl);
+                const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
+                const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                const isSel=tlClient===cl;
+                return(
+                  <div key={cl} onClick={()=>{setTLClient(isSel?null:cl);setSDT(true);}}
+                    style={{background:isSel?cc+"18":C.card,border:`1px solid ${isSel?cc:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:isSel?`0 4px 20px ${cc}33`:"none"}}
+                    onMouseEnter={e=>{if(!isSel){e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}}
+                    onMouseLeave={e=>{if(!isSel){e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}}>
+                    <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
+                    <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
+                    <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
+                    {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
+                    <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>{isSel?"✓ Filtering →":"Click to view →"}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Filter bar */}
       {(()=>{
         const allA=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))].sort();
-        const hasF=fSearch||fProject!=="All"||fAssignee!=="All"||fStatus!=="All";
+        const hasF=fSearch||fProject!=="All"||fAssignee!=="All"||fStatus!=="All"||!!tlClient;
         const ft=allTasks.filter(t=>{
           const pj=projects.find(p=>p.id===t.project_id);
+          if(tlClient&&(pj?.client||"")!==tlClient)return false;
           if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
           if(fProject!=="All"&&t.project_id!==fProject)return false;
           if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
@@ -1508,7 +1547,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
               <option value="All">All Statuses</option>
               {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
             </select>
-            {hasF&&<button onClick={()=>{setFS("");setFP("All");setFA("All");setFSt("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+            {hasF&&<button onClick={()=>{setFS("");setFP("All");setFA("All");setFSt("All");setTLClient(null);}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
             <button onClick={()=>setSDT(v=>!v)} style={{...GBtn,padding:"8px 14px",fontSize:13,whiteSpace:"nowrap"}}>{showDT?"Hide Tasks ▲":"Show Tasks ▼"}</button>
           </div>
           {showDT&&(
