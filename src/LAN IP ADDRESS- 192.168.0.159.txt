@@ -1,7 +1,0 @@
-LAN IP ADDRESS:- 192.168.0.159
-
-PostgreSQL
-
-password:- rds2026 
-
-Port: 5432 (default)
