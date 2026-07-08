@@ -3218,7 +3218,8 @@ function exportSubmissionList(projects,tasks,today){
   const we=new Date(today);we.setDate(we.getDate()+(6-we.getDay()));
   const wsStr=ws.toISOString().slice(0,10);
   const weStr=we.toISOString().slice(0,10);
-  const inRange=(t,from,to)=>{const d1=t.client_sub_date;const d2=t.due_date;return(d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to);};
+  const ds=v=>v?String(v).slice(0,10):null;
+  const inRange=(t,from,to)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to);};
   const todayTasks=tasks.filter(t=>inRange(t,today,today));
   const weekTasks=tasks.filter(t=>inRange(t,wsStr,weStr)&&!inRange(t,today,today));
   const safe=`Submission List - ${today}`;
@@ -3277,7 +3278,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const {from:rangeFrom,to:rangeTo,label:rangeLabel,icon:rangeIcon,color:rangeColor}=getRangeDates();
 
   const scopedProjects=isClient?projects.filter(p=>(p.client||"").toLowerCase()===(clientName||"").toLowerCase()):projects;
-  const inRange=(t,f,to)=>{const d1=t.client_sub_date;const d2=t.due_date;return(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);};
+  const ds=v=>v?String(v).slice(0,10):null;
+  const inRange=(t,f,to)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);};
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
   const periodTasksRaw=allTasks.filter(t=>inRange(t,rangeFrom,rangeTo)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));

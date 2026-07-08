@@ -7,7 +7,12 @@
 // ============================================================
 
 const express        = require("express");
-const { Pool }       = require("pg");
+const { Pool, types } = require("pg");
+// Return PostgreSQL date/timestamp as plain "YYYY-MM-DD" strings (not Date objects)
+// Prevents "2026-07-09T00:00:00.000Z" vs "2026-07-09" comparison failures in the frontend
+types.setTypeParser(1082, val => val);   // date
+types.setTypeParser(1114, val => val);   // timestamp without tz
+types.setTypeParser(1184, val => val);   // timestamp with tz
 const cors           = require("cors");
 const path           = require("path");
 const multer         = require("multer");
