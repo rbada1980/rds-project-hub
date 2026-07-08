@@ -73,11 +73,8 @@ function buildEmail(name, tasks, pm, dateLabel) {
 <tr><td style="padding:20px 28px;">
   <table cellpadding="0" cellspacing="0" width="100%"><tr>
     <td style="width:1px;white-space:nowrap;">
-      <table cellpadding="0" cellspacing="0"><tr><td style="background:#ffffff;border-radius:8px;padding:7px 14px;">
-        <table cellpadding="0" cellspacing="0"><tr>
-          <td style="width:30px;height:30px;background:#1a3a6b;border-radius:6px;text-align:center;vertical-align:middle;font-weight:800;font-size:11px;color:#ffffff;letter-spacing:1px;">RDS</td>
-          <td style="padding-left:8px;font-size:12px;font-weight:800;color:#1a3a6b;letter-spacing:1px;white-space:nowrap;">TECHSERV</td>
-        </tr></table>
+      <table cellpadding="0" cellspacing="0"><tr><td style="background:#ffffff;border-radius:8px;padding:6px 12px;">
+        <img src="https://hub-rdsprojects.com/logo.png" alt="RDS" style="height:38px;width:auto;display:block;" />
       </td></tr></table>
     </td>
     <td style="width:1px;padding:0 16px;"><div style="width:1px;height:36px;background:rgba(255,255,255,0.2);"></div></td>
