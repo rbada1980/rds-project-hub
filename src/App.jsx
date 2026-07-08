@@ -908,7 +908,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
 }
 function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null}){
   const [h,sh]=useState(false);
-  const td={padding:"10px 16px",borderBottom:`1px solid ${C.border}`};
+  const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
   const overdue=task.due_date&&task.due_date<today&&!isDone(task.status);
   const showCb=!!onSelect;
@@ -919,18 +919,23 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      <td style={td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:13}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
-      <td style={td}><span style={{color:C.t2,fontSize:12}}>{project?.name}</span></td>
-      <td style={td}><span style={{color:C.teal,fontSize:12}}>{task.client||"—"}</span></td>
-      <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.scope||"—"}</span></td>
+      <td style={{...td,maxWidth:220,minWidth:120}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
+      <td style={{...td,maxWidth:130}}><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
+      <td style={{...td,maxWidth:100}}><span style={{color:C.teal,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>
       <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
-      <td style={td}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={task.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
-      <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.detailer||"—"}</span></td>
-      <td style={td}><span style={{color:C.t2,fontSize:12}}>{task.checker||"—"}</span></td>
-      <td style={td}><span style={{color:overdue?C.red:C.t3,fontSize:12,fontWeight:overdue?700:400}}>{task.due_date||"—"}{overdue?" ⚠":""}</span></td>
-      <td style={td}><span style={{color:C.t3,fontSize:12}}>{task.client_sub_date||"—"}</span></td>
-      <td style={{...td,opacity:h?1:0,transition:"opacity .12s"}}><div style={{display:"flex",gap:4}}>
+      <td style={{...td,maxWidth:110}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={task.assignee} size={20}/><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>—</span>}</td>
+      <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+        {task.detailer?<span style={{color:C.t2,fontSize:11}}>✏ {task.detailer}</span>:null}
+        {task.checker?<span style={{color:"#8b5cf6",fontSize:11}}>✓ {task.checker}</span>:null}
+        {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:11}}>—</span>}
+      </div></td>
+      <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+        {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:11,fontWeight:overdue?700:400}}>📅 {task.due_date}{overdue?" ⚠":""}</span>:null}
+        {task.client_sub_date?<span style={{color:C.teal,fontSize:11}}>🗓 {task.client_sub_date}</span>:null}
+        {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:11}}>—</span>}
+      </div></td>
+      <td style={{...td,width:80}}><div style={{display:"flex",gap:3}}>
         {onFiles&&<IBtn icon="📎" onClick={e=>{e.stopPropagation();onFiles(task);}} title="Files"/>}
         {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
         {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
@@ -11367,18 +11372,18 @@ export default function App(){
               })}
             </div>
           ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:780}}>
               <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"11px 12px",width:36}}>
+                {canEdit&&<th style={{padding:"9px 10px",width:36}}>
                   <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
                     style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
                   </div>
                 </th>}
-                {["Task","Project","Client","Scope","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date",""].map(h=>(<th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
+                {["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"].map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?13:12} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
             </table>
           </div>
           )}
@@ -11584,14 +11589,4 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
       </button>}
       {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        style={{flex:1,display:"flex",flexDirection:"column",alignIte
