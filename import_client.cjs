@@ -1,225 +1,187 @@
-// import_client.cjs — White Cap full import
+// ══════════════════════════════════════════════════════════════
+// import_client.cjs — White Cap project/task importer
 // Run: node import_client.cjs
-'use strict';
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
+// ══════════════════════════════════════════════════════════════
+"use strict";
+const https  = require("https");
+const path   = require("path");
+const XLSX   = require("xlsx");
+const fs     = require("fs");
 
+// ── Credentials ─────────────────────────────────────────────
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
-const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
-const supabase = createClient(SUPA_URL, SUPA_KEY);
+const cfg      = JSON.parse(fs.readFileSync(path.join(__dirname, "sync-config.json"), "utf8"));
+const SUPA_KEY = cfg.service_key;   // service role — bypasses RLS
+const CLIENT   = "White Cap";
 
-const CLIENT_NAME = "White Cap";
-const CLIENT_VARIANTS = ["white cap", "whitecap", "white-cap"];
-const PASSWORD = "RDSTechserv@2026";
-
-const COLORS = [
-  "#6366f1","#14b8a6","#f59e0b","#ef4444","#8b5cf6",
-  "#06b6d4","#10b981","#f97316","#ec4899","#3b82f6",
-  "#84cc16","#a855f7","#0ea5e9","#22c55e","#eab308",
+const EXCEL_CANDIDATES = [
+  path.join(__dirname, "White Cap Projects Tracker2_2026.xlsx"),
+  "C:\\Users\\HP\\AppData\\Roaming\\Claude\\local-agent-mode-sessions\\919964d4-cd92-4eb6-b494-6c7ad2c02d36\\4c052105-2aba-4ec0-9a90-013070bec645\\local_d0d6e4a5-acfb-4c98-8222-e8da51f65329\\uploads\\White Cap Projects Tracker2_2026.xlsx",
 ];
 
-// Load parsed data
-const dataPath = path.join(__dirname, 'wc_data.json');
-if (!fs.existsSync(dataPath)) {
-  console.error('wc_data.json not found. Run the Python parser first.');
-  process.exit(1);
-}
-const DATA = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+const PALETTE = [
+  "#6366f1","#0ea5e9","#8b5cf6","#10b981","#f59e0b",
+  "#ef4444","#ec4899","#14b8a6","#f97316","#a78bfa",
+  "#22d3ee","#84cc16","#fb7185","#fdba74","#a3e635",
+];
 
-function toUsername(name) {
-  return name.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-}
-
-function isWhiteCap(clientField) {
-  if (!clientField) return false;
-  const lc = String(clientField).toLowerCase().replace(/[-\s]/g, '');
-  return CLIENT_VARIANTS.some(v => lc.includes(v.replace(/[-\s]/g, '')));
-}
-
-async function safeInsert(table, row, label) {
-  const fields = { ...row };
-  while (true) {
-    const { data, error } = await supabase.from(table).insert([fields]).select().single();
-    if (!error) {
-      process.stdout.write('  OK ' + label + '\n');
-      return data;
-    }
-    const colMatch = error.message.match(/column "([^"]+)" of relation/);
-    if (colMatch) {
-      const badCol = colMatch[1];
-      process.stdout.write('  SKIP column ' + badCol + ' not in ' + table + ' - retrying\n');
-      delete fields[badCol];
-      continue;
-    }
-    process.stderr.write('  FAIL ' + label + ': ' + error.message + '\n');
-    return null;
-  }
-}
-
-async function main() {
-  console.log('=== White Cap Import Starting ===\n');
-
-  // 1. Fetch existing users
-  console.log('[1] Fetching existing users...');
-  const { data: existingUsers, error: uErr } = await supabase.from('users').select('*');
-  if (uErr) { console.error('Cannot fetch users:', uErr.message); process.exit(1); }
-  console.log('  Found ' + existingUsers.length + ' existing users\n');
-
-  // 2. Collect unique names from Detailer + Checker
-  console.log('[2] Collecting unique names...');
-  const nameSet = new Set();
-  for (const proj of DATA.projects) {
-    for (const t of proj.tasks) {
-      if (t.detailer) t.detailer.split(/[,&\/]+/).map(s => s.trim()).filter(Boolean).forEach(n => nameSet.add(n));
-      if (t.checker)  t.checker.split(/[,&\/]+/).map(s => s.trim()).filter(Boolean).forEach(n => nameSet.add(n));
-    }
-  }
-  const uniqueNames = [...nameSet].filter(Boolean);
-  console.log('  ' + uniqueNames.length + ' unique names: ' + uniqueNames.join(', ') + '\n');
-
-  // 3. Create missing users
-  console.log('[3] Creating missing users...');
-  let usersCreated = 0;
-  const userMap = {};
-  for (const u of existingUsers) {
-    userMap[u.name.toLowerCase()] = u.username;
-    if (u.username) userMap[u.username.toLowerCase()] = u.username;
-  }
-
-  for (const name of uniqueNames) {
-    const lc = name.toLowerCase();
-    if (userMap[lc]) {
-      console.log('  Skip (exists): ' + name);
-      continue;
-    }
-    let username = toUsername(name);
-    const exists = existingUsers.find(u => u.username === username);
-    if (exists) username = username + '_2';
-
-    const newUser = { name, username, password: PASSWORD, role: 'Rebar' };
-    const { data: created, error: cErr } = await supabase.from('users').insert([newUser]).select().single();
-    if (cErr) {
-      if (cErr.message.includes('duplicate') || cErr.message.includes('unique')) {
-        username = username + '_2';
-        const { data: retry, error: rErr } = await supabase.from('users').insert([{ ...newUser, username }]).select().single();
-        if (rErr) { console.error('  FAIL User ' + name + ': ' + rErr.message); continue; }
-        userMap[lc] = username;
-        usersCreated++;
-        console.log('  Created user: ' + name + ' (@' + username + ') [retried]');
-      } else {
-        console.error('  FAIL User ' + name + ': ' + cErr.message);
-        continue;
-      }
-    } else {
-      userMap[lc] = username;
-      usersCreated++;
-      console.log('  Created user: ' + name + ' (@' + username + ')');
-    }
-  }
-  console.log('');
-
-  // 4. TEST INSERT
-  console.log('[4] Running test insert...');
-  const testProj = { name: '__TEST_WC_IMPORT__', client: CLIENT_NAME, color: '#000000', description: 'test', assigned_users: [] };
-  const { data: tProj, error: tProjErr } = await supabase.from('projects').insert([testProj]).select().single();
-  if (tProjErr) {
-    console.error('Test project insert FAILED:', tProjErr.message);
-    process.exit(1);
-  }
-  console.log('  Test project inserted');
-
-  const testTask = { project_id: tProj.id, title: '__TEST_TASK__', status: 'Not Yet Started', client: CLIENT_NAME, tags: [] };
-  const { data: tTask, error: tTaskErr } = await supabase.from('tasks').insert([testTask]).select().single();
-  if (tTaskErr) {
-    await supabase.from('projects').delete().eq('id', tProj.id);
-    console.error('Test task insert FAILED:', tTaskErr.message);
-    process.exit(1);
-  }
-  console.log('  Test task inserted\n');
-
-  // 5. Delete test records
-  console.log('[5] Deleting test records...');
-  await supabase.from('tasks').delete().eq('id', tTask.id);
-  await supabase.from('projects').delete().eq('id', tProj.id);
-  console.log('  Test records cleaned\n');
-
-  // 6. Delete existing White Cap data
-  console.log('[6] Deleting existing White Cap projects & tasks...');
-  const { data: existingProjs } = await supabase.from('projects').select('id, client, name');
-  const wcProjs = (existingProjs || []).filter(p => isWhiteCap(p.client) || isWhiteCap(p.name));
-  console.log('  Found ' + wcProjs.length + ' existing White Cap projects to remove');
-
-  for (const p of wcProjs) {
-    await supabase.from('tasks').delete().eq('project_id', p.id);
-    await supabase.from('projects').delete().eq('id', p.id);
-    console.log('  Deleted: ' + p.name);
-  }
-  console.log('');
-
-  // 7. Insert all projects & tasks
-  console.log('[7] Inserting projects and tasks...');
-  let projInserted = 0, taskInserted = 0, taskFailed = 0;
-
-  for (let pi = 0; pi < DATA.projects.length; pi++) {
-    const proj = DATA.projects[pi];
-    const tasks = proj.tasks;
-
-    const usernames = new Set();
-    for (const t of tasks) {
-      if (t.detailer) t.detailer.split(/[,&\/]+/).map(s=>s.trim()).filter(Boolean)
-        .forEach(n => { const u = userMap[n.toLowerCase()]; if (u) usernames.add(u); });
-      if (t.checker) t.checker.split(/[,&\/]+/).map(s=>s.trim()).filter(Boolean)
-        .forEach(n => { const u = userMap[n.toLowerCase()]; if (u) usernames.add(u); });
-    }
-
-    const dates = tasks.map(t => t.client_sub_date).filter(Boolean).sort();
-    const deadline = dates.length ? dates[dates.length - 1] : null;
-
-    const projRow = {
-      name: proj.name,
-      client: CLIENT_NAME,
-      color: COLORS[pi % COLORS.length],
-      description: '',
-      assigned_users: [...usernames],
-      deadline,
+// ── Supabase REST helper ─────────────────────────────────────
+function supa(method, endpoint, body) {
+  return new Promise((resolve, reject) => {
+    const data   = body ? JSON.stringify(body) : null;
+    const parsed = new URL(SUPA_URL + endpoint);
+    const opts   = {
+      hostname: parsed.hostname,
+      path:     parsed.pathname + parsed.search,
+      method,
+      headers: {
+        "apikey":        SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Content-Type":  "application/json",
+        "Prefer":        "return=representation",
+      },
     };
+    if (data) opts.headers["Content-Length"] = Buffer.byteLength(data);
+    const req = https.request(opts, res => {
+      let raw = "";
+      res.on("data", c => raw += c);
+      res.on("end", () => {
+        try {
+          const out = raw ? JSON.parse(raw) : null;
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve({ data: out, status: res.statusCode });
+          else reject(new Error(`HTTP ${res.statusCode}: ${raw.slice(0, 400)}`));
+        } catch (e) { reject(new Error(`Parse: ${e.message} raw=${raw.slice(0,200)}`)); }
+      });
+    });
+    req.on("error", reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
 
-    console.log('\nProject [' + (pi+1) + '/' + DATA.projects.length + ']: ' + proj.name);
-    const pData = await safeInsert('projects', projRow, proj.name);
-    if (!pData) continue;
-    projInserted++;
+// ── Excel date serial → YYYY-MM-DD ──────────────────────────
+function toISO(val) {
+  if (!val && val !== 0) return null;
+  if (typeof val === "number") {
+    const d = new Date((val - 25569) * 86400 * 1000);
+    return d.toISOString().slice(0, 10);
+  }
+  const s = val.toString().trim();
+  if (!s) return null;
+  // MM-DD-YYYY or MM/DD/YYYY
+  const m1 = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+  if (m1) {
+    let [, mm, dd, yy] = m1;
+    if (yy.length === 2) yy = "20" + yy;
+    return `${yy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+  }
+  // YYYY-MM-DD already
+  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m2) return s;
+  return null;
+}
 
-    for (const t of tasks) {
-      const taskRow = {
-        project_id: pData.id,
-        title: t.title,
-        status: t.status,
-        detailer: t.detailer || null,
-        checker: t.checker || null,
-        client_sub_date: t.client_sub_date || null,
-        client: CLIENT_NAME,
-        tags: [],
-        priority: 'Medium',
-        assignee: t.detailer || null,
-      };
+// ── Status mapping ───────────────────────────────────────────
+function mapStatus(raw) {
+  const s = (raw || "").toString().trim().toLowerCase().replace(/\s+/g, "");
+  if (s === "completed")  return "Completed";
+  if (s === "inprogress") return "In Progress";
+  return "Not Yet Started";
+}
 
-      const tData = await safeInsert('tasks', taskRow, t.title.slice(0, 60));
-      if (tData) taskInserted++;
-      else taskFailed++;
+// ── Parse Excel ──────────────────────────────────────────────
+function parseExcel() {
+  let xlPath = null;
+  for (const c of EXCEL_CANDIDATES) { if (fs.existsSync(c)) { xlPath = c; break; } }
+  if (!xlPath) throw new Error("Excel not found. Tried:\n" + EXCEL_CANDIDATES.join("\n"));
+  console.log("📂 Reading:", xlPath);
+
+  const wb   = XLSX.readFile(xlPath);
+  const sn   = wb.SheetNames.find(n => n.toLowerCase().includes("white cap work")) || wb.SheetNames[1];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: "", header: 1 });
+
+  const projects = {};   // projName → { tasks[], detailers:Set, checkers:Set, dates[] }
+  const order    = [];
+  let curProj    = "";
+
+  for (let i = 4; i < rows.length; i++) {
+    const r         = rows[i];
+    const pn        = (r[0] || "").toString().trim();
+    const taskTitle = (r[1] || "").toString().trim();
+
+    if (pn) curProj = pn;
+    if (!curProj || !taskTitle) continue;
+
+    const clientSubDate = toISO(r[3]);
+    const detailer      = (r[4] || "").toString().trim();
+    const checker       = (r[5] || "").toString().trim();
+    const status        = mapStatus(r[2]);
+
+    if (!projects[curProj]) {
+      projects[curProj] = { tasks: [], detailers: new Set(), checkers: new Set(), dates: [] };
+      order.push(curProj);
+    }
+    const p = projects[curProj];
+    detailer.split("/").map(n => n.trim()).filter(Boolean).forEach(n => p.detailers.add(n));
+    checker.split("/").map(n => n.trim()).filter(Boolean).forEach(n => p.checkers.add(n));
+    if (clientSubDate) p.dates.push(clientSubDate);
+
+    p.tasks.push({ title: taskTitle, status, priority: "Medium", assignee: detailer, detailer, checker, scope: "", due_date: null, client_sub_date: clientSubDate, client: CLIENT, tags: [], files: [] });
+  }
+  return { projects, order };
+}
+
+// ── Main ─────────────────────────────────────────────────────
+async function main() {
+  console.log("\n══════════════════════════════════════════");
+  console.log("  White Cap Importer");
+  console.log("══════════════════════════════════════════\n");
+
+  // STEP 1: Parse
+  const { projects, order } = parseExcel();
+  const totalProjects = order.length;
+  const totalTasks    = order.reduce((s, n) => s + projects[n].tasks.length, 0);
+  console.log(`✓ Parsed ${totalProjects} projects, ${totalTasks} tasks\n`);
+
+  // STEP 2: Fetch existing users
+  console.log("🔍 Fetching existing users...");
+  const { data: existingUsers } = await supa("GET", "/rest/v1/users?select=name,username&limit=2000");
+  const userMap = new Map();
+  (existingUsers || []).forEach(u => {
+    userMap.set(u.name.toLowerCase(), u.username);
+    userMap.set(u.username.toLowerCase(), u.username);
+  });
+  console.log(`   Found ${existingUsers?.length || 0} users`);
+
+  // STEP 3: Collect all unique person names
+  const allNames = new Set();
+  order.forEach(pn => {
+    projects[pn].detailers.forEach(n => n.split("/").forEach(p => { const t = p.trim(); if (t) allNames.add(t); }));
+    projects[pn].checkers.forEach(n => n.split("/").forEach(p => { const t = p.trim(); if (t) allNames.add(t); }));
+  });
+
+  // STEP 4: Create missing users
+  let usersCreated = 0;
+  console.log(`\n👤 Checking ${allNames.size} unique names...`);
+  for (const name of allNames) {
+    const key = name.toLowerCase();
+    if (userMap.has(key)) { console.log(`   ↷ ${name} (exists)`); continue; }
+    const uname = key.replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    try {
+      await supa("POST", "/rest/v1/users", { name, username: uname, password: "RDSTechserv@2026", role: "Rebar" });
+      userMap.set(key, uname); userMap.set(uname, uname); usersCreated++;
+      console.log(`   ✓ Created: ${name} (@${uname})`);
+    } catch (e) {
+      try {
+        const u2 = uname + "_2";
+        await supa("POST", "/rest/v1/users", { name, username: u2, password: "RDSTechserv@2026", role: "Rebar" });
+        userMap.set(key, u2); userMap.set(u2, u2); usersCreated++;
+        console.log(`   ✓ Created: ${name} (@${u2})`);
+      } catch (e2) { console.log(`   ❌ Cannot create ${name}: ${e2.message}`); }
     }
   }
 
-  // 8. Summary
-  console.log('\n=== IMPORT COMPLETE ===');
-  console.log('Projects inserted : ' + projInserted);
-  console.log('Tasks inserted    : ' + taskInserted);
-  console.log('Tasks failed      : ' + taskFailed);
-  console.log('Users created     : ' + usersCreated);
-  console.log('=======================\n');
-}
-
-main().catch(err => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+  function resolveUser(raw) {
+    if (!raw) return "";
+    const first = raw.split("/")[0].trim();
+    return userMap.get(first.toLowerCase()) || 
