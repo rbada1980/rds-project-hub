@@ -10551,243 +10551,6 @@ export default function App(){
                 </div>
               </div>
             )}
-            {/* ── Quick Navigation Panel ── */}
-            {(()=>{
-              const isAdminOrMgr=isAdmin||isManager;
-              const allQnClients=isAdminOrMgr?[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort():[];
-              const qnClientProjects=qnClient?accessibleProjects.filter(p=>(p.client||"Unassigned")===qnClient):accessibleProjects;
-              // shared button style
-              const qB=(hi)=>({background:hi?C.accent:C.card,border:`1px solid ${hi?C.accent:C.border}`,color:hi?"#fff":C.t2,fontSize:13,cursor:"pointer",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",transition:"all .15s"});
-              const qClientIdx=allQnClients.indexOf(qnClient);
-              const canPrevCl=isAdminOrMgr&&qClientIdx>0;
-              const canNextCl=isAdminOrMgr&&qClientIdx<allQnClients.length-1;
-              // ── CASE 1: Admin/Manager, no client selected → stat-card style ──
-              if(isAdminOrMgr&&!qnClient){
-                const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
-                return(
-                  <div style={{marginBottom:16}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                    <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:18,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
-                    <span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{allQnClients.length} clients</span>
-                  </div>
-                  <div style={{display:"flex",gap:isMobile?10:14,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
-                    {allQnClients.map((cl,i)=>{
-                      const cc=clColors[i%clColors.length];
-                      const cP=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);
-                      const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
-                      const pct=cT.length?Math.round(cT.filter(t=>isDone(t.status)).length/cT.length*100):0;
-                      const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                      return(
-                        <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
-                          onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
-                          onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
-                          <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
-                          <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
-                          <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
-                          {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
-                          <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
-                        </div>
-                      );
-                    })}
-                    {allQnClients.length===0&&<div style={{color:C.t3,fontSize:13,padding:"18px"}}>No clients found</div>}
-                  </div>
-                  </div>
-                );
-              }
-              // ── CASE 2: Non-admin, no client/project selected → inline project cards ──
-              if(!isAdminOrMgr&&!qnProject&&!qnClient) return(
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?"12px":"14px 20px",marginBottom:16}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12}}>⚡ Quick Nav — Select a Project</div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-                    {qnClientProjects.map(p=>{
-                      const pt=tasks.filter(t=>t.project_id===p.id);
-                      const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                      const pc=p.color||C.blue;
-                      return(
-                        <div key={p.id} onClick={()=>setQnProject(p)}
-                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"all .15s",borderLeft:`4px solid ${pc}`}}
-                          onMouseEnter={e=>{e.currentTarget.style.background=pc+"18";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=pc;}}
-                          onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.transform="";e.currentTarget.style.borderColor=C.border;}}>
-                          <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                          <div style={{height:3,background:C.surface,borderRadius:2,marginBottom:5,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                          <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:pc,fontWeight:700}}>{pt.length} tasks</span>
-                            <span style={{fontSize:11,color:C.green,fontWeight:700}}>{pct}%</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {qnClientProjects.length===0&&<div style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects found</div>}
-                  </div>
-                </div>
-              );
-              // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
-              // Filter projects by search term (name or any matching task)
-              const splitProjects=qnClientProjects.filter(p=>{
-                if(!qnSearch)return true;
-                const ql=qnSearch.toLowerCase();
-                const pt=tasks.filter(t=>t.project_id===p.id);
-                return p.name.toLowerCase().includes(ql)||pt.some(t=>t.title.toLowerCase().includes(ql)||(t.assignee||"").toLowerCase().includes(ql));
-              });
-              const activeProj=qnProject||splitProjects[0]||null;
-              // Normalize "To Do" → "Review" for display purposes in popup
-              const qnNormStatus=s=>s==="To Do"?"Review":s;
-              // Filter tasks by search, employee, status
-              const activeTasks=activeProj?tasks.filter(t=>{
-                if(t.project_id!==activeProj.id)return false;
-                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(qnNormStatus(t.status||"")).toLowerCase().includes(ql))return false;}
-                if(qnFilterEmployee!=="all"&&t.assignee!==qnFilterEmployee)return false;
-                // "Review" filter also matches legacy "To Do" tasks
-                if(qnFilterStatus!=="all"&&qnNormStatus(t.status)!==qnFilterStatus)return false;
-                return true;
-              }):[];
-              // Unique employees & statuses across all projects for this client (normalize "To Do"→"Review")
-              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
-              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean).map(qnNormStatus))].sort();
-              const mobShowTasks=isMobile&&!!qnProject;
-              const closePopup=()=>{setQnClient(null);setQnProject(null);};
-              const acPc=activeProj?.color||C.blue;
-              return(
-                /* ── Backdrop ── */
-                <div onClick={e=>{if(e.target===e.currentTarget)closePopup();}}
-                  style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
-                  {/* ── Modal box ── */}
-                  <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
-                    {/* ── Modal header ── */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
-                      {/* Breadcrumbs */}
-                      <div style={{flex:1,display:"flex",alignItems:"center",gap:isMobile?6:10,minWidth:0,flexWrap:"nowrap",overflow:"hidden"}}>
-                        <span style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Quick Nav</span>
-                        {qnClient&&<><span style={{color:C.border,fontSize:18,lineHeight:1,flexShrink:0}}>›</span>
-                          <span style={{fontSize:isMobile?12:14,color:C.t2,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?90:180,cursor:isAdminOrMgr?"pointer":"default"}} onClick={()=>isAdminOrMgr&&setQnProject(null)}>{qnClient}</span></>}
-                        {!isAdminOrMgr&&!qnClient&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span><span style={{fontSize:13,color:C.t2,fontWeight:700,flexShrink:0}}>My Projects</span></>}
-                        {activeProj&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span>
-                          <span style={{fontSize:isMobile?12:14,color:acPc,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?100:280,flexShrink:1}}>{activeProj.name}</span>
-                          <span style={{fontSize:10,background:acPc+"22",color:acPc,border:`1px solid ${acPc}44`,borderRadius:20,padding:"2px 10px",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{activeTasks.length} tasks</span></>}
-                      </div>
-                      {/* Client Prev / Next */}
-                      {isAdminOrMgr&&!isMobile&&<div style={{display:"flex",gap:6,flexShrink:0}}>
-                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canPrevCl}
-                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canPrevCl?C.t1:C.t3,fontSize:12,cursor:canPrevCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canPrevCl?1:.4}}>← Previous Client</button>
-                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canNextCl}
-                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canNextCl?C.t1:C.t3,fontSize:12,cursor:canNextCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canNextCl?1:.4}}>Next Client →</button>
-                      </div>}
-                      {/* Close ✕ */}
-                      <button onClick={closePopup}
-                        style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",lineHeight:1}}
-                        onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
-                        onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
-                    </div>
-                    {/* ── Search & Filter bar ── */}
-                    <div style={{display:"flex",gap:8,padding:"10px 18px",borderBottom:`1px solid ${C.border}`,background:C.bg+"88",flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",alignItems:"center"}}>
-                      <input placeholder="🔍 Search tasks or projects…" value={qnSearch} onChange={e=>setQnSearch(e.target.value)}
-                        style={{flex:2,minWidth:isMobile?"100%":160,background:C.surface,border:`1px solid ${qnSearch?C.accent:C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
-                      <select value={qnFilterEmployee} onChange={e=>setQnFilterEmployee(e.target.value)}
-                        style={{flex:1,minWidth:120,background:C.surface,border:`1px solid ${qnFilterEmployee!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterEmployee!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
-                        <option value="all">All Employees</option>
-                        {qnAllEmployees.map(e=><option key={e} value={e}>{e}</option>)}
-                      </select>
-                      <select value={qnFilterStatus} onChange={e=>setQnFilterStatus(e.target.value)}
-                        style={{flex:1,minWidth:110,background:C.surface,border:`1px solid ${qnFilterStatus!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterStatus!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
-                        <option value="all">All Statuses</option>
-                        {qnAllStatuses.map(s=><option key={s} value={s}>{s}</option>)}
-                      </select>
-                      {(qnSearch||qnFilterEmployee!=="all"||qnFilterStatus!=="all")&&
-                        <button onClick={()=>{setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-                          style={{background:C.red+"18",border:`1px solid ${C.red}44`,color:C.red,fontSize:11,cursor:"pointer",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>Clear ✕</button>}
-                    </div>
-                    {/* ── Modal body: split ── */}
-                    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-                      {/* LEFT: Project list */}
-                      {(!isMobile||!mobShowTasks)&&(
-                        <div style={{width:isMobile?"100%":280,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"88"}}>
-                          <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>
-                            Projects ({splitProjects.length})
-                          </div>
-                          <div style={{flex:1,overflowY:"auto",padding:"8px 6px"}}>
-                            {splitProjects.map(p=>{
-                              const pt=tasks.filter(t=>t.project_id===p.id);
-                              const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
-                              const pc=p.color||C.blue;
-                              const isAct=activeProj?.id===p.id;
-                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                              return(
-                                <div key={p.id} onClick={()=>setQnProject(p)}
-                                  style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s",position:"relative"}}>
-                                  <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,lineHeight:1.35,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
-                                    <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
-                                    <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
-                                    <span style={{fontSize:10,color:C.t1,flexShrink:0,background:C.surface,borderRadius:4,padding:"2px 6px",fontWeight:600,border:`1px solid ${C.border}`}}>{pt.length} tasks</span>
-                                  </div>
-                                  {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
-                                </div>
-                              );
-                            })}
-                            {splitProjects.length===0&&<div style={{color:C.t3,fontSize:13,padding:"30px",textAlign:"center"}}>No projects</div>}
-                          </div>
-                        </div>
-                      )}
-                      {/* RIGHT: Task list */}
-                      {(!isMobile||mobShowTasks)&&(
-                        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"44"}}>
-                          {/* Task panel header */}
-                          <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:0,display:"flex",alignItems:"center",gap:10,background:C.card+"88"}}>
-                            {isMobile&&<button onClick={()=>setQnProject(null)} style={{...qB(false),fontSize:11,padding:"4px 9px"}}>← Back</button>}
-                            {activeProj?(
-                              <>
-                                <div style={{width:10,height:10,borderRadius:"50%",background:acPc,flexShrink:0}}/>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProj.name}</div>
-                                </div>
-                                <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{activeTasks.length} task{activeTasks.length!==1?"s":""}</span>
-                              </>
-                            ):<span style={{fontSize:13,color:C.t3}}>← Select a project</span>}
-                          </div>
-                          {/* Tasks scrollable */}
-                          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px":"14px 18px",display:"flex",flexDirection:"column",gap:7}}>
-                            {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
-                            {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks in this project</div>}
-                            {activeTasks.map((t,i)=>{
-                              const tDispStatus=qnNormStatus(t.status);
-                              const sc=getStatusColor(tDispStatus);
-                              const od=t.due_date&&t.due_date<today&&!isDone(t.status);
-                              return(
-                                <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
-                                  onMouseEnter={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.boxShadow=`0 2px 10px ${sc}20`;}}
-                                  onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.boxShadow="";}}>
-                                  {/* Number */}
-                                  <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
-                                  {/* Content */}
-                                  <div style={{flex:1,minWidth:0}}>
-                                    <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                                    <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
-                                      {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
-                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
-                                      {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
-                                      {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
-                                    </div>
-                                  </div>
-                                  {/* Edit button */}
-                                  {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}}
-                                    style={{background:C.accent+"18",border:`1px solid ${C.accent}55`,color:C.accent,fontSize:12,cursor:"pointer",borderRadius:7,padding:isMobile?"6px 9px":"6px 14px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}
-                                    onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.accent;}}
-                                    onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;e.currentTarget.style.borderColor=C.accent+"55";}}>
-                                    <span>✏️</span>{!isMobile&&<span>Edit</span>}
-                                  </button>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
             {/* ── Clean Filter Bar ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
               {/* Search - full width on mobile */}
@@ -11190,6 +10953,243 @@ export default function App(){
             </>)}
           </>
         )}
+            {/* ── Quick Navigation Panel ── */}
+        {view==="dashboard"&&(isAdmin||isManager||isTeamLeader)&&(()=>{
+              const isAdminOrMgr=isAdmin||isManager;
+              const allQnClients=isAdminOrMgr?[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort():[];
+              const qnClientProjects=qnClient?accessibleProjects.filter(p=>(p.client||"Unassigned")===qnClient):accessibleProjects;
+              // shared button style
+              const qB=(hi)=>({background:hi?C.accent:C.card,border:`1px solid ${hi?C.accent:C.border}`,color:hi?"#fff":C.t2,fontSize:13,cursor:"pointer",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",transition:"all .15s"});
+              const qClientIdx=allQnClients.indexOf(qnClient);
+              const canPrevCl=isAdminOrMgr&&qClientIdx>0;
+              const canNextCl=isAdminOrMgr&&qClientIdx<allQnClients.length-1;
+              // ── CASE 1: Admin/Manager, no client selected → stat-card style ──
+              if(isAdminOrMgr&&!qnClient){
+                const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
+                return(
+                  <div style={{marginBottom:16}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                    <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:18,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
+                    <span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{allQnClients.length} clients</span>
+                  </div>
+                  <div style={{display:"flex",gap:isMobile?10:14,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
+                    {allQnClients.map((cl,i)=>{
+                      const cc=clColors[i%clColors.length];
+                      const cP=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);
+                      const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
+                      const pct=cT.length?Math.round(cT.filter(t=>isDone(t.status)).length/cT.length*100):0;
+                      const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                      return(
+                        <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
+                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
+                          onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
+                          onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
+                          <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
+                          <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
+                          <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
+                          {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
+                          <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
+                        </div>
+                      );
+                    })}
+                    {allQnClients.length===0&&<div style={{color:C.t3,fontSize:13,padding:"18px"}}>No clients found</div>}
+                  </div>
+                  </div>
+                );
+              }
+              // ── CASE 2: Non-admin, no client/project selected → inline project cards ──
+              if(!isAdminOrMgr&&!qnProject&&!qnClient){if(isTeamLeader)return null;return(
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?"12px":"14px 20px",marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12}}>⚡ Quick Nav — Select a Project</div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+                    {qnClientProjects.map(p=>{
+                      const pt=tasks.filter(t=>t.project_id===p.id);
+                      const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
+                      const pc=p.color||C.blue;
+                      return(
+                        <div key={p.id} onClick={()=>setQnProject(p)}
+                          style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"all .15s",borderLeft:`4px solid ${pc}`}}
+                          onMouseEnter={e=>{e.currentTarget.style.background=pc+"18";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=pc;}}
+                          onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.transform="";e.currentTarget.style.borderColor=C.border;}}>
+                          <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                          <div style={{height:3,background:C.surface,borderRadius:2,marginBottom:5,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:pc,fontWeight:700}}>{pt.length} tasks</span>
+                            <span style={{fontSize:11,color:C.green,fontWeight:700}}>{pct}%</span>
+                          </div>
+                        </div>
+                      );}
+                    })}
+                    {qnClientProjects.length===0&&<div style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects found</div>}
+                  </div>
+                </div>
+              );
+              // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
+              // Filter projects by search term (name or any matching task)
+              const splitProjects=qnClientProjects.filter(p=>{
+                if(!qnSearch)return true;
+                const ql=qnSearch.toLowerCase();
+                const pt=tasks.filter(t=>t.project_id===p.id);
+                return p.name.toLowerCase().includes(ql)||pt.some(t=>t.title.toLowerCase().includes(ql)||(t.assignee||"").toLowerCase().includes(ql));
+              });
+              const activeProj=qnProject||splitProjects[0]||null;
+              // Normalize "To Do" → "Review" for display purposes in popup
+              const qnNormStatus=s=>s==="To Do"?"Review":s;
+              // Filter tasks by search, employee, status
+              const activeTasks=activeProj?tasks.filter(t=>{
+                if(t.project_id!==activeProj.id)return false;
+                if(qnSearch){const ql=qnSearch.toLowerCase();if(!t.title.toLowerCase().includes(ql)&&!(t.assignee||"").toLowerCase().includes(ql)&&!(qnNormStatus(t.status||"")).toLowerCase().includes(ql))return false;}
+                if(qnFilterEmployee!=="all"&&t.assignee!==qnFilterEmployee)return false;
+                // "Review" filter also matches legacy "To Do" tasks
+                if(qnFilterStatus!=="all"&&qnNormStatus(t.status)!==qnFilterStatus)return false;
+                return true;
+              }):[];
+              // Unique employees & statuses across all projects for this client (normalize "To Do"→"Review")
+              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
+              const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean).map(qnNormStatus))].sort();
+              const mobShowTasks=isMobile&&!!qnProject;
+              const closePopup=()=>{setQnClient(null);setQnProject(null);};
+              const acPc=activeProj?.color||C.blue;
+              return(
+                /* ── Backdrop ── */
+                <div onClick={e=>{if(e.target===e.currentTarget)closePopup();}}
+                  style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
+                  {/* ── Modal box ── */}
+                  <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
+                    {/* ── Modal header ── */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
+                      {/* Breadcrumbs */}
+                      <div style={{flex:1,display:"flex",alignItems:"center",gap:isMobile?6:10,minWidth:0,flexWrap:"nowrap",overflow:"hidden"}}>
+                        <span style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Quick Nav</span>
+                        {qnClient&&<><span style={{color:C.border,fontSize:18,lineHeight:1,flexShrink:0}}>›</span>
+                          <span style={{fontSize:isMobile?12:14,color:C.t2,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?90:180,cursor:isAdminOrMgr?"pointer":"default"}} onClick={()=>isAdminOrMgr&&setQnProject(null)}>{qnClient}</span></>}
+                        {!isAdminOrMgr&&!qnClient&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span><span style={{fontSize:13,color:C.t2,fontWeight:700,flexShrink:0}}>My Projects</span></>}
+                        {activeProj&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span>
+                          <span style={{fontSize:isMobile?12:14,color:acPc,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:isMobile?100:280,flexShrink:1}}>{activeProj.name}</span>
+                          <span style={{fontSize:10,background:acPc+"22",color:acPc,border:`1px solid ${acPc}44`,borderRadius:20,padding:"2px 10px",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{activeTasks.length} tasks</span></>}
+                      </div>
+                      {/* Client Prev / Next */}
+                      {isAdminOrMgr&&!isMobile&&<div style={{display:"flex",gap:6,flexShrink:0}}>
+                        <button onClick={()=>{if(canPrevCl){setQnClient(allQnClients[qClientIdx-1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canPrevCl}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canPrevCl?C.t1:C.t3,fontSize:12,cursor:canPrevCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canPrevCl?1:.4}}>← Previous Client</button>
+                        <button onClick={()=>{if(canNextCl){setQnClient(allQnClients[qClientIdx+1]);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}} disabled={!canNextCl}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,color:canNextCl?C.t1:C.t3,fontSize:12,cursor:canNextCl?"pointer":"not-allowed",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,opacity:canNextCl?1:.4}}>Next Client →</button>
+                      </div>}
+                      {/* Close ✕ */}
+                      <button onClick={closePopup}
+                        style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",lineHeight:1}}
+                        onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
+                        onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
+                    </div>
+                    {/* ── Search & Filter bar ── */}
+                    <div style={{display:"flex",gap:8,padding:"10px 18px",borderBottom:`1px solid ${C.border}`,background:C.bg+"88",flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",alignItems:"center"}}>
+                      <input placeholder="🔍 Search tasks or projects…" value={qnSearch} onChange={e=>setQnSearch(e.target.value)}
+                        style={{flex:2,minWidth:isMobile?"100%":160,background:C.surface,border:`1px solid ${qnSearch?C.accent:C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+                      <select value={qnFilterEmployee} onChange={e=>setQnFilterEmployee(e.target.value)}
+                        style={{flex:1,minWidth:120,background:C.surface,border:`1px solid ${qnFilterEmployee!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterEmployee!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
+                        <option value="all">All Employees</option>
+                        {qnAllEmployees.map(e=><option key={e} value={e}>{e}</option>)}
+                      </select>
+                      <select value={qnFilterStatus} onChange={e=>setQnFilterStatus(e.target.value)}
+                        style={{flex:1,minWidth:110,background:C.surface,border:`1px solid ${qnFilterStatus!=="all"?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:qnFilterStatus!=="all"?C.accent:C.t2,fontSize:12,outline:"none",fontFamily:"inherit",cursor:"pointer",appearance:"auto"}}>
+                        <option value="all">All Statuses</option>
+                        {qnAllStatuses.map(s=><option key={s} value={s}>{s}</option>)}
+                      </select>
+                      {(qnSearch||qnFilterEmployee!=="all"||qnFilterStatus!=="all")&&
+                        <button onClick={()=>{setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
+                          style={{background:C.red+"18",border:`1px solid ${C.red}44`,color:C.red,fontSize:11,cursor:"pointer",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>Clear ✕</button>}
+                    </div>
+                    {/* ── Modal body: split ── */}
+                    <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+                      {/* LEFT: Project list */}
+                      {(!isMobile||!mobShowTasks)&&(
+                        <div style={{width:isMobile?"100%":280,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"88"}}>
+                          <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>
+                            Projects ({splitProjects.length})
+                          </div>
+                          <div style={{flex:1,overflowY:"auto",padding:"8px 6px"}}>
+                            {splitProjects.map(p=>{
+                              const pt=tasks.filter(t=>t.project_id===p.id);
+                              const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
+                              const pc=p.color||C.blue;
+                              const isAct=activeProj?.id===p.id;
+                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                              return(
+                                <div key={p.id} onClick={()=>setQnProject(p)}
+                                  style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s",position:"relative"}}>
+                                  <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,lineHeight:1.35,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
+                                    <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
+                                    <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
+                                    <span style={{fontSize:10,color:C.t1,flexShrink:0,background:C.surface,borderRadius:4,padding:"2px 6px",fontWeight:600,border:`1px solid ${C.border}`}}>{pt.length} tasks</span>
+                                  </div>
+                                  {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
+                                </div>
+                              );
+                            })}
+                            {splitProjects.length===0&&<div style={{color:C.t3,fontSize:13,padding:"30px",textAlign:"center"}}>No projects</div>}
+                          </div>
+                        </div>
+                      )}
+                      {/* RIGHT: Task list */}
+                      {(!isMobile||mobShowTasks)&&(
+                        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"44"}}>
+                          {/* Task panel header */}
+                          <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:0,display:"flex",alignItems:"center",gap:10,background:C.card+"88"}}>
+                            {isMobile&&<button onClick={()=>setQnProject(null)} style={{...qB(false),fontSize:11,padding:"4px 9px"}}>← Back</button>}
+                            {activeProj?(
+                              <>
+                                <div style={{width:10,height:10,borderRadius:"50%",background:acPc,flexShrink:0}}/>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontSize:isMobile?13:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProj.name}</div>
+                                </div>
+                                <span style={{fontSize:11,color:C.t3,flexShrink:0}}>{activeTasks.length} task{activeTasks.length!==1?"s":""}</span>
+                              </>
+                            ):<span style={{fontSize:13,color:C.t3}}>← Select a project</span>}
+                          </div>
+                          {/* Tasks scrollable */}
+                          <div style={{flex:1,overflowY:"auto",padding:isMobile?"10px":"14px 18px",display:"flex",flexDirection:"column",gap:7}}>
+                            {!activeProj&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
+                            {activeProj&&activeTasks.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks in this project</div>}
+                            {activeTasks.map((t,i)=>{
+                              const tDispStatus=qnNormStatus(t.status);
+                              const sc=getStatusColor(tDispStatus);
+                              const od=t.due_date&&t.due_date<today&&!isDone(t.status);
+                              return(
+                                <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
+                                  onMouseEnter={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.boxShadow=`0 2px 10px ${sc}20`;}}
+                                  onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.boxShadow="";}}>
+                                  {/* Number */}
+                                  <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
+                                  {/* Content */}
+                                  <div style={{flex:1,minWidth:0}}>
+                                    <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
+                                    <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                                      <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
+                                      {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
+                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
+                                      {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
+                                      {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
+                                    </div>
+                                  </div>
+                                  {/* Edit button */}
+                                  {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}}
+                                    style={{background:C.accent+"18",border:`1px solid ${C.accent}55`,color:C.accent,fontSize:12,cursor:"pointer",borderRadius:7,padding:isMobile?"6px 9px":"6px 14px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}
+                                    onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.accent;}}
+                                    onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;e.currentTarget.style.borderColor=C.accent+"55";}}>
+                                    <span>✏️</span>{!isMobile&&<span>Edit</span>}
+                                  </button>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+        })()}
         {view==="dashboard"&&!isAdmin&&!isManager&&<TaskTimingPanel
           tasks={tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id))}
           projects={accessibleProjects}
