@@ -11018,12 +11018,12 @@ export default function App(){
                             <span style={{fontSize:11,color:C.green,fontWeight:700}}>{pct}%</span>
                           </div>
                         </div>
-                      );}
+                      );
                     })}
                     {qnClientProjects.length===0&&<div style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects found</div>}
                   </div>
                 </div>
-              );
+              );}
               // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
               // Filter projects by search term (name or any matching task)
               const splitProjects=qnClientProjects.filter(p=>{
