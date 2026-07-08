@@ -184,4 +184,137 @@ async function main() {
   function resolveUser(raw) {
     if (!raw) return "";
     const first = raw.split("/")[0].trim();
-    return userMap.get(first.toLowerCase()) || 
+    return userMap.get(first.toLowerCase()) || first.toLowerCase().replace(/\s+/g, "_");
+  }
+
+  // STEP 5: Test insert
+  console.log("\n🧪 Test insert...");
+  let testProjId = null, testTaskId = null;
+
+  try {
+    const r = await supa("POST", "/rest/v1/projects", { name: "__TEST_WC__", client: CLIENT, color: "#ccc", description: "test", assigned_users: [], deadline: null });
+    testProjId = (Array.isArray(r.data) ? r.data[0] : r.data)?.id;
+    if (!testProjId) throw new Error("No project ID returned");
+    console.log(`   ✓ Test project OK (${testProjId})`);
+  } catch (e) {
+    console.log(`   ❌ Test project FAILED: ${e.message}\nSTOPPED — nothing changed.`);
+    return;
+  }
+
+  let removedFields = [];
+  let taskSchema = { project_id: testProjId, title: "__TEST_TASK__", status: "Not Yet Started", priority: "Medium", assignee: "", detailer: "", checker: "", scope: "", due_date: null, client_sub_date: null, client: CLIENT, tags: [], files: [] };
+  let taskOK = false;
+
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      const r = await supa("POST", "/rest/v1/tasks", taskSchema);
+      testTaskId = (Array.isArray(r.data) ? r.data[0] : r.data)?.id;
+      if (!testTaskId) throw new Error("No task ID returned");
+      taskOK = true;
+      console.log(`   ✓ Test task OK (${testTaskId})` + (removedFields.length ? ` — auto-removed: ${removedFields.join(", ")}` : ""));
+      break;
+    } catch (e) {
+      const cm = e.message.match(/column "([^"]+)"/i);
+      if (cm) {
+        removedFields.push(cm[1]); delete taskSchema[cm[1]];
+        console.log(`   ⚠ Column "${cm[1]}" not in tasks — retrying without it...`);
+      } else {
+        try { await supa("DELETE", `/rest/v1/projects?id=eq.${testProjId}`); } catch(_){}
+        console.log(`   ❌ Test task FAILED: ${e.message}\nSTOPPED — test project cleaned up.`);
+        return;
+      }
+    }
+  }
+
+  if (!taskOK) {
+    try { await supa("DELETE", `/rest/v1/projects?id=eq.${testProjId}`); } catch(_){}
+    console.log("STOPPED — could not determine valid task schema.");
+    return;
+  }
+
+  // Clean test records
+  try { await supa("DELETE", `/rest/v1/tasks?id=eq.${testTaskId}`); } catch(_){}
+  try { await supa("DELETE", `/rest/v1/projects?id=eq.${testProjId}`); } catch(_){}
+  console.log("   ✓ Test records cleaned up");
+
+  // STEP 6: Delete existing White Cap data
+  console.log("\n🗑  Deleting existing White Cap data...");
+  const variants = ["White Cap","WhiteCap","White-Cap","white cap","whitecap"];
+  let delP = 0, delT = 0;
+  for (const v of variants) {
+    try {
+      const { data: prows } = await supa("GET", `/rest/v1/projects?client=ilike.${encodeURIComponent(v)}&select=id`);
+      if (prows?.length) {
+        for (const p of prows) {
+          try { await supa("DELETE", `/rest/v1/tasks?project_id=eq.${p.id}`); delT++; } catch(_){}
+          try { await supa("DELETE", `/rest/v1/projects?id=eq.${p.id}`); delP++; } catch(_){}
+        }
+      }
+    } catch(_) {}
+    try { await supa("DELETE", `/rest/v1/tasks?client=ilike.${encodeURIComponent(v)}`); } catch(_){}
+  }
+  console.log(`   ✓ Removed ${delP} projects + ${delT} task-groups`);
+
+  // STEP 7: Insert all
+  console.log("\n📥 Inserting...\n");
+  let projInserted = 0, taskInserted = 0, taskFailed = 0;
+
+  for (let pi = 0; pi < order.length; pi++) {
+    const pn   = order[pi];
+    const proj = projects[pn];
+
+    // assigned_users
+    const aSet = new Set();
+    proj.detailers.forEach(n => n.split("/").forEach(p => { const t=p.trim(); if(t) aSet.add(resolveUser(t)); }));
+    proj.checkers.forEach(n => n.split("/").forEach(p => { const t=p.trim(); if(t) aSet.add(resolveUser(t)); }));
+
+    const deadline = proj.dates.length ? proj.dates.sort().reverse()[0] : null;
+
+    let projId;
+    try {
+      const r = await supa("POST", "/rest/v1/projects", {
+        name: pn, client: CLIENT, color: PALETTE[pi % PALETTE.length],
+        description: `${CLIENT} — ${pn}`, assigned_users: [...aSet].filter(Boolean), deadline,
+      });
+      projId = (Array.isArray(r.data) ? r.data[0] : r.data)?.id;
+      if (!projId) throw new Error("No ID");
+      projInserted++;
+      console.log(`✓ [${pi+1}/${totalProjects}] ${pn} (${proj.tasks.length} tasks)`);
+    } catch (e) {
+      console.log(`❌ Project "${pn}": ${e.message}`);
+      continue;
+    }
+
+    for (const t of proj.tasks) {
+      const full = {
+        project_id: projId, title: t.title, status: t.status, priority: t.priority,
+        assignee: resolveUser(t.assignee), detailer: resolveUser(t.detailer),
+        checker: resolveUser(t.checker), scope: t.scope, due_date: t.due_date,
+        client_sub_date: t.client_sub_date, client: t.client, tags: t.tags, files: t.files,
+      };
+      const payload = {};
+      for (const [k, v] of Object.entries(full)) { if (!removedFields.includes(k)) payload[k] = v; }
+
+      try {
+        await supa("POST", "/rest/v1/tasks", payload);
+        taskInserted++;
+        console.log(`   ✓ ${t.title.slice(0,70)}`);
+      } catch (e) {
+        taskFailed++;
+        console.log(`   ❌ ${t.title.slice(0,50)}: ${e.message.slice(0,100)}`);
+      }
+    }
+  }
+
+  // STEP 8: Summary
+  console.log("\n══════════════════════════════════════════");
+  console.log("  IMPORT COMPLETE");
+  console.log("══════════════════════════════════════════");
+  console.log(`  Projects : ${projInserted} / ${totalProjects} inserted`);
+  console.log(`  Tasks    : ${taskInserted} / ${totalTasks} inserted, ${taskFailed} failed`);
+  console.log(`  Users    : ${usersCreated} new created`);
+  if (removedFields.length) console.log(`  Skipped  : ${removedFields.join(", ")} (not in tasks table)`);
+  console.log("══════════════════════════════════════════\n");
+}
+
+main().catch(e => { console.error("\n💥 Fatal:", e.message); process.exit(1); });
