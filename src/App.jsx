@@ -5094,7 +5094,7 @@ function WarRoomPage({me,projects,users}){
       setLoading(true);
       const{data}=await supabase.from("war_room_messages").select("*").eq("client_id",cid).order("created_at",{ascending:true}).limit(300);
       setMessages(data||[]);prevMsgCountRef.current=(data||[]).length;
-      lastMsgAtRef.current=(data||[]).at(-1)?.created_at||null;
+      lastMsgAtRef.current=(data||[]).at(-1)?.created_at||new Date().toISOString();
       setLoading(false);
       setTimeout(()=>{endRef.current?.scrollIntoView({behavior:"instant"});setNewMsgCount(0);},100);
       if(data?.length)await loadReactions(data.map(m=>m.id));
@@ -10001,11 +10001,26 @@ export default function App(){
       g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.35);
       o.start(ctx.currentTime);o.stop(ctx.currentTime+0.35);
     }catch{}
-    // 4. Browser OS notification
+    // 4. Browser OS notification (service-worker path preferred; falls back to Notification API)
     if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
-      try{new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});}catch{}
+      try{
+        if("serviceWorker" in navigator){
+          navigator.serviceWorker.ready.then(reg=>{
+            reg.showNotification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now()),requireInteraction:false});
+          }).catch(()=>{try{new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});}catch{}});
+        }else{
+          new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});
+        }
+      }catch{}
     }
   }
+
+  // Register service worker (enables background Chrome notifications)
+  useEffect(()=>{
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("/sw.js").catch(()=>{});
+    }
+  },[]);
 
   // Auto-request browser notification permission once (3s after login)
   useEffect(()=>{

@@ -824,88 +824,98 @@ app.get("/api/settings", async (req, res) => {
 });
 
 // ═════════════════════════════════════════════════════════════
-// ADMIN — BACKUP & RESTORE
+// GENERIC RPC — used by localApi.js (supabase.from() shim)
 // ═════════════════════════════════════════════════════════════
 
-const ALL_TABLES = [
-  "users","clients","projects","tasks","task_files","task_comments",
-  "notifications","announcements","workflows",
-  "war_room_messages","war_room_pins","war_room_reactions",
-  "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs"
-];
+app.post("/api/rpc", async (req, res) => {
+  const { table, op, columns = "*", filters = [], order = [], limit: limitN, data, single } = req.body;
 
-// GET /api/admin/backup — download full DB as JSON
-app.get("/api/admin/backup", async (req, res) => {
+  const RPC_TABLES = new Set([
+    "users","clients","projects","tasks","task_files","task_comments",
+    "notifications","announcements","workflows",
+    "war_room_messages","war_room_pins","war_room_reactions",
+    "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs"
+  ]);
+  if (!RPC_TABLES.has(table)) return res.json({ data: null, error: { message: "Unknown table: " + table } });
+
   try {
-    const backup = { createdAt: new Date().toISOString(), tables: {} };
-    for (const t of ALL_TABLES) {
-      const r = await pool.query(`SELECT * FROM "${t}"`);
-      backup.tables[t] = r.rows;
+    // Build WHERE clause from filters array
+    function buildWhere(vals) {
+      if (!filters.length) return "";
+      const clauses = filters.map(f => {
+        if (f.op === "in") {
+          const arr = Array.isArray(f.val) ? f.val : [f.val];
+          const phs = arr.map(v => { vals.push(v); return `$${vals.length}`; });
+          return `"${f.col}" IN (${phs.join(",")})`;
+        }
+        vals.push(f.val);
+        const ph = `$${vals.length}`;
+        if (f.op === "eq")  return `"${f.col}"=${ph}`;
+        if (f.op === "neq") return `"${f.col}"!=${ph}`;
+        if (f.op === "gt")  return `"${f.col}">${ph}`;
+        if (f.op === "gte") return `"${f.col}">=${ph}`;
+        if (f.op === "lt")  return `"${f.col}"<${ph}`;
+        if (f.op === "lte") return `"${f.col}"<=${ph}`;
+        return null;
+      }).filter(Boolean);
+      return clauses.length ? " WHERE " + clauses.join(" AND ") : "";
     }
-    res.setHeader("Content-Disposition", `attachment; filename="RDS_Local_Backup_${Date.now()}.json"`);
-    res.json(backup);
-  } catch (e) { res.json(err(e)); }
-});
 
-// POST /api/admin/restore — restore from JSON backup
-app.post("/api/admin/restore", async (req, res) => {
-  try {
-    const { tables } = req.body;
-    for (const [table, rows] of Object.entries(tables)) {
-      if (!ALL_TABLES.includes(table) || !rows.length) continue;
-      const cols = Object.keys(rows[0]);
+    function buildOrder() {
+      if (!order.length) return "";
+      return " ORDER BY " + order.map(o => `"${o.col}" ${o.ascending === false ? "DESC" : "ASC"}`).join(", ");
+    }
+
+    function buildLimit() {
+      return limitN ? ` LIMIT ${parseInt(limitN)}` : "";
+    }
+
+    // ── SELECT ──
+    if (op === "select") {
+      const vals = [];
+      const cols = columns === "*" ? "*" : columns.split(",").map(c => `"${c.trim()}"`).join(", ");
+      const q = `SELECT ${cols} FROM "${table}"${buildWhere(vals)}${buildOrder()}${buildLimit()}`;
+      const r = await pool.query(q, vals);
+      return res.json({ data: single ? (r.rows[0] || null) : r.rows, error: null });
+    }
+
+    // ── INSERT ──
+    if (op === "insert") {
+      const rows = Array.isArray(data) ? data : [data];
+      const inserted = [];
       for (const row of rows) {
-        const vals = cols.map(c => {
-          const v = row[c];
-          if (v !== null && typeof v === "object") return JSON.stringify(v);
-          return v;
-        });
-        const phs = cols.map((_, i) => `$${i+1}`).join(",");
-        const colList = cols.map(c => `"${c}"`).join(",");
-        await pool.query(
-          `INSERT INTO "${table}" (${colList}) VALUES (${phs}) ON CONFLICT (id) DO NOTHING`,
-          vals
+        const rowVals = [];
+        const keys = Object.keys(row).filter(k => row[k] !== undefined);
+        const phs = keys.map(k => { rowVals.push(row[k]); return `$${rowVals.length}`; });
+        const r = await pool.query(
+          `INSERT INTO "${table}" (${keys.map(k=>`"${k}"`).join(",")}) VALUES (${phs.join(",")}) RETURNING *`,
+          rowVals
         );
+        inserted.push(r.rows[0]);
       }
+      const out = (single || rows.length === 1) ? inserted[0] : inserted;
+      return res.json({ data: out, error: null });
     }
-    res.json(ok({ message: "Restore complete" }));
-  } catch (e) { res.json(err(e)); }
-});
 
-// ═════════════════════════════════════════════════════════════
-// HEALTH CHECK
-// ═════════════════════════════════════════════════════════════
+    // ── UPDATE ──
+    if (op === "update") {
+      const vals = [];
+      const keys = Object.keys(data).filter(k => data[k] !== undefined);
+      const sets = keys.map(k => { vals.push(data[k]); return `"${k}"=$${vals.length}`; }).join(",");
+      const where = buildWhere(vals);
+      const r = await pool.query(`UPDATE "${table}" SET ${sets}${where} RETURNING *`, vals);
+      return res.json({ data: single ? r.rows[0] : r.rows, error: null });
+    }
 
-app.get("/api/health", async (req, res) => {
-  try {
-    const r = await pool.query("SELECT NOW() as time, current_database() as db");
-    res.json({ status: "ok", db: r.rows[0].db, time: r.rows[0].time, server: "RDS Local v1.0" });
-  } catch (e) {
-    res.status(500).json({ status: "error", message: e.message });
-  }
-});
+    // ── DELETE ──
+    if (op === "delete") {
+      const vals = [];
+      const r = await pool.query(`DELETE FROM "${table}"${buildWhere(vals)} RETURNING *`, vals);
+      return res.json({ data: r.rows, error: null });
+    }
 
-// ═════════════════════════════════════════════════════════════
-// SPA FALLBACK — serve React app for all other routes
-// ═════════════════════════════════════════════════════════════
-
-app.get("*", (req, res) => {
-  const index = path.join(DIST, "index.html");
-  if (fs.existsSync(index)) {
-    res.sendFile(index);
-  } else {
-    res.json({ message: "RDS Local API running. React build not found — run npm run build first." });
-  }
-});
-
-// ═════════════════════════════════════════════════════════════
-// START
-// ═════════════════════════════════════════════════════════════
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`\n🚀 RDS Local Server running at:`);
-  console.log(`   http://localhost:${PORT}`);
-  console.log(`   http://192.168.0.159:${PORT}  ← Office LAN`);
-  console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
-  console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-});
+    // ── UPSERT ──
+    if (op === "upsert") {
+      const rows = Array.isArray(data) ? data : [data];
+      const inserted = [];
+      fo
