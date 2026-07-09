@@ -3962,7 +3962,7 @@ function EscalationAlertCard(){
         <span style={{fontSize:20}}>{"🚨"}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:15,fontWeight:800,color:C.t1}}>72h Overdue Escalation Alert</div>
-          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin & Manager — runs automatically every 6 hours"}</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin & Manager — runs automatically once daily at 2am UTC"}</div>
         </div>
         <div onClick={()=>toggle(!enabled)} style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
           <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #0003"}}/>
