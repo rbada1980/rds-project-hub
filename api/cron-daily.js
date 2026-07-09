@@ -151,8 +151,8 @@ export default async function handler(req, res) {
       timeZone: "Asia/Kolkata"
     });
 
-    // Check if digest is enabled
-    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days,last_digest_date)&select=key,value`);
+    // Check if digest is enabled + allowed days (read-only settings)
+    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(daily_digest_enabled,daily_digest_days)&select=key,value`);
     const settingsMap = {};
     if (Array.isArray(settingsData)) settingsData.forEach(r => { settingsMap[r.key] = r.value; });
 
@@ -161,61 +161,60 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: "Daily digest is disabled." });
     }
 
-    // ── Idempotency guard: refuse to run more than once per IST day ──────────
-    if (settingsMap["last_digest_date"] === today) {
-      console.log(`Daily digest already ran for ${today} — skipping duplicate.`);
-      return res.status(200).json({ message: `Already sent for ${today}. Next run tomorrow at 1 AM IST.` });
-    }
-
     // Check allowed days (0=Sun,1=Mon,...6=Sat). Default: Mon–Sat (1,2,3,4,5,6)
     const allowedDays = (settingsMap["daily_digest_days"] || "1,2,3,4,5,6")
       .split(",").map(Number);
     const todayDow = istDate.getDay(); // 0=Sun
     if (!allowedDays.includes(todayDow)) {
-      console.log(`Daily digest skipped — ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days [${allowedDays}].`);
-      return res.status(200).json({ message: `Skipped: today (${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]}) not in scheduled days.` });
+      console.log(`Daily digest skipped — ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days.`);
+      return res.status(200).json({ message: `Skipped: today not in scheduled days.` });
     }
 
-    // ── Stamp last_digest_date (best-effort) ─────────────────────────────────
-    // The anon key may lack INSERT permission on the settings table (RLS).
-    // A failed stamp is non-fatal: Vercel's scheduler fires at most once/day,
-    // so duplicate sends from the auto-cron are not a real risk.
-    // The idempotency CHECK above (read) still prevents re-runs on the same day
-    // once the row exists and the stamp succeeds at least once.
-    try {
-      // Try UPDATE first (row may already exist). Use SUPA_WRITE_KEY (service role bypasses RLS).
-      const patchRes = await fetch(`${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date`, {
-        method: "PATCH",
-        headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
-        body: JSON.stringify({ value: today })
-      });
-      let stamped = false;
-      if (patchRes.ok) {
-        const patched = await patchRes.json();
-        if (Array.isArray(patched) && patched.length > 0) stamped = true;
-      }
+    // ── ATOMIC idempotency claim ──────────────────────────────────────────────
+    // WRITE first, read second — prevents race condition where two concurrent
+    // Vercel executions both pass the check before either stamps the date.
+    //
+    // Step 1: PATCH only if value != today (atomic conditional update)
+    const claimPatch = await fetch(
+      `${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date&value=neq.${today}`,
+      { method: "PATCH",
+        headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`,
+                   "Content-Type": "application/json", "Prefer": "return=representation" },
+        body: JSON.stringify({ value: today }) }
+    );
+    let claimed = false;
+    if (claimPatch.ok) {
+      const rows = await claimPatch.json().catch(() => []);
+      if (Array.isArray(rows) && rows.length > 0) { claimed = true; console.log(`Claimed last_digest_date=${today} via PATCH`); }
+    }
 
-      if (!stamped) {
-        // Row doesn't exist — INSERT it. Service role key bypasses RLS INSERT restriction.
-        const postRes = await fetch(`${SUPA_URL}/rest/v1/settings`, {
-          method: "POST",
-          headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
-          body: JSON.stringify({ key: "last_digest_date", value: today })
-        });
-        if (postRes.ok) {
-          stamped = true;
-          console.log(`Stamped last_digest_date = ${today}`);
-        } else {
-          // RLS likely blocked the INSERT — log a warning and continue anyway.
-          // The cron fires at most once/day so the risk of duplicates is minimal.
-          const errText = await postRes.text().catch(() => String(postRes.status));
-          console.warn(`last_digest_date stamp failed (HTTP ${postRes.status}) — proceeding anyway:`, errText);
-        }
-      } else {
-        console.log(`Stamped last_digest_date = ${today}`);
+    if (!claimed) {
+      // Row didn't exist yet — try INSERT with ignore-duplicates so only ONE concurrent
+      // request wins (the other gets 0 rows back and bails).
+      const claimInsert = await fetch(`${SUPA_URL}/rest/v1/settings`, {
+        method: "POST",
+        headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`,
+                   "Content-Type": "application/json",
+                   "Prefer": "resolution=ignore-duplicates,return=representation" },
+        body: JSON.stringify({ key: "last_digest_date", value: today })
+      });
+      if (claimInsert.ok) {
+        const rows = await claimInsert.json().catch(() => []);
+        if (Array.isArray(rows) && rows.length > 0) { claimed = true; console.log(`Claimed last_digest_date=${today} via INSERT`); }
       }
-    } catch (stampErr) {
-      console.warn("last_digest_date stamp threw — proceeding anyway:", stampErr.message);
+    }
+
+    if (!claimed) {
+      // Either already stamped today (race lost) or stamp failed entirely.
+      // Re-read to distinguish the two cases.
+      const check = await supaFetch(`/rest/v1/settings?key=eq.last_digest_date&select=value`);
+      const currentVal = Array.isArray(check) && check[0]?.value;
+      if (currentVal === today) {
+        console.log(`Daily digest already ran for ${today} — duplicate suppressed.`);
+        return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
+      }
+      // Stamp failed for unknown reason — log but proceed (better than silent skip).
+      console.warn(`last_digest_date stamp failed (current=${currentVal}) — proceeding anyway to avoid missing digest.`);
     }
 
     const [allTasks, projects, users] = await Promise.all([
