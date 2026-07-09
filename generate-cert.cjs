@@ -4,18 +4,21 @@
 //
 // Run: node generate-cert.cjs
 
-const { execSync } = require("child_process");
+const { execFileSync, execSync } = require("child_process");
 const fs   = require("fs");
 const path = require("path");
 
 const IP = "192.168.0.159";
 
-// Auto-install node-forge if not present
+// Auto-install node-forge if not present, then re-spawn so require() finds it
 try {
   require.resolve("node-forge");
 } catch {
   console.log("Installing node-forge (one-time)...");
-  execSync("npm install --no-save node-forge", { stdio: "inherit", cwd: __dirname });
+  execSync("npm install node-forge", { stdio: "inherit", cwd: __dirname });
+  console.log("Done. Restarting script...\n");
+  execFileSync(process.execPath, [__filename], { stdio: "inherit", cwd: __dirname });
+  process.exit(0);
 }
 
 const forge = require("node-forge");
@@ -58,7 +61,7 @@ console.log("\n✓ SSL certificate generated!");
 console.log("  certs/key.pem  — private key");
 console.log("  certs/cert.pem — certificate (IP SAN: " + IP + ")");
 console.log("\nNext steps:");
-console.log("  1. node server.js");
+console.log("  1. Restart the server: node server.js");
 console.log("  2. Open https://" + IP + ":8443 in Chrome");
 console.log("  3. Click Advanced → Proceed (accept once)");
 console.log("  4. Chrome notifications now work!\n");
