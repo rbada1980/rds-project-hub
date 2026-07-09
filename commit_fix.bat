@@ -4,13 +4,13 @@ echo === Staging all changes ===
 git add -A
 echo.
 echo === Committing ===
-git commit -m "fix: remove type:module, rename ESM configs to .mjs, add Node.js cert generator"
+git commit -m "fix: Express 5 wildcard route + node-forge cert generator"
 echo.
 echo === Pushing ===
 git push origin main
 echo.
 echo === Done! ===
-echo Now run on this machine:
-echo   node generate-cert.cjs    (generates SSL cert)
-echo   node server.js            (starts server with HTTPS)
+echo Now run:
+echo   node generate-cert.cjs    (generates SSL cert, uses node-forge)
+echo   node server.js            (starts server - both errors now fixed)
 pause

@@ -1007,7 +1007,7 @@ app.get("/api/health", async (req, res) => {
 // SPA FALLBACK — serve React app for all other routes
 // ════════════════════════════════════════════════════════════
 
-app.get("*", (req, res) => {
+app.get(/.*/, (req, res) => {
   const index = path.join(DIST, "index.html");
   if (fs.existsSync(index)) {
     res.sendFile(index);
