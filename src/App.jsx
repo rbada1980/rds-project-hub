@@ -1395,6 +1395,9 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
   const [selMember,setSM]=useState(null); // selected team member for drill-down
   const [memberSF,setMSF]=useState("All"); // status filter for member tasks
   const [tlStatModal,setTSM]=useState(null);
+  const [tlClientModal,setTLCM]=useState(null);
+  const [tlClientProject,setTLCP]=useState(null);
+  const [tlClientSearch,setTLCS]=useState("");
 
   // Tasks where I'm detailer (my review work)
   const detailerTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id)&&matchesMe(t.detailer));
@@ -1489,6 +1492,89 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>onOpenTaskModal("⚠️ Overdue Tasks",allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)))}/>
       </div>
 
+      {/* TL Client QuickNav Popup */}
+      {tlClientModal&&(()=>{
+        const clPrj=projects.filter(p=>(p.client||"Unassigned")===tlClientModal);
+        const clSrch=tlClientSearch.toLowerCase();
+        const splitPrj=clPrj.filter(p=>!clSrch||p.name.toLowerCase().includes(clSrch)||tasks.filter(t=>t.project_id===p.id).some(t=>t.title.toLowerCase().includes(clSrch)));
+        const actP=tlClientProject||splitPrj[0]||null;
+        const actT=actP?tasks.filter(t=>t.project_id===actP.id&&(!clSrch||t.title.toLowerCase().includes(clSrch)||actP.name.toLowerCase().includes(clSrch))):[];
+        const acC=actP?.color||C.blue;
+        const closeTLQn=()=>{setTLCM(null);setTLCP(null);setTLCS("");};
+        return(
+          <div onClick={e=>{if(e.target===e.currentTarget)closeTLQn();}} style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
+            <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
+                <div style={{flex:1,display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+                  <span style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Quick Nav</span>
+                  <span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span>
+                  <span style={{fontSize:14,color:C.teal,fontWeight:800,flexShrink:0}}>{tlClientModal}</span>
+                  {actP&&<><span style={{color:C.border,fontSize:18,flexShrink:0}}>›</span><span style={{fontSize:14,color:acC,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:280}}>{actP.name}</span><span style={{fontSize:10,background:acC+"22",color:acC,border:`1px solid ${acC}44`,borderRadius:20,padding:"2px 10px",fontWeight:700,flexShrink:0}}>{actT.length} tasks</span></>}
+                </div>
+                <button onClick={closeTLQn} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",borderRadius:8,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.red+"22";e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}} onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.t2;}}>✕</button>
+              </div>
+              <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,background:C.bg+"88",flexShrink:0}}>
+                <input placeholder="🔍 Search tasks or projects…" value={tlClientSearch} onChange={e=>setTLCS(e.target.value)} style={{width:"100%",background:C.surface,border:`1px solid ${tlClientSearch?C.accent:C.border}`,borderRadius:8,padding:"7px 11px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+                <div style={{width:isMobile?"100%":280,flexShrink:0,borderRight:isMobile?"none":`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"88"}}>
+                  <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".1em",flexShrink:0}}>Projects ({splitPrj.length})</div>
+                  <div style={{flex:1,overflowY:"auto",padding:"8px 6px"}}>
+                    {splitPrj.map(p=>{
+                      const pt=tasks.filter(t=>t.project_id===p.id);
+                      const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
+                      const pc=p.color||C.blue;
+                      const isAct=actP?.id===p.id;
+                      const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                      return(
+                        <div key={p.id} onClick={()=>setTLCP(p)} style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s"}}>
+                          <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:od>0?5:0}}>
+                            <div style={{flex:1,height:3,background:C.surface,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pc,borderRadius:2}}/></div>
+                            <span style={{fontSize:10,color:pc,fontWeight:800,flexShrink:0}}>{pct}%</span>
+                            <span style={{fontSize:10,color:C.t1,flexShrink:0,background:C.surface,borderRadius:4,padding:"2px 6px",fontWeight:600,border:`1px solid ${C.border}`}}>{pt.length} tasks</span>
+                          </div>
+                          {od>0&&<span style={{fontSize:9,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:4,padding:"1px 6px",border:`1px solid ${C.red}33`}}>🔴 {od} overdue</span>}
+                        </div>
+                      );
+                    })}
+                    {splitPrj.length===0&&<div style={{color:C.t3,fontSize:13,padding:"30px",textAlign:"center"}}>No projects</div>}
+                  </div>
+                </div>
+                <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg+"44"}}>
+                  <div style={{padding:"10px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:0,display:"flex",alignItems:"center",gap:10,background:C.card+"88"}}>
+                    {actP?(<><div style={{width:10,height:10,borderRadius:"50%",background:acC,flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{actP.name}</div></div><span style={{fontSize:11,color:C.t3,flexShrink:0}}>{actT.length} task{actT.length!==1?"s":""}</span></>):<span style={{fontSize:13,color:C.t3}}>← Select a project</span>}
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",padding:"14px 18px",display:"flex",flexDirection:"column",gap:7}}>
+                    {!actP&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>Select a project from the left panel</div>}
+                    {actP&&actT.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks match</div>}
+                    {actT.map((t,i)=>{
+                      const sc=getStatusColor(t.status);
+                      const od=t.due_date&&t.due_date<today&&!isDone(t.status);
+                      return(
+                        <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}} onMouseLeave={e=>{e.currentTarget.style.background=C.card;}}>
+                          <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
+                            <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                              <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700}}>{t.status}</span>
+                              {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
+                              {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3}}>{od?"🔴":"📅"} {t.due_date}</span>}
+                              {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
+                              {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
+                            </div>
+                          </div>
+                          <button onClick={e=>{e.stopPropagation();onEditTask(t);}} style={{background:C.accent+"18",border:`1px solid ${C.accent}55`,color:C.accent,fontSize:12,cursor:"pointer",borderRadius:7,padding:"6px 14px",flexShrink:0,fontFamily:"inherit",fontWeight:700,transition:"all .15s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}} onMouseEnter={e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor=C.accent;}} onMouseLeave={e=>{e.currentTarget.style.background=C.accent+"18";e.currentTarget.style.color=C.accent;e.currentTarget.style.borderColor=C.accent+"55";}}>✏️ Edit</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {/* Our Clients */}
       {(()=>{
         const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
@@ -1507,7 +1593,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                 const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
                 const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
                 return(
-                  <div key={cl} onClick={()=>onClientClick(cl)}
+                  <div key={cl} onClick={()=>{setTLCM(cl);setTLCP(null);setTLCS("");}}
                     style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
                     onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
                     onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
