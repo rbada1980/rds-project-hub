@@ -20,6 +20,7 @@ const fs             = require("fs");
 const { v4: uuidv4 } = require("uuid");
 const cron           = require("node-cron");
 const { runSync }    = require("./sync.cjs");
+const { exec }       = require("child_process");
 
 const app  = express();
 const PORT = 8080;
@@ -1081,6 +1082,33 @@ app.listen(PORT, "0.0.0.0", () => {
     try { await runSync(); console.log("[Sync] Done ✓"); }
     catch (e) { console.error("[Sync] Error:", e.message); }
   }, { timezone: "Asia/Kolkata" });
+
+  // ── Auto-rebuild when new commits are pushed ────────────
+  let _lastCommit = null;
+  function _run(cmd) {
+    return new Promise((resolve, reject) =>
+      exec(cmd, { cwd: __dirname }, (err, out, stderr) =>
+        err ? reject(new Error(stderr || err.message)) : resolve(out.trim())
+      )
+    );
+  }
+  async function autoRebuild() {
+    try {
+      await _run("git fetch origin main");
+      const remote = await _run("git rev-parse origin/main");
+      if (_lastCommit === null) { _lastCommit = await _run("git rev-parse HEAD"); }
+      if (remote !== _lastCommit) {
+        console.log(`[AutoBuild] New commit ${remote.slice(0,7)} detected — pulling & rebuilding...`);
+        await _run("git pull origin main");
+        await _run("npm run build");
+        _lastCommit = remote;
+        console.log("[AutoBuild] Build complete. Refresh browser to see latest changes.");
+      }
+    } catch (e) { console.error("[AutoBuild] Error:", e.message); }
+  }
+  cron.schedule("*/5 * * * *", autoRebuild); // every 5 minutes
+  setTimeout(autoRebuild, 15000);            // also run 15s after startup
+  console.log("Auto-rebuild: polls git every 5 min, rebuilds on new commit.");
 
   console.log(`⏰ Auto-sync: daily at 2:00 AM IST\n`);
 });
