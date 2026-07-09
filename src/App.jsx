@@ -1386,7 +1386,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
     </div>
   );
 }
-function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,onViewProject,onClientClick}){
+function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,onViewProject,onClientClick,onOpenTaskModal}){
   const isMobile=useMobile();
   const matchesMe=v=>userMatchesStr(me,v);
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
@@ -1483,10 +1483,10 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
 
       {/* Top stats */}
       <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
-        <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>setTSM("tlalltasks")}/>
-        <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>setTSM("tlmydetail")}/>
-        <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>setTSM("tlmycheck")}/>
-        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>setTSM("tloverdue")}/>
+        <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>onOpenTaskModal("📋 Total Tasks",allTasks)}/>
+        <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>onOpenTaskModal("✏️ My Detailing",detailerTasks)}/>
+        <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>onOpenTaskModal("✅ My QC/Checking",checkerTasks)}/>
+        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>onOpenTaskModal("⚠️ Overdue Tasks",allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)))}/>
       </div>
 
       {/* Our Clients */}
@@ -10554,6 +10554,7 @@ export default function App(){
             onDeleteTask={delTask}
             onViewProject={pid=>navTo('list',pid)}
             onClientClick={(cl)=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
+            onOpenTaskModal={(title,tl)=>ssm({title,tasks:tl})}
           />
         )}
         {view==="dashboard"&&!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&(
