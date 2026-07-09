@@ -11336,7 +11336,7 @@ export default function App(){
             </>)}
           </>
         )}
-        {view==="dashboard"&&!isAdmin&&!isManager&&<TaskTimingPanel
+        {view==="dashboard"&&!isAdmin&&!isManager&&!isTeamLeader&&<TaskTimingPanel
           tasks={tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id))}
           projects={accessibleProjects}
           me={me} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}
@@ -11738,6 +11738,4 @@ export default function App(){
     </nav>
     {/* ── Live Timer floating bar ── */}
     <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+    </MobileCtx.Pr
