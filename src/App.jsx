@@ -6655,7 +6655,7 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
     <>
       <div style={{marginBottom:24}}>
         <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⏱ Your Work Hours</h2>
-        <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:12}}>
+        <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:12}}>
           {items.map(it=>(
             <div key={it.label} onClick={()=>openModal(it)}
               style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"transform .15s,box-shadow .15s,border-color .15s"}}
@@ -8421,7 +8421,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
   const timingsTabs=isClient
     ?[["projects","📁","Projects"],["tasks","📋","Tasks"]]
     :(isAdmin||isManager)
-      ?[["employees","👥","Employees"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"],["capacity","📅","Capacity"]]
+      ?[["employees","👥","Employees"],["attendance","📋","Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"],["capacity","📅","Capacity"]]
       :isTeamLeader
         ?[["myatt","🕐","My Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"]]
         :[["myatt","🕐","My Attendance"],["tasks","📋","My Tasks"],["timesheets","📝","Timesheets"]];
@@ -8499,6 +8499,10 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
               </table>
             </div>
           </div>
+
+        /* ── ATTENDANCE TAB (admin/manager full report) ── */
+        ):tab==="attendance"?(
+          <AttendancePage users={users}/>
 
         /* ── MY ATTENDANCE TAB ── */
         ):tab==="myatt"?(
@@ -10632,7 +10636,7 @@ export default function App(){
           </div>
         )}
         {view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
-        {view==="dashboard"&&!isClient&&!isAdmin&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
+        {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
             me={me} tasks={tasks} projects={accessibleProjects} today={today}
@@ -11143,82 +11147,6 @@ export default function App(){
                 </>);
               })()
             )}
-                        {/* Unassigned Projects removed for admin/manager */}
-            {/* ── 2. Recent Tasks removed for admin/manager ── */}
-            {false&&isMobile&&<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                return(
-                  <div key={t.id} onClick={()=>{set(t);stm(true);}}
-                    style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"11px 13px",cursor:"pointer",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6,marginBottom:5}}>
-                      <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),flexShrink:0}}>{t.status}</span>
-                    </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                      {pj&&<span style={{fontSize:11,color:C.teal}}>📁 {pj.name}</span>}
-                      {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
-                      {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                      {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ {t.checker}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,marginLeft:"auto"}}>{isOv?"⚠ ":""}{t.due_date}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
-            {false&&!isMobile&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-              {dashTasks.slice(-12).reverse().map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
-                const clr=pj?.color||C.accent;
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
-                const team=[t.assignee,t.detailer,t.checker].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
-                return(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${clr}`,transition:"transform .15s,box-shadow .15s"}}
-                    onClick={()=>{set(t);stm(true);}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</p>
-                      <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,marginLeft:10,whiteSpace:"nowrap"}}>{pj?.name||"—"}</span>
-                    </div>
-                    <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
-                      {t.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>👤 {t.client}</span>}
-                      {t.due_date&&<span style={{fontSize:12,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {t.due_date}{isOv?" ⚠":""}</span>}
-                    </div>
-                    <div className="rds-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8,marginBottom:12}}>
-                      <div style={{background:getStatusColor(t.status)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Status</div>
-                        <div style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status),lineHeight:1.3}}>{t.status}</div>
-                      </div>
-                      <div style={{background:(PRI_CLR[t.priority]||C.t3)+"22",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Priority</div>
-                        <div style={{fontSize:10,fontWeight:700,color:PRI_CLR[t.priority]||C.t2}}>{t.priority||"—"}</div>
-                      </div>
-                      <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
-                        <div style={{fontSize:10,fontWeight:600,color:C.t2}}>{t.scope||"—"}</div>
-                      </div>
-                      <div style={{background:C.accent+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-                        <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Assignee</div>
-                        {t.assignee?<div style={{display:"flex",justifyContent:"center"}}><Av name={t.assignee} size={20}/></div>:<div style={{fontSize:10,color:C.yellow}}>None</div>}
-                      </div>
-                    </div>
-                    {team.length>0&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                        <span style={{fontSize:11,color:C.t3}}>Team:</span>
-                        {team.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4}}><Av name={a} size={20}/><span style={{fontSize:11,color:C.t2}}>{a}</span></div>)}
-                      </div>
-                    )}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      {canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);}} style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.accent,borderColor:C.accent}}>✏️ Edit</button>}
-                      <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>click to edit →</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
-            {/* ── 2. Client-wise Overview — hidden for admin/manager (shown in QuickNav) ── */}
             {/* ── 3. Employee Overview (Admin/Manager) ── */}
             {(()=>{
               const staff=users.filter(u=>u.role!=="Client"&&u.username!==me.username);
@@ -11278,8 +11206,6 @@ export default function App(){
                 </>
               );
             })()}
-            {/* ── 4. Team Attendance Report (Admin/Manager) ── */}
-            {(isAdmin||isManager)&&<AttendancePage users={users}/>}
             {/* ── 4. Overdue Tasks ── */}
             {overdueTasks.length>0&&(<>
               <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.red}}>⚠ Overdue Tasks</h2>
