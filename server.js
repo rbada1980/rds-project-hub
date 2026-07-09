@@ -928,7 +928,8 @@ async function pushToUsers(usernames, payload) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          msg
+          msg,
+          { TTL: 86400, urgency: "high" }
         );
       } catch (e) {
         if (e.statusCode === 410 || e.statusCode === 404) {

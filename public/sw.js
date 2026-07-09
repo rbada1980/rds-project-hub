@@ -31,16 +31,18 @@ self.addEventListener("push", event => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body:    lines.join("\n") || body,
-      icon:    "/favicon.svg",
-      badge:   "/favicon.svg",
+      icon:    "/logo.png",
+      badge:   "/logo.png",
+      image:   "/logo.png",
       tag,
       data:    { url },
       actions: [
         { action: "view",    title: "👁 View Now" },
         { action: "dismiss", title: "✕ Dismiss"  },
       ],
-      requireInteraction: false,
-      vibrate: [200, 100, 200],
+      requireInteraction: true,
+      renotify:           true,
+      vibrate: [300, 100, 300, 100, 300],
     })
   );
 });
