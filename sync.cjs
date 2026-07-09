@@ -40,10 +40,10 @@ const pool = new Pool({
 // excludeFromPull= columns to strip when pulling FROM Supabase
 //                  (defaults to excludeFromRow if not set)
 const TABLE_CONFIG = [
-  { table: "users",              conflict: "id" },
-  { table: "clients",            conflict: "id" },
-  { table: "projects",           conflict: "id" },
-  { table: "tasks",              conflict: "id" },
+  { table: "users",              conflict: "id", deleteOrphans: true },
+  { table: "clients",            conflict: "id", deleteOrphans: true },
+  { table: "projects",           conflict: "id", deleteOrphans: true },
+  { table: "tasks",              conflict: "id", deleteOrphans: true },
   { table: "task_files",         conflict: "id" },
   { table: "task_comments",      conflict: "id" },
   { table: "notifications",      conflict: "id" },
@@ -74,7 +74,7 @@ async function getLocalSchema(table) {
 }
 
 // ── Phase 1: Pull FROM Supabase → Local ─────────────────────
-async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull }) {
+async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull, deleteOrphans = false }) {
   const skipCols    = excludeFromPull !== undefined ? excludeFromPull : excludeFromRow;
   const conflictCols = conflict.split(",").map(c => c.trim());
 
@@ -159,9 +159,28 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
     }
   }
 
+  // ── Delete local orphans (rows deleted from Supabase) ──────
+  let deleted = 0;
+  if (deleteOrphans && allRows.length > 0 && conflictCols.length === 1 && conflictCols[0] === "id") {
+    try {
+      const supabaseIds = allRows.map(r => r.id).filter(Boolean);
+      const result = await pool.query(
+        `DELETE FROM "${table}" WHERE id <> ALL($1::uuid[])`,
+        [supabaseIds]
+      );
+      deleted = result.rowCount || 0;
+      if (deleted > 0)
+        console.log(`   🗑  ← ${table.padEnd(24)} ${deleted} orphan(s) deleted (no longer in Supabase)`);
+    } catch (e) {
+      console.log(`   ⚠️  ${table} orphan delete: ${e.message.slice(0, 100)}`);
+    }
+  }
+
   const icon = failed === 0 ? "✅" : (pulled > 0 ? "⚠️ " : "❌");
-  console.log(`   ${icon} ← ${table.padEnd(24)} ${pulled}/${allRows.length} pulled${failed ? `, ${failed} failed` : ""}`);
-  return { table, pulled, failed, total: allRows.length };
+  console.log(`   ${icon} ← ${table.padEnd(24)} ${pulled}/${allRows.length} pulled`
+    + (failed ? `, ${failed} failed` : "")
+    + (deleted ? `, ${deleted} orphans removed` : ""));
+  return { table, pulled, failed, total: allRows.length, deleted };
 }
 
 // ── Phase 2: Push FROM Local → Supabase ─────────────────────
