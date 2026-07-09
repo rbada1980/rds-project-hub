@@ -14,6 +14,21 @@ const multer   = require("multer");
 const fs       = require("fs");
 const { v4: uuidv4 } = require("uuid");
 
+// ── Web Push (VAPID) ─────────────────────────────────────────
+// Keys generated once — shared between offline + online
+const VAPID_PUBLIC_KEY  = "BMTLOA2w7j72nZQd64u_WR2dNKpDcdDiAP92vs_BJY7l2v23qQaw9Xbwimu4Y62U2rjJ9A0rSNM1SYS_6wBDHq4";
+const VAPID_PRIVATE_KEY = "BUB44kF8h_b_PYPOJCJrt9fv2InIsV4C1hN67zGqhiE";
+const VAPID_EMAIL       = "mailto:admin@rdsgroup.biz";
+
+let webpush = null;
+try {
+  webpush = require("web-push");
+  webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  console.log("✓ Web Push (VAPID) ready");
+} catch (e) {
+  console.warn("⚠ web-push not installed — run: npm install web-push");
+}
+
 const app  = express();
 const PORT = 3000;
 
@@ -424,6 +439,21 @@ app.post("/api/notifications", async (req, res) => {
          n.entity_type||"", n.entity_id||"", n.created_by||""]
       );
       inserted.push(r.rows[0]);
+
+      // ── Push notification to recipient ──────────────────────
+      if (n.recipient_username) {
+        const url = n.entity_type === "task" ? "/task-list"
+                  : n.entity_type === "message" ? "/message"
+                  : "/";
+        await pushToUsers([n.recipient_username], pushPayload({
+          title:    "🔔 " + (n.title || "New Notification"),
+          body:     n.description || "",
+          employee: n.created_by || "",
+          type:     n.type || "Notification",
+          url,
+          tag:      "notif-" + (n.entity_id || Date.now()),
+        }));
+      }
     }
     res.json(ok(inserted.length === 1 ? inserted[0] : inserted));
   } catch (e) { res.json(err(e)); }
@@ -608,6 +638,28 @@ app.post("/api/war-room/messages", async (req, res) => {
        f.reply_to_id||null, f.reply_to_body||null, f.reply_to_author||null]
     );
     res.json(ok(r.rows[0]));
+
+    // ── Push notification to all other subscribed users ──────
+    const mentions = f.mentions || [];
+    const clientRes = await pool.query(`SELECT name FROM clients WHERE id=$1`, [f.client_id]).catch(()=>({rows:[]}));
+    const clientName = clientRes.rows[0]?.name || "War Room";
+    const payload = pushPayload({
+      title:    `💬 ${clientName}`,
+      body:     f.body || "(new message)",
+      employee: f.author_name || f.author,
+      type:     mentions.length ? `Mentioned you` : "New Message",
+      url:      "/message",
+      tag:      "wr-" + f.client_id,
+    });
+    // Send to mentioned users first; if none, send to all subscribers except sender
+    if (mentions.length) {
+      await pushToUsers(mentions, payload);
+    } else {
+      const { rows: subs } = await pool.query(
+        `SELECT DISTINCT username FROM push_subscriptions WHERE username != $1`, [f.author||""]
+      );
+      await pushToUsers(subs.map(s => s.username), payload);
+    }
   } catch (e) { res.json(err(e)); }
 });
 
@@ -822,6 +874,86 @@ app.get("/api/settings", async (req, res) => {
     res.json(ok(r.rows));
   } catch (e) { res.json(err(e)); }
 });
+
+// ═════════════════════════════════════════════════════════════
+// WEB PUSH — subscription management + send helpers
+// ═════════════════════════════════════════════════════════════
+
+// GET /api/push/vapid-public-key — frontend reads this to subscribe
+app.get("/api/push/vapid-public-key", (req, res) => {
+  res.json({ key: VAPID_PUBLIC_KEY });
+});
+
+// POST /api/push/subscribe — browser sends subscription object after permission granted
+app.post("/api/push/subscribe", async (req, res) => {
+  try {
+    const { username, subscription } = req.body;
+    if (!username || !subscription?.endpoint) return res.json(ok(null));
+    await pool.query(`
+      INSERT INTO push_subscriptions (username, endpoint, p256dh, auth, origin)
+      VALUES ($1,$2,$3,$4,'offline')
+      ON CONFLICT (username, endpoint) DO UPDATE SET p256dh=$3, auth=$4
+    `, [username, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth]);
+    res.json(ok({ subscribed: true }));
+  } catch (e) { res.json(err(e)); }
+});
+
+// DELETE /api/push/unsubscribe
+app.delete("/api/push/unsubscribe", async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM push_subscriptions WHERE endpoint=$1`, [req.body.endpoint]);
+    res.json(ok(null));
+  } catch (e) { res.json(err(e)); }
+});
+
+// POST /api/push/send — internal: send push to one or more usernames
+app.post("/api/push/send", async (req, res) => {
+  try {
+    const { usernames, payload } = req.body;
+    await pushToUsers(Array.isArray(usernames) ? usernames : [usernames], payload);
+    res.json(ok({ sent: true }));
+  } catch (e) { res.json(err(e)); }
+});
+
+// Helper: send push notification to list of usernames
+async function pushToUsers(usernames, payload) {
+  if (!webpush || !usernames?.length) return;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM push_subscriptions WHERE username = ANY($1::text[])`,
+      [usernames]
+    );
+    const msg = JSON.stringify(payload);
+    await Promise.allSettled(rows.map(async sub => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          msg
+        );
+      } catch (e) {
+        if (e.statusCode === 410 || e.statusCode === 404) {
+          // Expired subscription — clean up
+          await pool.query(`DELETE FROM push_subscriptions WHERE endpoint=$1`, [sub.endpoint]).catch(() => {});
+        }
+      }
+    }));
+  } catch (e) { console.error("[push]", e.message); }
+}
+
+// Helper: build notification payload
+function pushPayload({ title, body, employee, type, url, tag, extra }) {
+  const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
+  return {
+    title:    title || "RDS Project Hub",
+    body:     body  || "",
+    employee: employee || "",
+    type:     type  || "",
+    time:     now,
+    url:      url   || "/",
+    tag:      tag   || ("rds-" + Date.now()),
+    extra:    extra || "",
+  };
+}
 
 // ═════════════════════════════════════════════════════════════
 // GENERIC RPC — used by localApi.js (supabase.from() shim)

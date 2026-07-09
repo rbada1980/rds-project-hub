@@ -8,7 +8,7 @@ const useMobile=()=>useContext(MobileCtx);
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
 const IS_LOCAL = typeof window!=="undefined" && (window.location.port==="3000" || window.location.port==="8080" || window.location.port==="8443");
-const LOCAL_BASE = IS_LOCAL ? `http://${typeof window!=="undefined"?window.location.hostname:"192.168.0.159"}:${typeof window!=="undefined"?window.location.port:"8080"}` : "";
+const LOCAL_BASE = IS_LOCAL ? `${typeof window!=="undefined"?window.location.protocol:"https:"}//${typeof window!=="undefined"?window.location.hostname:"192.168.0.159"}:${typeof window!=="undefined"?window.location.port:"8443"}` : "";
 const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
 
@@ -5380,6 +5380,7 @@ function WarRoomPage({me,projects,users}){
       const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({user_id:u.id,type:"mention",title:`💬 ${me.name} mentioned you in ${clientDisplayN}`,description:snippet,entity_type:"war_room",entity_id:capturedCid,created_by:me.username}));
       if(rows.length)await supabase.from("notifications").insert(rows);
     }
+    if(!IS_LOCAL&&inserted){const _pu=mentions.filter(m=>m!=="here"&&m!=="all").length?users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username):allUsers.map(u=>u.username);if(_pu.length)fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:_pu,title:"💬 "+clientDisplayN,body:snippet,employee:me.name,type:mentions.filter(m=>m!=="here"&&m!=="all").length?"Mention":"War Room Message",url:"/"})}).catch(()=>{});}
     setSending(false);
   }
 
@@ -6210,6 +6211,7 @@ function TaskComments({taskId,projectId,me,users}){
           entity_type:"task",entity_id:taskId,created_by:me.username
         }));
         if(rows.length)await supabase.from("notifications").insert(rows);
+        if(!IS_LOCAL)fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username),title:"💬 Task Mention",body:input.trim().slice(0,80),employee:me.name,type:"Mention",url:"/"})}).catch(()=>{});
       }
       setInput("");setMentionOpen(false);
     }
@@ -10015,12 +10017,35 @@ export default function App(){
     }
   }
 
-  // Register service worker (enables background Chrome notifications)
+  // -- Service Worker + Web Push subscription
   useEffect(()=>{
-    if("serviceWorker" in navigator){
-      navigator.serviceWorker.register("/sw.js").catch(()=>{});
-    }
-  },[]);
+    if(!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").then(async reg=>{
+      if(!me) return;
+      let perm = Notification.permission;
+      if(perm === "default") perm = await Notification.requestPermission();
+      if(perm !== "granted") return;
+      try {
+        const keyRes = await fetch(LOCAL_BASE + "/api/push/vapid-public-key");
+        const { key } = await keyRes.json();
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlB64ToUint8(key),
+        });
+        await fetch(LOCAL_BASE + "/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: me.username, subscription: sub.toJSON() }),
+        });
+      } catch(e){ console.log("[push]", e.message); }
+    }).catch(()=>{});
+  },[me]);
+
+  function _urlB64ToUint8(b64){
+    const pad = "=".repeat((4 - b64.length%4)%4);
+    const raw = atob((b64+pad).replace(/-/g,"+").replace(/_/g,"/"));
+    return Uint8Array.from(raw, c=>c.charCodeAt(0));
+  }
 
   // Auto-request browser notification permission once (3s after login)
   useEffect(()=>{
