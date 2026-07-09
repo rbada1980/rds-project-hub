@@ -1452,6 +1452,10 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
           tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${t.due_date||"—"}`,dot:C.accent};})},
           tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"}`,dot:C.green};})},
+          tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${t.due_date||"—"}`,dot:isDone(t.status)?C.green:C.blue};})},
+          tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
+          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${t.due_date}`,dot:C.red};})},
         };
         const md=tlModalData[tlStatModal];if(!md)return null;
         return(<div onClick={()=>setTSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1479,10 +1483,10 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
 
       {/* Top stats */}
       <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
-        <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>{setTab("all");setSF("All");}}/>
-        <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>{setTab("detailer");setSF("All");}}/>
-        <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>{setTab("checker");setSF("All");}}/>
-        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>{setTab("all");setSF("Overdue");}}/>
+        <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>setTSM("tlalltasks")}/>
+        <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>setTSM("tlmydetail")}/>
+        <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>setTSM("tlmycheck")}/>
+        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>setTSM("tloverdue")}/>
       </div>
 
       {/* Our Clients */}
