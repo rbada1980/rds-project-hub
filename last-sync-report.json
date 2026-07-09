@@ -1,19 +1,19 @@
 {
-  "timestamp": "2026-07-08T06:03:24.620Z",
-  "ist_time": "2026-07-08 11:33:24 IST",
-  "duration_sec": 8.2,
-  "total_synced": 2122,
-  "total_pushed": 1061,
-  "total_pulled": 1061,
-  "total_failed": 0,
-  "status": "success",
+  "timestamp": "2026-07-09T04:40:01.418Z",
+  "ist_time": "2026-07-09 10:10:01 IST",
+  "duration_sec": 11.1,
+  "total_synced": 2864,
+  "total_pushed": 1410,
+  "total_pulled": 1454,
+  "total_failed": 100,
+  "status": "partial",
   "tables": [
     {
       "table": "users",
-      "synced": 29,
+      "synced": 31,
       "failed": 0,
-      "total": 29,
-      "pulled": 29
+      "total": 31,
+      "pulled": 31
     },
     {
       "table": "clients",
@@ -24,17 +24,17 @@
     },
     {
       "table": "projects",
-      "synced": 73,
+      "synced": 135,
       "failed": 0,
-      "total": 73,
-      "pulled": 73
+      "total": 135,
+      "pulled": 135
     },
     {
       "table": "tasks",
-      "synced": 687,
+      "synced": 1000,
       "failed": 0,
-      "total": 687,
-      "pulled": 687
+      "total": 1000,
+      "pulled": 1000
     },
     {
       "table": "task_files",
@@ -54,10 +54,10 @@
     },
     {
       "table": "notifications",
-      "synced": 240,
-      "failed": 0,
-      "total": 240,
-      "pulled": 240
+      "synced": 209,
+      "failed": 100,
+      "total": 309,
+      "pulled": 253
     },
     {
       "table": "announcements",
@@ -121,10 +121,10 @@
     },
     {
       "table": "attendance",
-      "synced": 14,
+      "synced": 17,
       "failed": 0,
-      "total": 14,
-      "pulled": 14
+      "total": 17,
+      "pulled": 17
     },
     {
       "table": "breaks",
