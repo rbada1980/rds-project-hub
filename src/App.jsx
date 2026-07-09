@@ -11664,4 +11664,6 @@ export default function App(){
     </nav>
     {/* ── Live Timer floating bar ── */}
     <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Pr
+    </MobileCtx.Provider>
+  );
+}
