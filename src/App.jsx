@@ -3920,6 +3920,63 @@ function EmailDigestCard(){
   );
 }
 
+function EscalationAlertCard(){
+  const [enabled,setEnabled]=useState(true);
+  const [loading,setLoading]=useState(true);
+  const [triggering,setTriggering]=useState(false);
+  const [msg,setMsg]=useState(null);
+  useEffect(()=>{
+    (async()=>{
+      const res=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.escalation_alert_enabled&select=value",{
+        headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+      });
+      const data=await res.json();
+      if(Array.isArray(data)&&data.length>0)setEnabled(data[0].value!=="false");
+      setLoading(false);
+    })();
+  },[]);
+  async function upsertSetting(key,value){
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+key,{method:"PATCH",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},body:JSON.stringify({value})});
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){await fetch(SUPA_URL+"/rest/v1/settings",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({key,value})});}
+  }
+  async function toggle(val){setEnabled(val);await upsertSetting("escalation_alert_enabled",val?"true":"false");setMsg("Escalation "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
+  async function triggerNow(){
+    setTriggering(true);setMsg(null);
+    try{
+      const res=await fetch("/api/cron-escalate",{method:"GET"});
+      const data=await res.json();
+      if(res.ok){
+        if(data.escalated!=null&&data.escalated>0)setMsg("Escalated "+data.escalated+" task(s) to "+data.recipients+" recipient(s)");
+        else if(data.escalated===0)setMsg("No tasks within cooldown window — nothing sent");
+        else setMsg(data.message||"Done");
+      }else{setMsg("Error: "+(data.error||"Unknown"));}
+    }
+    catch(e){setMsg("Network error: "+e.message);}
+    setTriggering(false);setTimeout(()=>setMsg(null),5000);
+  }
+  if(loading)return null;
+  return(
+    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+        <span style={{fontSize:20}}>{"🚨"}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>72h Overdue Escalation Alert</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin & Manager — runs automatically every 6 hours"}</div>
+        </div>
+        <div onClick={()=>toggle(!enabled)} style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+          <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #0003"}}/>
+        </div>
+      </div>
+      {msg&&<div style={{fontSize:12,fontWeight:700,color:msg.startsWith("Error")||msg.startsWith("Network")?C.red:C.green,background:(msg.startsWith("Error")||msg.startsWith("Network")?C.red:C.green)+"22",borderRadius:8,padding:"8px 12px",marginBottom:12}}>{msg}</div>}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:12,color:enabled?C.green:C.t3,fontWeight:700}}>{enabled?"Active":"Paused"}</span>
+        <button onClick={triggerNow} disabled={triggering} style={{...GBtn,fontSize:11,padding:"5px 12px",marginLeft:"auto",opacity:triggering?.6:1}}>{triggering?"Checking...":"Run Now"}</button>
+      </div>
+    </div>
+  );
+}
+
 function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}){
   const [showForm,setShowForm]=useState(false);
   const [editWf,setEditWf]=useState(null);
@@ -3938,6 +3995,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <EmailDigestCard/>
+      <EscalationAlertCard/>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Workflow Automation</div>
