@@ -1017,29 +1017,36 @@ app.get(/.*/, (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════
-// START — HTTP on 8080 + optional HTTPS on 8443
+// START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
 // ════════════════════════════════════════════════════════════
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`\n🚀 RDS Local Server running at:`);
-  console.log(`   http://localhost:${PORT}`);
-  console.log(`   http://192.168.0.159:${PORT}  ← Office LAN`);
-  console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
-  console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-});
-
-// HTTPS on port 8443 (enables Chrome notifications on LAN)
-// To activate: run generate-cert.bat once, then restart server
 const HTTPS_PORT = 8443;
 const certPath   = path.join(__dirname, "certs", "cert.pem");
 const keyPath    = path.join(__dirname, "certs",  "key.pem");
+
 if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  // ── Primary: HTTPS only ──────────────────────────────────
   try {
     require("https").createServer({
       key:  fs.readFileSync(keyPath),
       cert: fs.readFileSync(certPath),
     }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
-      console.log(`🔒 HTTPS running at https://192.168.0.159:${HTTPS_PORT}  (Chrome notifications enabled)`);
+      console.log(`\n🔒 RDS Local Server running at:`);
+      console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
+      console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
+      console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
     });
-  } catch (e) { console.warn("HTTPS failed:", e.message); }
+  } catch (e) {
+    console.error("HTTPS failed:", e.message);
+    process.exit(1);
+  }
+} else {
+  // ── Fallback: HTTP on 3000 (no cert yet) ─────────────────
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
+    console.log(`   http://192.168.0.159:${PORT}`);
+    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
+    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
+    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+  });
 }
