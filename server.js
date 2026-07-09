@@ -918,4 +918,128 @@ app.post("/api/rpc", async (req, res) => {
     if (op === "upsert") {
       const rows = Array.isArray(data) ? data : [data];
       const inserted = [];
-      fo
+      for (const row of rows) {
+        const rowVals = [];
+        const keys = Object.keys(row).filter(k => row[k] !== undefined);
+        const phs = keys.map(k => { rowVals.push(row[k]); return `$${rowVals.length}`; });
+        const updateSets = keys.filter(k => k !== "id").map(k => `"${k}"=EXCLUDED."${k}"`).join(",");
+        const r = await pool.query(
+          `INSERT INTO "${table}" (${keys.map(k=>`"${k}"`).join(",")}) VALUES (${phs.join(",")})
+           ON CONFLICT (id) DO UPDATE SET ${updateSets} RETURNING *`,
+          rowVals
+        );
+        inserted.push(r.rows[0]);
+      }
+      const out = (single || rows.length === 1) ? inserted[0] : inserted;
+      return res.json({ data: out, error: null });
+    }
+
+    return res.json({ data: null, error: { message: "Unknown op: " + op } });
+  } catch (e) {
+    console.error("[/api/rpc]", e.message);
+    return res.json({ data: null, error: { message: e.message } });
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+// ADMIN — BACKUP & RESTORE
+// ════════════════════════════════════════════════════════════
+
+const ALL_TABLES = [
+  "users","clients","projects","tasks","task_files","task_comments",
+  "notifications","announcements","workflows",
+  "war_room_messages","war_room_pins","war_room_reactions",
+  "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs"
+];
+
+// GET /api/admin/backup — download full DB as JSON
+app.get("/api/admin/backup", async (req, res) => {
+  try {
+    const backup = { createdAt: new Date().toISOString(), tables: {} };
+    for (const t of ALL_TABLES) {
+      const r = await pool.query(`SELECT * FROM "${t}"`);
+      backup.tables[t] = r.rows;
+    }
+    res.setHeader("Content-Disposition", `attachment; filename="RDS_Local_Backup_${Date.now()}.json"`);
+    res.json(backup);
+  } catch (e) { res.json(err(e)); }
+});
+
+// POST /api/admin/restore — restore from JSON backup
+app.post("/api/admin/restore", async (req, res) => {
+  try {
+    const { tables } = req.body;
+    for (const [table, rows] of Object.entries(tables)) {
+      if (!ALL_TABLES.includes(table) || !rows.length) continue;
+      const cols = Object.keys(rows[0]);
+      for (const row of rows) {
+        const vals = cols.map(c => {
+          const v = row[c];
+          if (v !== null && typeof v === "object") return JSON.stringify(v);
+          return v;
+        });
+        const phs = cols.map((_, i) => `$${i+1}`).join(",");
+        const colList = cols.map(c => `"${c}"`).join(",");
+        await pool.query(
+          `INSERT INTO "${table}" (${colList}) VALUES (${phs}) ON CONFLICT (id) DO NOTHING`,
+          vals
+        );
+      }
+    }
+    res.json(ok({ message: "Restore complete" }));
+  } catch (e) { res.json(err(e)); }
+});
+
+// ════════════════════════════════════════════════════════════
+// HEALTH CHECK
+// ════════════════════════════════════════════════════════════
+
+app.get("/api/health", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT NOW() as time, current_database() as db");
+    res.json({ status: "ok", db: r.rows[0].db, time: r.rows[0].time, server: "RDS Local v1.0" });
+  } catch (e) {
+    res.status(500).json({ status: "error", message: e.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+// SPA FALLBACK — serve React app for all other routes
+// ════════════════════════════════════════════════════════════
+
+app.get("*", (req, res) => {
+  const index = path.join(DIST, "index.html");
+  if (fs.existsSync(index)) {
+    res.sendFile(index);
+  } else {
+    res.json({ message: "RDS Local API running. React build not found — run npm run build first." });
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+// START — HTTP on 8080 + optional HTTPS on 8443
+// ════════════════════════════════════════════════════════════
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`\n🚀 RDS Local Server running at:`);
+  console.log(`   http://localhost:${PORT}`);
+  console.log(`   http://192.168.0.159:${PORT}  ← Office LAN`);
+  console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
+  console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+});
+
+// HTTPS on port 8443 (enables Chrome notifications on LAN)
+// To activate: run generate-cert.bat once, then restart server
+const HTTPS_PORT = 8443;
+const certPath   = path.join(__dirname, "certs", "cert.pem");
+const keyPath    = path.join(__dirname, "certs",  "key.pem");
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  try {
+    require("https").createServer({
+      key:  fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
+      console.log(`🔒 HTTPS running at https://192.168.0.159:${HTTPS_PORT}  (Chrome notifications enabled)`);
+    });
+  } catch (e) { console.warn("HTTPS failed:", e.message); }
+}
