@@ -879,6 +879,15 @@ app.get("/api/settings", async (req, res) => {
 // WEB PUSH — subscription management + send helpers
 // ═════════════════════════════════════════════════════════════
 
+// GET /install-cert — serves SSL cert for employee PCs to download and trust
+app.get("/install-cert", (req, res) => {
+  const certFile = path.join(__dirname, "certs", "cert.pem");
+  if (!fs.existsSync(certFile)) return res.status(404).send("Cert not found");
+  res.setHeader("Content-Disposition", "attachment; filename=rds-cert.pem");
+  res.setHeader("Content-Type", "application/x-pem-file");
+  res.sendFile(certFile);
+});
+
 // GET /api/push/vapid-public-key — frontend reads this to subscribe
 app.get("/api/push/vapid-public-key", (req, res) => {
   res.json({ key: VAPID_PUBLIC_KEY });

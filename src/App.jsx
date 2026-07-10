@@ -10003,15 +10003,20 @@ export default function App(){
       g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.35);
       o.start(ctx.currentTime);o.stop(ctx.currentTime+0.35);
     }catch{}
-    // 4. Browser OS notification (service-worker path preferred; falls back to Notification API)
+    // 4. Browser OS notification
+    // KEY FIX: navigator.serviceWorker.ready hangs forever when SW isn't registered (cert not trusted).
+    // Check .controller first — if null, no SW is active, fall back to Notification API immediately.
     if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
       try{
-        if("serviceWorker" in navigator){
+        const tag="wr-"+(id||Date.now());
+        if("serviceWorker" in navigator && navigator.serviceWorker.controller){
+          // SW is active and controlling the page — use it for rich persistent notification
           navigator.serviceWorker.ready.then(reg=>{
-            reg.showNotification(title,{body:body||"New message",icon:"/logo.png",badge:"/logo.png",image:"/logo.png",tag:"wr-"+(id||Date.now()),requireInteraction:true,renotify:true,actions:[{action:"view",title:"👁 View Now"},{action:"dismiss",title:"✕ Dismiss"}],vibrate:[300,100,300]});
-          }).catch(()=>{try{new Notification(title,{body:body||"New message",icon:"/logo.png",tag:"wr-"+(id||Date.now())});}catch{}});
+            reg.showNotification(title,{body:body||"New message",icon:"/logo.png",badge:"/logo.png",image:"/logo.png",tag,requireInteraction:true,renotify:true,actions:[{action:"view",title:"👁 View Now"},{action:"dismiss",title:"✕ Dismiss"}],vibrate:[300,100,300]});
+          }).catch(()=>{try{new Notification(title,{body:body||"New message",icon:"/logo.png",tag,requireInteraction:true});}catch{}});
         }else{
-          new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});
+          // No active SW (cert not trusted or SW not registered) — use Notification API directly
+          new Notification(title,{body:body||"New message",icon:"/logo.png",tag,requireInteraction:true});
         }
       }catch{}
     }
