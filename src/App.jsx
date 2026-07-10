@@ -3384,7 +3384,7 @@ function exportSubmissionList(projects,tasks,today){
 // ─────────────────────────────────────────────────────────────────────────────
 function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
   const isMobile=useMobile();
-  const [period,setPeriod]=useState("this_week");
+  const [period,setPeriod]=useState("overdue");
   const [customFrom,setCustomFrom]=useState(today);
   const [customTo,setCustomTo]=useState(today);
   const [showCal,setShowCal]=useState(false);
@@ -3398,7 +3398,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   const getRangeDates=()=>{
     const d=new Date(today);
-    if(period==="overdue")  return{from:"2000-01-01",to:yesterday,label:"Overdue (past due, not completed)",icon:"⚠️",color:C.red};
+    if(period==="all")      return{from:"2000-01-01",to:"2099-12-31",label:"All Submissions (all dates)",icon:"📋",color:C.accent};
+    if(period==="overdue")  return{from:"2000-01-01",to:yesterday,label:"Overdue (past due, not completed)",icon:"⚠️",color:"#ef4444"};
     if(period==="today")    return{from:today,to:today,label:"Today",icon:"📅",color:"#f97316"};
     if(period==="tomorrow"){const tm=addDays(today,1);return{from:tm,to:tm,label:"Tomorrow",icon:"🌅",color:C.green};}
     if(period==="this_week"){const ms=mondayOf(today);const se=sundayOf(today);return{from:ms,to:se,label:`This Week  ${ms} → ${se}`,icon:"📆",color:"#f59e0b"};}
@@ -3424,7 +3425,11 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   };
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
-  const periodTasksRaw=allTasks.filter(t=>inRange(t,rangeFrom,rangeTo)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
+  // "all" bypasses date filter entirely — shows every task regardless of date
+  const periodTasksRaw=(period==="all"
+    ?[...allTasks]
+    :allTasks.filter(t=>inRange(t,rangeFrom,rangeTo))
+  ).sort((a,b)=>(a.client_sub_date||a.due_date||"zzz").localeCompare(b.client_sub_date||b.due_date||"zzz"));
   const periodTasks=subSearch?periodTasksRaw.filter(t=>{
     const proj=scopedProjects.find(p=>p.id===t.project_id);
     const q=subSearch.toLowerCase();
@@ -3489,6 +3494,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   });
 
   const QUICK=[
+    {id:"all",label:"All Tasks",icon:"📋",color:C.accent},
     {id:"overdue",label:"Overdue",icon:"⚠️",color:"#ef4444"},
     {id:"today",label:"Today",icon:"📅",color:"#f97316"},
     {id:"tomorrow",label:"Tomorrow",icon:"🌅",color:C.green},
@@ -3501,11 +3507,18 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   return(
     <div>
       {/* ── Header ── */}
-      <div style={{marginBottom:20}}>
+      <div style={{marginBottom:14}}>
         <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📬 Submission List</h2>
         <p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Tasks and projects due for submission — filter by date range</p>
       </div>
-
+      {/* ── Diagnostic info strip ── */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 14px",marginBottom:8,fontSize:12,color:C.t2,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+        <span>📦 <strong style={{color:C.t1}}>{tasks.length}</strong> tasks loaded</span>
+        <span>🔗 <strong style={{color:C.t1}}>{allTasks.length}</strong> in scope</span>
+        <span>📅 <strong style={{color:C.t1}}>{allTasks.filter(t=>hasDate(t)).length}</strong> have dates</span>
+        <span>⛔ <strong style={{color:C.t1}}>{noDatesCount}</strong> no dates</span>
+        <span style={{color:C.t3}}>Today: {today}</span>
+      </div>
       {/* ── Summary stat cards ── */}
       <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:22}}>
         {[
@@ -3632,8 +3645,12 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
             <div style={{fontSize:13}}>
               {period==="overdue"
                 ?"All tasks are on schedule or completed."
+                :period==="all"
+                  ?(tasks.length===0?"No tasks found in the system. Create tasks in your projects first."
+                    :allTasks.length===0?"Tasks exist but don't match any project. Check if projects are loaded correctly."
+                    :"No tasks found.")
                 :noDatesCount>0
-                  ?`${noDatesCount} task${noDatesCount!==1?"s":""} have no dates — click "Overdue" or set dates on tasks to see them here.`
+                  ?`${noDatesCount} task${noDatesCount!==1?"s":""} have no dates — click "All Tasks" to see them, or set due dates on tasks.`
                   :"Try selecting a different date range or check the Overdue filter above."}
             </div>
           </div>
@@ -11773,42 +11790,4 @@ export default function App(){
               style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
               <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
               <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRa

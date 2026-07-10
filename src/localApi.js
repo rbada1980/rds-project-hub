@@ -95,16 +95,4 @@ export function createLocalClient(base = "") {
     from: (table) => new QueryBuilder(base, table),
 
     // Realtime stubs (polling in App.jsx handles live updates)
-    channel:       () => makeStubChannel(),
-    removeChannel: ()  => {},
-
-    // Storage stubs — file uploads use dedicated fetch calls in App.jsx
-    storage: {
-      from: () => ({
-        upload:       async () => ({ error: null }),
-        getPublicUrl: ()       => ({ data: { publicUrl: "" } }),
-        remove:       async () => ({ error: null }),
-      }),
-    },
-  };
-}
+    channel:       () => ma
