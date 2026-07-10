@@ -899,13 +899,13 @@ app.get("/api/settings", async (req, res) => {
 // WEB PUSH — subscription management + send helpers
 // ═════════════════════════════════════════════════════════════
 
-// GET /install-cert — serves SSL cert for employee PCs to download and trust
+// GET /install-cert — serves RDS CA cert for employee PCs to download and trust
 app.get("/install-cert", (req, res) => {
-  const certFile = path.join(__dirname, "certs", "cert.pem");
-  if (!fs.existsSync(certFile)) return res.status(404).send("Cert not found");
-  res.setHeader("Content-Disposition", "attachment; filename=rds-cert.pem");
-  res.setHeader("Content-Type", "application/x-pem-file");
-  res.sendFile(certFile);
+  const caFile = path.join(__dirname, "certs", "RDS-Local-CA.crt");
+  if (!fs.existsSync(caFile)) return res.status(404).send("CA cert not found");
+  res.setHeader("Content-Disposition", "attachment; filename=RDS-Local-CA.crt");
+  res.setHeader("Content-Type", "application/x-x509-ca-cert");
+  res.sendFile(caFile);
 });
 
 // GET /api/push/vapid-public-key — frontend reads this to subscribe
@@ -1193,9 +1193,9 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// ════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 // SPA FALLBACK — serve React app for all other routes
-// ════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 
 app.get(/.*/, (req, res) => {
   const index = path.join(DIST, "index.html");
@@ -1206,16 +1206,16 @@ app.get(/.*/, (req, res) => {
   }
 });
 
-// ════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 // START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
-// ════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 
 const HTTPS_PORT = 8443;
 const certPath   = path.join(__dirname, "certs", "cert.pem");
 const keyPath    = path.join(__dirname, "certs",  "key.pem");
 
 if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-  // ── Primary: HTTPS only ──────────────────────────────────
+  // ── Primary: HTTPS only ────────────────────────────────────────────────────────
   try {
     require("https").createServer({
       key:  fs.readFileSync(keyPath),
@@ -1226,8 +1226,7 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
       console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
       console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
 
-      // ── Bidirectional sync schedule ───────────────────────
-      // Every 15 minutes: quick sync to keep data fresh during the day
+      // ── Bidirectional sync schedule ───────────────────────────────────────────────────
       let _syncBusy = false;
       async function doSync(label) {
         if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
@@ -1236,10 +1235,11 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
         catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
         finally { _syncBusy = false; }
       }
-      cron.schedule("*/15 * * * *", () => doSync("15-min"), { timezone: "Asia/Kolkata" });
-      // Full sync also at 2 AM IST as a catch-all
-      cron.schedule("0 2 * * *",    () => doSync("2AM"),    { timezone: "Asia/Kolkata" });
-      console.log("🔄 Auto-sync: every 15 min + 2:00 AM IST daily\n");
+      // Every 10 seconds
+      setInterval(() => doSync("10s"), 10000);
+      // Full sync at 2 AM IST daily
+      cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
+      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
 
       // Run once 30s after startup to catch any changes since last restart
       setTimeout(() => doSync("startup"), 30000);
@@ -1249,7 +1249,7 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
     process.exit(1);
   }
 } else {
-  // ── Fallback: HTTP on 3000 (no cert yet) ─────────────────
+  // ── Fallback: HTTP on 3000 (no cert yet) ──────────────────────────────────────────
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
     console.log(`   http://192.168.0.159:${PORT}`);
