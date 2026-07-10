@@ -1015,6 +1015,11 @@ app.post("/api/rpc", async (req, res) => {
           const phs = arr.map(v => { vals.push(v); return `$${vals.length}`; });
           return `"${f.col}" IN (${phs.join(",")})`;
         }
+        if (f.op === "is") {
+          if (f.val === null)  return `"${f.col}" IS NULL`;
+          if (f.val === true)  return `"${f.col}" IS TRUE`;
+          if (f.val === false) return `"${f.col}" IS FALSE`;
+        }
         vals.push(f.val);
         const ph = `$${vals.length}`;
         if (f.op === "eq")  return `"${f.col}"=${ph}`;

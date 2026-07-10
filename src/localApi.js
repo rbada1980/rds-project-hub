@@ -45,6 +45,7 @@ class QueryBuilder {
   lt(col, val)  { this._filters.push({ col, op: "lt",  val }); return this; }
   lte(col, val) { this._filters.push({ col, op: "lte", val }); return this; }
   in(col, vals) { this._filters.push({ col, op: "in",  val: Array.isArray(vals) ? vals : [...vals] }); return this; }
+  is(col, val)  { this._filters.push({ col, op: "is",  val }); return this; }
 
   // ── Modifiers ─────────────────────────────────────────────
   order(col, opts = {}) {

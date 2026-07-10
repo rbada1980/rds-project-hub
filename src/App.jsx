@@ -9893,75 +9893,82 @@ export default function App(){
   }
   useEffect(()=>{if(me)loadAll();},[me]);
   // ── Attendance functions ──────────────────────────────────────────────────
+  // ── Attendance helpers — route through supabase client so offline LAN site ──
+  // uses the local PostgreSQL proxy (/api/rpc) instead of calling Supabase
+  // cloud directly (client browsers on the LAN have no internet access).
   async function loadAttendance(){
     if(!me||me.role==="Client")return;
     const todayStr=new Date().toISOString().slice(0,10);
-    const res=await fetch(SUPA_URL+"/rest/v1/attendance?user_id=eq."+me.id+"&date=eq."+todayStr+"&select=*",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-    const rows=await res.json();
-    if(Array.isArray(rows)&&rows.length>0){
-      const rec=rows[0];
-      attRecRef.current=rec;sattRec(rec);
-      if(!rec.logout_at){
-        const br=await fetch(SUPA_URL+"/rest/v1/breaks?attendance_id=eq."+rec.id+"&break_end=is.null&select=*",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-        const brows=await br.json();
-        if(Array.isArray(brows)&&brows.length>0)sattBrk(brows[0]);
+    try{
+      const{data:rows}=await supabase.from("attendance").select("*").eq("user_id",me.id).eq("date",todayStr);
+      if(rows&&rows.length>0){
+        const rec=rows[0];
+        attRecRef.current=rec;sattRec(rec);
+        if(!rec.logout_at){
+          const{data:brows}=await supabase.from("breaks").select("*").eq("attendance_id",rec.id).is("break_end",null);
+          if(brows&&brows.length>0)sattBrk(brows[0]);
+        }
       }
-    }
+    }catch(e){}
     // No record found → leave attRec null; employee must click Login button
   }
   async function attClockIn(){
     if(!me||me.role==="Client")return;
     const todayStr=new Date().toISOString().slice(0,10);
-    const now=new Date().toISOString();
-    const ins=await fetch(SUPA_URL+"/rest/v1/attendance",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({user_id:me.id,user_name:me.name,date:todayStr,login_at:now})});
-    const d=await ins.json();
-    if(Array.isArray(d)&&d.length>0){attRecRef.current=d[0];sattRec(d[0]);}
+    try{
+      await supabase.from("attendance").insert({user_id:me.id,user_name:me.name,date:todayStr,login_at:new Date().toISOString()});
+      await loadAttendance();
+    }catch(e){}
   }
   async function loadAttStats(){
     if(!me||me.role==="Client")return;
     const now=new Date();
     const todayStr=now.toISOString().slice(0,10);
     const from60=new Date(now);from60.setDate(from60.getDate()-60);
-    const res=await fetch(SUPA_URL+"/rest/v1/attendance?user_id=eq."+me.id+"&date=gte."+from60.toISOString().slice(0,10)+"&select=date,total_work_minutes",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-    const rows=await res.json();
-    if(!Array.isArray(rows))return;
-    const dow=now.getDay();
-    const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
-    const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
-    const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
-    const monStr=mon.toISOString().slice(0,10);
-    const lMonStr=lMon.toISOString().slice(0,10);
-    const lSunStr=lSun.toISOString().slice(0,10);
-    const ystStr=new Date(now.getTime()-86400000).toISOString().slice(0,10);
-    const mthStr=todayStr.slice(0,8)+"01";
-    const lMthStart=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,10);
-    const lMthEnd=new Date(now.getFullYear(),now.getMonth(),0).toISOString().slice(0,10);
-    function sumMin(fn){return rows.filter(fn).reduce((s,r)=>s+(r.total_work_minutes||0),0);}
-    sattStats({
-      todayMin:sumMin(r=>r.date===todayStr),
-      yesterdayMin:sumMin(r=>r.date===ystStr),
-      thisWeekMin:sumMin(r=>r.date>=monStr&&r.date<=todayStr),
-      lastWeekMin:sumMin(r=>r.date>=lMonStr&&r.date<=lSunStr),
-      thisMonthMin:sumMin(r=>r.date>=mthStr&&r.date<=todayStr),
-      lastMonthMin:sumMin(r=>r.date>=lMthStart&&r.date<=lMthEnd),
-    });
+    try{
+      const{data:rows}=await supabase.from("attendance").select("date,total_work_minutes").eq("user_id",me.id).gte("date",from60.toISOString().slice(0,10));
+      if(!rows)return;
+      const dow=now.getDay();
+      const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+      const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
+      const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
+      const monStr=mon.toISOString().slice(0,10);
+      const lMonStr=lMon.toISOString().slice(0,10);
+      const lSunStr=lSun.toISOString().slice(0,10);
+      const ystStr=new Date(now.getTime()-86400000).toISOString().slice(0,10);
+      const mthStr=todayStr.slice(0,8)+"01";
+      const lMthStart=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,10);
+      const lMthEnd=new Date(now.getFullYear(),now.getMonth(),0).toISOString().slice(0,10);
+      function sumMin(fn){return rows.filter(fn).reduce((s,r)=>s+(r.total_work_minutes||0),0);}
+      sattStats({
+        todayMin:sumMin(r=>r.date===todayStr),
+        yesterdayMin:sumMin(r=>r.date===ystStr),
+        thisWeekMin:sumMin(r=>r.date>=monStr&&r.date<=todayStr),
+        lastWeekMin:sumMin(r=>r.date>=lMonStr&&r.date<=lSunStr),
+        thisMonthMin:sumMin(r=>r.date>=mthStr&&r.date<=todayStr),
+        lastMonthMin:sumMin(r=>r.date>=lMthStart&&r.date<=lMthEnd),
+      });
+    }catch(e){}
   }
   async function attStartBreak(){
     const rec=attRecRef.current;
     if(!rec||rec.logout_at)return;
-    const res=await fetch(SUPA_URL+"/rest/v1/breaks",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({attendance_id:rec.id})});
-    const d=await res.json();
-    if(Array.isArray(d)&&d.length>0)sattBrk(d[0]);
+    try{
+      await supabase.from("breaks").insert({attendance_id:rec.id,break_start:new Date().toISOString()});
+      const{data:brows}=await supabase.from("breaks").select("*").eq("attendance_id",rec.id).is("break_end",null);
+      if(brows&&brows.length>0)sattBrk(brows[0]);
+    }catch(e){}
   }
   async function attEndBreak(){
     if(!attBreak)return;
     const dur=Math.floor((Date.now()-new Date(attBreak.break_start).getTime())/60000);
-    await fetch(SUPA_URL+"/rest/v1/breaks?id=eq."+attBreak.id,{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({break_end:new Date().toISOString(),duration_minutes:dur})});
     const rec=attRecRef.current;
     const newBrk=(rec?.total_break_minutes||0)+dur;
-    const pr=await fetch(SUPA_URL+"/rest/v1/attendance?id=eq."+rec.id,{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({total_break_minutes:newBrk})});
-    const pd=await pr.json();
-    const updated=Array.isArray(pd)&&pd.length>0?pd[0]:{...rec,total_break_minutes:newBrk};
+    try{
+      await supabase.from("breaks").update({break_end:new Date().toISOString(),duration_minutes:dur}).eq("id",attBreak.id);
+      await supabase.from("attendance").update({total_break_minutes:newBrk}).eq("id",rec.id);
+    }catch(e){}
+    const updated={...rec,total_break_minutes:newBrk};
     attRecRef.current=updated;sattRec(updated);sattBrk(null);
   }
   async function attClockOut(){
@@ -9971,9 +9978,11 @@ export default function App(){
     const now=new Date();
     const totalMin=Math.floor((now.getTime()-new Date(rec.login_at).getTime())/60000);
     const workMin=Math.max(0,totalMin-(rec.total_break_minutes||0));
-    const pr=await fetch(SUPA_URL+"/rest/v1/attendance?id=eq."+rec.id,{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({logout_at:now.toISOString(),total_work_minutes:workMin})});
-    const pd=await pr.json();
-    if(Array.isArray(pd)&&pd.length>0){attRecRef.current=pd[0];sattRec(pd[0]);}
+    try{
+      await supabase.from("attendance").update({logout_at:now.toISOString(),total_work_minutes:workMin}).eq("id",rec.id);
+    }catch(e){}
+    const updated={...rec,logout_at:now.toISOString(),total_work_minutes:workMin};
+    attRecRef.current=updated;sattRec(updated);
     await loadAttStats();
   }
 
