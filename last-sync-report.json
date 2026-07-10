@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-10T09:35:06.414Z",
-  "ist_time": "2026-07-10 15:05:06 IST",
-  "duration_sec": 12.1,
-  "total_synced": 1946,
-  "total_pushed": 834,
-  "total_pulled": 1112,
+  "timestamp": "2026-07-10T09:40:46.773Z",
+  "ist_time": "2026-07-10 15:10:46 IST",
+  "duration_sec": 12,
+  "total_synced": 1948,
+  "total_pushed": 835,
+  "total_pulled": 1113,
   "total_failed": 0,
   "status": "success",
   "tables": [
@@ -123,10 +123,10 @@
     },
     {
       "table": "attendance",
-      "synced": 18,
+      "synced": 19,
       "failed": 0,
-      "total": 18,
-      "pulled": 18
+      "total": 19,
+      "pulled": 19
     },
     {
       "table": "breaks",
