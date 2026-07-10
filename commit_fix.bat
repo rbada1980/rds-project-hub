@@ -42,7 +42,7 @@ git add api/push/vapid-public-key.js api/push/subscribe.js api/push/send.js
 
 echo.
 echo === Committing ===
-git commit -m "fix: attendance clock-in/out now works on offline LAN site (route through local API)"
+git commit -m "fix: attendance works on offline LAN site + suppress duplicate push notifications on laptop"
 
 echo.
 echo === Pushing ===
