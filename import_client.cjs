@@ -1,320 +1,322 @@
-// ══════════════════════════════════════════════════════════════
-// import_client.cjs — White Cap project/task importer
-// Run: node import_client.cjs
-// ══════════════════════════════════════════════════════════════
-"use strict";
-const https  = require("https");
-const path   = require("path");
-const XLSX   = require("xlsx");
-const fs     = require("fs");
+// import_client.cjs — White Cap fresh import (Jul 2026)
+// Updates BOTH Supabase AND local PostgreSQL to prevent sync reversion.
+const { createClient } = require("@supabase/supabase-js");
+const { Pool }         = require("pg");
 
-// ── Credentials ─────────────────────────────────────────────
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
-const cfg      = JSON.parse(fs.readFileSync(path.join(__dirname, "sync-config.json"), "utf8"));
-const SUPA_KEY = cfg.service_key;   // service role — bypasses RLS
-const CLIENT   = "White Cap";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+const supabase = createClient(SUPA_URL, SUPA_KEY);
+const pool     = new Pool({ host:"localhost", port:5432, database:"rds_local", user:"postgres", password:"rds2026" });
 
-const EXCEL_CANDIDATES = [
-  path.join(__dirname, "White Cap Projects Tracker2_2026.xlsx"),
-  "C:\\Users\\HP\\AppData\\Roaming\\Claude\\local-agent-mode-sessions\\919964d4-cd92-4eb6-b494-6c7ad2c02d36\\4c052105-2aba-4ec0-9a90-013070bec645\\local_d0d6e4a5-acfb-4c98-8222-e8da51f65329\\uploads\\White Cap Projects Tracker2_2026.xlsx",
-];
+const COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316","#3b82f6","#84cc16","#f43f5e","#0ea5e9","#d946ef","#fb923c"];
 
-const PALETTE = [
-  "#6366f1","#0ea5e9","#8b5cf6","#10b981","#f59e0b",
-  "#ef4444","#ec4899","#14b8a6","#f97316","#a78bfa",
-  "#22d3ee","#84cc16","#fb7185","#fdba74","#a3e635",
-];
+const NAME_MAP = {
+  "siav kumar":           "Siva Kumar",
+  "siva kumar":           "Siva Kumar",
+  "shiva":                "Siva Kumar",
+  "shiva kumar":          "Siva Kumar",
+  "danush":               "Dhanush",
+  "allu sai":             "Sai",
+  "lokesh reddy":         "Lokesh",
+  "eswar/siav kumar":     "Eswar",
+  "allu sai/nanaji":      "Sai",
+  "lokesh reddy/nanaji":  "Lokesh",
+  "nnj":                  "Nanaji",
+  "nanaji":               "Nanaji",
+  "eswar/nanaji":         "Eswar",
+  "balaram/jagadeesh":    "Balaram",
+  "sridevi / vaishnavi":  "Sridevi",
+  "pavan sai":            "Sai",
+  "sri lalitha":          "Sri Lalitha",
+  "sri lalitha":          "Sri Lalitha",
+};
 
-// ── Supabase REST helper ─────────────────────────────────────
-function supa(method, endpoint, body) {
-  return new Promise((resolve, reject) => {
-    const data   = body ? JSON.stringify(body) : null;
-    const parsed = new URL(SUPA_URL + endpoint);
-    const opts   = {
-      hostname: parsed.hostname,
-      path:     parsed.pathname + parsed.search,
-      method,
-      headers: {
-        "apikey":        SUPA_KEY,
-        "Authorization": `Bearer ${SUPA_KEY}`,
-        "Content-Type":  "application/json",
-        "Prefer":        "return=representation",
-      },
-    };
-    if (data) opts.headers["Content-Length"] = Buffer.byteLength(data);
-    const req = https.request(opts, res => {
-      let raw = "";
-      res.on("data", c => raw += c);
-      res.on("end", () => {
-        try {
-          const out = raw ? JSON.parse(raw) : null;
-          if (res.statusCode >= 200 && res.statusCode < 300) resolve({ data: out, status: res.statusCode });
-          else reject(new Error(`HTTP ${res.statusCode}: ${raw.slice(0, 400)}`));
-        } catch (e) { reject(new Error(`Parse: ${e.message} raw=${raw.slice(0,200)}`)); }
-      });
-    });
-    req.on("error", reject);
-    if (data) req.write(data);
-    req.end();
-  });
+function toTitleCase(str) {
+  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+function normName(n) {
+  if (!n) return "";
+  const k = n.trim();
+  return NAME_MAP[k.toLowerCase()] || toTitleCase(k);
+}
+function normField(f) {
+  if (!f) return "";
+  return f.split(/[\/,]/).map(p => normName(p.trim())).filter(Boolean).join("/");
+}
+function errLog(label, e) {
+  console.error(`\n❌ ${label}`);
+  console.error("  message:", e.message || e);
+  if (e.details) console.error("  details:", e.details);
+  if (e.hint)    console.error("  hint:",    e.hint);
 }
 
-// ── Excel date serial → YYYY-MM-DD ──────────────────────────
-function toISO(val) {
-  if (!val && val !== 0) return null;
-  if (typeof val === "number") {
-    const d = new Date((val - 25569) * 86400 * 1000);
-    return d.toISOString().slice(0, 10);
-  }
-  const s = val.toString().trim();
-  if (!s) return null;
-  // MM-DD-YYYY or MM/DD/YYYY
-  const m1 = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
-  if (m1) {
-    let [, mm, dd, yy] = m1;
-    if (yy.length === 2) yy = "20" + yy;
-    return `${yy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
-  }
-  // YYYY-MM-DD already
-  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m2) return s;
-  return null;
-}
+const ALL_ROWS = [{"project":"Felies Residence","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-12-01","due_date":"2026-12-01","detailer":"Praveena","checker":"Chandra Mouli","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Felies Residence","scope":"","title":"Lift - 1 Verticals & beams, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-01-29","due_date":"2026-01-29","detailer":"Praveena","checker":"Anji Reddy","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Felies Residence","scope":"","title":"Lift - 2 verticals & beams, Roof slab & beams","status":"Completed","client_sub_date":"2026-06-02","due_date":"2026-06-02","detailer":"Praveena","checker":"Anji Reddy","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-01-19","due_date":"2026-01-19","detailer":"Dhanush","checker":"Kameshwari","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Lift - 1 Verticals & beams","status":"Completed","client_sub_date":"2026-01-23","due_date":"2026-01-23","detailer":"Dhanush","checker":"Kameshwari","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Lift - 2 Verticals & beams","status":"Completed","client_sub_date":"2026-01-23","due_date":"2026-01-23","detailer":"Dhanush","checker":"Kameshwari","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Double Dumpster Enclosure","status":"Completed","client_sub_date":"2026-02-18","due_date":"2026-02-18","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Single Dumpster Enclosure","status":"Completed","client_sub_date":"2026-02-18","due_date":"2026-02-18","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Mail Pavilion","status":"Completed","client_sub_date":"2026-02-18","due_date":"2026-02-18","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Pickleball","scope":"","title":"Monument sign","status":"Completed","client_sub_date":"2026-01-06","due_date":"2026-01-06","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"City of temple terrace-fire station #01","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-01-19","due_date":"2026-01-19","detailer":"Swathi","checker":"Chandra Mouli","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"City of temple terrace-fire station #01","scope":"","title":"Slab on grade","status":"Completed","client_sub_date":"2026-02-14","due_date":"2026-02-14","detailer":"Sri Lalitha","checker":"Kameshwari","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"City of temple terrace-fire station #01","scope":"","title":"Lift - 1 Verticals, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-02-25","due_date":"2026-02-25","detailer":"Sri Lalitha","checker":"Kameshwari","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"City of temple terrace-fire station #01","scope":"","title":"Lift - 2 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-02-25","due_date":"2026-02-25","detailer":"Sri Lalitha","checker":"Kameshwari","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"228 Rutland","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-01-13","due_date":"2026-01-13","detailer":"Sai","checker":"Kameshwari","assignee":"Sai","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"228 Rutland","scope":"","title":"Lift - 1 Verticals and Bond beams","status":"Completed","client_sub_date":"2026-03-02","due_date":"2026-03-02","detailer":"Sai","checker":"Kameshwari","assignee":"Sai","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"228 Rutland","scope":"","title":"Low Roof beams & Slab","status":"Completed","client_sub_date":"2026-02-19","due_date":"2026-02-19","detailer":"Vaishnavi","checker":"Kameshwari","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"228 Rutland","scope":"","title":"Lift - 2 Verticals, Bond beams & Roof beams","status":"Completed","client_sub_date":"2026-02-03","due_date":"2026-02-03","detailer":"Siva Kumar","checker":"Kameshwari","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Palmetto Lakes Industrial Park","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-01-14","due_date":"2026-01-14","detailer":"Sri Lalitha","checker":"Chandra Mouli","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Palmetto Lakes Industrial Park","scope":"","title":"Lift - 1 walls, Columns & Beams","status":"Completed","client_sub_date":"2026-01-27","due_date":"2026-01-27","detailer":"Sri Lalitha","checker":"Chandra Mouli","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Palmetto Lakes Industrial Park","scope":"","title":"Lift - 2 walls, Columns & Beams","status":"Completed","client_sub_date":"2026-01-27","due_date":"2026-01-27","detailer":"Sri Lalitha","checker":"Chandra Mouli","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Frenchman's Creek Operations Center","scope":"","title":"Building - A Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-26","due_date":"2026-01-26","detailer":"Pradeep","checker":"Anji Reddy","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Frenchman's Creek Operations Center","scope":"","title":"Building - B Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-21","due_date":"2026-01-21","detailer":"Pradeep","checker":"Narayana","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Frenchman's Creek Operations Center","scope":"","title":"Building - C Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-21","due_date":"2026-01-21","detailer":"Praveena","checker":"Anji Reddy","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Frenchman's Creek Operations Center","scope":"","title":"Building - D Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-26","due_date":"2026-01-26","detailer":"Pradeep","checker":"Anji Reddy","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Frenchman's Creek Operations Center","scope":"","title":"Building - E Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-28","due_date":"2026-01-28","detailer":"Pradeep","checker":"Anji Reddy","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Frenchman's Creek Operations Center","scope":"","title":"Building - F Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-31","due_date":"2026-01-31","detailer":"Pradeep","checker":"Anji Reddy","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Miami Shores Residence (R+R bluenest)","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-01-27","due_date":"2026-01-27","detailer":"Swathi","checker":"Chandra Mouli","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Miami Shores Residence (R+R bluenest)","scope":"","title":"Slab on grade","status":"Completed","client_sub_date":"2026-03-03","due_date":"2026-03-03","detailer":"Praveena","checker":"Chandra Mouli","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Miami Shores Residence (R+R bluenest)","scope":"","title":"Lift - 1 Verticals, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-09-03","due_date":"2026-09-03","detailer":"Jagadeesh","checker":"Chandra Mouli","assignee":"Jagadeesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Miami Shores Residence (R+R bluenest)","scope":"","title":"Lift - 2 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-03-20","due_date":"2026-03-20","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Miami Shores Residence (R+R bluenest)","scope":"","title":"Updated drawings received (Cantilever Beams)","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"Praveena","checker":"eswar","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Licata\u00a0Residence\u00a02726 Appaloosa\u00a0trail","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-01-23","due_date":"2026-01-23","detailer":"Swathi","checker":"Anji Reddy","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Licata\u00a0Residence\u00a02726 Appaloosa\u00a0trail","scope":"","title":"Lift - 1 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-01-23","due_date":"2026-01-23","detailer":"Swathi","checker":"Anji Reddy","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"4669 S. Flagler Dr","scope":"","title":"Footings & Stem Walls","status":"Completed","client_sub_date":"2026-04-02","due_date":"2026-04-02","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"4669 S. Flagler Dr","scope":"","title":"Stem wall & Slab on grade","status":"Completed","client_sub_date":"2026-02-20","due_date":"2026-02-20","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"4669 S. Flagler Dr","scope":"","title":"Lift - 1 Verticals, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-04-03","due_date":"2026-04-03","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"4669 S. Flagler Dr","scope":"","title":"Lift - 2 Verticals & Roof beams","status":"Completed","client_sub_date":"2026-06-03","due_date":"2026-06-03","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Harrison Residence","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-05-02","due_date":"2026-05-02","detailer":"Sri Lalitha","checker":"Chandra Mouli","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Harrison Residence","scope":"","title":"Lift - 1 Verticals and Beams","status":"Completed","client_sub_date":"2026-02-03","due_date":"2026-02-03","detailer":"Sri Lalitha","checker":"Chandra Mouli","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"PBIA - Revenue Control Building","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-02-14","due_date":"2026-02-14","detailer":"Praveena","checker":"Anji Reddy","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"PBIA - Revenue Control Building","scope":"","title":"Lift - 1 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-02-19","due_date":"2026-02-19","detailer":"Praveena","checker":"Anji Reddy","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Basement Foundations","status":"Completed","client_sub_date":"2026-02-17","due_date":"2026-02-17","detailer":"Dhanush","checker":"Anji Reddy","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Basement Walls","status":"Completed","client_sub_date":"2026-02-21","due_date":"2026-02-21","detailer":"Dhanush","checker":"Anji Reddy","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Level - 1 Foundations","status":"Completed","client_sub_date":"2026-12-03","due_date":"2026-12-03","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Lift - 1 Verticals","status":"Completed","client_sub_date":"2026-03-16","due_date":"2026-03-16","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Lift - 1 Beams","status":"Completed","client_sub_date":"2026-03-28","due_date":"2026-03-28","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Lift - 2 Verticals","status":"Completed","client_sub_date":"2026-03-31","due_date":"2026-03-31","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"127 EL Bravo Way","scope":"","title":"Roof beams","status":"Completed","client_sub_date":"2026-03-31","due_date":"2026-03-31","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Blue Water Cove 6","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-02-25","due_date":"2026-02-25","detailer":"Sai/Nanaji","checker":"","assignee":"Sai","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Blue Water Cove 6","scope":"","title":"Lift-1 & 2 Verticals, 2nd floor slab, & Roof beams","status":"Completed","client_sub_date":"2026-03-18","due_date":"2026-03-18","detailer":"Sai","checker":"Chandra Mouli","assignee":"Sai","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"1050 N Lake way","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-02-17","due_date":"2026-02-17","detailer":"Lokesh/Nanaji","checker":"Narayana","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"1050 N Lake way","scope":"","title":"Lift - 1 Verticals, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-02-23","due_date":"2026-02-23","detailer":"Lokesh","checker":"Kameshwari","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"1050 N Lake way","scope":"","title":"Lift - 2 Verticals & Roof beams","status":"Completed","client_sub_date":"2026-03-13","due_date":"2026-03-13","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"143 Reef Road","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-03-13","due_date":"2026-03-13","detailer":"Kunal","checker":"Chandra Mouli","assignee":"Kunal","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"143 Reef Road","scope":"","title":"Lift - 1 Verticals","status":"Completed","client_sub_date":"2026-05-15","due_date":"2026-05-15","detailer":"Kunal","checker":"Nanaji","assignee":"Kunal","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"143 Reef Road","scope":"","title":"2nd floor slab & Beams","status":"Completed","client_sub_date":"2026-05-15","due_date":"2026-05-15","detailer":"Kunal","checker":"Nanaji","assignee":"Kunal","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"143 Reef Road","scope":"","title":"Lift-2 verticals & Roof beams","status":"Completed","client_sub_date":"2026-06-20","due_date":"2026-06-20","detailer":"Kunal","checker":"","assignee":"Kunal","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cutler Bay SHS","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-04-03","due_date":"2026-04-03","detailer":"Swathi","checker":"","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cutler Bay SHS","scope":"","title":"Lift - 1 Verticals and beams","status":"Completed","client_sub_date":"2026-04-03","due_date":"2026-04-03","detailer":"Swathi","checker":"","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cutler Bay SHS","scope":"","title":"Lift - 2 Verticals and Low Roof slab & beams","status":"Completed","client_sub_date":"2026-04-03","due_date":"2026-04-03","detailer":"Swathi","checker":"","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cutler Bay SHS","scope":"","title":"Lift - 3 Verticals and High Roof slab & beams","status":"Completed","client_sub_date":"2026-04-03","due_date":"2026-04-03","detailer":"Swathi","checker":"","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Ackerman Residence","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-03-03","due_date":"2026-03-03","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Ackerman Residence","scope":"","title":"Lift - 1 Verticals, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-03-21","due_date":"2026-03-21","detailer":"Lokesh","checker":"Kameshwari","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Ackerman Residence","scope":"","title":"Lift - 2 Verticals & Roof beams","status":"Completed","client_sub_date":"2026-02-04","due_date":"2026-02-04","detailer":"Lokesh","checker":"Kameshwari","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Blue Water Cove 3","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-06-03","due_date":"2026-06-03","detailer":"Vaishnavi","checker":"Kameshwari","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Blue Water Cove 3","scope":"","title":"Lift - 1 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-03-16","due_date":"2026-03-16","detailer":"Vaishnavi","checker":"Kameshwari","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"BOKOR 432 SUNSHINE BLVD","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-07-03","due_date":"2026-07-03","detailer":"Eswar","checker":"Eswar","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"BOKOR 432 SUNSHINE BLVD","scope":"","title":"Lift - 1 Verticals, 2nd floor slab & beams","status":"Completed","client_sub_date":"2026-03-13","due_date":"2026-03-13","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"BOKOR 432 SUNSHINE BLVD","scope":"","title":"Lift - 2 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-03-13","due_date":"2026-03-13","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cloyd","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-03-11","due_date":"2026-03-11","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cloyd","scope":"","title":"Lift - 1 Verticals and beams","status":"Completed","client_sub_date":"2026-03-20","due_date":"2026-03-20","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Cloyd","scope":"","title":"Lift - 2 Verticals and beams","status":"Completed","client_sub_date":"2026-03-20","due_date":"2026-03-20","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Foundations and slab on grade (East Garage)","status":"Completed","client_sub_date":"2026-03-21","due_date":"2026-03-21","detailer":"Sri lalitha","checker":"Kameshwari","assignee":"Sri lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Lift - 1 Verticals and Roof beams (East Garage)","status":"Completed","client_sub_date":"2026-03-26","due_date":"2026-03-26","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Foundations and slab on grade (Main Building)","status":"Completed","client_sub_date":"2026-03-25","due_date":"2026-03-25","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Lift - 1 Verticals, 2nd floor slab and beams (Main Building)","status":"Completed","client_sub_date":"2026-01-05","due_date":"2026-01-05","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Lift - 2 Verticals and roof beams (Main Building)","status":"Completed","client_sub_date":"2026-05-28","due_date":"2026-05-28","detailer":"Vaishnavi","checker":"Eswar","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Foundations and slab on grade (2-story residence)","status":"Completed","client_sub_date":"2026-04-21","due_date":"2026-04-21","detailer":"Praveena","checker":"Chandra Mouli","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Lift - 1 Verticals, 2nd floor slab and beams (2-story residence)","status":"Completed","client_sub_date":"2026-05-19","due_date":"2026-05-19","detailer":"Vaishnavi","checker":"Nanaji","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Lift - 2 Verticals and roof beams (2-story residence)","status":"Completed","client_sub_date":"2026-05-06","due_date":"2026-05-06","detailer":"Vaishnavi","checker":"","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6017 Le Lac Road (Weiner Residence)","scope":"","title":"Foundations and slab on grade (site work)","status":"Completed","client_sub_date":"2026-04-04","due_date":"2026-04-04","detailer":"Sri lalitha","checker":"Kameshwari","assignee":"Sri lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Bluewater cove 11","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-03-24","due_date":"2026-03-24","detailer":"Vaishnavi","checker":"","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Bluewater cove 11","scope":"","title":"Lift - 1 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-01-05","due_date":"2026-01-05","detailer":"Vaishnavi","checker":"","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Bluewater cove 9","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-03-31","due_date":"2026-03-31","detailer":"Vaishnavi","checker":"Kameshwari","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Bluewater cove 9","scope":"","title":"Lift - 1 Verticals and Roof Beams","status":"Completed","client_sub_date":"2026-01-05","due_date":"2026-01-05","detailer":"Nanaji/pradeep","checker":"","assignee":"Nanaji","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"164 Seminole","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-08-04","due_date":"2026-08-04","detailer":"Siva Kumar","checker":"Chandra Mouli","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"164 Seminole","scope":"","title":"Slab on grade","status":"Completed","client_sub_date":"2026-05-18","due_date":"2026-05-18","detailer":"Siva Kumar","checker":"Nanaji","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"164 Seminole","scope":"","title":"Lift - 1 Verticals, 2nd floor slab and beams","status":"Not Yet Started","client_sub_date":null,"due_date":null,"detailer":"Siva Kumar","checker":"Nanaji","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"164 Seminole","scope":"","title":"Lift - 2 Verticals and roof beams","status":"Not Yet Started","client_sub_date":null,"due_date":null,"detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Roy & Shelley Silverman","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-10-04","due_date":"2026-10-04","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Roy & Shelley Silverman","scope":"","title":"Lift - 1 Verticals","status":"Completed","client_sub_date":"2026-04-05","due_date":"2026-04-05","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Roy & Shelley Silverman","scope":"","title":"Lift - 1  slab & Beams","status":"Completed","client_sub_date":"2026-04-05","due_date":"2026-04-05","detailer":"Nanaji/Sridevi","checker":"","assignee":"Nanaji","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Roy & Shelley Silverman","scope":"","title":"Lift - 2 Verticals & Roof beams","status":"Completed","client_sub_date":"2026-11-05","due_date":"2026-11-05","detailer":"Vaishnavi/Shiva","checker":"Nanaji","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"50 SE OLIVE","scope":"","title":"Foundations & columns","status":"Completed","client_sub_date":"2026-08-04","due_date":"2026-08-04","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"50 SE OLIVE","scope":"","title":"Bond beams","status":"Completed","client_sub_date":"2026-08-04","due_date":"2026-08-04","detailer":"Dhanush","checker":"Chandra Mouli","assignee":"Dhanush","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-06-04","due_date":"2026-06-04","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Lift - 1 Verticals and beams (pour-1)","status":"Completed","client_sub_date":"2026-12-05","due_date":"2026-12-05","detailer":"Vaishnavi/Sridevi","checker":"Nanaji","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Lift - 1 Verticals and beams (pour-2)","status":"Completed","client_sub_date":"2026-05-16","due_date":"2026-05-16","detailer":"Sridevi","checker":"Nanaji","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Lift - 1 Verticals and beams (pour-3) & (pour-4)","status":"Completed","client_sub_date":"2026-05-27","due_date":"2026-05-27","detailer":"Sridevi","checker":"Nanaji","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Lift - 2 Verticals and beams (pour-1)","status":"Completed","client_sub_date":"2026-05-29","due_date":"2026-05-29","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Lift - 2 Verticals and beams (pour-2)","status":"Completed","client_sub_date":"2026-03-06","due_date":"2026-03-06","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Lift - 2 Verticals and beams (pour-3)","status":"Completed","client_sub_date":"2026-12-06","due_date":"2026-12-06","detailer":"Sridevi","checker":"Nanaji","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Monument walls","status":"Completed","client_sub_date":"2026-04-27","due_date":"2026-04-27","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Valencia Del Mar Clubhouse","scope":"","title":"Tennis & Bocce Courts Restrooms","status":"Completed","client_sub_date":"2026-09-05","due_date":"2026-09-05","detailer":"Eswar","checker":"","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"910 S Ocean","scope":"","title":"Basement Foundations","status":"Completed","client_sub_date":"2026-08-04","due_date":"2026-08-04","detailer":"Sridevi","checker":"Narayana","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"910 S Ocean","scope":"","title":"Lift - 1 Verticals & roof beams","status":"Completed","client_sub_date":"2026-10-04","due_date":"2026-10-04","detailer":"Sridevi","checker":"Narayana","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"910 S Ocean","scope":"","title":"Retaining wall & Planter walls & stairs","status":"Completed","client_sub_date":"2026-04-21","due_date":"2026-04-21","detailer":"Sridevi","checker":"Narayana","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Burns Residence","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-06-04","due_date":"2026-06-04","detailer":"Praveena","checker":"Chandra Mouli","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Burns Residence","scope":"","title":"Lift - 1 Verticals and Beams","status":"Completed","client_sub_date":"2026-05-21","due_date":"2026-05-21","detailer":"Siva Kumar","checker":"Nanaji","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Burns Residence","scope":"","title":"Lift - 2 Verticals and beams","status":"Completed","client_sub_date":"2026-05-21","due_date":"2026-05-21","detailer":"Siva Kumar","checker":"Nanaji","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE)","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-08-04","due_date":"2026-08-04","detailer":"Balaram/Jagadeesh","checker":"Chandra Mouli","assignee":"Balaram","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"320 S atlantic Drive","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-04-18","due_date":"2026-04-18","detailer":"Sridevi","checker":"Chandra Mouli","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"320 S atlantic Drive","scope":"","title":"Stem wall & Slab on grade","status":"Completed","client_sub_date":"2026-01-05","due_date":"2026-01-05","detailer":"Sridevi","checker":"Chandra Mouli","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"320 S atlantic Drive","scope":"","title":"Lift - 1 Verticals, 2nd Floor slab & beams","status":"Completed","client_sub_date":"2026-06-13","due_date":"2026-06-13","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"320 S atlantic Drive","scope":"","title":"Lift - 2 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-06-18","due_date":"2026-06-18","detailer":"Vaishnavi","checker":"Nanaji","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (515 lido drive)","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-04-24","due_date":"2026-04-24","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (515 lido drive)","scope":"","title":"Lift - 1 Verticals","status":"Completed","client_sub_date":"2026-04-06","due_date":"2026-04-06","detailer":"Siva Kumar","checker":"Nanaji","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (515 lido drive)","scope":"","title":"2nd floor slab & beams","status":"Completed","client_sub_date":"2026-06-18","due_date":"2026-06-18","detailer":"Jagadeesh","checker":"Nanaji","assignee":"Jagadeesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (515 lido drive)","scope":"","title":"Lift - 2 Verticals & Roof beams","status":"Completed","client_sub_date":"2026-06-18","due_date":"2026-06-18","detailer":"Balaram","checker":"Nanaji","assignee":"Balaram","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Jandrews Residence","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-04-23","due_date":"2026-04-23","detailer":"Praveena","checker":"Chandra Mouli","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Jandrews Residence","scope":"","title":"Lift - 1 Verticals and beams","status":"Completed","client_sub_date":"2026-05-16","due_date":"2026-05-16","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Jandrews Residence","scope":"","title":"Lift - 2 Verticals and beams","status":"Completed","client_sub_date":"2026-06-03","due_date":"2026-06-03","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6024 Lelac Rd","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-10-04","due_date":"2026-10-04","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6024 Lelac Rd","scope":"","title":"Lift - 1 Verticals, loft floor slab & beams","status":"Completed","client_sub_date":"2026-10-04","due_date":"2026-10-04","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6024 Lelac Rd","scope":"","title":"Lift - 2 Verticals and roof beams","status":"Completed","client_sub_date":"2026-10-04","due_date":"2026-10-04","detailer":"Vaishnavi","checker":"Chandra Mouli","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6024 Lelac Rd","scope":"","title":"Foundations & slab on grade (Summer kitchen)","status":"Completed","client_sub_date":"2026-04-22","due_date":"2026-04-22","detailer":"Sridevi","checker":"Nanaji","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6024 Lelac Rd","scope":"","title":"Lift - 1 Verticals, slab and beams (Summer kitchen)","status":"Completed","client_sub_date":"2026-04-23","due_date":"2026-04-23","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"5900 Powerline Garag","scope":"","title":"Grade beams","status":"Completed","client_sub_date":"2026-04-20","due_date":"2026-04-20","detailer":"Sri lalitha","checker":"","assignee":"Sri lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"5900 Powerline Garag","scope":"","title":"Slab on grade, Lift - 1 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-09-05","due_date":"2026-09-05","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"South Florida Jewish Cemetery","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-05-05","due_date":"2026-05-05","detailer":"Vaishnavi","checker":"Eswar","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"South Florida Jewish Cemetery","scope":"","title":"Lift - 1 Verticals and Roof Beams","status":"Completed","client_sub_date":"2026-05-22","due_date":"2026-05-22","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"1820 S Federal Hwy - Fifth Third Bank","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-04-24","due_date":"2026-04-24","detailer":"Pradeep","checker":"Narayana","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"1820 S Federal Hwy - Fifth Third Bank","scope":"","title":"Lift - 1 Verticals and Roof beams","status":"Completed","client_sub_date":"2026-04-24","due_date":"2026-04-24","detailer":"Pradeep","checker":"Narayana","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"20 Hudson Ave","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-05-26","due_date":"2026-05-26","detailer":"Eswar","checker":"","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"20 Hudson Ave","scope":"","title":"Lift - 1 Verticals and Beams","status":"Completed","client_sub_date":"2026-06-18","due_date":"2026-06-18","detailer":"Praveena","checker":"Kameshwari","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"20 Hudson Ave","scope":"","title":"Lift - 2 Verticals and Beams","status":"Completed","client_sub_date":"2026-06-18","due_date":"2026-06-18","detailer":"Swathi","checker":"Kameshwari","assignee":"Swathi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"South Rd Office Building E","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-04-24","due_date":"2026-04-24","detailer":"Vaishnavi","checker":"Nanaji","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"South Rd Office Building E","scope":"","title":"Lift - 1 Verticals and beams","status":"Completed","client_sub_date":"2026-01-05","due_date":"2026-01-05","detailer":"Lokesh/vaishnavi","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Baig Residence","scope":"","title":"3rd Floor tie beams","status":"Completed","client_sub_date":"2026-05-06","due_date":"2026-05-06","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Baig Residence","scope":"","title":"2nd Floor slab","status":"Completed","client_sub_date":"2026-05-07","due_date":"2026-05-07","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"SW Ranches","scope":"","title":"Lower Roof Deck","status":"Completed","client_sub_date":"2026-05-15","due_date":"2026-05-15","detailer":"Eswar","checker":"","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"SW Ranches","scope":"","title":"Lift - 1 verticals","status":"Completed","client_sub_date":"2026-06-01","due_date":"2026-06-01","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2651 Southcast 10th court","scope":"","title":"Pool deck slab and beams","status":"Completed","client_sub_date":"2026-09-05","due_date":"2026-09-05","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Country inn Pet Resort","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-05-22","due_date":"2026-05-22","detailer":"Vaishnavi","checker":"Nanaji","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Country inn Pet Resort","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-05-06","due_date":"2026-05-06","detailer":"Vaishnavi","checker":"","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2960 Greenbriair","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-05-06","due_date":"2026-05-06","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2960 Greenbriair","scope":"","title":"Slab on grade","status":"Completed","client_sub_date":"2026-06-19","due_date":"2026-06-19","detailer":"Sri Lalitha","checker":"Nanaji","assignee":"Sri Lalitha","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2960 Greenbriair","scope":"","title":"Lift - 1 verticals, beams and 2nd floor slab","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2960 Greenbriair","scope":"","title":"Lift - 2 verticals and roof beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Praveena","checker":"","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Foundations (Residential) part - 1","status":"Completed","client_sub_date":"2026-06-17","due_date":"2026-06-17","detailer":"Eswar/Nanaji","checker":"","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Foundations (Residential) part - 2","status":"Completed","client_sub_date":"2026-06-18","due_date":"2026-06-18","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Slab on grade (Residential) part - 1 & 2","status":"In Progress","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 1 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 1 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 1 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"2nd Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 2 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 2 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 2 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"3rd Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 3 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 3 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 3 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"3rd Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 4 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 4 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 4 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"4th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 5 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 5 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 5 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"5th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 6 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 6 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 6 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"6th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 7 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 7 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 7 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"7th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 8 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 8 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 8 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"8th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 9 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 9 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 9 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"9th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 10 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 10 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 10 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"10th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 11 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 11 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 11 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"11th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 12 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 12 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 12 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"12th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 13 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 13 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 13 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"13th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 14 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 14 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 14 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"14th Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 15 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 15 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 15 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"15th floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Residential) lift - 16 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Residential)  lift - 16 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Cmu walls lift - 16 verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Roof Floor slab (Residential)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Parapet walls (Residential) verticals","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Foundations (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Slab on grade (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Columns (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"Shear walls (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"2nd Floor slab (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"3rd Floor slab (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"4th Floor slab (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"5th Floor slab (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Gallery at Somi Parc Phase 1","scope":"","title":"6th Floor slab (Garage)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6007 Le Lac (Furing residence)","scope":"","title":"Foundations & Walls (scope added)","status":"Completed","client_sub_date":"2026-05-16","due_date":"2026-05-16","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"6007 Le Lac (Furing residence)","scope":"","title":"Cabana slab on grade","status":"Completed","client_sub_date":"2026-06-25","due_date":"2026-06-25","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"90 Stingaree","scope":"","title":"Slab on grade","status":"Completed","client_sub_date":"2026-05-06","due_date":"2026-05-06","detailer":"Siva Kumar","checker":"","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"90 Stingaree","scope":"","title":"Lift - 1 verticals and beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Praveena","checker":"","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"O.B. (Scattered Lots)","scope":"","title":"Foundaitons & sog.","status":"Completed","client_sub_date":"2026-05-18","due_date":"2026-05-18","detailer":"Lokesh","checker":"ESWAR","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"O.B. (Scattered Lots)","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-05-23","due_date":"2026-05-23","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"840 Denery Ln. Residence","scope":"","title":"Foundaitons & Slab on grade","status":"Completed","client_sub_date":"2026-05-30","due_date":"2026-05-30","detailer":"eswar/siav kumar","checker":"ESWAR","assignee":"eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"840 Denery Ln. Residence","scope":"","title":"Lift - 1 verticals and bond beams","status":"Completed","client_sub_date":"2026-05-30","due_date":"2026-05-30","detailer":"siav kumar","checker":"ESWAR","assignee":"siav kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"840 Denery Ln. Residence","scope":"","title":"2nd floor slab & beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"840 Denery Ln. Residence","scope":"","title":"Lift - 2 verticals and bond beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Praveena","checker":"","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"840 Denery Ln. Residence","scope":"","title":"Roof beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Praveena/Sridevi","checker":"","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bldg. Type 1 (A, C, D & G)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-12-06","due_date":"2026-12-06","detailer":"Siva Kumar","checker":"","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-06-13","due_date":"2026-06-13","detailer":"Sridevi","checker":"","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"2nd Flr. Thru 2nd lift & 2nd floor beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Siva Kumar/sridevi","checker":"","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"3rd Flr. Thru 3rd lift & 3rd floor beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Nanaji/Sridevi","checker":"","assignee":"Nanaji","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"4th Flr. Thru Roof & Abv Roof beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh/Sridevi","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bldg. Type 2 (E & H)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Foundations and slab on grade","status":"Completed","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-06-15","due_date":"2026-06-15","detailer":"Siva Kumar","checker":"","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"2nd Flr. Thru 2nd lift & 2nd floor beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"3rd Flr. Thru 3rd lift & 3rd floor beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"4th Flr. Thru Roof & Abv Roof beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bldg. Type 3 (B & F)","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Elevator Pits & Stairs, Bg Thru 1st lift","status":"In Progress","client_sub_date":"2026-06-16","due_date":"2026-06-16","detailer":"Lokesh","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"2nd Flr. Thru 2nd lift & 2nd floor beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Siva Kumar","checker":"","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"3rd Flr. Thru 3rd lift & 3rd floor beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh/Siva Kumar","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"4th Flr. Thru Roof & Abv Roof beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Lokesh/Siva Kumar","checker":"","assignee":"Lokesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bus Shelter - Footings","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru 1st lift","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Clubhouse","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru Abv Roof beams","status":"Completed","client_sub_date":"2026-05-06","due_date":"2026-05-06","detailer":"Siva Kumar","checker":"","assignee":"Siva Kumar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Garage Type 1","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru Abv Roof beams","status":"In Progress","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"Pavan sai","checker":"","assignee":"Pavan sai","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Garage Type 2","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru Abv Roof beams","status":"In Progress","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Mail Kiosk - Slab on grade","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Slab on grade","status":"In Progress","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Trash Compactor","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru 1st lift","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Pool Pavilion","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru Roof beams","status":"Not Yet Started","client_sub_date":"2026-07-17","due_date":"2026-07-17","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Raised Planters","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru 1st lift","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"BBQ Station","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru Roof beams","status":"Not Yet Started","client_sub_date":"2026-07-17","due_date":"2026-07-17","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Cabana Footings","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru 1st lift","status":"Not Yet Started","client_sub_date":"2026-07-17","due_date":"2026-07-17","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Trellis Footings","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru 1st lift","status":"Not Yet Started","client_sub_date":"2026-07-17","due_date":"2026-07-17","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Retaining Wall","status":"Completed","client_sub_date":"2026-12-06","due_date":"2026-12-06","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Nuvo","scope":"","title":"Bg Thru 1st lift","status":"Completed","client_sub_date":"2026-12-06","due_date":"2026-12-06","detailer":"Pradeep","checker":"","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"The Syed Residence","scope":"","title":"Foundations & Slab on grade","status":"Completed","client_sub_date":"2026-06-05","due_date":"2026-06-05","detailer":"Eswar","checker":"","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"The Syed Residence","scope":"","title":"Lift - 1 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Jagadeesh","checker":"","assignee":"Jagadeesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"The Syed Residence","scope":"","title":"Lift - 2 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"Nanaji","checker":"","assignee":"Nanaji","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"810 S Swinton Ave Residence","scope":"","title":"Foundations and slab on grade","status":"In Progress","client_sub_date":"2026-09-06","due_date":"2026-09-06","detailer":"Praveena","checker":"","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"810 S Swinton Ave Residence","scope":"","title":"Lift - 1 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"810 S Swinton Ave Residence","scope":"","title":"Lift - 2 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (134 Worth CTN)","scope":"","title":"Foundations","status":"Completed","client_sub_date":"2026-06-13","due_date":"2026-06-13","detailer":"Praveena","checker":"","assignee":"Praveena","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (134 Worth CTN)","scope":"","title":"Slab on grade","status":"Completed","client_sub_date":"2026-06-13","due_date":"2026-06-13","detailer":"Vaishnavi","checker":"","assignee":"Vaishnavi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (134 Worth CTN)","scope":"","title":"Lift - 1 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"Jagadeesh","checker":"","assignee":"Jagadeesh","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Custom Residence (134 Worth CTN)","scope":"","title":"Lift - 2 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-10-07","due_date":"2026-10-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Rancano","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-11-06","due_date":"2026-11-06","detailer":"Eswar","checker":"","assignee":"Eswar","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Rancano","scope":"","title":"Lift - 1 verticals and Roof beams","status":"Completed","client_sub_date":"2026-06-17","due_date":"2026-06-17","detailer":"Sridevi","checker":"Nanaji","assignee":"Sridevi","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"799 Park Drive","scope":"","title":"Foundations & Slab on grade","status":"Completed","client_sub_date":"2026-06-16","due_date":"2026-06-16","detailer":"Pradeep","checker":"Nanaji","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"799 Park Drive","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-06-20","due_date":"2026-06-20","detailer":"Pradeep","checker":"Chandra mouli","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"799 Park Drive","scope":"","title":"Lift - 2 verticals and beams","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"Pradeep","checker":"Chandra mouli","assignee":"Pradeep","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Chateau De La Duchess (925 Hillsboro)","scope":"","title":"Entry Garages foundations and slab on grade","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Chateau De La Duchess (925 Hillsboro)","scope":"","title":"Entry Garages lift - 1 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Chateau De La Duchess (925 Hillsboro)","scope":"","title":"Entry Garages lift - 2 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Masucci Residence","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Masucci Residence","scope":"","title":"Lift - 1 verticals and beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Masucci Residence","scope":"","title":"2nd floor slab and beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Masucci Residence","scope":"","title":"Lift - 2 verticals and beams","status":"In Progress","client_sub_date":"2026-03-07","due_date":"2026-03-07","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"The Bueller family","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"The Bueller family","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"SPOTLOT 28810 SW 207 AVE","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"SPOTLOT 28810 SW 207 AVE","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-06-26","due_date":"2026-06-26","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Broken Sound Club","scope":"","title":"Foundations & slab on grade","status":"Completed","client_sub_date":"2026-06-23","due_date":"2026-06-23","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"Broken Sound Club","scope":"","title":"Lift - 1 verticals and beams","status":"Completed","client_sub_date":"2026-06-23","due_date":"2026-06-23","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"128 Worth CT N","scope":"","title":"Foundations & slab on grade","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"128 Worth CT N","scope":"","title":"Lift - 1 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"128 Worth CT N","scope":"","title":"Lift - 2 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2235 Mangolia Drive","scope":"","title":"Foundations & slab on grade","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2235 Mangolia Drive","scope":"","title":"Lift - 1 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""},{"project":"2235 Mangolia Drive","scope":"","title":"Lift - 2 verticals and beams","status":"Not Yet Started","client_sub_date":"2026-07-24","due_date":"2026-07-24","detailer":"","checker":"","assignee":"","priority":"Medium","tags":[],"files":[],"notes":""}]
+;
 
-// ── Status mapping ───────────────────────────────────────────
-function mapStatus(raw) {
-  const s = (raw || "").toString().trim().toLowerCase().replace(/\s+/g, "");
-  if (s === "completed")  return "Completed";
-  if (s === "inprogress") return "In Progress";
-  return "Not Yet Started";
-}
-
-// ── Parse Excel ──────────────────────────────────────────────
-function parseExcel() {
-  let xlPath = null;
-  for (const c of EXCEL_CANDIDATES) { if (fs.existsSync(c)) { xlPath = c; break; } }
-  if (!xlPath) throw new Error("Excel not found. Tried:\n" + EXCEL_CANDIDATES.join("\n"));
-  console.log("📂 Reading:", xlPath);
-
-  const wb   = XLSX.readFile(xlPath);
-  const sn   = wb.SheetNames.find(n => n.toLowerCase().includes("white cap work")) || wb.SheetNames[1];
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: "", header: 1 });
-
-  const projects = {};   // projName → { tasks[], detailers:Set, checkers:Set, dates[] }
-  const order    = [];
-  let curProj    = "";
-
-  for (let i = 4; i < rows.length; i++) {
-    const r         = rows[i];
-    const pn        = (r[0] || "").toString().trim();
-    const taskTitle = (r[1] || "").toString().trim();
-
-    if (pn) curProj = pn;
-    if (!curProj || !taskTitle) continue;
-
-    const clientSubDate = toISO(r[3]);
-    const detailer      = (r[4] || "").toString().trim();
-    const checker       = (r[5] || "").toString().trim();
-    const status        = mapStatus(r[2]);
-
-    if (!projects[curProj]) {
-      projects[curProj] = { tasks: [], detailers: new Set(), checkers: new Set(), dates: [] };
-      order.push(curProj);
-    }
-    const p = projects[curProj];
-    detailer.split("/").map(n => n.trim()).filter(Boolean).forEach(n => p.detailers.add(n));
-    checker.split("/").map(n => n.trim()).filter(Boolean).forEach(n => p.checkers.add(n));
-    if (clientSubDate) p.dates.push(clientSubDate);
-
-    p.tasks.push({ title: taskTitle, status, priority: "Medium", assignee: detailer, detailer, checker, scope: "", due_date: null, client_sub_date: clientSubDate, client: CLIENT, tags: [], files: [] });
-  }
-  return { projects, order };
-}
-
-// ── Main ─────────────────────────────────────────────────────
 async function main() {
-  console.log("\n══════════════════════════════════════════");
-  console.log("  White Cap Importer");
-  console.log("══════════════════════════════════════════\n");
+  console.log("=== White Cap Import (Fresh Jul 2026) ===\n");
+  console.log(`Loaded ${ALL_ROWS.length} tasks across ${new Set(ALL_ROWS.map(r=>r.project)).size} projects\n`);
 
-  // STEP 1: Parse
-  const { projects, order } = parseExcel();
-  const totalProjects = order.length;
-  const totalTasks    = order.reduce((s, n) => s + projects[n].tasks.length, 0);
-  console.log(`✓ Parsed ${totalProjects} projects, ${totalTasks} tasks\n`);
+  // ── STEP 1: Test Supabase connection ──
+  const { data: ping, error: pingErr } = await supabase.from("projects").select("id").limit(1);
+  if (pingErr) { errLog("DB Connection failed", pingErr); return; }
+  console.log("✓ Supabase connected");
 
-  // STEP 2: Fetch existing users
-  console.log("🔍 Fetching existing users...");
-  const { data: existingUsers } = await supa("GET", "/rest/v1/users?select=name,username&limit=2000");
-  const userMap = new Map();
-  (existingUsers || []).forEach(u => {
-    userMap.set(u.name.toLowerCase(), u.username);
-    userMap.set(u.username.toLowerCase(), u.username);
-  });
-  console.log(`   Found ${existingUsers?.length || 0} users`);
+  // ── STEP 2: Test local PostgreSQL ──
+  let localOk = false;
+  try {
+    await pool.query("SELECT 1");
+    console.log("✓ Local PostgreSQL connected\n");
+    localOk = true;
+  } catch(e) {
+    console.warn("⚠ Local PostgreSQL unavailable:", e.message, "— will update Supabase only");
+  }
 
-  // STEP 3: Collect all unique person names
+  // ── STEP 3: Check tasks columns ──
+  const { data: sampleTask } = await supabase.from("tasks").select("*").limit(1);
+  let taskCols = sampleTask && sampleTask[0] ? Object.keys(sampleTask[0]) : [];
+  console.log("✓ tasks columns:", taskCols.join(", ") || "(empty table)");
+
+  // ── STEP 4: Fetch existing users ──
+  const { data: users, error: uErr } = await supabase.from("users").select("id,name,username,role");
+  if (uErr) { errLog("fetch users", uErr); return; }
+  console.log(`✓ ${users.length} users in DB\n`);
+
+  const byName = {};
+  for (const u of users) {
+    byName[u.name.toLowerCase().trim()] = u;
+    if (u.username) byName[u.username.toLowerCase().trim()] = u;
+  }
+
+  // ── STEP 5: Create missing users ──
+  const SKIP = new Set(["nnj","rds","rds user","n/a","na","tbd","tekla","unknown","pdf check only"]);
   const allNames = new Set();
-  order.forEach(pn => {
-    projects[pn].detailers.forEach(n => n.split("/").forEach(p => { const t = p.trim(); if (t) allNames.add(t); }));
-    projects[pn].checkers.forEach(n => n.split("/").forEach(p => { const t = p.trim(); if (t) allNames.add(t); }));
-  });
+  for (const row of ALL_ROWS) {
+    for (const field of [row.detailer, row.checker]) {
+      if (!field) continue;
+      for (const p of field.split(/[\/,]/)) {
+        const n = normName(p.trim());
+        if (n && n.length > 1 && !SKIP.has(n.toLowerCase())) allNames.add(n);
+      }
+    }
+  }
 
-  // STEP 4: Create missing users
-  let usersCreated = 0;
-  console.log(`\n👤 Checking ${allNames.size} unique names...`);
+  console.log(`--- Processing ${allNames.size} unique names ---`);
   for (const name of allNames) {
     const key = name.toLowerCase();
-    if (userMap.has(key)) { console.log(`   ↷ ${name} (exists)`); continue; }
-    const uname = key.replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    try {
-      await supa("POST", "/rest/v1/users", { name, username: uname, password: "RDSTechserv@2026", role: "Rebar" });
-      userMap.set(key, uname); userMap.set(uname, uname); usersCreated++;
-      console.log(`   ✓ Created: ${name} (@${uname})`);
-    } catch (e) {
-      try {
-        const u2 = uname + "_2";
-        await supa("POST", "/rest/v1/users", { name, username: u2, password: "RDSTechserv@2026", role: "Rebar" });
-        userMap.set(key, u2); userMap.set(u2, u2); usersCreated++;
-        console.log(`   ✓ Created: ${name} (@${u2})`);
-      } catch (e2) { console.log(`   ❌ Cannot create ${name}: ${e2.message}`); }
-    }
-  }
+    if (byName[key]) { console.log(`  ✓ EXISTS: ${name}`); continue; }
+    // Check existing by normalized title-case
+    const existingMatch = Object.values(byName).find(u => toTitleCase(u.name) === name);
+    if (existingMatch) { byName[key] = existingMatch; console.log(`  ~ MATCHED: "${name}" → "${existingMatch.name}"`); continue; }
 
-  function resolveUser(raw) {
-    if (!raw) return "";
-    const first = raw.split("/")[0].trim();
-    return userMap.get(first.toLowerCase()) || first.toLowerCase().replace(/\s+/g, "_");
-  }
-
-  // STEP 5: Test insert
-  console.log("\n🧪 Test insert...");
-  let testProjId = null, testTaskId = null;
-
-  try {
-    const r = await supa("POST", "/rest/v1/projects", { name: "__TEST_WC__", client: CLIENT, color: "#ccc", description: "test", assigned_users: [], deadline: null });
-    testProjId = (Array.isArray(r.data) ? r.data[0] : r.data)?.id;
-    if (!testProjId) throw new Error("No project ID returned");
-    console.log(`   ✓ Test project OK (${testProjId})`);
-  } catch (e) {
-    console.log(`   ❌ Test project FAILED: ${e.message}\nSTOPPED — nothing changed.`);
-    return;
-  }
-
-  let removedFields = [];
-  let taskSchema = { project_id: testProjId, title: "__TEST_TASK__", status: "Not Yet Started", priority: "Medium", assignee: "", detailer: "", checker: "", scope: "", due_date: null, client_sub_date: null, client: CLIENT, tags: [], files: [] };
-  let taskOK = false;
-
-  for (let attempt = 0; attempt < 15; attempt++) {
-    try {
-      const r = await supa("POST", "/rest/v1/tasks", taskSchema);
-      testTaskId = (Array.isArray(r.data) ? r.data[0] : r.data)?.id;
-      if (!testTaskId) throw new Error("No task ID returned");
-      taskOK = true;
-      console.log(`   ✓ Test task OK (${testTaskId})` + (removedFields.length ? ` — auto-removed: ${removedFields.join(", ")}` : ""));
-      break;
-    } catch (e) {
-      const cm = e.message.match(/column "([^"]+)"/i);
-      if (cm) {
-        removedFields.push(cm[1]); delete taskSchema[cm[1]];
-        console.log(`   ⚠ Column "${cm[1]}" not in tasks — retrying without it...`);
-      } else {
-        try { await supa("DELETE", `/rest/v1/projects?id=eq.${testProjId}`); } catch(_){}
-        console.log(`   ❌ Test task FAILED: ${e.message}\nSTOPPED — test project cleaned up.`);
-        return;
+    // Build unique username, retry with _2 if duplicate
+    let username = name.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+    let newUser = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const tryUsername = attempt === 1 ? username : username + "_2";
+      const { data: nu, error: ne } = await supabase.from("users")
+        .insert({ name, username: tryUsername, password: "RDSTechserv@2026", role: "Rebar", client_name: "", email: "" })
+        .select().single();
+      if (!ne) {
+        newUser = nu;
+        console.log(`  + CREATED: ${name} (@${tryUsername})`);
+        break;
+      }
+      if (attempt === 2 || !ne.message?.includes("duplicate")) {
+        errLog(`create user "${name}"`, ne);
+        break;
       }
     }
+    if (newUser) { byName[key] = newUser; byName[newUser.username] = newUser; }
   }
 
-  if (!taskOK) {
-    try { await supa("DELETE", `/rest/v1/projects?id=eq.${testProjId}`); } catch(_){}
-    console.log("STOPPED — could not determine valid task schema.");
-    return;
+  // ── STEP 6: Group rows by project ──
+  const byProject = {};
+  for (const row of ALL_ROWS) {
+    if (!byProject[row.project]) byProject[row.project] = [];
+    byProject[row.project].push(row);
   }
 
-  // Clean test records
-  try { await supa("DELETE", `/rest/v1/tasks?id=eq.${testTaskId}`); } catch(_){}
-  try { await supa("DELETE", `/rest/v1/projects?id=eq.${testProjId}`); } catch(_){}
-  console.log("   ✓ Test records cleaned up");
+  // ── STEP 7: TEST INSERT before deleting anything ──
+  console.log("\n--- TEST INSERT (old data still safe) ---");
+  const testProjName = Object.keys(byProject)[0];
+  const testTasks    = byProject[testProjName];
 
-  // STEP 6: Delete existing White Cap data
-  console.log("\n🗑  Deleting existing White Cap data...");
-  const variants = ["White Cap","WhiteCap","White-Cap","white cap","whitecap"];
-  let delP = 0, delT = 0;
-  for (const v of variants) {
+  const { data: testProj, error: testProjErr } = await supabase.from("projects").insert({
+    name: testProjName + " [TEST_IMPORT]",
+    client: "White Cap",
+    color: "#6366f1",
+    description: "Test import",
+    assigned_users: [],
+    deadline: testTasks[0].due_date || null
+  }).select().single();
+  if (testProjErr) { errLog("TEST project FAILED — aborting, old data untouched", testProjErr); await pool.end(); return; }
+  console.log(`✓ Test project OK`);
+
+  // Build minimal task payload and remove columns that don't exist
+  async function tryInsertTask(payload, projId) {
+    const p = { project_id: projId, ...payload };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error } = await supabase.from("tasks").insert(p).select("id").single();
+      if (!error) return { id: data.id };
+      const missing = (error.message||"").match(/column "([^"]+)" of relation "tasks" does not exist/);
+      if (missing) { delete p[missing[1]]; continue; }
+      return { error };
+    }
+    return { error: new Error("Exhausted retries") };
+  }
+
+  const { id: testTaskId, error: testTaskErr } = await tryInsertTask({
+    title: testTasks[0].title || "Test Task",
+    status: testTasks[0].status || "Not Yet Started",
+    priority: "Medium",
+    assignee: normName(testTasks[0].assignee),
+    detailer: normField(testTasks[0].detailer),
+    checker:  normField(testTasks[0].checker),
+    scope: testTasks[0].scope || "",
+    client_sub_date: testTasks[0].client_sub_date || null,
+    due_date: testTasks[0].due_date || null,
+    client: "White Cap",
+    tags: [], files: [],
+  }, testProj.id);
+
+  if (testTaskErr) {
+    errLog("TEST task FAILED — aborting, old data untouched", testTaskErr);
+    await supabase.from("projects").delete().eq("id", testProj.id);
+    await pool.end(); return;
+  }
+  console.log(`✓ Test task OK`);
+
+  await supabase.from("tasks").delete().eq("id", testTaskId);
+  await supabase.from("projects").delete().eq("id", testProj.id);
+  console.log("✓ Test records cleaned — safe to proceed\n");
+
+  // ── STEP 8: Delete old White Cap data from BOTH DBs ──
+  console.log("--- Removing old White Cap data ---");
+  const { data: allProj } = await supabase.from("projects").select("id,name,client");
+  const wcProj = (allProj || []).filter(p =>
+    (p.client||"").toLowerCase().includes("white cap") ||
+    (p.client||"").toLowerCase().includes("whitecap")
+  );
+  console.log(`  Found ${wcProj.length} existing White Cap projects in Supabase`);
+  for (const p of wcProj) {
+    await supabase.from("tasks").delete().eq("project_id", p.id);
+    const { error: pe } = await supabase.from("projects").delete().eq("id", p.id);
+    if (pe) errLog(`delete project "${p.name}"`, pe);
+    else console.log(`  🗑 Supabase: deleted "${p.name}"`);
+  }
+
+  // Delete from local PostgreSQL too
+  if (localOk) {
     try {
-      const { data: prows } = await supa("GET", `/rest/v1/projects?client=ilike.${encodeURIComponent(v)}&select=id`);
-      if (prows?.length) {
-        for (const p of prows) {
-          try { await supa("DELETE", `/rest/v1/tasks?project_id=eq.${p.id}`); delT++; } catch(_){}
-          try { await supa("DELETE", `/rest/v1/projects?id=eq.${p.id}`); delP++; } catch(_){}
+      const { rows: wcLocal } = await pool.query(
+        `SELECT id FROM projects WHERE LOWER(client) LIKE '%white cap%' OR LOWER(client) LIKE '%whitecap%'`
+      );
+      console.log(`  Found ${wcLocal.length} existing White Cap projects in local DB`);
+      for (const p of wcLocal) {
+        await pool.query("DELETE FROM tasks WHERE project_id=$1", [p.id]);
+        await pool.query("DELETE FROM projects WHERE id=$1", [p.id]);
+      }
+      console.log(`  🗑 Local DB: ${wcLocal.length} projects + tasks deleted`);
+    } catch(e) { console.warn("  ⚠ Local DB delete error:", e.message); }
+  }
+
+  // ── STEP 9: Full insert into BOTH DBs ──
+  console.log(`\n--- Inserting ${Object.keys(byProject).length} projects, ${ALL_ROWS.length} tasks ---`);
+  let pOk=0, tOk=0, pFail=0, tFail=0;
+  let pIdx=0;
+
+  for (const [projName, tasks] of Object.entries(byProject)) {
+    const color    = COLORS[pIdx++ % COLORS.length];
+    const deadline = tasks.reduce((lat,t) => (!t.due_date ? lat : (!lat || t.due_date>lat ? t.due_date : lat)), null);
+
+    // Collect assigned usernames
+    const assignedSet = new Set();
+    for (const t of tasks) {
+      for (const field of [t.detailer, t.checker, t.assignee]) {
+        if (!field) continue;
+        for (const part of field.split(/[\/,]/)) {
+          const u = byName[normName(part.trim()).toLowerCase()];
+          if (u?.username) assignedSet.add(u.username);
         }
       }
-    } catch(_) {}
-    try { await supa("DELETE", `/rest/v1/tasks?client=ilike.${encodeURIComponent(v)}`); } catch(_){}
-  }
-  console.log(`   ✓ Removed ${delP} projects + ${delT} task-groups`);
-
-  // STEP 7: Insert all
-  console.log("\n📥 Inserting...\n");
-  let projInserted = 0, taskInserted = 0, taskFailed = 0;
-
-  for (let pi = 0; pi < order.length; pi++) {
-    const pn   = order[pi];
-    const proj = projects[pn];
-
-    // assigned_users
-    const aSet = new Set();
-    proj.detailers.forEach(n => n.split("/").forEach(p => { const t=p.trim(); if(t) aSet.add(resolveUser(t)); }));
-    proj.checkers.forEach(n => n.split("/").forEach(p => { const t=p.trim(); if(t) aSet.add(resolveUser(t)); }));
-
-    const deadline = proj.dates.length ? proj.dates.sort().reverse()[0] : null;
-
-    let projId;
-    try {
-      const r = await supa("POST", "/rest/v1/projects", {
-        name: pn, client: CLIENT, color: PALETTE[pi % PALETTE.length],
-        description: `${CLIENT} — ${pn}`, assigned_users: [...aSet].filter(Boolean), deadline,
-      });
-      projId = (Array.isArray(r.data) ? r.data[0] : r.data)?.id;
-      if (!projId) throw new Error("No ID");
-      projInserted++;
-      console.log(`✓ [${pi+1}/${totalProjects}] ${pn} (${proj.tasks.length} tasks)`);
-    } catch (e) {
-      console.log(`❌ Project "${pn}": ${e.message}`);
-      continue;
     }
 
-    for (const t of proj.tasks) {
-      const full = {
-        project_id: projId, title: t.title, status: t.status, priority: t.priority,
-        assignee: resolveUser(t.assignee), detailer: resolveUser(t.detailer),
-        checker: resolveUser(t.checker), scope: t.scope, due_date: t.due_date,
-        client_sub_date: t.client_sub_date, client: t.client, tags: t.tags, files: t.files,
-      };
-      const payload = {};
-      for (const [k, v] of Object.entries(full)) { if (!removedFields.includes(k)) payload[k] = v; }
+    const projPayload = {
+      name: projName,
+      client: "White Cap",
+      color,
+      description: "White Cap Projects Tracker 2026",
+      assigned_users: [...assignedSet],
+      deadline: deadline || null,
+    };
 
+    const { data: proj, error: pErr } = await supabase.from("projects").insert(projPayload).select().single();
+    if (pErr) { errLog(`project "${projName}"`, pErr); pFail++; continue; }
+
+    // Mirror to local PostgreSQL
+    if (localOk) {
       try {
-        await supa("POST", "/rest/v1/tasks", payload);
-        taskInserted++;
-        console.log(`   ✓ ${t.title.slice(0,70)}`);
-      } catch (e) {
-        taskFailed++;
-        console.log(`   ❌ ${t.title.slice(0,50)}: ${e.message.slice(0,100)}`);
+        await pool.query(
+          `INSERT INTO projects (id,name,client,color,description,assigned_users,deadline)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)
+           ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, client=EXCLUDED.client,
+           color=EXCLUDED.color, description=EXCLUDED.description,
+           assigned_users=EXCLUDED.assigned_users, deadline=EXCLUDED.deadline`,
+          [proj.id, projName, "White Cap", color,
+           "White Cap Projects Tracker 2026",
+           JSON.stringify([...assignedSet]),
+           deadline || null]
+        );
+      } catch(e) { console.warn(`  ⚠ Local proj "${projName}":`, e.message); }
+    }
+    pOk++;
+
+    for (const t of tasks) {
+      const assignee = normName(t.assignee) || normName((t.detailer||"").split("/")[0]);
+      const taskPayload = {
+        project_id:      proj.id,
+        title:           t.title || projName,
+        status:          t.status || "Not Yet Started",
+        priority:        "Medium",
+        assignee,
+        detailer:        normField(t.detailer),
+        checker:         normField(t.checker),
+        scope:           t.scope || "",
+        client_sub_date: t.client_sub_date || null,
+        due_date:        t.due_date || null,
+        client:          "White Cap",
+        tags:[], files:[],
+      };
+
+      const { id: taskId, error: tErr } = await tryInsertTask(taskPayload, proj.id);
+      if (tErr) { errLog(`task "${t.title}"`, tErr); tFail++; continue; }
+      tOk++;
+
+      // Mirror task to local PostgreSQL
+      if (localOk && taskId) {
+        try {
+          await pool.query(
+            `INSERT INTO tasks (id,project_id,title,status,priority,assignee,detailer,checker,scope,client_sub_date,due_date,client,tags,files)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+             ON CONFLICT (id) DO UPDATE SET project_id=EXCLUDED.project_id, title=EXCLUDED.title,
+             status=EXCLUDED.status, priority=EXCLUDED.priority, assignee=EXCLUDED.assignee,
+             detailer=EXCLUDED.detailer, checker=EXCLUDED.checker, scope=EXCLUDED.scope,
+             client_sub_date=EXCLUDED.client_sub_date, due_date=EXCLUDED.due_date,
+             client=EXCLUDED.client, tags=EXCLUDED.tags, files=EXCLUDED.files`,
+            [taskId, proj.id, taskPayload.title, taskPayload.status, "Medium",
+             assignee, taskPayload.detailer, taskPayload.checker, taskPayload.scope,
+             taskPayload.client_sub_date, taskPayload.due_date, "White Cap",
+             JSON.stringify([]), JSON.stringify([])]
+          );
+        } catch(e) { console.warn(`  ⚠ Local task "${t.title}":`, e.message); }
       }
     }
+    console.log(`  ✓ ${projName} — ${tasks.length} task(s)`);
   }
 
-  // STEP 8: Summary
-  console.log("\n══════════════════════════════════════════");
-  console.log("  IMPORT COMPLETE");
-  console.log("══════════════════════════════════════════");
-  console.log(`  Projects : ${projInserted} / ${totalProjects} inserted`);
-  console.log(`  Tasks    : ${taskInserted} / ${totalTasks} inserted, ${taskFailed} failed`);
-  console.log(`  Users    : ${usersCreated} new created`);
-  if (removedFields.length) console.log(`  Skipped  : ${removedFields.join(", ")} (not in tasks table)`);
-  console.log("══════════════════════════════════════════\n");
+  await pool.end();
+  console.log(`\n=== DONE: ${pOk} projects ✓, ${pFail} failed | ${tOk} tasks ✓, ${tFail} failed ===`);
 }
 
-main().catch(e => { console.error("\n💥 Fatal:", e.message); process.exit(1); });
+main().catch(e => { console.error("FATAL:", e); process.exit(1); });

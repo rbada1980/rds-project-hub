@@ -1,0 +1,198 @@
+=== White Cap Import (Fresh Jul 2026) ===
+
+Loaded 313 tasks across 62 projects
+
+✓ Supabase connected
+✓ Local PostgreSQL connected
+
+✓ tasks columns: id, project_id, title, client, status, priority, assignee, due_date, tags, files, created_at, updated_at, detailer, checker, scope, client_sub_date
+✓ 29 users in DB
+
+--- Processing 19 unique names ---
+  ✓ EXISTS: Praveena
+  ✓ EXISTS: Chandra Mouli
+  ✓ EXISTS: Anji Reddy
+  ✓ EXISTS: Dhanush
+  ✓ EXISTS: Kameshwari
+  ✓ EXISTS: Pradeep
+  ✓ EXISTS: Nanaji
+  ✓ EXISTS: Swathi
+  ✓ EXISTS: Sri Lalitha
+  ✓ EXISTS: Sai
+  ✓ EXISTS: Vaishnavi
+  ✓ EXISTS: Siva Kumar
+  ✓ EXISTS: Narayana
+  ✓ EXISTS: Jagadeesh
+  ✓ EXISTS: Eswar
+  ✓ EXISTS: Lokesh
+  ✓ EXISTS: Kunal
+  ✓ EXISTS: Sridevi
+  ✓ EXISTS: Balaram
+
+--- TEST INSERT (old data still safe) ---
+✓ Test project OK
+✓ Test task OK
+✓ Test records cleaned — safe to proceed
+
+--- Removing old White Cap data ---
+  Found 91 existing White Cap projects in Supabase
+  🗑 Supabase: deleted "Valencia Del Mar Pickleball"
+  🗑 Supabase: deleted "Palmetto Lakes Industrial Park"
+  🗑 Supabase: deleted "South Rd Office Building E"
+  🗑 Supabase: deleted "Palmetto Lakes Industrial Park"
+  🗑 Supabase: deleted "4669 S. Flagler Dr"
+  🗑 Supabase: deleted "Custom Residence (134 Worth CTN)"
+  🗑 Supabase: deleted "Rancano"
+  🗑 Supabase: deleted "The Bueller family"
+  🗑 Supabase: deleted "Broken Sound Club"
+  🗑 Supabase: deleted "228 Rutland"
+  🗑 Supabase: deleted "1050 N Lake way"
+  🗑 Supabase: deleted "228 Rutland"
+  🗑 Supabase: deleted "840 Denery Ln. Residence"
+  🗑 Supabase: deleted "810 S Swinton Ave Residence"
+  🗑 Supabase: deleted "401 SE Atlantic Drive"
+  🗑 Supabase: deleted "Masucci Residence"
+  🗑 Supabase: deleted "SPOTLOT 28810 SW 207 AVE"
+  🗑 Supabase: deleted "1333 Bvld"
+  🗑 Supabase: deleted "Miami Shores Residence (R+R bluenest)"
+  🗑 Supabase: deleted "Licata Residence 2726 Appaloosa trail"
+  🗑 Supabase: deleted "PBIA - Revenue Control Building"
+  🗑 Supabase: deleted "2651 Southcast 10th court"
+  🗑 Supabase: deleted "4669 S. Flagler Dr"
+  🗑 Supabase: deleted "127 EL Bravo Way"
+  🗑 Supabase: deleted "City of temple terrace-fire station #01"
+  🗑 Supabase: deleted "Frenchman's Creek Operations Center"
+  🗑 Supabase: deleted "Harrison Residence"
+  🗑 Supabase: deleted "Blue Water Cove 6"
+  🗑 Supabase: deleted "Cutler Bay SHS"
+  🗑 Supabase: deleted "799 Park Drive"
+  🗑 Supabase: deleted "Chateau De La Duchess (925 Hillsboro)"
+  🗑 Supabase: deleted "OLD PROJECTS MODIFICATIONS"
+  🗑 Supabase: deleted "Ackerman Residence"
+  🗑 Supabase: deleted "Miami Shores Residence (R+R bluenest)"
+  🗑 Supabase: deleted "143 Reef Road"
+  🗑 Supabase: deleted "Bluewater cove 9"
+  🗑 Supabase: deleted "Jandrews Residence"
+  🗑 Supabase: deleted "1820 S Federal Hwy - Fifth Third Bank"
+  🗑 Supabase: deleted "Country inn Pet Resort"
+  🗑 Supabase: deleted "Roy & Shelley Silverman"
+  🗑 Supabase: deleted "Gallery at Somi Parc Phase 1"
+  🗑 Supabase: deleted "Burns Residence"
+  🗑 Supabase: deleted "910 S Ocean"
+  🗑 Supabase: deleted "Custom Residence (515 lido drive)"
+  🗑 Supabase: deleted "South Florida Jewish Cemetery"
+  🗑 Supabase: deleted "1050 N Lake way"
+  🗑 Supabase: deleted "Roy & Shelley Silverman"
+  🗑 Supabase: deleted "Valencia Del Mar Clubhouse"
+  🗑 Supabase: deleted "Sands residence (3223 N Ocean)"
+  🗑 Supabase: deleted "5900 Powerline Garage"
+  🗑 Supabase: deleted "1900 NE 22ND Terrance"
+  🗑 Supabase: deleted "6007 Le Lac (Furing residence)"
+  🗑 Supabase: deleted "Felies Residence"
+  🗑 Supabase: deleted "Cutler Bay SHS"
+  🗑 Supabase: deleted "Cloyd"
+  🗑 Supabase: deleted "5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE)"
+  🗑 Supabase: deleted "840 Denery Ln. Residence"
+  🗑 Supabase: deleted "6007 Le Lac (Furing residence)"
+  🗑 Supabase: deleted "2960 Greenbriair"
+  🗑 Supabase: deleted "6024 Lelac Rd"
+  🗑 Supabase: deleted "BOKOR 432 SUNSHINE BLVD"
+  🗑 Supabase: deleted "Bluewater cove 11"
+  🗑 Supabase: deleted "6017 Le Lac Road (Weiner Residence)"
+  🗑 Supabase: deleted "320 S atlantic Drive"
+  🗑 Supabase: deleted "90 Stingaree"
+  🗑 Supabase: deleted "Nuvo"
+  🗑 Supabase: deleted "143 Reef Road"
+  🗑 Supabase: deleted "6024 Le lac Rd"
+  🗑 Supabase: deleted "559 Nw 43 st"
+  🗑 Supabase: deleted "2651 SE 10th Court"
+  🗑 Supabase: deleted "cannatelli"
+  🗑 Supabase: deleted "515 Lido Drive"
+  🗑 Supabase: deleted "1042 Palm Way Road"
+  🗑 Supabase: deleted "164 Seminole"
+  🗑 Supabase: deleted "50 SE OLIVE"
+  🗑 Supabase: deleted "SW Ranches"
+  🗑 Supabase: deleted "320 S atlantic Drive"
+  🗑 Supabase: deleted "Burns Residence"
+  🗑 Supabase: deleted "50 SE OLIVE"
+  🗑 Supabase: deleted "Felies Residence"
+  🗑 Supabase: deleted "The Syed Residence"
+  🗑 Supabase: deleted "Cloyd"
+  🗑 Supabase: deleted "Bluewater cove 9"
+  🗑 Supabase: deleted "5900 Powerline Garag"
+  🗑 Supabase: deleted "O.B. (Scattered Lots)"
+  🗑 Supabase: deleted "SW Ranches"
+  🗑 Supabase: deleted "20 Hudson Ave"
+  🗑 Supabase: deleted "Gallery at Somi Parc Phase 1"
+  🗑 Supabase: deleted "2960 Greenbriair"
+  🗑 Supabase: deleted "Baig Residence"
+  🗑 Supabase: deleted "Blue Water Cove 3"
+  Found 40 existing White Cap projects in local DB
+  🗑 Local DB: 40 projects + tasks deleted
+
+--- Inserting 62 projects, 313 tasks ---
+  ✓ Felies Residence — 3 task(s)
+  ✓ Valencia Del Mar Pickleball — 7 task(s)
+  ✓ City of temple terrace-fire station #01 — 4 task(s)
+  ✓ 228 Rutland — 4 task(s)
+  ✓ Palmetto Lakes Industrial Park — 3 task(s)
+  ✓ Frenchman's Creek Operations Center — 6 task(s)
+  ✓ Miami Shores Residence (R+R bluenest) — 5 task(s)
+  ✓ Licata Residence 2726 Appaloosa trail — 2 task(s)
+  ✓ 4669 S. Flagler Dr — 4 task(s)
+  ✓ Harrison Residence — 2 task(s)
+  ✓ PBIA - Revenue Control Building — 2 task(s)
+  ✓ 127 EL Bravo Way — 7 task(s)
+  ✓ Blue Water Cove 6 — 2 task(s)
+  ✓ 1050 N Lake way — 3 task(s)
+  ✓ 143 Reef Road — 4 task(s)
+  ✓ Cutler Bay SHS — 4 task(s)
+  ✓ Ackerman Residence — 3 task(s)
+  ✓ Blue Water Cove 3 — 2 task(s)
+  ✓ BOKOR 432 SUNSHINE BLVD — 3 task(s)
+  ✓ Cloyd — 3 task(s)
+  ✓ 6017 Le Lac Road (Weiner Residence) — 9 task(s)
+  ✓ Bluewater cove 11 — 2 task(s)
+  ✓ Bluewater cove 9 — 2 task(s)
+  ✓ 164 Seminole — 4 task(s)
+  ✓ Roy & Shelley Silverman — 4 task(s)
+  ✓ 50 SE OLIVE — 2 task(s)
+  ✓ Valencia Del Mar Clubhouse — 9 task(s)
+  ✓ 910 S Ocean — 3 task(s)
+  ✓ Burns Residence — 3 task(s)
+  ✓ 5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE) — 1 task(s)
+  ✓ 320 S atlantic Drive — 4 task(s)
+  ✓ Custom Residence (515 lido drive) — 4 task(s)
+  ✓ Jandrews Residence — 3 task(s)
+  ✓ 6024 Lelac Rd — 5 task(s)
+  ✓ 5900 Powerline Garag — 2 task(s)
+  ✓ South Florida Jewish Cemetery — 2 task(s)
+  ✓ 1820 S Federal Hwy - Fifth Third Bank — 2 task(s)
+  ✓ 20 Hudson Ave — 3 task(s)
+  ✓ South Rd Office Building E — 2 task(s)
+  ✓ Baig Residence — 2 task(s)
+  ✓ SW Ranches — 2 task(s)
+  ✓ 2651 Southcast 10th court — 1 task(s)
+  ✓ Country inn Pet Resort — 2 task(s)
+  ✓ 2960 Greenbriair — 4 task(s)
+  ✓ Gallery at Somi Parc Phase 1 — 77 task(s)
+  ✓ 6007 Le Lac (Furing residence) — 2 task(s)
+  ✓ 90 Stingaree — 2 task(s)
+  ✓ O.B. (Scattered Lots) — 2 task(s)
+  ✓ 840 Denery Ln. Residence — 5 task(s)
+  ✓ Nuvo — 41 task(s)
+  ✓ The Syed Residence — 3 task(s)
+  ✓ 810 S Swinton Ave Residence — 3 task(s)
+  ✓ Custom Residence (134 Worth CTN) — 4 task(s)
+  ✓ Rancano — 2 task(s)
+  ✓ 799 Park Drive — 3 task(s)
+  ✓ Chateau De La Duchess (925 Hillsboro) — 3 task(s)
+  ✓ Masucci Residence — 4 task(s)
+  ✓ The Bueller family — 2 task(s)
+  ✓ SPOTLOT 28810 SW 207 AVE — 2 task(s)
+  ✓ Broken Sound Club — 2 task(s)
+  ✓ 128 Worth CT N — 3 task(s)
+  ✓ 2235 Mangolia Drive — 3 task(s)
+
+=== DONE: 62 projects ✓, 0 failed | 313 tasks ✓, 0 failed ===
+Exit code: 0 
