@@ -1,19 +1,19 @@
 {
-  "timestamp": "2026-07-09T06:56:41.718Z",
-  "ist_time": "2026-07-09 12:26:41 IST",
-  "duration_sec": 6.3,
-  "total_synced": 2124,
-  "total_pushed": 1040,
-  "total_pulled": 1084,
-  "total_failed": 100,
-  "status": "partial",
+  "timestamp": "2026-07-10T07:30:00.022Z",
+  "ist_time": "2026-07-10 13:00:00 IST",
+  "duration_sec": 7.7,
+  "total_synced": 1942,
+  "total_pushed": 833,
+  "total_pulled": 1109,
+  "total_failed": 0,
+  "status": "success",
   "tables": [
     {
       "table": "users",
-      "synced": 31,
+      "synced": 29,
       "failed": 0,
-      "total": 31,
-      "pulled": 31
+      "total": 29,
+      "pulled": 29
     },
     {
       "table": "clients",
@@ -54,10 +54,11 @@
     },
     {
       "table": "notifications",
-      "synced": 209,
-      "failed": 100,
-      "total": 309,
-      "pulled": 253
+      "synced": 0,
+      "failed": 0,
+      "total": 0,
+      "note": "pull-only",
+      "pulled": 259
     },
     {
       "table": "announcements",
@@ -76,10 +77,11 @@
     },
     {
       "table": "war_room_messages",
-      "synced": 1,
+      "synced": 0,
       "failed": 0,
-      "total": 1,
-      "pulled": 1
+      "total": 0,
+      "note": "pull-only",
+      "pulled": 17
     },
     {
       "table": "war_room_pins",
@@ -99,10 +101,10 @@
     },
     {
       "table": "war_room_reads",
-      "synced": 3,
+      "synced": 8,
       "failed": 0,
-      "total": 3,
-      "pulled": 3
+      "total": 8,
+      "pulled": 8
     },
     {
       "table": "war_room_scheduled",

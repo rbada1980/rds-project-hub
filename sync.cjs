@@ -46,10 +46,15 @@ const TABLE_CONFIG = [
   { table: "tasks",              conflict: "id", deleteOrphans: true },
   { table: "task_files",         conflict: "id" },
   { table: "task_comments",      conflict: "id" },
-  { table: "notifications",      conflict: "id" },
+  { table: "notifications",      conflict: "id", skipPush: true },
+  // ↑ skipPush: local notifications use user_id from local DB which may not
+  //   match Supabase FK constraints. We pull Supabase notifications in,
+  //   but don't push local-only rows back up.
   { table: "announcements",      conflict: "id" },
   { table: "workflows",          conflict: "id" },
-  { table: "war_room_messages",  conflict: "id" },
+  { table: "war_room_messages",  conflict: "id", skipPush: true },
+  // ↑ skipPush: both Supabase and local use the client username slug as client_id.
+  //   Pull-only: messages sent on local offline stay local (don't overwrite Supabase).
   { table: "war_room_pins",      conflict: "id" },
   { table: "war_room_reactions", conflict: "id" },
   { table: "war_room_reads",     conflict: "client_id,user_username" },
@@ -184,7 +189,11 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
 }
 
 // ── Phase 2: Push FROM Local → Supabase ─────────────────────
-async function pushTable({ table, conflict, excludeFromRow = [] }) {
+async function pushTable({ table, conflict, excludeFromRow = [], skipPush = false }) {
+  if (skipPush) {
+    console.log(`   ⏭  → ${table.padEnd(24)} skipped (pull-only table)`);
+    return { table, synced: 0, failed: 0, total: 0, note: "pull-only" };
+  }
   const r = await pool.query(`SELECT * FROM "${table}"`);
   const rows = r.rows;
 

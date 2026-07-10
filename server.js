@@ -13,6 +13,8 @@ const path     = require("path");
 const multer   = require("multer");
 const fs       = require("fs");
 const { v4: uuidv4 } = require("uuid");
+const cron     = require("node-cron");
+const { runSync } = require("./sync.cjs");
 
 // ── Web Push (VAPID) ─────────────────────────────────────────
 // Keys generated once — shared between offline + online
@@ -1151,6 +1153,34 @@ app.post("/api/admin/restore", async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════
+// SYNC — report + manual trigger
+// ════════════════════════════════════════════════════════════
+
+// GET /api/sync-report — last sync status (for dashboard)
+app.get("/api/sync-report", (req, res) => {
+  const p = path.join(__dirname, "last-sync-report.json");
+  if (!fs.existsSync(p)) return res.json({ status: "no_sync_yet" });
+  try { res.json(JSON.parse(fs.readFileSync(p, "utf8"))); }
+  catch { res.json({ status: "error" }); }
+});
+
+// POST /api/sync-now — manual trigger (admin only)
+let _syncRunning = false;
+app.post("/api/sync-now", async (req, res) => {
+  if (_syncRunning) return res.json({ ok: false, error: "Sync already running" });
+  _syncRunning = true;
+  console.log("[Sync] Manual trigger via /api/sync-now");
+  try {
+    const report = await runSync();
+    res.json({ ok: true, report });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  } finally {
+    _syncRunning = false;
+  }
+});
+
+// ════════════════════════════════════════════════════════════
 // HEALTH CHECK
 // ════════════════════════════════════════════════════════════
 
@@ -1195,6 +1225,24 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
       console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
       console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
       console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+
+      // ── Bidirectional sync schedule ───────────────────────
+      // Every 15 minutes: quick sync to keep data fresh during the day
+      let _syncBusy = false;
+      async function doSync(label) {
+        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
+        _syncBusy = true;
+        try { await runSync(); }
+        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
+        finally { _syncBusy = false; }
+      }
+      cron.schedule("*/15 * * * *", () => doSync("15-min"), { timezone: "Asia/Kolkata" });
+      // Full sync also at 2 AM IST as a catch-all
+      cron.schedule("0 2 * * *",    () => doSync("2AM"),    { timezone: "Asia/Kolkata" });
+      console.log("🔄 Auto-sync: every 15 min + 2:00 AM IST daily\n");
+
+      // Run once 30s after startup to catch any changes since last restart
+      setTimeout(() => doSync("startup"), 30000);
     });
   } catch (e) {
     console.error("HTTPS failed:", e.message);
