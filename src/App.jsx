@@ -10008,8 +10008,8 @@ export default function App(){
       try{
         if("serviceWorker" in navigator){
           navigator.serviceWorker.ready.then(reg=>{
-            reg.showNotification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now()),requireInteraction:false});
-          }).catch(()=>{try{new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});}catch{}});
+            reg.showNotification(title,{body:body||"New message",icon:"/logo.png",badge:"/logo.png",image:"/logo.png",tag:"wr-"+(id||Date.now()),requireInteraction:true,renotify:true,actions:[{action:"view",title:"👁 View Now"},{action:"dismiss",title:"✕ Dismiss"}],vibrate:[300,100,300]});
+          }).catch(()=>{try{new Notification(title,{body:body||"New message",icon:"/logo.png",tag:"wr-"+(id||Date.now())});}catch{}});
         }else{
           new Notification(title,{body:body||"New message",icon:"/favicon.svg",tag:"wr-"+(id||Date.now())});
         }
