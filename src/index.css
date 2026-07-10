@@ -120,3 +120,12 @@ html, body, #root {
   width: 100%;
   overflow: hidden;
 }
+
+/* Chat message list — scrollable but no visible scrollbar */
+.rds-msg-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rds-msg-scroll::-webkit-scrollbar {
+  display: none;
+}
