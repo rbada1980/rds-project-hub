@@ -5380,7 +5380,7 @@ function WarRoomPage({me,projects,users}){
       const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({user_id:u.id,type:"mention",title:`💬 ${me.name} mentioned you in ${clientDisplayN}`,description:snippet,entity_type:"war_room",entity_id:capturedCid,created_by:me.username}));
       if(rows.length)await supabase.from("notifications").insert(rows);
     }
-    if(!IS_LOCAL&&inserted){const _pu=mentions.filter(m=>m!=="here"&&m!=="all").length?users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username):allUsers.map(u=>u.username);if(_pu.length)fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:_pu,title:"💬 "+clientDisplayN,body:snippet,employee:me.name,type:mentions.filter(m=>m!=="here"&&m!=="all").length?"Mention":"War Room Message",url:"/"})}).catch(()=>{});}
+    if(inserted){const _pu=mentions.filter(m=>m!=="here"&&m!=="all").length?users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username):allUsers.map(u=>u.username);if(_pu.length)fetch(LOCAL_BASE+"/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:_pu,title:"💬 "+clientDisplayN,body:snippet,employee:me.name,type:mentions.filter(m=>m!=="here"&&m!=="all").length?"Mention":"War Room Message",url:"/"})}).catch(()=>{});}
     setSending(false);
   }
 
@@ -6211,7 +6211,7 @@ function TaskComments({taskId,projectId,me,users}){
           entity_type:"task",entity_id:taskId,created_by:me.username
         }));
         if(rows.length)await supabase.from("notifications").insert(rows);
-        if(!IS_LOCAL)fetch("/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username),title:"💬 Task Mention",body:input.trim().slice(0,80),employee:me.name,type:"Mention",url:"/"})}).catch(()=>{});
+        fetch(LOCAL_BASE+"/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username),title:"💬 Task Mention",body:input.trim().slice(0,80),employee:me.name,type:"Mention",url:"/"})}).catch(()=>{});
       }
       setInput("");setMentionOpen(false);
     }

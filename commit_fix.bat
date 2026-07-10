@@ -41,7 +41,7 @@ git add api/push/vapid-public-key.js api/push/subscribe.js api/push/send.js
 
 echo.
 echo === Committing ===
-git commit -m "fix: sw.js null bytes stripped, localApi insert fix, sync 10s"
+git commit -m "fix: push notifications now work on offline site (removed IS_LOCAL guard)"
 
 echo.
 echo === Pushing ===

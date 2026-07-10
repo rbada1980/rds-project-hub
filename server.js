@@ -936,10 +936,15 @@ app.delete("/api/push/unsubscribe", async (req, res) => {
 });
 
 // POST /api/push/send — internal: send push to one or more usernames
+// Accepts same format as Vercel api/push/send.js:
+// { usernames, title, body, employee, type, url, tag, extra }
+// Also accepts legacy { usernames, payload } format for backward compat
 app.post("/api/push/send", async (req, res) => {
   try {
-    const { usernames, payload } = req.body;
-    await pushToUsers(Array.isArray(usernames) ? usernames : [usernames], payload);
+    const { usernames, payload, title, body, employee, type, url, tag, extra } = req.body;
+    const users = Array.isArray(usernames) ? usernames : [usernames];
+    const msg = payload || pushPayload({ title, body, employee, type, url, tag, extra });
+    await pushToUsers(users, msg);
     res.json(ok({ sent: true }));
   } catch (e) { res.json(err(e)); }
 });
