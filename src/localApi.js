@@ -19,7 +19,14 @@ class QueryBuilder {
   }
 
   // ── Operations ────────────────────────────────────────────
-  select(cols = "*") { this._columns = cols; this._op = "select"; return this; }
+  // NOTE: .insert().select() is a Supabase pattern meaning "return the row".
+  // Do NOT overwrite _op when it's already a write operation.
+  select(cols = "*") {
+    this._columns = cols;
+    if (this._op === "select") this._op = "select";
+    // else: write op already set — .select() just means "return data" (which we always do)
+    return this;
+  }
   insert(data)       { this._op = "insert"; this._data = data; return this; }
   update(data)       { this._op = "update"; this._data = data; return this; }
   delete()           { this._op = "delete"; return this; }

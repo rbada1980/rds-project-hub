@@ -23,7 +23,6 @@ self.addEventListener("push", event => {
   // Build body lines
   const lines = [];
   if (employee) lines.push("👤 " + employee);
-  if (type)     lines.push("📋 " + type);
   if (body)     lines.push(body);
   if (extra)    lines.push(extra);
   if (time)     lines.push("🕐 " + time);

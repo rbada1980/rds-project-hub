@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-10T07:30:00.022Z",
-  "ist_time": "2026-07-10 13:00:00 IST",
-  "duration_sec": 7.7,
-  "total_synced": 1942,
+  "timestamp": "2026-07-10T08:45:00.019Z",
+  "ist_time": "2026-07-10 14:15:00 IST",
+  "duration_sec": 5.4,
+  "total_synced": 1944,
   "total_pushed": 833,
-  "total_pulled": 1109,
+  "total_pulled": 1111,
   "total_failed": 0,
   "status": "success",
   "tables": [
@@ -81,7 +81,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 17
+      "pulled": 19
     },
     {
       "table": "war_room_pins",

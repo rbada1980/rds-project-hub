@@ -1065,6 +1065,15 @@ app.use((req, res) => {
   }
 });
 
+// GET /install-cert — download RDS CA cert (HTTP, no SSL warning)
+app.get("/install-cert", (req, res) => {
+  const caFile = path.join(__dirname, "certs", "RDS-Local-CA.crt");
+  if (!fs.existsSync(caFile)) return res.status(404).send("CA cert not found");
+  res.setHeader("Content-Disposition", "attachment; filename=RDS-Local-CA.crt");
+  res.setHeader("Content-Type", "application/x-x509-ca-cert");
+  res.sendFile(caFile);
+});
+
 // ═════════════════════════════════════════════════════════════
 // START
 // ═════════════════════════════════════════════════════════════
