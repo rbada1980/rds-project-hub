@@ -1255,4 +1255,11 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
   }
 } else {
   // ── Fallback: HTTP on 3000 (no cert yet) ──────────────────────────────────────────
-  app.listen(PORT, "0.0
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
+    console.log(`   http://192.168.0.159:${PORT}`);
+    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
+    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
+    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+  });
+}
