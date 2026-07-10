@@ -3384,7 +3384,7 @@ function exportSubmissionList(projects,tasks,today){
 // ─────────────────────────────────────────────────────────────────────────────
 function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
   const isMobile=useMobile();
-  const [period,setPeriod]=useState("today");
+  const [period,setPeriod]=useState("this_week");
   const [customFrom,setCustomFrom]=useState(today);
   const [customTo,setCustomTo]=useState(today);
   const [showCal,setShowCal]=useState(false);
@@ -3394,10 +3394,12 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
   const mondayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?6:dow-1));return r.toISOString().slice(0,10);};
   const sundayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()+(dow===0?0:7-dow));return r.toISOString().slice(0,10);};
+  const yesterday=addDays(today,-1);
 
   const getRangeDates=()=>{
     const d=new Date(today);
-    if(period==="today") return{from:today,to:today,label:"Today",icon:"📅",color:C.red};
+    if(period==="overdue")  return{from:"2000-01-01",to:yesterday,label:"Overdue (past due, not completed)",icon:"⚠️",color:C.red};
+    if(period==="today")    return{from:today,to:today,label:"Today",icon:"📅",color:"#f97316"};
     if(period==="tomorrow"){const tm=addDays(today,1);return{from:tm,to:tm,label:"Tomorrow",icon:"🌅",color:C.green};}
     if(period==="this_week"){const ms=mondayOf(today);const se=sundayOf(today);return{from:ms,to:se,label:`This Week  ${ms} → ${se}`,icon:"📆",color:"#f59e0b"};}
     if(period==="next_week"){const nm=addDays(mondayOf(today),7);const ns=addDays(nm,6);return{from:nm,to:ns,label:`Next Week  ${nm} → ${ns}`,icon:"🗓",color:"#8b5cf6"};}
@@ -3409,7 +3411,17 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   const scopedProjects=isClient?projects.filter(p=>(p.client||"").toLowerCase()===(clientName||"").toLowerCase()):projects;
   const ds=v=>v?String(v).slice(0,10):null;
-  const inRange=(t,f,to)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);};
+  // hasDate: task has at least one submission date set
+  const hasDate=t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return !!(d1||d2);};
+  // inRange: task date falls within [f, to]; for "overdue" period, also exclude completed tasks
+  const inRange=(t,f,to)=>{
+    const d1=ds(t.client_sub_date);const d2=ds(t.due_date);
+    const inWindow=(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);
+    if(!inWindow) return false;
+    // Overdue: skip completed tasks
+    if(period==="overdue"&&isDone(t.status)) return false;
+    return true;
+  };
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
   const periodTasksRaw=allTasks.filter(t=>inRange(t,rangeFrom,rangeTo)).sort((a,b)=>(a.client_sub_date||a.due_date||"").localeCompare(b.client_sub_date||b.due_date||""));
@@ -3422,13 +3434,18 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const progPct=periodTasks.length?Math.round(doneCount/periodTasks.length*100):0;
 
   // Summary stats (always shown regardless of period)
-  const todayCount=allTasks.filter(t=>inRange(t,today,today)).length;
+  // Overdue: tasks with any past date that are NOT completed
+  const overdueCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length;
+  const todayCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===today)||(d2&&d2===today);}).length;
+  const tomorrowCount=allTasks.filter(t=>{const tm=addDays(today,1);const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===tm)||(d2&&d2===tm);}).length;
+  const thisWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);const ms=mondayOf(today);const se=sundayOf(today);return(d1&&d1>=ms&&d1<=se)||(d2&&d2>=ms&&d2<=se);}).length;
   const nextWeekStart=addDays(mondayOf(today),7);
   const nextWeekEnd=addDays(nextWeekStart,6);
-  const nextWeekCount=allTasks.filter(t=>inRange(t,nextWeekStart,nextWeekEnd)).length;
+  const nextWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=nextWeekStart&&d1<=nextWeekEnd)||(d2&&d2>=nextWeekStart&&d2<=nextWeekEnd);}).length;
   const nextMonthStart=(()=>{const d=new Date(today);return new Date(d.getFullYear(),d.getMonth()+1,1).toISOString().slice(0,10);})();
   const nextMonthEnd=(()=>{const d=new Date(today);return new Date(d.getFullYear(),d.getMonth()+2,0).toISOString().slice(0,10);})();
-  const nextMonthCount=allTasks.filter(t=>inRange(t,nextMonthStart,nextMonthEnd)).length;
+  const nextMonthCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=nextMonthStart&&d1<=nextMonthEnd)||(d2&&d2>=nextMonthStart&&d2<=nextMonthEnd);}).length;
+  const noDatesCount=allTasks.filter(t=>!hasDate(t)).length;
 
   const statusColor=s=>s==="Completed"?"#16a34a":s==="In Progress"?"#2563eb":s==="Not Yet Started"?"#64748b":"#f59e0b";
   const tdC={padding:"10px 12px",textAlign:"center",fontSize:12,verticalAlign:"middle"};
@@ -3472,7 +3489,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   });
 
   const QUICK=[
-    {id:"today",label:"Today",icon:"📅",color:C.red},
+    {id:"overdue",label:"Overdue",icon:"⚠️",color:"#ef4444"},
+    {id:"today",label:"Today",icon:"📅",color:"#f97316"},
     {id:"tomorrow",label:"Tomorrow",icon:"🌅",color:C.green},
     {id:"this_week",label:"This Week",icon:"📆",color:"#f59e0b"},
     {id:"next_week",label:"Next Week",icon:"🗓",color:"#8b5cf6"},
@@ -3489,24 +3507,31 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       </div>
 
       {/* ── Summary stat cards ── */}
-      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:22}}>
+      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:22}}>
         {[
-          {label:"Today",value:todayCount,color:todayCount>0?C.red:"#22c55e",icon:"📅",id:"today"},
-          {label:"Tomorrow",value:allTasks.filter(t=>inRange(t,addDays(today,1),addDays(today,1))).length,color:C.green,icon:"🌅",id:"tomorrow"},
-          {label:"This Week",value:allTasks.filter(t=>inRange(t,mondayOf(today),sundayOf(today))).length,color:"#f59e0b",icon:"📆",id:"this_week"},
+          {label:"⚠️ Overdue",value:overdueCount,color:overdueCount>0?"#ef4444":"#22c55e",icon:"⚠️",id:"overdue"},
+          {label:"Today",value:todayCount,color:todayCount>0?"#f97316":"#22c55e",icon:"📅",id:"today"},
+          {label:"Tomorrow",value:tomorrowCount,color:C.green,icon:"🌅",id:"tomorrow"},
+          {label:"This Week",value:thisWeekCount,color:"#f59e0b",icon:"📆",id:"this_week"},
           {label:"Next Week",value:nextWeekCount,color:"#8b5cf6",icon:"🗓",id:"next_week"},
           {label:"Next Month",value:nextMonthCount,color:"#06b6d4",icon:"📅",id:"next_month"},
         ].map(s=>(
           <div key={s.label} onClick={()=>{setPeriod(s.id);setShowCal(false);}}
-            style={{background:C.card,border:`2px solid ${period===s.id?s.color:C.border}`,borderRadius:12,padding:"14px 18px",borderLeft:`4px solid ${s.color}`,display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"border .15s",boxShadow:period===s.id?`0 0 0 2px ${s.color}33`:"none"}}>
-            <span style={{fontSize:24}}>{s.icon}</span>
+            style={{background:C.card,border:`2px solid ${period===s.id?s.color:C.border}`,borderRadius:12,padding:"12px 14px",borderLeft:`4px solid ${s.color}`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",transition:"border .15s",boxShadow:period===s.id?`0 0 0 2px ${s.color}33`:"none"}}>
             <div>
-              <div style={{fontSize:26,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
+              <div style={{fontSize:24,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
               <div style={{fontSize:10,color:C.t3,marginTop:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.label}</div>
             </div>
           </div>
         ))}
       </div>
+      {/* ── No-dates warning ── */}
+      {noDatesCount>0&&(
+        <div style={{background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:12,color:"#b45309",display:"flex",alignItems:"center",gap:8}}>
+          <span>⚠️</span>
+          <span><strong>{noDatesCount} task{noDatesCount!==1?"s":""}</strong> have no Client Sub Date or Due Date set — they won't appear in any period. Edit those tasks to add dates.</span>
+        </div>
+      )}
 
       {/* ── Filter bar ── */}
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"14px 18px",marginBottom:isMobile?14:22}}>
@@ -3600,9 +3625,17 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         </div>
         {periodTasks.length===0?(
           <div style={{padding:"48px",textAlign:"center",color:C.t3}}>
-            <div style={{fontSize:40,marginBottom:10}}>🎉</div>
-            <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:4}}>No submissions in this period</div>
-            <div style={{fontSize:13}}>Try selecting a different date range above</div>
+            <div style={{fontSize:40,marginBottom:10}}>{period==="overdue"?"✅":"🎉"}</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:4}}>
+              {period==="overdue"?"No overdue submissions — all clear!":"No submissions in this period"}
+            </div>
+            <div style={{fontSize:13}}>
+              {period==="overdue"
+                ?"All tasks are on schedule or completed."
+                :noDatesCount>0
+                  ?`${noDatesCount} task${noDatesCount!==1?"s":""} have no dates — click "Overdue" or set dates on tasks to see them here.`
+                  :"Try selecting a different date range or check the Overdue filter above."}
+            </div>
           </div>
         ):(
           isMobile?(

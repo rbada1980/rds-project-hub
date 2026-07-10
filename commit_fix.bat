@@ -42,7 +42,7 @@ git add api/push/vapid-public-key.js api/push/subscribe.js api/push/send.js
 
 echo.
 echo === Committing ===
-git commit -m "fix: attendance works on offline LAN site + suppress duplicate push notifications on laptop"
+git commit -m "fix: submission list shows overdue tasks + default to this week + no-dates warning"
 
 echo.
 echo === Pushing ===
