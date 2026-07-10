@@ -1,0 +1,509 @@
+=== Running White Cap Import v3 === 
+=== White Cap Import v3 ===
+
+✓ DB connected
+
+✓ tasks columns: id, project_id, title, client, status, priority, assignee, due_date, tags, files, created_at, updated_at, detailer, checker, scope, client_sub_date
+✓ 29 users in DB
+
+--- Users to process: 17 ---
+  ✓ EXISTS: Praveena
+  ✓ EXISTS: Chandra Mouli
+  ✓ EXISTS: Dhanush
+  ✓ EXISTS: Kameshwari
+  ✓ EXISTS: Swathi
+  ✓ EXISTS: Sai
+  ✓ EXISTS: Sri Lalitha
+  ✓ EXISTS: Pradeep
+  ✓ EXISTS: Anji Reddy
+  ✓ EXISTS: Vaishnavi
+  ✓ EXISTS: Lokesh
+  ✓ EXISTS: Kunal
+  ✓ EXISTS: Eswar
+  ✓ EXISTS: Siva Kumar
+  ✓ EXISTS: Sridevi
+  ✓ EXISTS: Balaram
+  ✓ EXISTS: Jagadeesh
+
+--- Testing insert (old data is still safe) ---
+✓ Test project OK: "Felies Residence [TEST]"
+✓ Test task OK: "Foundations and slab on grade"
+✓ Test records cleaned up — inserts work, safe to proceed
+
+--- Removing old White Cap data ---
+  Found 62 existing White Cap projects
+  🗑 Deleted: Blue Water Cove 3
+  🗑 Deleted: South Florida Jewish Cemetery
+  🗑 Deleted: Nuvo
+  🗑 Deleted: 810 S Swinton Ave Residence
+  🗑 Deleted: 2235 Mangolia Drive
+  🗑 Deleted: PBIA - Revenue Control Building
+  🗑 Deleted: Bluewater cove 11
+  🗑 Deleted: 6024 Lelac Rd
+  🗑 Deleted: 20 Hudson Ave
+  🗑 Deleted: Country inn Pet Resort
+  🗑 Deleted: Gallery at Somi Parc Phase 1
+  🗑 Deleted: Felies Residence
+  🗑 Deleted: Cutler Bay SHS
+  🗑 Deleted: Cloyd
+  🗑 Deleted: 50 SE OLIVE
+  🗑 Deleted: 320 S atlantic Drive
+  🗑 Deleted: Burns Residence
+  🗑 Deleted: SW Ranches
+  🗑 Deleted: Frenchman's Creek Operations Center
+  🗑 Deleted: 127 EL Bravo Way
+  🗑 Deleted: Blue Water Cove 6
+  🗑 Deleted: Valencia Del Mar Clubhouse
+  🗑 Deleted: Jandrews Residence
+  🗑 Deleted: South Rd Office Building E
+  🗑 Deleted: Masucci Residence
+  🗑 Deleted: SPOTLOT 28810 SW 207 AVE
+  🗑 Deleted: O.B. (Scattered Lots)
+  🗑 Deleted: Rancano
+  🗑 Deleted: Chateau De La Duchess (925 Hillsboro)
+  🗑 Deleted: Broken Sound Club
+  🗑 Deleted: Valencia Del Mar Pickleball
+  🗑 Deleted: Licata Residence 2726 Appaloosa trail
+  🗑 Deleted: Harrison Residence
+  🗑 Deleted: BOKOR 432 SUNSHINE BLVD
+  🗑 Deleted: 1820 S Federal Hwy - Fifth Third Bank
+  🗑 Deleted: City of temple terrace-fire station #01
+  🗑 Deleted: Ackerman Residence
+  🗑 Deleted: 6017 Le Lac Road (Weiner Residence)
+  🗑 Deleted: 164 Seminole
+  🗑 Deleted: 2651 Southcast 10th court
+  🗑 Deleted: 90 Stingaree
+  🗑 Deleted: The Bueller family
+  🗑 Deleted: Palmetto Lakes Industrial Park
+  🗑 Deleted: 4669 S. Flagler Dr
+  🗑 Deleted: 228 Rutland
+  🗑 Deleted: Miami Shores Residence (R+R bluenest)
+  🗑 Deleted: 143 Reef Road
+  🗑 Deleted: Bluewater cove 9
+  🗑 Deleted: Roy & Shelley Silverman
+  🗑 Deleted: 840 Denery Ln. Residence
+  🗑 Deleted: 2960 Greenbriair
+  🗑 Deleted: 6007 Le Lac (Furing residence)
+  🗑 Deleted: 1050 N Lake way
+  🗑 Deleted: 910 S Ocean
+  🗑 Deleted: 5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE)
+  🗑 Deleted: Custom Residence (515 lido drive)
+  🗑 Deleted: 5900 Powerline Garag
+  🗑 Deleted: Baig Residence
+  🗑 Deleted: The Syed Residence
+  🗑 Deleted: Custom Residence (134 Worth CTN)
+  🗑 Deleted: 799 Park Drive
+  🗑 Deleted: 128 Worth CT N
+
+--- Inserting 72 projects, 96 tasks ---
+  ✓ Felies Residence — 1 task(s)
+  ✓ Valencia Del Mar Pickleball — 1 task(s)
+  ✓ City of temple terrace-fire station #01 — 1 task(s)
+  ✓ 228 Rutland — 1 task(s)
+  ✓ Palmetto Lakes Industrial Park — 1 task(s)
+  ✓ Frenchman's Creek Operations Center — 1 task(s)
+  ✓ Miami Shores Residence (R+R bluenest) — 1 task(s)
+  ✓ Licata Residence 2726 Appaloosa trail — 1 task(s)
+  ✓ 4669 S. Flagler Dr — 1 task(s)
+  ✓ Harrison Residence — 1 task(s)
+  ✓ PBIA - Revenue Control Building — 3 task(s)
+  ✓ 127 EL Bravo Way — 1 task(s)
+  ✓ Blue Water Cove 6 — 1 task(s)
+  ✓ 1050 N Lake way — 2 task(s)
+  ✓ 143 Reef Road — 2 task(s)
+  ✓ Cutler Bay SHS — 1 task(s)
+  ✓ Ackerman Residence — 1 task(s)
+  ✓ Blue Water Cove 3 — 1 task(s)
+  ✓ BOKOR 432 SUNSHINE BLVD — 1 task(s)
+  ✓ Cloyd — 1 task(s)
+  ✓ 6017 Le Lac Road (Weiner Residence) — 4 task(s)
+  ✓ Bluewater cove 11 — 1 task(s)
+  ✓ Bluewater cove 9 — 1 task(s)
+  ✓ 164 Seminole — 1 task(s)
+  ✓ Roy & Shelley Silverman — 1 task(s)
+  ✓ 50 SE OLIVE — 1 task(s)
+  ✓ Valencia Del Mar Clubhouse — 5 task(s)
+  ✓ 910 S Ocean — 3 task(s)
+  ✓ Burns Residence — 2 task(s)
+  ✓ 5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE) — 1 task(s)
+  ✓ 320 S atlantic Drive — 2 task(s)
+  ✓ Custom Residence (515 lido drive) — 1 task(s)
+  ✓ Jandrews Residence — 1 task(s)
+  ✓ 6024 Lelac Rd — 1 task(s)
+  ✓ 5900 Powerline Garag — 1 task(s)
+  ✓ South Florida Jewish Cemetery — 1 task(s)
+  ✓ 1820 S Federal Hwy - Fifth Third Bank — 1 task(s)
+  ✓ 20 Hudson Ave — 1 task(s)
+  ✓ South Rd Office Building E — 5 task(s)
+  ✓ Baig Residence — 2 task(s)
+  ✓ SW Ranches — 1 task(s)
+  ✓ 2651 Southcast 10th court — 1 task(s)
+  ✓ Country inn Pet Resort — 1 task(s)
+  ✓ 2960 Greenbriair — 1 task(s)
+  ✓ Gallery at Somi Parc Phase 1 — 1 task(s)
+  ✓ 6007 Le Lac (Furing residence) — 1 task(s)
+  ✓ 90 Stingaree — 1 task(s)
+  ✓ O.B. (Scattered Lots) — 1 task(s)
+  ✓ 840 Denery Ln. Residence — 1 task(s)
+  ✓ Nuvo — 1 task(s)
+  ✓ The Syed Residence — 1 task(s)
+  ✓ 810 S Swinton Ave Residence — 1 task(s)
+  ✓ Custom Residence (134 Worth CTN) — 1 task(s)
+  ✓ Rancano — 1 task(s)
+  ✓ 799 Park Drive — 1 task(s)
+  ✓ Chateau De La Duchess (925 Hillsboro) — 1 task(s)
+  ✓ Masucci Residence — 1 task(s)
+  ✓ The Bueller family — 1 task(s)
+  ✓ SPOTLOT 28810 SW 207 AVE — 1 task(s)
+  ✓ Broken Sound Club — 1 task(s)
+  ✓ OLD PROJECTS MODIFICATIONS — 1 task(s)
+  ✓ 1333 Bvld — 2 task(s)
+  ✓ 6024 Le lac Rd — 1 task(s)
+  ✓ 559 Nw 43 st — 1 task(s)
+  ✓ Sands residence (3223 N Ocean) — 1 task(s)
+  ✓ 5900 Powerline Garage — 1 task(s)
+  ✓ 2651 SE 10th Court — 2 task(s)
+  ✓ cannatelli — 2 task(s)
+  ✓ 401 SE Atlantic Drive — 1 task(s)
+  ✓ 515 Lido Drive — 2 task(s)
+  ✓ 1042 Palm Way Road — 1 task(s)
+  ✓ 1900 NE 22ND Terrance — 1 task(s)
+
+=== RESULT: 72 projects ✓, 0 failed | 96 tasks ✓, 0 failed ===
+ 
+=== Running Formcrete Date Update === 
+Reading Excel...
+Excel rows for RDS members: 376
+Formcrete tasks in Supabase: 373
+  ok "BASEMENT SLAB ON GRADE" | due: 2025-12-14 | sub: 2025-12-14
+  ok "GROUND FLOOR SLAB (GARAGE AREA)" | due: 2025-12-05 | sub: 2025-12-05
+  ok "GROUND FLOOR SLAB (RESIDENTIAL AREA)" | due: 2025-12-05 | sub: 2025-12-05
+  ok "BASEMENT RETAINIG WALLS & CMU WALLS" | due: 2026-01-07 | sub: 2026-01-07
+  ok "2ND FLR GARAGE SLAB" | due: 2026-01-23 | sub: 2026-01-23
+  ok "2ND FLR RESIDENTIAL SLAB" | due: 2026-01-23 | sub: 2026-01-23
+  ok "3RD FLR GARAGE SLAB" | due: 2026-03-19 | sub: 2026-03-19
+  ok "3RD FLR RESIDENTIAL SLAB" | due: 2026-03-19 | sub: 2026-03-19
+  ok "SHEAR WALLS (LVL-2 TO LVL-8)" | due: 2026-03-05 | sub: 2026-03-05
+  ok "SHEAR WALLS (LVL-8 TO BULK HEAD)" | due: 2026-02-27 | sub: 2026-02-27
+  ok "LEVEL-2 TO LEVEL-4 COLUMNS" | due: 2026-03-26 | sub: 2026-03-26
+  ok "4TH FLR GARAGE SLAB" | due: 2026-04-06 | sub: 2026-04-06
+  ok "4TH FLR RESIDENTIAL SLAB" | due: 2026-04-06 | sub: 2026-04-06
+  ok "5TH FLR GARAGE SLAB" | due: 2026-04-06 | sub: 2026-04-06
+  ok "5TH FLR RESIDENTIAL SLAB" | due: 2026-04-06 | sub: 2026-04-06
+  ok "6TH FLR GARAGE SLAB" | due: 2026-04-09 | sub: 2026-04-09
+  ok "6TH FLR RESIDENTIAL SLAB" | due: 2026-04-09 | sub: 2026-04-09
+  ok "LEVEL-4 TO LEVEL-8 COLUMNS" | due: 2026-04-12 | sub: 2026-04-12
+  ok "7TH FLR SLAB" | due: 2026-04-16 | sub: 2026-04-16
+  ok "8TH FLR SLAB" | due: 2026-04-30 | sub: 2026-04-30
+  ok "LEVEL-8 TO ROOF COLUMNS" | due: 2026-04-16 | sub: 2026-04-16
+  ok "9TH FLR SLAB" | due: 2026-05-05 | sub: 2026-05-05
+  ok "10TH FLR SLAB" | due: 2026-05-05 | sub: 2026-05-05
+  ok "11TH FLR SLAB" | due: 2026-05-13 | sub: 2026-05-13
+  ok "12TH FLR SLAB" | due: 2026-05-13 | sub: 2026-05-13
+  ok "12TH MEZZ FLR SLAB" | due: 2026-05-14 | sub: 2026-05-14
+  ok "BUILDING TYPE-II ROOF SLAB & BEAMS WITH PARAPET" | due: 2026-05-17 | sub: 2026-05-17
+  ok "ROOF SLAB" | due: 2026-05-17 | sub: 2026-05-17
+  ok "GROUND LEVEL TO 2ND LEVEL TC & CMU WALLS" | due: 2026-05-18 | sub: 2026-05-18
+  ok "2ND LEVEL TO 3RD LEVEL TC & CMU WALLS" | due: 2026-05-28 | sub: 2026-05-28
+  ok "3RD LEVEL TO 4TH LEVEL TC & CMU WALLS" | due: 2026-06-01 | sub: 2026-06-01
+  ok "4TH LEVEL TO 5TH LEVEL TC & CMU WALLS" | due: 2026-06-02 | sub: 2026-06-02
+  ok "5TH LEVEL TO 6TH LEVEL TC & CMU WALLS" | due: 2026-06-03 | sub: 2026-06-03
+  ok "6TH LEVEL TO 7TH LEVEL TC & CMU WALLS" | due: 2026-06-04 | sub: 2026-06-04
+  ok "7TH LEVEL TO 8TH LEVEL TC & CMU WALLS" | due: 2026-06-05 | sub: 2026-06-05
+  ok "8TH LEVEL TO 9TH LEVEL TC & CMU WALLS" | due: 2026-01-06 | sub: 2026-01-06
+  ok "9TH LEVEL TO 10TH LEVEL TC & CMU WALLS" | due: 2026-01-07 | sub: 2026-01-07
+  ok "10TH LEVEL TO 11TH LEVEL TC & CMU WALLS" | due: 2026-01-08 | sub: 2026-01-08
+  ok "11TH LEVEL TO 12TH LEVEL TC & CMU WALLS" | due: 2026-01-09 | sub: 2026-01-09
+  ok "12TH LEVEL TO 12TH MEZZ LEVEL TC & CMU WALLS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "12TH MEZZ LEVEL TO ROOF LEVEL TC & CMU WALLS" | due: 2026-01-11 | sub: 2026-01-11
+  ok "ROOF LEVEL TO HIGH ROOF TC & CMU WALLS" | due: 2026-01-12 | sub: 2026-01-12
+  ok "BUILDING TYPE-I FOUNDATIONS" | due: 2025-12-02 | sub: 2025-12-02
+  ok "BUILDING TYPE-I SLAB ON GRADE" | due: 2026-01-01 | sub: 2026-01-01
+  ok "BUILDING TYPE-I TUNNEL WALLS" | due: 2026-01-18 | sub: 2026-01-18
+  ok "BUILDING TYPE-I LIFT-1 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "2ND FLR. SLAB & BEAMS" | due: 2025-12-02 | sub: 2025-12-02
+  ok "BUILDING TYPE-I LIFT-2 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "3RD FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-I LIFT-3 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-I 4th FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-I LIFT-4 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "5TH FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-I LIFT-5 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "ROOF SLAB" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-II FOUNDATIONS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-II SLAB ON GRADE" | due: 2026-01-26 | sub: 2026-01-26
+  ok "BUILDING TYPE-II TUNNEL WALLS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-II LIFT-1 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-II 2ND FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-II LIFT-2 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-II 3rd FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-II LIFT-3 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "4TH FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-II LIFT-4 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "5TH FLR. SLAB & BEAMS" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BUILDING TYPE-II LIFT-5 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-II ROOF SLAB & BEAMS WITH PARAPET" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-III FOUNDATIONS" | due: 2025-12-12 | sub: 2025-12-12
+  ok "BUILDING TYPE-III SLAB ON GRADE" | due: 2025-12-21 | sub: 2025-12-21
+  ok "BUILDING TYPE-III TUNNEL WALLS" | due: 2026-01-18 | sub: 2026-01-18
+  ok "BUILDING TYPE-III LIFT-1 VERTICALS (CMU & COLUMNS)" | due: 2026-02-03 | sub: 2026-02-03
+  ok "BUILDING TYPE-III 2ND FLR. SLAB & BEAMS" | due: 2026-03-22 | sub: 2026-03-22
+  ok "BUILDING TYPE-III LIFT-2 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "3RD FLR. SLAB & BEAMS" | due: 2026-05-17 | sub: 2026-05-17
+  ok "BUILDING TYPE-III LIFT-3 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "4TH FLR. SLAB & BEAMS" | due: 2026-05-17 | sub: 2026-05-17
+  ok "BUILDING TYPE-III LIFT-4 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "5TH FLR. SLAB & BEAMS" | due: 2026-05-17 | sub: 2026-05-17
+  ok "BUILDING TYPE-III LIFT-5 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "ROOF SLAB" | due: 2026-05-17 | sub: 2026-05-17
+  ok "BUILDING TYPE-IV FOUNDATIONS" | due: 2025-01-01 | sub: 2025-01-01
+  ok "BUILDING TYPE-IV SLAB ON GRADE" | due: 2025-12-23 | sub: 2025-12-23
+  ok "TUNNEL WALLS" | due: 2026-01-18 | sub: 2026-01-18
+  ok "BUILDING TYPE-IV LIFT-1 VERTICALS" | due: 2026-02-10 | sub: 2026-02-10
+  ok "BUILDING TYPE-IV 2ND FLR. SLAB & BEAMS" | due: 2026-04-09 | sub: 2026-04-09
+  ok "BUILDING TYPE-IV LIFT-2 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-IV 3rd FLR. SLAB & BEAMS" | due: 2026-04-23 | sub: 2026-04-23
+  ok "BUILDING TYPE-IV LIFT-3 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "4TH FLR. SLAB & BEAMS" | due: 2026-05-03 | sub: 2026-05-03
+  ok "BUILDING TYPE-IV LIFT-4 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "5TH FLR. SLAB & BEAMS" | due: 2026-05-03 | sub: 2026-05-03
+  ok "BUILDING TYPE-IV LIFT-5 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-IV ROOF SLAB & BEAMS WITH PARAPET" | due: 2026-02-12 | sub: 2026-02-12
+  ok "BUILDING TYPE-V FOUNDATIONS (sub#26.1)" | due: 2026-02-12 | sub: 2026-02-12
+  ok "BUILDING TYPE-V SLAB ON GRADE" | due: 2026-04-13 | sub: 2026-04-13
+  ok "BUILDING TYPE-V TUNNEL WALLS" | due: 2026-04-17 | sub: 2026-04-17
+  ok "BUILDING TYPE-V LIFT-1 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-V 2ND FLR. SLAB & BEAMS" | due: 2026-04-22 | sub: 2026-04-22
+  ok "BUILDING TYPE-V LIFT-2 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-V 3rd FLR. SLAB & BEAMS" | due: 2026-04-24 | sub: 2026-04-24
+  ok "BUILDING TYPE-V LIFT-3 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "4TH FLR. SLAB & BEAMS" | due: 2026-04-27 | sub: 2026-04-27
+  ok "BUILDING TYPE-V LIFT-4 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "5TH FLR. SLAB & BEAMS" | due: 2026-04-27 | sub: 2026-04-27
+  ok "BUILDING TYPE-V LIFT-5 VERTICALS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "ROOF SLAB" | due: 2026-05-15 | sub: 2026-05-15
+  ok "BIKE STORAGE & PET SPA BLDG." | due: 2025-11-30 | sub: 2025-11-30
+  ok "GARAGE TYPE-1" | due: 2025-12-14 | sub: 2025-12-14
+  ok "TRASH ENCLOSURE" | due: 2026-01-01 | sub: 2026-01-01
+  ok "GARAGE TYPE-4" | due: 2025-12-14 | sub: 2025-12-14
+  ok "GARAGE TYPE-2" | due: 2025-12-26 | sub: 2025-12-26
+  ok "GARAGE TYPE-3" | due: 2025-12-29 | sub: 2025-12-29
+  ok "POOL PAVILION" | due: 2026-01-01 | sub: 2026-01-01
+  ok "MAITAINANCE BUIDLING" | due: 2026-01-01 | sub: 2026-01-01
+  ok "LIFT-1 COLUMN VERTICALS" | due: 2025-12-28 | sub: 2025-12-28
+  ok "LIFT-1 & LIFT-2 SHEAR WALLS" | due: 2026-01-01 | sub: 2026-01-01
+  ok "STEM WALLS" | due: 2025-01-08 | sub: 2025-01-08
+  ok "LIFT-1 CMU VERTICALS" | due: 2025-01-09 | sub: 2025-01-09
+  ok "LIFT-1 STAIRS" | due: 2025-01-09 | sub: 2025-01-09
+  ok "PIERS" | due: 2026-03-02 | sub: 2026-03-02
+  ok "2ND FLOOR SLAB" | due: 2026-03-09 | sub: 2026-03-09
+  ok "LIFT-2 & 3 Columns" | due: 2026-03-16 | sub: 2026-03-16
+  ok "LIFT-2 & 3 SHEAR WALLS" | due: 2026-03-16 | sub: 2026-03-16
+  ok "STAIRS (UP TO LVL.-4)" | due: 2026-03-19 | sub: 2026-03-19
+  ok "Residence 3rd floor slab & beams" | due: 2026-03-20 | sub: 2026-03-20
+  ok "Residence 4th floor slab & beams" | due: 2026-04-03 | sub: 2026-04-03
+  ok "5th FLOOR SLAB & BEAMS" | due: 2026-04-23 | sub: 2026-04-23
+  ok "Residence 6th floor slab & beams" | due: 2026-04-23 | sub: 2026-04-23
+  ok "Garage 7th floor slab & beams" | due: 2026-04-23 | sub: 2026-04-23
+  ok "Garage 8th floor slab & beams" | due: 2026-05-03 | sub: 2026-05-03
+  ok "9th FLOOR SLAB & BEAMS" | due: 2026-05-03 | sub: 2026-05-03
+  ok "10th FLOOR SLAB & BEAMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "11th FLOOR SLAB & BEAMS" | due: 2026-06-25 | sub: 2026-06-25
+  ok "Residence Roof floor slab & beams" | due: 2026-01-10 | sub: 2026-01-10
+  ok "LIFT-4 COLUMNS" | due: 2026-04-27 | sub: 2026-04-27
+  ok "LIFT-5&6 COLUMNS" | due: 2026-05-05 | sub: 2026-05-05
+  ok "LIFT-4 & 5 SHEAR WALLS" | due: 2026-02-04 | sub: 2026-02-04
+  ok "LIFT-7 & 8 COLUMNS" | due: 2026-05-05 | sub: 2026-05-05
+  ok "LIFT-6 & 7 SHEAR WALLS" | due: 2026-05-08 | sub: 2026-05-08
+  ok "LIFT-9 & 10 COLUMNS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "LIFT-8 & 9 SHEAR WALLS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "LIFT-11 COLUMNS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "LIFT-10 & 11 SHEAR WALLS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "STAIRS (LEVEL-4 TO LEVEL-6)" | due: 2026-04-28 | sub: 2026-04-28
+  ok "STAIRS (LEVEL-6 TO ROOF)" | due: 2026-06-04 | sub: 2026-06-04
+  ok "2ND FLOOR SLAB" | due: 2026-02-04 | sub: 2026-02-04
+  ok "2ND FLOOR SLAB" | due: 2026-02-04 | sub: 2026-02-04
+  ok "3RD FLOOR SLAB (RESIDENTIAL)" | due: 2026-02-27 | sub: 2026-02-27
+  ok "3RD FLOOR SLAB (GARAGE)" | due: 2026-02-26 | sub: 2026-02-26
+  ok "4TH FLOOR SLAB (RESIDENTIAL)" | due: 2026-02-27 | sub: 2026-02-27
+  ok "4TH FLOOR SLAB (GARAGE)" | due: 2026-02-26 | sub: 2026-02-26
+  ok "5TH FLOOR SLAB (RESIDENTIAL)" | due: 2026-02-13 | sub: 2026-02-13
+  ok "5TH FLOOR SLAB (GARAGE)" | due: 2026-02-26 | sub: 2026-02-26
+  ok "6TH FLOOR SLAB (RESIDENTIAL)" | due: 2026-02-13 | sub: 2026-02-13
+  ok "6TH FLOOR SLAB (GARAGE)" | due: 2026-02-27 | sub: 2026-02-27
+  ok "7TH FLOOR SLAB (RESIDENTIAL)" | due: 2026-02-13 | sub: 2026-02-13
+  ok "7TH FLOOR SLAB (GARAGE)" | due: 2026-02-27 | sub: 2026-02-27
+  ok "8TH FLOOR SLAB (RESIDENTIAL)" | due: 2026-02-13 | sub: 2026-02-13
+  ok "ROOF SLAB" | due: 2026-02-27 | sub: 2026-02-27
+  ok "ROOF SLAB (RESIDENTIAL)" | due: 2026-02-15 | sub: 2026-02-15
+  ok "STAIR #1 (GROUND FLOOR TO ROOF)" | due: 2026-03-12 | sub: 2026-03-12
+  ok "STAIR #2 (GROUND FLOOR TO ROOF)" | due: 2026-03-12 | sub: 2026-03-12
+  ok "STAIR #3 (GROUND FLOOR TO ROOF)" | due: 2026-03-12 | sub: 2026-03-12
+  ok "STAIR #4 (GROUND FLOOR TO ROOF)" | due: 2026-03-12 | sub: 2026-03-12
+  ok "Building _6 Type I (Steel Columns shops only)" | due: 2026-02-08 | sub: 2026-02-08
+  ok "PILE CAPS" | due: 2026-02-11 | sub: 2026-02-11
+  ok "GRADE BEAMS" | due: 2026-04-01 | sub: 2026-04-01
+  ok "BUILDING TYPE-I SLAB ON GRADE" | due: 2026-04-19 | sub: 2026-04-19
+  ok "LIFT -1   VERTICALS CMU & COLUMS" | due: 2026-04-20 | sub: 2026-04-20
+  ok "All bldgs tunnel walls candycane bars" | due: 2026-04-30 | sub: 2026-04-30
+  ok "BUILDING TYPE-V 2ND FLR. SLAB & BEAMS" | due: 2026-05-07 | sub: 2026-05-07
+  ok "LIFT -2  VERTICALS CMU & COLUMS" | due: 2026-05-07 | sub: 2026-05-07
+  ok "RETAIINING WALL" | due: 2026-05-07 | sub: 2026-05-07
+  ok "BUILDING TYPE-II 3rd FLR. SLAB & BEAMS" | due: 2026-05-14 | sub: 2026-05-14
+  ok "LIFT -3  VERTICALS CMU & COLUMS" | due: 2026-05-14 | sub: 2026-05-14
+  ok "BUILDING TYPE-I 4th FLR. SLAB & BEAMS" | due: 2026-05-21 | sub: 2026-05-21
+  ok "LIFT -4   VERTICALS CMU & COLUMS" | due: 2026-05-21 | sub: 2026-05-21
+  ok "5TH FLR. SLAB & BEAMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "LIFT -5   VERTICALS CMU & COLUMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "6TH FLR. SLAB & BEAMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "LIFT -6   VERTICALS CMU & COLUMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "7TH FLR. SLAB & BEAMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "LIFT -7   VERTICALS CMU & COLUMS" | due: 2026-05-27 | sub: 2026-05-27
+  ok "8TH FLR. SLAB & BEAMS" | due: 2026-06-02 | sub: 2026-06-02
+  ok "LIFT -8   VERTICALS CMU & COLUMS" | due: 2026-06-04 | sub: 2026-06-04
+  ok "BUILDING TYPE-II ROOF SLAB & BEAMS WITH PARAPET" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BLDG 1 Type II - Lift-3 verticals" | due: 2026-05-28 | sub: 2026-05-28
+  ok "BLDG 2 Type VI - Lift-3 verticals" | due: 2026-05-28 | sub: 2026-05-28
+  ok "BLDG 3 Type V - Foundations & SOG" | due: 2026-05-28 | sub: 2026-05-28
+  ok "BLDG 4 Type III - 5th floor slab" | due: 2026-05-28 | sub: 2026-05-28
+  ok "BLDG 5 Type VII - Foundations & SOG" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Clubhouse - Verticals" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Clubhouse - Foundations & SOG" | due: 2026-05-31 | sub: 2026-05-31
+  ok "ROOF SLAB" | due: 2026-01-10 | sub: 2026-01-10
+  ok "TRASH ENCLOSURE" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BLDG 3 Type V - Foundations & SOG" | due: 2026-06-25 | sub: 2026-06-25
+  ok "2ND FLOOR SLAB" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BLDG 3 Type V - 3rd floor slab" | due: 2026-01-11 | sub: 2026-01-11
+  ok "BLDG 3 Type V - 4th floor slab" | due: 2026-01-12 | sub: 2026-01-12
+  ok "BLDG 3 Type V - 5th floor slab" | due: 2026-01-13 | sub: 2026-01-13
+  ok "BLDG 3 Type V - 6th floor slab" | due: 2026-01-14 | sub: 2026-01-14
+  ok "BLDG 3 Type V - Roof level slab" | due: 2026-01-15 | sub: 2026-01-15
+  ok "BLDG 3 Type V - Lift-1 verticals" | due: 2026-01-16 | sub: 2026-01-16
+  ok "BLDG 3 Type V - Lift-2 verticals" | due: 2026-01-17 | sub: 2026-01-17
+  ok "BLDG 3 Type V - Lift-3 verticals" | due: 2026-01-18 | sub: 2026-01-18
+  ok "BLDG 3 Type V - Lift-4 verticals" | due: 2026-01-19 | sub: 2026-01-19
+  ok "BLDG 3 Type V - Lift-5 verticals" | due: 2026-01-20 | sub: 2026-01-20
+  ok "BLDG 3 Type V - Lift-6 & parapet verticals" | due: 2026-01-21 | sub: 2026-01-21
+  ok "BLDG 1 Type II - Foundations & SOG" | due: 2026-01-22 | sub: 2026-01-22
+  ok "2ND FLOOR SLAB" | due: 2026-01-23 | sub: 2026-01-23
+  ok "BLDG 1 Type II - 3rd floor slab" | due: 2026-01-24 | sub: 2026-01-24
+  ok "BLDG 1 Type II - 4th floor slab" | due: 2026-01-25 | sub: 2026-01-25
+  ok "BLDG 1 Type II - 5th floor slab" | due: 2026-01-26 | sub: 2026-01-26
+  ok "BLDG 1 Type II - 6th floor slab" | due: 2026-01-27 | sub: 2026-01-27
+  ok "BLDG 1 Type II - Roof level slab" | due: 2026-01-28 | sub: 2026-01-28
+  ok "BLDG 1 Type II - Lift-1 verticals" | due: 2026-01-29 | sub: 2026-01-29
+  ok "BLDG 1 Type II - Lift-2 verticals" | due: 2026-01-30 | sub: 2026-01-30
+  ok "BLDG 1 Type II - Lift-3 verticals" | due: 2026-01-31 | sub: 2026-01-31
+  ok "BLDG 1 Type II - Lift-4 verticals" | due: 2026-02-01 | sub: 2026-02-01
+  ok "BLDG 1 Type II - Lift-5 verticals" | due: 2026-02-02 | sub: 2026-02-02
+  ok "BLDG 1 Type II - Lift-6 & parapet verticals" | due: 2026-02-03 | sub: 2026-02-03
+  ok "BLDG 2 Type VI - Foundations & SOG" | due: 2026-02-04 | sub: 2026-02-04
+  ok "2ND FLOOR SLAB" | due: 2026-02-05 | sub: 2026-02-05
+  ok "BLDG 2 Type VI - 3rd floor slab" | due: 2026-02-06 | sub: 2026-02-06
+  ok "BLDG 2 Type VI - 4th floor slab" | due: 2026-02-07 | sub: 2026-02-07
+  ok "BLDG 2 Type VI - 5th floor slab" | due: 2026-02-08 | sub: 2026-02-08
+  ok "BLDG 2 Type VI - 6th floor slab" | due: 2026-02-09 | sub: 2026-02-09
+  ok "BLDG 2 Type VI - Roof level slab" | due: 2026-02-10 | sub: 2026-02-10
+  ok "BLDG 2 Type VI - Lift-1 verticals" | due: 2026-02-11 | sub: 2026-02-11
+  ok "BLDG 2 Type VI - Lift-2 verticals" | due: 2026-02-12 | sub: 2026-02-12
+  ok "BLDG 2 Type VI - Lift-3 verticals" | due: 2026-02-13 | sub: 2026-02-13
+  ok "BLDG 2 Type VI - Lift-4 verticals" | due: 2026-02-14 | sub: 2026-02-14
+  ok "BLDG 2 Type VI - Lift-5 verticals" | due: 2026-02-15 | sub: 2026-02-15
+  ok "BLDG 2 Type VI - Lift-6 & parapet verticals" | due: 2026-02-16 | sub: 2026-02-16
+  ok "BLDG 5 Type VII - Foundations & SOG" | due: 2026-02-17 | sub: 2026-02-17
+  ok "2ND FLOOR SLAB" | due: 2026-02-18 | sub: 2026-02-18
+  ok "BLDG 5 Type VII - 3rd floor slab" | due: 2026-02-19 | sub: 2026-02-19
+  ok "BLDG 5 Type VII - Roof level slab" | due: 2026-02-20 | sub: 2026-02-20
+  ok "BLDG 5 Type VII - Lift-1 verticals" | due: 2026-02-21 | sub: 2026-02-21
+  ok "BLDG 5 Type VII - Lift-2 verticals" | due: 2026-02-22 | sub: 2026-02-22
+  ok "BLDG 5 Type VII - Lift-3 & parapet verticals" | due: 2026-02-23 | sub: 2026-02-23
+  ok "BLDG 4 Type III - Foundations & SOG" | due: 2026-02-24 | sub: 2026-02-24
+  ok "2ND FLOOR SLAB" | due: 2026-02-25 | sub: 2026-02-25
+  ok "BLDG 4 Type III - 3rd floor slab" | due: 2026-02-26 | sub: 2026-02-26
+  ok "BLDG 4 Type III - 4th floor slab" | due: 2026-02-27 | sub: 2026-02-27
+  ok "BLDG 4 Type III - 5th floor slab" | due: 2026-02-28 | sub: 2026-02-28
+  ok "BLDG 4 Type III - Roof level slab" | due: 2026-03-01 | sub: 2026-03-01
+  ok "BLDG 4 Type III - Lift-1 verticals" | due: 2026-03-02 | sub: 2026-03-02
+  ok "BLDG 4 Type III - Lift-2 verticals" | due: 2026-03-03 | sub: 2026-03-03
+  ok "BLDG 4 Type III - Lift-3 verticals" | due: 2026-03-04 | sub: 2026-03-04
+  ok "BLDG 4 Type III - Lift-4 verticals" | due: 2026-03-05 | sub: 2026-03-05
+  ok "BLDG 4 Type III - Lift-5 & parapet verticals" | due: 2026-03-06 | sub: 2026-03-06
+  ok "Building _1 Type III (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building _2 Type II (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building _3 Type II (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building _4 Type I (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building _5 Type I (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building _6 Type I (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Clubhouse - Verticals" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building Type IIM (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building Type IIM (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building Type IIM (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Building Type III (Steel Columns shops only)" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Clubhouse - Verticals" | due: 2026-05-28 | sub: 2026-05-28
+  ok "Residential 1st lift of columns (Grnd to 2nd)" | due: Tuesday, July 7, 2026 | sub: Tuesday, July 7, 2026
+  ok "Garage 1st lift of Columns (Grnd to 1.5)" | due: Friday, July 10, 2026 | sub: Friday, July 10, 2026
+  ok "Garage 2nd lift of columns (1.5 to 3rd)" | due: Wednesday, July 15, 2026 | sub: Wednesday, July 15, 2026
+  ok "Garage 3rd lift of columns (3rd to 5th)" | due: Wednesday, July 22, 2026 | sub: Wednesday, July 22, 2026
+  ok "Garage 4th lift of columns (5th to 7th)" | due: Tuesday, July 28, 2026 | sub: Tuesday, July 28, 2026
+  ok "Garage 5th lift of columns (7th to 8th) " | due: Tuesday, August 4, 2026 | sub: Tuesday, August 4, 2026
+  ok "Garage CMU & lintels (2nd to 3rd) " | due: Friday, August 7, 2026 | sub: Friday, August 7, 2026
+  ok "Garage CMU & lintels (3rd to 4th) " | due: Thursday, August 13, 2026 | sub: Thursday, August 13, 2026
+  ok "Garage CMU & lintels (4th to 5th) " | due: Wednesday, August 19, 2026 | sub: Wednesday, August 19, 2026
+  ok "Garage CMU & lintels (5th to 6th) " | due: Tuesday, August 25, 2026 | sub: Tuesday, August 25, 2026
+  ok "Garage above roof rebar" | due: Friday, August 28, 2026 | sub: Friday, August 28, 2026
+  ok "Garage CMU & lintels (6th to 7th)" | due: Tuesday, September 1, 2026 | sub: Tuesday, September 1, 2026
+  ok "Garage CMU & lintels (7th to 8th)" | due: Tuesday, September 8, 2026 | sub: Tuesday, September 8, 2026
+  ok "Garage CMU & lintels (Grnd to 2nd) " | due: Tuesday, September 15, 2026 | sub: Tuesday, September 15, 2026
+  ok "Garage Lvl-3 to 8 slabs EMDS" | due: 2026-01-10 | sub: 2026-01-10
+  ok "BUILDING TYPE-V FOUNDATIONS (sub#26.1)" | due: 2026-04-13 | sub: 2026-04-13
+  ok "ROOF SLAB" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Lvl-4 slab markups & barlists" | due: 2026-01-10 | sub: 2026-01-10
+  ok "TUNNEL WALLS" | due: 2026-04-12 | sub: 2026-04-12
+  ok "Satirs #1 addition work" | due: 2026-04-10 | sub: 2026-04-10
+  ok "Building Type - I SOG" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Building Type - I Tunnel walls" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Building Type -III Tunnel walls" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Columns lvl 4 to 8" | due: 2026-01-11 | sub: 2026-01-11
+  ok "Slab edge reinf't addition" | due: 2026-01-12 | sub: 2026-01-12
+  ok "Columns 8th to roof" | due: 2026-01-13 | sub: 2026-01-13
+  ok "2ND FLOOR SLAB" | due: 2026-01-14 | sub: 2026-01-14
+  ok "Satirs 1&4 Grnd to L2 addition & barlists" | due: 2026-04-21 | sub: 2026-04-21
+  ok "8"-Wall for Bldg.; Type IV - L1-L2" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Change Elevator level -5-0" to -4'-0" & RFI 043, 20" | due: 2026-01-10 | sub: 2026-01-10
+  ok "All floor balcony bars changed galvanized to black bars" | due: 2026-04-24 | sub: 2026-04-24
+  ok "STAIR LEVEL 3 TO 4" | due: 2026-04-24 | sub: 2026-04-24
+  ok "Patch list for lift-3 column #60" | due: 2026-04-24 | sub: 2026-04-24
+  ok "Satirs #1 addition work" | due: 2026-04-24 | sub: 2026-04-24
+  ok "Pilecaps & Gradebeams revision per RFI 24,11,12,35&39 responses" | due: 2026-04-30 | sub: 2026-04-30
+  ok "Ground Level Rebar Shop Drawings" | due: 2026-04-27 | sub: 2026-04-27
+  ok "Level-7 slab EMDS" | due: 2026-04-30 | sub: 2026-04-30
+  ok "Columns 35, 36, and 37 terminate below the pool slab" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Tunnel walls revision per RFI#35" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Bldg. Type II - SOG" | due: 2026-04-27 | sub: 2026-04-27
+  ok "Pour separation" | due: 2026-04-28 | sub: 2026-04-28
+  ok "All slabs balconies galv bars." | due: 2026-01-10 | sub: 2026-01-10
+  ok "All bldgs tunnel walls candycane bars" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Bldg. Type I & II RFI #98 fnds revision" | due: 2026-01-10 | sub: 2026-01-10
+  ok "columns, shear walls, slabs & stairs" | due: 2026-04-29 | sub: 2026-04-29
+  ok "Bldg. Type IV - Level-2 (EOR)" | due: 2026-05-04 | sub: 2026-05-04
+  ok "Ground Level Slab FFU drawings and bar lists. RFI #79(EOR)" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Submittal 13- Ground Floor Slab" | due: 2026-05-03 | sub: 2026-05-03
+  ok "Submittal 10- Steel Column Shop Drawings" | due: 2026-05-04 | sub: 2026-05-04
+  ok "remaining bldgs walls updated dwgs" | due: 2026-01-10 | sub: 2026-01-10
+  ok "lvl-5 barlists & lvl-4 release separation" | due: 2026-05-03 | sub: 2026-05-03
+  ok "Lvl-2 drop beams for savers." | due: 2026-05-03 | sub: 2026-05-03
+  ok "Revision per RFI #50, #67, #78 responses" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Pour separation  (EOR)" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Columns level 2 to Level 4" | due: 2026-05-10 | sub: 2026-05-10
+  ok "RFI responses 86 & 95.1" | due: 2026-05-10 | sub: 2026-05-10
+  ok "Steel columns" | due: 2026-05-06 | sub: 2026-05-06
+  ok "Pet Wash details addition (EOR)" | due: 2026-05-10 | sub: 2026-05-10
+  ok "RFI responses 25 & 27" | due: 2026-01-10 | sub: 2026-01-10
+  ok "Building Type V - SOG" | due: 2026-05-08 | sub: 2026-05-08
+  ok "Building Type V - SOG" | due: 2026-01-10 | sub: 2026-01-10
+  ok "male to female savers." | due: 2026-05-11 | sub: 2026-05-11
+  ok "Missing rebar for slab transitions on pool deck slab (ERO)" | due: 2026-05-11 | sub: 2026-05-11
+  ok "grade 80 grade 60 bars  (ERO)" | due: 2026-01-10 | sub: 2026-01-10
+
+Done — Updated: 329 | Skipped: 0 | Not found: 47
+=== DONE === 
