@@ -3384,7 +3384,7 @@ function exportSubmissionList(projects,tasks,today){
 // ─────────────────────────────────────────────────────────────────────────────
 function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
   const isMobile=useMobile();
-  const [period,setPeriod]=useState("overdue");
+  const [period,setPeriod]=useState("this_week");
   const [customFrom,setCustomFrom]=useState(today);
   const [customTo,setCustomTo]=useState(today);
   const [showCal,setShowCal]=useState(false);
