@@ -660,6 +660,24 @@ app.post("/api/war-room/messages", async (req, res) => {
       );
       await pushToUsers(subs.map(s => s.username), payload);
     }
+
+    // ── Insert into notifications table so frontend polling picks it up ──
+    // (Realtime is a stub in local mode; this is the reliable fallback)
+    const msgId = r.rows[0].id;
+    const notifTitle  = `💬 ${clientName}`;
+    const notifBody   = f.body || "(new message)";
+    const notifAuthor = f.author || "";
+    const { rows: recipients } = await pool.query(
+      `SELECT id FROM users WHERE username != $1`,
+      [notifAuthor]
+    ).catch(() => ({ rows: [] }));
+    for (const u of recipients) {
+      pool.query(
+        `INSERT INTO notifications (user_id, type, title, description, entity_type, entity_id, created_by)
+         VALUES ($1, 'war_room_message', $2, $3, 'message', $4, $5)`,
+        [u.id, notifTitle, notifBody, String(msgId), notifAuthor]
+      ).catch(() => {});
+    }
   } catch (e) { res.json(err(e)); }
 });
 
