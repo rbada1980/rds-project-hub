@@ -1,0 +1,14 @@
+=== Fixing dates in both Supabase + Local PostgreSQL === 
+Reading Excel...
+Excel rows for RDS members: 376
+Formcrete tasks in Supabase: 373
+Tasks to update: 329
+
+--- Updating Supabase ---
+Supabase: 329 updated, 0 failed
+
+--- Updating local PostgreSQL ---
+Local PostgreSQL: 329 updated, 0 failed
+
+=== DONE — both Supabase and local PostgreSQL updated ===
+=== DONE === 

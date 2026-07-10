@@ -1,0 +1,24 @@
+I am uploading a fresh Excel file for client: {CLIENT NAME}
+
+Do the following steps fully automatically with no manual steps:
+PARSE
+
+Read the uploaded Excel file. Extract all rows as tasks. Group tasks by project name column. Each unique project name = one project. All fields to extract per row: Project Name, Task Title, Status, Priority, Assignee, Detailer, Checker, Scope, Due Date, Client Sub Date.
+Status mapping: "Completed" → "Completed" | "Inprogress" / "In progress" / "In Progress" → "In Progress" | anything else or blank → "Not Yet Started"
+WRITE A NODE.JS SCRIPT saved as import_client.cjs in C:\Users\HP\rds-project-hub\ using this exact safe order:
+
+Connect to Supabase using URL and key from C:\Users\HP\rds-project-hub\src\App.jsx lines 5–6
+Fetch all existing users from DB
+Collect all unique names from Detailer and Checker columns. For each name: if user already exists (match by name or username, case-insensitive) → skip. If not found → create new user with that name, username = name lowercased with underscores, password = RDSTechserv@2026, role = Rebar
+TEST FIRST before deleting anything: insert one test project + one test task into Supabase. If either fails → print the exact error, delete the test record, STOP. Do not delete any existing data.
+Only if test passed → delete test records → then delete ALL existing projects and tasks in Supabase where client field matches {CLIENT NAME} (case-insensitive, also match common variations like with/without space or hyphen)
+Insert all projects with fields: name, client, color (auto from palette), description, assigned_users (array of usernames from detailer+checker+assignee of that project's tasks), deadline (latest due_date of that project's tasks)
+Insert all tasks with fields: project_id, title, status, priority, assignee, detailer, checker, scope, due_date, client_sub_date, client, tags=[], files=[]
+Print final result: X projects inserted, X tasks inserted, X users created, X failed
+
+ERROR HANDLING RULES the script must follow:
+
+If a column doesn't exist in the tasks table → remove that field from the insert and retry automatically
+If a user creation fails due to duplicate username → append _2 to username and retry once
+Every insert is done one by one (not bulk) so a single failure doesn't stop the rest
+Print ✓ for success, ❌ with full error message for failures
