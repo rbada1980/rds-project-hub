@@ -5603,7 +5603,7 @@ function WarRoomPage({me,projects,users}){
               )}
 
               {/* Messages area */}
-              <div ref={scrollAreaRef} onScroll={handleScroll}
+              <div ref={scrollAreaRef} onScroll={handleScroll} className="rds-msg-scroll"
                 style={{flex:1,overflowY:"auto",padding:isMobile?"10px 12px":"14px 20px",display:"flex",flexDirection:"column",gap:0,background:C.bg,WebkitOverflowScrolling:"touch",position:"relative"}}>
 
                 {/* Jump to unread */}
@@ -11760,13 +11760,4 @@ export default function App(){
       </button>}
       {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        {uMenu&
