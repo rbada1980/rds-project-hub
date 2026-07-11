@@ -1,0 +1,105 @@
+[TAILING] Tailing last 50 lines for [rds-hub] process (change the value with --lines option)
+C:\Users\HP\.pm2\logs\rds-hub-error.log last 50 lines:
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] column "break_start" of relation "breaks" does not exist
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+0|rds-hub  | [/api/rpc] invalid input syntax for type uuid: "whitecap"
+
+C:\Users\HP\.pm2\logs\rds-hub-out.log last 50 lines:
+0|rds-hub  |     ⚠️  60 failures total
+0|rds-hub  | ────────────────────────────────────────────────────
+0|rds-hub  | 
+0|rds-hub  | 📄  Report saved → last-sync-report.json
+0|rds-hub  | 
+0|rds-hub  | 
+0|rds-hub  | ════════════════════════════════════════════════════
+0|rds-hub  | 🔄  RDS Bidirectional Sync — 2026-07-11 16:28:47 IST
+0|rds-hub  | ════════════════════════════════════════════════════
+0|rds-hub  | ✅  Local DB connected
+0|rds-hub  | 
+0|rds-hub  | 📥  Phase 1: Supabase → Local (pull)
+0|rds-hub  | 
+0|rds-hub  |    ✅ ← users                    29/29 pulled
+0|rds-hub  |    ✅ ← clients                  3/3 pulled
+0|rds-hub  |    ✅ ← projects                 74/74 pulled
+0|rds-hub  |    ✅ ← tasks                    690/690 pulled
+0|rds-hub  |    ✅ ← notifications            259/259 pulled
+0|rds-hub  |    ✅ ← workflows                3/3 pulled
+0|rds-hub  |    ✅ ← war_room_messages        21/21 pulled
+0|rds-hub  |    ✅ ← war_room_reads           16/16 pulled
+0|rds-hub  |    ✅ ← settings                 5/5 pulled
+0|rds-hub  |    ⚠️  attendance pull batch 1: duplicate key value violates unique constraint "attendance_user_id_date_key"
+0|rds-hub  |    ❌ ← attendance               0/29 pulled, 29 failed
+0|rds-hub  |    ✅ ← breaks                   3/3 pulled
+0|rds-hub  | 
+0|rds-hub  | 📤  Phase 2: Local → Supabase (push)
+0|rds-hub  | 
+0|rds-hub  |    ✅ → users                    29/29 pushed
+0|rds-hub  |    ✅ → clients                  3/3 pushed
+0|rds-hub  |    ✅ → projects                 74/74 pushed
+0|rds-hub  |    ✅ → tasks                    690/690 pushed
+0|rds-hub  |    ⏭  → notifications            skipped (pull-only table)
+0|rds-hub  |    ✅ → workflows                3/3 pushed
+0|rds-hub  |    ⏭  → war_room_messages        skipped (pull-only table)
+0|rds-hub  |    ✅ → war_room_reads           16/16 pushed
+0|rds-hub  |    ✅ → settings                 5/5 pushed
+0|rds-hub  |    ⚠️  attendance push batch 1: duplicate key value violates unique constraint "attendance_user_id_date_key"
+0|rds-hub  |    ❌ → attendance               0/31 pushed, 31 failed
+0|rds-hub  |    ✅ → breaks                   3/3 pushed
+0|rds-hub  | 
+0|rds-hub  | ────────────────────────────────────────────────────
+0|rds-hub  | 🎉  Sync complete in 4.2s
+0|rds-hub  |     ↓ Pulled  1103 records from Supabase
+0|rds-hub  |     ↑ Pushed  823 records to Supabase
+0|rds-hub  |     ⚠️  60 failures total
+0|rds-hub  | ────────────────────────────────────────────────────
+0|rds-hub  | 
+0|rds-hub  | 📄  Report saved → last-sync-report.json
+0|rds-hub  | 
+
