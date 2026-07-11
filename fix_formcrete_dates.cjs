@@ -46,7 +46,20 @@ function excelDateToISO(val) {
     const dt = new Date(ms);
     return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,"0")}-${String(dt.getUTCDate()).padStart(2,"0")}`;
   }
-  if (typeof val === "string" && val.trim()) return val.trim().slice(0, 10);
+  if (typeof val === "string" && val.trim()) {
+    const s = val.trim();
+    // Already YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    // Try parsing "Tuesday, June 10, 2026" or similar long strings
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, "0");
+      const d = String(parsed.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    return null; // unparseable — skip rather than send garbage
+  }
   return null;
 }
 

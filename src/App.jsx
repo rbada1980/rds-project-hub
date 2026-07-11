@@ -25,6 +25,7 @@ const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
+const fmtD=v=>{if(!v)return"—";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 
 const SLA_HOURS={Critical:24,High:72,Medium:168,Low:336};
 function getSLAStatus(task){
@@ -866,7 +867,7 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
           {fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:onFiles?"pointer":"default"}}>📎{fileCount}</span>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {task.due_date&&<span style={{fontSize:10,color:C.t2}}>{task.due_date}</span>}
+          {task.due_date&&<span style={{fontSize:10,color:C.t2}}>{fmtD(task.due_date)}</span>}
           {task.assignee?<Av name={task.assignee} size={22}/>:<span style={{fontSize:10,color:C.yellow}}>Unassigned</span>}
         </div>
       </div>
@@ -931,8 +932,8 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:11}}>—</span>}
       </div></td>
       <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
-        {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:11,fontWeight:overdue?700:400}}>📅 {task.due_date}{overdue?" ⚠":""}</span>:null}
-        {task.client_sub_date?<span style={{color:C.teal,fontSize:11}}>🗓 {task.client_sub_date}</span>:null}
+        {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:11,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
+        {task.client_sub_date?<span style={{color:C.teal,fontSize:11}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
         {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:11}}>—</span>}
       </div></td>
       <td style={{...td,width:80}}><div style={{display:"flex",gap:3}}>
@@ -1053,7 +1054,7 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
         <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
           {project&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>📁 {project.name}</span>}
           {task.client&&<span style={{fontSize:12,color:C.t2}}>👤 {task.client}</span>}
-          {task.due_date&&<span style={{fontSize:12,color:C.t2}}>📅 Due {task.due_date}</span>}
+          {task.due_date&&<span style={{fontSize:12,color:C.t2}}>📅 Due {fmtD(task.due_date)}</span>}
           {task.priority&&<Bdg color={PRI_CLR[task.priority]||C.t2}>{task.priority}</Bdg>}
         </div>
         {(task.scope||task.detailer||task.checker)&&(
@@ -1132,8 +1133,8 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         const uModalData={
           utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
           ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
-          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${t.due_date||"—"}`,dot:C.blue};})},
-          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${t.due_date}`,dot:C.red};})},
+          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.blue};})},
+          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=uModalData[uStatModal];if(!md)return null;
         return(<div onClick={()=>setUSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1254,8 +1255,8 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{ov?" ⚠":""}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
                   </tr>);})}</tbody>
               </table>
             </div>
@@ -1283,7 +1284,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                     <div style={{width:3,height:36,borderRadius:2,background:proj?.color||C.accent,flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</p>
-                      <p style={{margin:"3px 0 0",fontSize:11,color:C.t3}}>{proj?.name||"—"}{t.due_date?` · Due ${t.due_date}`:""}{isOv?" ⚠":""}</p>
+                      <p style={{margin:"3px 0 0",fontSize:11,color:C.t3}}>{proj?.name||"—"}{t.due_date?` · Due ${fmtD(t.due_date)}`:""}{isOv?" ⚠":""}</p>
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                       <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
@@ -1453,12 +1454,12 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         const tlModalData={
           tlteam:{title:"👤 Team Members",color:"#8b5cf6",items:teamMembers.map(m=>{const mt=allTasks.filter(t=>t.assignee===m);const mip=mt.filter(t=>t.status==="In Progress").length;const md=mt.filter(t=>isDone(t.status)).length;return{label:m,sub:`${mip} in progress · ${md} done`,dot:"#8b5cf6"};})},
           tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${t.due_date||"—"}`,dot:C.accent};})},
+          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.accent};})},
           tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"}`,dot:C.green};})},
           tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${t.due_date||"—"}`,dot:isDone(t.status)?C.green:C.blue};})},
+          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${fmtD(t.due_date)}`,dot:isDone(t.status)?C.green:C.blue};})},
           tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
-          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${t.due_date}`,dot:C.red};})},
+          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=tlModalData[tlStatModal];if(!md)return null;
         return(<div onClick={()=>setTSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1559,7 +1560,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                             <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                               <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700}}>{t.status}</span>
                               {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
-                              {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3}}>{od?"🔴":"📅"} {t.due_date}</span>}
+                              {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3}}>{od?"🔴":"📅"} {fmtD(t.due_date)}</span>}
                               {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
                               {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
                             </div>
@@ -1661,8 +1662,8 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{ov?" ⚠":""}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
                     <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
                       <button onClick={e=>{e.stopPropagation();onEditTask(t);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit",marginRight:6}}>✏️ Edit</button>
                       {onDeleteTask&&<button onClick={e=>{e.stopPropagation();onDeleteTask(t.id);}} style={{background:"#450a0a",color:C.red,border:`1px solid ${C.red}44`,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}}>🗑 Delete</button>}
@@ -1710,7 +1711,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                     <Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg>
                     {(iAmDetailer||iAmChecker)&&<span style={{fontSize:11,fontWeight:600,color:"#8b5cf6",background:"#8b5cf622",padding:"2px 8px",borderRadius:20}}>{myRole}</span>}
                     <span style={{flex:1}}/>
-                    <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{t.due_date||"—"}{isOv?" ⚠":""}</span>
+                    <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{fmtD(t.due_date)}{isOv?" ⚠":""}</span>
                   </div>
                 </div>
               );
@@ -1814,7 +1815,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                             <Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg>
                             <span style={{fontSize:11,fontWeight:600,color:"#8b5cf6",background:"#8b5cf622",padding:"2px 7px",borderRadius:20}}>{role}</span>
                             <span style={{flex:1}}/>
-                            <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{t.due_date||"—"}{isOv?" ⚠":""}</span>
+                            <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{fmtD(t.due_date)}{isOv?" ⚠":""}</span>
                           </div>
                         </div>
                       );
@@ -2042,7 +2043,7 @@ function exportExcel(projects,tasks,label="Report"){
         <td class="${sc} bold center">${t.status||""}</td>
         <td class="${sc} center">${t.priority||""}</td>
         <td class="${sc} center">${t.start_date||""}</td>
-        <td class="${sc} center">${t.due_date||""}</td>
+        <td class="${sc} center">${fmtD(t.due_date)}</td>
         <td class="${ovd?"ovd bold center":sc+' center'}">${ovd?"OVERDUE":""}</td>
       </tr>`;
     }).join("")}
@@ -2088,7 +2089,7 @@ function exportExcel(projects,tasks,label="Report"){
         <td class="bold">${(t.title||"").replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td>
         <td class="${sc} bold center">${t.status||""}</td>
         <td class="center">${t.priority||""}</td>
-        <td class="center">${t.due_date||""}</td>
+        <td class="center">${fmtD(t.due_date)}</td>
         <td class="${ovd?"ovd bold center":"center"}">${ovd?"OVERDUE":""}</td>
       </tr>`;
     });
@@ -2113,7 +2114,7 @@ function exportExcel(projects,tasks,label="Report"){
           <td>${t.assignee||""}</td>
           <td class="${sc} bold center">${t.status||""}</td>
           <td class="center">${t.priority||""}</td>
-          <td class="center">${t.due_date||""}</td>
+          <td class="center">${fmtD(t.due_date)}</td>
           <td class="${ovd?"ovd bold center":"center"}">${ovd?"OVERDUE":""}</td>
         </tr>`;
       });
@@ -2391,8 +2392,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
                   <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{ov?" ⚠":""}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
                 </tr>);
               })}
             </tbody>
@@ -2578,7 +2579,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
                               <td style={{padding:"9px 16px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
                               <td style={{padding:"9px 16px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
                               <td style={{padding:"9px 16px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12}}>Unassigned</span>}</td>
-                              <td style={{padding:"9px 16px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                              <td style={{padding:"9px 16px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                               <td style={{padding:"9px 16px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEditTask(t)} title="Edit"/>}</td>
                             </tr>
                           );
@@ -2684,7 +2685,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEdit(t)} title="Edit task"/>}</td>
                   </tr>
                 );
@@ -3323,7 +3324,7 @@ ${priData.length===0?"<tr><td colspan='4' style='text-align:center;color:#94a3b8
 ${overdueList.length>0?`<h2>▌ OVERDUE TASKS — ACTION REQUIRED (${overdueList.length})</h2>
 <table>
 <tr><th>#</th><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Days Overdue</th><th>Status</th><th>Priority</th></tr>
-${overdueList.map((t,i)=>{const pj=projects.find(p=>p.id===t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"—"}</td><td style="color:#7c3aed">${t.assignee||"—"}</td><td style="color:#dc2626;font-weight:600">${t.due_date}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"—"}</span></td></tr>`;}).join("")}
+${overdueList.map((t,i)=>{const pj=projects.find(p=>p.id===t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"—"}</td><td style="color:#7c3aed">${t.assignee||"—"}</td><td style="color:#dc2626;font-weight:600">${fmtD(t.due_date)}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"—"}</span></td></tr>`;}).join("")}
 </table>`:""}
 
 <div style="margin-top:20px;padding:10px 14px;background:#f1f5f9;border-top:2px solid #1e3a5f;font-size:8pt;color:#64748b">
@@ -3363,7 +3364,7 @@ function exportSubmissionList(projects,tasks,today){
       const proj=projects.find(p=>p.id===t.project_id);
       const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
-      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</td><td class="${ov?"overdue":""}">${t.due_date?String(t.due_date).slice(0,10):"—"}</td></tr>`;
+      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
     });
     html+=`<tr><td colspan="10"></td></tr>`;
   };
@@ -3472,8 +3473,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.assignee||"—"}</td>
         <td style={{...tdC,color:C.t2}}>{t.detailer||"—"}</td>
         <td style={{...tdC,color:C.t2}}>{t.checker||"—"}</td>
-        <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</td>
-        <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{isOverdue?" ⚠":""}</td>
+        <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{fmtD(t.client_sub_date)}</td>
+        <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{fmtD(t.due_date)}{isOverdue?" ⚠":""}</td>
         {!isClient&&<td style={{...tdC}}>
           <button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -3666,8 +3667,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                     <div style={{fontSize:12,color:C.accent,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"—"}</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       <span style={{fontSize:10,fontWeight:700,color:statusColor(t.status),background:statusColor(t.status)+"18",padding:"2px 7px",borderRadius:5}}>{t.status}</span>
-                      {t.client_sub_date&&<span style={{fontSize:10,color:C.t3}}>📬 {t.client_sub_date}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t2}}>📅 {t.due_date}{isOverdue?" ⚠":""}</span>}
+                      {t.client_sub_date&&<span style={{fontSize:10,color:C.t3}}>📬 {fmtD(t.client_sub_date)}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t2}}>📅 {fmtD(t.due_date)}{isOverdue?" ⚠":""}</span>}
                       {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                     </div>
                     {!isClient&&canEdit&&<button onClick={()=>onEdit&&onEdit(t)} style={{marginTop:8,background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
@@ -6528,7 +6529,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       {proj&&<span style={{fontSize:10,color:C.teal}}>{"📁 "+proj.name}</span>}
                       <span style={{fontSize:10,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
-                      {(t.deadline||t.due_date)&&<span style={{fontSize:10,color:C.t2}}>{"📅 "+(t.deadline||t.due_date)}</span>}
+                      {(t.deadline||t.due_date)&&<span style={{fontSize:10,color:C.t2}}>{"📅 "+fmtD(t.deadline||t.due_date)}</span>}
                     </div>
                   </div>
                 </div>
@@ -7085,7 +7086,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
                     onClick={!isClient&&onEditTask?()=>onEditTask(r.task):undefined}>
                     <td style={{padding:"8px 10px",maxWidth:200}}>
                       <div style={{fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:12}} title={r.task.title}>{r.task.title}</div>
-                      {r.task.due_date&&<div style={{fontSize:10,color:C.t2,marginTop:1}}>Due {r.task.due_date}</div>}
+                      {r.task.due_date&&<div style={{fontSize:10,color:C.t2,marginTop:1}}>Due {fmtD(r.task.due_date)}</div>}
                     </td>
                     <td style={{padding:"8px 10px",maxWidth:140}}>
                       {r.proj&&<span style={{display:"flex",alignItems:"center",gap:5}}>
@@ -11078,7 +11079,7 @@ export default function App(){
                                     <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                                       <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
                                       {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
-                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {t.due_date}</span>}
+                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {fmtD(t.due_date)}</span>}
                                       {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
                                       {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
                                     </div>
@@ -11401,7 +11402,7 @@ export default function App(){
                         </div>
                         <div style={{background:C.red+"18",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                           <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Due</div>
-                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{t.due_date}</div>
+                          <div style={{fontSize:10,fontWeight:700,color:C.red}}>{fmtD(t.due_date)}</div>
                         </div>
                         <div style={{background:"#ffffff12",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                           <div style={{fontSize:9,color:C.t3,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>Scope</div>
@@ -11512,8 +11513,8 @@ export default function App(){
                               {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
                               {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                               {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                              {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {t.due_date}</span>}
-                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {t.due_date}</span>}
+                              {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {fmtD(t.due_date)}</span>}
+                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {fmtD(t.due_date)}</span>}
                             </div>
                             {canEditTask&&<div style={{display:"flex",alignItems:"center",gap:6}}>
                               <span style={{fontSize:10,color:C.t3,flexShrink:0}}>Move to:</span>
@@ -11590,7 +11591,7 @@ export default function App(){
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
                       <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
                       {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{t.due_date}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{fmtD(t.due_date)}</span>}
                     </div>
                     <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
                       {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
@@ -11682,7 +11683,7 @@ export default function App(){
           items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
         } else if(DSM==="inprogress"){
           title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:C.accent,raw:t};});
+          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
         } else if(DSM==="team"){
           title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
           const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -11697,7 +11698,7 @@ export default function App(){
         // Project → Tasks
         const proj=lastDrill.item;
         title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
+        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
       } else if(lastDrill.type==="employee"){
         // Employee → Projects they work in
         const emp=lastDrill.item;
@@ -11712,7 +11713,7 @@ export default function App(){
         // Employee+Project → Tasks
         const {proj,empName}=lastDrill.item;
         title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+t.due_date:""}`,dot:getStatusColor(t.status),raw:t}));
+        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
       }
 
       return(
