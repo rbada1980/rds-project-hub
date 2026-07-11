@@ -1254,8 +1254,8 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</span></td>
                   </tr>);})}</tbody>
               </table>
             </div>
@@ -1661,8 +1661,8 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</span></td>
                     <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
                       <button onClick={e=>{e.stopPropagation();onEditTask(t);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit",marginRight:6}}>✏️ Edit</button>
                       {onDeleteTask&&<button onClick={e=>{e.stopPropagation();onDeleteTask(t.id);}} style={{background:"#450a0a",color:C.red,border:`1px solid ${C.red}44`,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}}>🗑 Delete</button>}
@@ -2391,8 +2391,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
                   <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date||"—"}{ov?" ⚠":""}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date||"—"}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{ov?" ⚠":""}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</span></td>
                 </tr>);
               })}
             </tbody>
@@ -3363,7 +3363,7 @@ function exportSubmissionList(projects,tasks,today){
       const proj=projects.find(p=>p.id===t.project_id);
       const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
-      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${t.client_sub_date||"—"}</td><td class="${ov?"overdue":""}">${t.due_date||"—"}</td></tr>`;
+      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</td><td class="${ov?"overdue":""}">${t.due_date?String(t.due_date).slice(0,10):"—"}</td></tr>`;
     });
     html+=`<tr><td colspan="10"></td></tr>`;
   };
@@ -3472,8 +3472,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.assignee||"—"}</td>
         <td style={{...tdC,color:C.t2}}>{t.detailer||"—"}</td>
         <td style={{...tdC,color:C.t2}}>{t.checker||"—"}</td>
-        <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{t.client_sub_date||"—"}</td>
-        <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{t.due_date||"—"}{isOverdue?" ⚠":""}</td>
+        <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{t.client_sub_date?String(t.client_sub_date).slice(0,10):"—"}</td>
+        <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{t.due_date?String(t.due_date).slice(0,10):"—"}{isOverdue?" ⚠":""}</td>
         {!isClient&&<td style={{...tdC}}>
           <button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>

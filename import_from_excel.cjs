@@ -114,7 +114,7 @@ function readExcel() {
       title: colB,
       status: fixStatus(colC),
       due_date: dueDate,
-      client_sub_date: dueDate,  // same field in Excel
+      client_sub_date: null,  // not in Excel — staff set this manually when submitting to client
       detailer: colE,
       checker: colF,
       assignee: colE,  // detailer = assignee
