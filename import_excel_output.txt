@@ -1,0 +1,89 @@
+=== White Cap Import: Excel → Supabase + Local ===
+Date: 2026-07-11T10:36:25.079Z
+
+Reading: C:\Users\HP\rds-project-hub\White Cap Projects Tracker2_2026.xlsx
+
+✓ Read 62 projects, 313 tasks from Excel
+  Date distribution: {"2026":311}
+  Max due_date: 2026-12-05
+  No date: 2
+
+--- Clearing Supabase WC data ---
+  ✓ Supabase tasks deleted
+  ✓ Supabase projects deleted
+
+--- Clearing local WC data ---
+  ✓ Local: 0 tasks + 62 projects deleted
+
+--- Inserting projects and tasks ---
+  ✓ Felies Residence — 3 task(s)
+  ✓ Valencia Del Mar Pickleball — 7 task(s)
+  ✓ City of temple terrace-fire station #01 — 4 task(s)
+  ✓ 228 Rutland — 4 task(s)
+  ✓ Palmetto Lakes Industrial Park — 3 task(s)
+  ✓ Frenchman's Creek Operations Center — 6 task(s)
+  ✓ Miami Shores Residence (R+R bluenest) — 5 task(s)
+  ✓ Licata Residence 2726 Appaloosa trail — 2 task(s)
+  ✓ 4669 S. Flagler Dr — 4 task(s)
+  ✓ Harrison Residence — 2 task(s)
+  ✓ PBIA - Revenue Control Building — 2 task(s)
+  ✓ 127 EL Bravo Way — 7 task(s)
+  ✓ Blue Water Cove 6 — 2 task(s)
+  ✓ 1050 N Lake way — 3 task(s)
+  ✓ 143 Reef Road — 4 task(s)
+  ✓ Cutler Bay SHS — 4 task(s)
+  ✓ Ackerman Residence — 3 task(s)
+  ✓ Blue Water Cove 3 — 2 task(s)
+  ✓ BOKOR 432 SUNSHINE BLVD — 3 task(s)
+  ✓ Cloyd — 3 task(s)
+  ✓ 6017 Le Lac Road (Weiner Residence) — 9 task(s)
+  ✓ Bluewater cove 11 — 2 task(s)
+  ✓ Bluewater cove 9 — 2 task(s)
+  ✓ 164 Seminole — 4 task(s)
+  ✓ Roy & Shelley Silverman — 4 task(s)
+  ✓ 50 SE OLIVE — 2 task(s)
+  ✓ Valencia Del Mar Clubhouse — 9 task(s)
+  ✓ 910 S Ocean — 3 task(s)
+  ✓ Burns Residence — 3 task(s)
+  ✓ 5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE) — 1 task(s)
+  ✓ 320 S atlantic Drive — 4 task(s)
+  ✓ Custom Residence (515 lido drive) — 4 task(s)
+  ✓ Jandrews Residence — 3 task(s)
+  ✓ 6024 Lelac Rd — 5 task(s)
+  ✓ 5900 Powerline Garag — 2 task(s)
+  ✓ South Florida Jewish Cemetery — 2 task(s)
+  ✓ 1820 S Federal Hwy - Fifth Third Bank — 2 task(s)
+  ✓ 20 Hudson Ave — 3 task(s)
+  ✓ South Rd Office Building E — 2 task(s)
+  ✓ Baig Residence — 2 task(s)
+  ✓ SW Ranches — 2 task(s)
+  ✓ 2651 Southcast 10th court — 1 task(s)
+  ✓ Country inn Pet Resort — 2 task(s)
+  ✓ 2960 Greenbriair — 4 task(s)
+  ✓ Gallery at Somi Parc Phase 1 — 77 task(s)
+  ✓ 6007 Le Lac (Furing residence) — 2 task(s)
+  ✓ 90 Stingaree — 2 task(s)
+  ✓ O.B. (Scattered Lots) — 2 task(s)
+  ✓ 840 Denery Ln. Residence — 5 task(s)
+  ✓ Nuvo — 41 task(s)
+  ✓ The Syed Residence — 3 task(s)
+  ✓ 810 S Swinton Ave Residence — 3 task(s)
+  ✓ Custom Residence (134 Worth CTN) — 4 task(s)
+  ✓ Rancano — 2 task(s)
+  ✓ 799 Park Drive — 3 task(s)
+  ✓ Chateau De La Duchess (925 Hillsboro) — 3 task(s)
+  ✓ Masucci Residence — 4 task(s)
+  ✓ The Bueller family — 2 task(s)
+  ✓ SPOTLOT 28810 SW 207 AVE — 2 task(s)
+  ✓ Broken Sound Club — 2 task(s)
+  ✓ 128 Worth CT N — 3 task(s)
+  ✓ 2235 Mangolia Drive — 3 task(s)
+
+=== DONE: 62 projects ✓, 0 failed | 313 tasks ✓, 0 failed ===
+
+--- Verification ---
+  Supabase: 313 tasks | years: {"2026":311,"null":2}
+  Supabase: 181 overdue, 130 future
+  Local: y2026=310 | old=0 | noDate=2 | overdue=181 | max=Sat Dec 05 2026 00:00:00 GMT+0530 (India Standard Time)
+
+✅ Both Supabase and local updated successfully!

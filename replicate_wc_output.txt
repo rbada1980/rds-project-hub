@@ -1,0 +1,21 @@
+=== White Cap: Replicate Supabase → Local PostgreSQL ===
+
+✓ Fetched 62 WC projects from Supabase
+✓ Fetched 313 WC tasks from Supabase
+  Date distribution: {"2025":23,"2026":288,"null":2}
+  Max due_date: 2026-11-12
+
+--- Clearing local WC data ---
+  🗑 Deleted 313 tasks + 62 projects from local
+
+--- Inserting projects into local ---
+  ✓ 62 projects inserted, 0 failed
+
+--- Inserting tasks into local ---
+  ✓ 313 tasks inserted, 0 failed
+
+--- Verifying local ---
+  2026 dates: 288 | old dates: 23 | no date: 2 | max: Thu Nov 12 2026 00:00:00 GMT+0530 (India Standard Time)
+
+❌ Still too many old dates in local. Check for issues.
+Exit code: 0 

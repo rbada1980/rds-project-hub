@@ -32,6 +32,7 @@ const supabase = createClient(SUPA_URL, SUPA_KEY);
 const pool = new Pool({
   host: "localhost", port: 5432,
   database: "rds_local", user: "postgres", password: "rds2026",
+  options: '-c timezone=UTC'  // Read/write dates as UTC to avoid IST timezone shift
 });
 
 // ── Table sync config ────────────────────────────────────────
@@ -143,7 +144,11 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
           if (v !== null && v !== undefined && typeof v === "object" && !(v instanceof Date)) {
             v = JSON.stringify(v);
           } else if (v instanceof Date) {
-            v = v.toISOString();
+            // For date-only columns, use local date to avoid IST→UTC shift
+            const DATE_COLS_L = ['due_date', 'client_sub_date', 'deadline'];
+            v = DATE_COLS_L.includes(c)
+              ? `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`
+              : v.toISOString();
           }
           values.push(v);
           ph.push(`$${counter++}`);
@@ -205,7 +210,13 @@ async function pushTable({ table, conflict, excludeFromRow = [], skipPush = fals
     const out = {};
     for (const [k, v] of Object.entries(row)) {
       if (excludeFromRow.includes(k)) continue;
-      out[k] = v instanceof Date ? v.toISOString() : v;
+      // For date-only columns, use local date (getFullYear/getDate) to avoid IST→UTC shift
+      const DATE_COLS = ['due_date', 'client_sub_date', 'deadline'];
+      out[k] = v instanceof Date
+        ? (DATE_COLS.includes(k)
+            ? `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`
+            : v.toISOString())
+        : v;
     }
     return out;
   });

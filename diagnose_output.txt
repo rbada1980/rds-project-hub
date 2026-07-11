@@ -1,0 +1,8 @@
+TZ offset (minutes): -330
+Local timezone: Asia/Calcutta
+Test date getDate(): 5
+Test date getUTCDate(): 5
+Test date toISOString(): 2026-01-05T18:29:50.000Z
+Test date toString(): Mon Jan 05 2026 23:59:50 GMT+0530 (India Standard Time)
+
+BAD DATES COUNT: 0
