@@ -1,13 +1,27 @@
 // update_formcrete_dates.cjs — Read Formcrete Excel and update due_date + client_sub_date
 // Updates BOTH Supabase AND local PostgreSQL.
 
-const { createClient } = require("@supabase/supabase-js");
-const { Pool }         = require("pg");
-const XLSX             = require("xlsx");
+const { Pool } = require("pg");
+const XLSX     = require("xlsx");
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
-const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTQxMTE1OCwiZXhwIjoyMDYwOTg3MTU4fQ.pHMr7KQSD5V-7BQKV_LZEWbFmfFsXUbOJx7LUr8BPho";
-const supabase = createClient(SUPA_URL, SUPA_KEY);
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+
+async function supaFetch(method, path, body) {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
+    method,
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Supabase ${method} ${path}: ${res.status} ${text}`);
+  return text ? JSON.parse(text) : null;
+}
 
 const pool = new Pool({
   host: "localhost", port: 5432, database: "rds_local",
@@ -92,12 +106,7 @@ async function main() {
   );
 
   // Fetch all Formcrete tasks from Supabase
-  const { data: tasks, error } = await supabase
-    .from("tasks")
-    .select("id,title,assignee,detailer,checker,due_date,client_sub_date")
-    .eq("client", "Formcrete");
-
-  if (error) { console.error("Supabase fetch error:", error); await pool.end(); return; }
+  const tasks = await supaFetch("GET", "tasks?client=eq.Formcrete&select=id,title,assignee,detailer,checker,due_date,client_sub_date&limit=2000");
   console.log("\nFormcrete tasks in Supabase:", tasks.length);
 
   let updated = 0, skipped = 0, notFound = 0;
@@ -120,9 +129,10 @@ async function main() {
     if (!Object.keys(updates).length) { skipped++; continue; }
 
     // 1. Update Supabase
-    const { error: supErr } = await supabase.from("tasks").update(updates).eq("id", match.id);
-    if (supErr) {
-      console.error(`  x Supabase "${match.title}":`, supErr.message);
+    try {
+      await supaFetch("PATCH", `tasks?id=eq.${match.id}`, updates);
+    } catch(e) {
+      console.error(`  x Supabase "${match.title}":`, e.message);
       continue;
     }
 
