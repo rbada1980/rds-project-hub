@@ -191,33 +191,22 @@ async function main() {
   await supabase.from("projects").delete().eq("id", testProj.id);
   console.log("✓ Test records cleaned — safe to proceed\n");
 
-  // ── STEP 8: Delete old White Cap data from BOTH DBs ──
+  // ── STEP 8: Delete old White Cap data from BOTH DBs using client field directly ──
   console.log("--- Removing old White Cap data ---");
-  const { data: allProj } = await supabase.from("projects").select("id,name,client");
-  const wcProj = (allProj || []).filter(p =>
-    (p.client||"").toLowerCase().includes("white cap") ||
-    (p.client||"").toLowerCase().includes("whitecap")
-  );
-  console.log(`  Found ${wcProj.length} existing White Cap projects in Supabase`);
-  for (const p of wcProj) {
-    await supabase.from("tasks").delete().eq("project_id", p.id);
-    const { error: pe } = await supabase.from("projects").delete().eq("id", p.id);
-    if (pe) errLog(`delete project "${p.name}"`, pe);
-    else console.log(`  🗑 Supabase: deleted "${p.name}"`);
-  }
+  // Delete tasks first (by client field), then projects
+  const { data: delTasks, error: dtErr } = await supabase.from("tasks").delete().eq("client","White Cap").select("id");
+  if (dtErr) errLog("delete tasks", dtErr);
+  else console.log(`  🗑 Supabase: ${(delTasks||[]).length} tasks deleted`);
+  const { data: delProj, error: dpErr } = await supabase.from("projects").delete().eq("client","White Cap").select("id,name");
+  if (dpErr) errLog("delete projects", dpErr);
+  else console.log(`  🗑 Supabase: ${(delProj||[]).length} projects deleted`);
 
-  // Delete from local PostgreSQL too
+  // Delete from local PostgreSQL — use client field directly (not project_id) to catch all old data
   if (localOk) {
     try {
-      const { rows: wcLocal } = await pool.query(
-        `SELECT id FROM projects WHERE LOWER(client) LIKE '%white cap%' OR LOWER(client) LIKE '%whitecap%'`
-      );
-      console.log(`  Found ${wcLocal.length} existing White Cap projects in local DB`);
-      for (const p of wcLocal) {
-        await pool.query("DELETE FROM tasks WHERE project_id=$1", [p.id]);
-        await pool.query("DELETE FROM projects WHERE id=$1", [p.id]);
-      }
-      console.log(`  🗑 Local DB: ${wcLocal.length} projects + tasks deleted`);
+      const tDel = await pool.query(`DELETE FROM tasks WHERE LOWER(COALESCE(client,'')) LIKE '%white cap%' OR LOWER(COALESCE(client,'')) LIKE '%whitecap%'`);
+      const pDel = await pool.query(`DELETE FROM projects WHERE LOWER(COALESCE(client,'')) LIKE '%white cap%' OR LOWER(COALESCE(client,'')) LIKE '%whitecap%'`);
+      console.log(`  🗑 Local DB: ${pDel.rowCount} projects + ${tDel.rowCount} tasks deleted`);
     } catch(e) { console.warn("  ⚠ Local DB delete error:", e.message); }
   }
 
