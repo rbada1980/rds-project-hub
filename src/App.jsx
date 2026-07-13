@@ -319,7 +319,6 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
-        <div style={col}><FileUp files={f.files} onChange={files=>sf(p=>({...p,files}))}/></div>
       </div>
       {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker)&&(
         <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
@@ -851,7 +850,6 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4,paddingRight:onSelect?26:0}}>{task.title}</p>
         {onSelect?<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{position:"absolute",top:12,right:12,width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>
         :<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
-          {onFiles&&<IBtn icon="📎" onClick={e=>{e.stopPropagation();onFiles(task);}} title="Files"/>}
           {!readonly&&<IBtn icon="✏️" onClick={()=>onEdit(task)}/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
         </div>}
@@ -864,7 +862,6 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg>
-          {fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:onFiles?"pointer":"default"}}>📎{fileCount}</span>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {task.due_date&&<span style={{fontSize:10,color:C.t2}}>{fmtD(task.due_date)}</span>}
@@ -891,7 +888,7 @@ function MobileKMove({task,onDrop}){
     </div>
   );
 }
-function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null,taskFileCounts={},onFiles=null}){
+function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null}){
   const [ov,so]=useState(false);
   const selectMode=!!onToggleTask;
   return(
@@ -903,7 +900,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode} fileCount={taskFileCounts[t.id]||0} onFiles={onFiles}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
     </div>
   );
 }
@@ -937,7 +934,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:11}}>—</span>}
       </div></td>
       <td style={{...td,width:80}}><div style={{display:"flex",gap:3}}>
-        {onFiles&&<IBtn icon="📎" onClick={e=>{e.stopPropagation();onFiles(task);}} title="Files"/>}
+
         {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
         {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
       </div></td>
@@ -6543,20 +6540,18 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
   );
 }
 
-function CommandPalette({projects,tasks,users,clients,taskFileCounts,onNav,onClose}){
+function CommandPalette({projects,tasks,users,clients,onNav,onClose}){
   const [q,setQ]=useState("");
   const [sel,setSel]=useState(0);
   const inputRef=useRef();
   useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),30);},[]);
   const qL=q.trim().toLowerCase();
   const results=[];
-  const fc=taskFileCounts||{};
+
   if(!qL){
     projects.slice(0,8).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
     clients.slice(0,5).forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
     users.filter(u=>u.role!=="Admin"&&u.role!=="Manager").slice(0,5).forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.client_name?" · "+u.client_name:""),data:u}));
-    const fileTasks=tasks.filter(t=>fc[t.id]>0).slice(0,5);
-    fileTasks.forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:fc[t.id]+" file"+(fc[t.id]!==1?"s":"")+" · "+(pj?pj.name:"—"),data:t});});
   } else {
     projects.filter(p=>p.name.toLowerCase().includes(qL)||(p.client||"").toLowerCase().includes(qL)||(p.group_name||"").toLowerCase().includes(qL)||(p.description||"").toLowerCase().includes(qL)).slice(0,6)
       .forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
@@ -9651,8 +9646,6 @@ export default function App(){
   const [attBreak,sattBrk]=useState(null);
   const [attStats,sattStats]=useState(null);
   const [toast,sToast]      = useState(null);
-  const [taskFileCounts,setTFC] = useState({});  // {[taskId]: fileCount}
-  const [fileTask,setFileTask]  = useState(null); // task object whose files panel is open
   const [cmdOpen,setCmdOpen]    = useState(false); // ⌘K command palette
   const [logo,sLogo]        = useState(null);
   const [selTasks,setSelTasks]   = useState(new Set());
@@ -9930,18 +9923,6 @@ export default function App(){
       }
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
-    // Load file counts separately (non-blocking)
-    loadFileCounts();
-  }
-  async function loadFileCounts(){
-    const{data}=await supabase.from("task_files").select("task_id");
-    if(!data)return;
-    const counts={};
-    data.forEach(r=>{counts[r.task_id]=(counts[r.task_id]||0)+1;});
-    setTFC(counts);
-  }
-  function updateFileCount(taskId,n){
-    setTFC(prev=>({...prev,[taskId]:n}));
   }
   useEffect(()=>{if(me)loadAll();},[me]);
   // ── Attendance functions ──────────────────────────────────────────────────
@@ -11540,8 +11521,6 @@ export default function App(){
                 canDelete={canEdit}
                 selTasks={selTasks}
                 onToggleTask={canEdit?toggleTask:null}
-                taskFileCounts={taskFileCounts}
-                onFiles={t=>setFileTask(t)}
               />))}
             </div>
             )}
@@ -11614,20 +11593,18 @@ export default function App(){
                 </th>}
                 {["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"].map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} fileCount={taskFileCounts[t.id]||0} onFiles={t=>setFileTask(t)}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
             </table>
           </div>
           )}
           </div>
         )}
       </main>
-      {fileTask&&<TaskFilesPanel task={fileTask} me={me} canEdit={canEdit} onClose={()=>setFileTask(null)} onCountChange={updateFileCount}/>}
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} taskFileCounts={taskFileCounts} onNav={(type,data)=>{
+      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} onNav={(type,data)=>{
         if(type==="project")navTo("list",data.id);
         else if(type==="task")navTo("list",data.project_id);
         else if(type==="user"){sfa(data.name);sv("list");sap(null);}
         else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
-        else if(type==="file"){setFileTask(data);}
       }} onClose={()=>setCmdOpen(false)}/>}
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
