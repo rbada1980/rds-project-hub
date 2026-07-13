@@ -917,23 +917,23 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      <td style={{...td,maxWidth:220,minWidth:120}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
-      <td style={{...td,maxWidth:130}}><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
-      <td style={{...td,maxWidth:100}}><span style={{color:C.teal,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>
+      <td style={{...td,maxWidth:200,minWidth:100}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
+      <td style={{...td,maxWidth:110}}><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
+      <td style={{...td,maxWidth:90}}><span style={{color:C.teal,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>
       <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
       <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
-      <td style={{...td,maxWidth:110}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={task.assignee} size={20}/><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>—</span>}</td>
-      <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+      <td style={{...td,maxWidth:100}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={task.assignee} size={20}/><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>—</span>}</td>
+      <td style={{...td,minWidth:80}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
         {task.detailer?<span style={{color:C.t2,fontSize:11}}>✏ {task.detailer}</span>:null}
         {task.checker?<span style={{color:"#8b5cf6",fontSize:11}}>✓ {task.checker}</span>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:11}}>—</span>}
       </div></td>
-      <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+      <td style={{...td,minWidth:80}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
         {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:11,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:11}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
         {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:11}}>—</span>}
       </div></td>
-      <td style={{...td,width:80}}><div style={{display:"flex",gap:3}}>
+      <td style={{...td,width:70}}><div style={{display:"flex",gap:3}}>
 
         {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
         {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
@@ -3674,8 +3674,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               })}
             </div>
           ):(
-          <div className="rds-table-outer" style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <div className="rds-table-outer" style={{overflowX:"hidden",maxWidth:"100%"}}>
+            <table style={{width:"100%",maxWidth:"100%",tableLayout:"fixed",borderCollapse:"collapse",fontSize:13}}>
               <thead>
                 <tr style={{background:C.surface}}>
                   {HEADERS.map((h,i)=>(
@@ -10500,7 +10500,7 @@ export default function App(){
         </div>
       </aside>
 
-      <main className="rds-main" style={{flex:1,padding:24,overflowY:view==="warroom"?"hidden":"auto",overflowX:"hidden",height:"100vh",boxSizing:"border-box",paddingBottom:view==="warroom"?24:isMobile?80:24}}>
+      <main className="rds-main" style={{flex:1,minWidth:0,padding:24,overflowY:view==="warroom"?"hidden":"auto",overflowX:"hidden",height:"100vh",boxSizing:"border-box",paddingBottom:view==="warroom"?24:isMobile?80:24}}>
         <div className="rds-topbar" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,gap:8,flexWrap:"wrap"}}>
           <div className="rds-topbar-left" style={{display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<div style={{width:34,height:34,borderRadius:8,background:"#000",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
