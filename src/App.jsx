@@ -78,6 +78,41 @@ function Stat({label,value,sub,color=C.accent,onClick}){
 }
 const SBtn={background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:"inherit"};
 const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:"inherit"};
+function DonutChart({data,size=130}){
+  const total=data.reduce((s,d)=>s+d.value,0);
+  if(!total)return <div style={{width:size,height:size,display:"flex",alignItems:"center",justifyContent:"center",color:C.t3,fontSize:11}}>No data</div>;
+  const r=44,cx=size/2,cy=size/2,circ=2*Math.PI*r;
+  let off=0;
+  const slices=data.filter(d=>d.value>0).map(d=>{const dash=(d.value/total)*circ;const s={...d,dash,off};off+=dash;return s;});
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:"block",flexShrink:0}}>
+      {slices.map((s,i)=>(
+        <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth={20}
+          strokeDasharray={`${s.dash} ${circ-s.dash}`}
+          strokeDashoffset={-s.off}
+          transform={`rotate(-90 ${cx} ${cy})`}/>
+      ))}
+      <text x={cx} y={cy-4} textAnchor="middle" fontSize={20} fontWeight="800" fill="#f1f5f9">{total}</text>
+      <text x={cx} y={cy+13} textAnchor="middle" fontSize={9} fill="#8899aa">total</text>
+    </svg>
+  );
+}
+function MiniBarChart({data}){
+  const max=Math.max(...data.map(d=>d.value),1);
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      {data.map((d,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:110,fontSize:11,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right",flexShrink:0}}>{d.label}</div>
+          <div style={{flex:1,height:14,background:C.surface,borderRadius:4,overflow:"hidden",minWidth:60}}>
+            <div style={{width:`${(d.value/max)*100}%`,height:"100%",background:d.color||C.accent,borderRadius:4,minWidth:d.value>0?4:0,transition:"width .5s"}}/>
+          </div>
+          <div style={{width:28,fontSize:12,fontWeight:700,color:d.color||C.accent,textAlign:"right",flexShrink:0}}>{d.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function Modal({title,onClose,children,wide=false}){
   return(
@@ -1166,6 +1201,53 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         <Stat label="Not Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>ssf(statusFilter==="Not Yet Started"?null:"Not Yet Started")}/>
         <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>ssf(statusFilter==="Overdue"?null:"Overdue")}/>
       </div>
+      {/* ── My Progress Chart ── */}
+      {total>0&&(()=>{
+        const pctNum=Math.round(done/total*100);
+        const sData=[
+          {label:"Completed",value:done,color:C.green},
+          {label:"In Progress",value:inprog,color:C.blue},
+          {label:"Pending",value:total-done-inprog,color:C.t3},
+        ].filter(d=>d.value>0);
+        return(
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,marginBottom:24,display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
+            <DonutChart data={sData} size={120}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12}}>📊 My Progress</div>
+              <div style={{display:"flex",gap:18,flexWrap:"wrap",marginBottom:12}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:28,fontWeight:800,color:pctNum>=80?C.green:pctNum>=50?C.blue:C.accent}}>{pctNum}%</div>
+                  <div style={{fontSize:11,color:C.t3}}>completion rate</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:28,fontWeight:800,color:C.green}}>{done}</div>
+                  <div style={{fontSize:11,color:C.t3}}>tasks done</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:28,fontWeight:800,color:C.blue}}>{inprog}</div>
+                  <div style={{fontSize:11,color:C.t3}}>in progress</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:28,fontWeight:800,color:C.red}}>{overdue}</div>
+                  <div style={{fontSize:11,color:C.t3}}>overdue</div>
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {sData.map(d=>(
+                  <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                    <span style={{fontSize:11,color:C.t2,flex:1}}>{d.label}</span>
+                    <div style={{width:100,height:7,background:C.surface,borderRadius:3,overflow:"hidden",flexShrink:0}}>
+                      <div style={{width:`${Math.round(d.value/total*100)}%`,height:"100%",background:d.color,borderRadius:3}}/>
+                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:d.color,minWidth:24,textAlign:"right"}}>{d.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {/* ── Due This Week ── */}
       {(()=>{
         const weekEnd=new Date(today);weekEnd.setDate(weekEnd.getDate()+7);
@@ -1716,6 +1798,40 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           </div>
         }
       </div>
+
+      {/* ── Team Status Chart ── */}
+      {(()=>{
+        const sData=[
+          {label:"Not Yet Started",value:allTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length,color:C.t3},
+          {label:"In Progress",value:allTasks.filter(t=>t.status==="In Progress").length,color:C.blue},
+          {label:"Review",value:allTasks.filter(t=>t.status==="Review").length,color:C.purple},
+          {label:"Completed",value:allTasks.filter(t=>isDone(t.status)).length,color:C.green},
+        ].filter(d=>d.value>0);
+        if(!sData.length)return null;
+        return(
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,marginTop:8}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Team Tasks by Status</div>
+            <div style={{display:"flex",gap:18,alignItems:"center",flexWrap:"wrap"}}>
+              <DonutChart data={sData} size={130}/>
+              <div style={{flex:1,display:"flex",flexDirection:"column",gap:10}}>
+                {sData.map(d=>{
+                  const tot=sData.reduce((s,x)=>s+x.value,0);
+                  return(
+                    <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                      <span style={{fontSize:12,color:C.t2,flex:1}}>{d.label}</span>
+                      <div style={{width:120,height:8,background:C.surface,borderRadius:4,overflow:"hidden",flexShrink:0}}>
+                        <div style={{width:`${tot?Math.round(d.value/tot*100):0}%`,height:"100%",background:d.color,borderRadius:4}}/>
+                      </div>
+                      <span style={{fontSize:12,fontWeight:700,color:d.color,minWidth:28,textAlign:"right"}}>{d.value}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
@@ -11184,6 +11300,45 @@ export default function App(){
                 </>);
               })()
             )}
+            {/* ── Charts: Status Donut + Client Bar ── */}
+            {(()=>{
+              const sData=[
+                {label:"Not Yet Started",value:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length,color:C.t3},
+                {label:"In Progress",value:activeDashTasks.filter(t=>t.status==="In Progress").length,color:C.blue},
+                {label:"Review",value:activeDashTasks.filter(t=>t.status==="Review").length,color:C.purple},
+                {label:"Completed",value:activeDashTasks.filter(t=>isDone(t.status)).length,color:C.green},
+              ].filter(d=>d.value>0);
+              const cNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
+              const cData=cNames.map(c=>{
+                const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===c);
+                const ct=activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id));
+                const hue=c.charCodeAt(0)*23%360;
+                return{label:c,value:ct.length,color:`hsl(${hue},60%,55%)`};
+              }).filter(d=>d.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
+              return(
+                <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:28,marginTop:8}}>
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flexShrink:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Tasks by Status</div>
+                    <div style={{display:"flex",gap:18,alignItems:"center"}}>
+                      <DonutChart data={sData} size={130}/>
+                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {sData.map(d=>(
+                          <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                            <span style={{fontSize:11,color:C.t2}}>{d.label}</span>
+                            <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flex:"1 1 280px"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>👤 Tasks by Client</div>
+                    <MiniBarChart data={cData}/>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
         {view==="timings"&&(
