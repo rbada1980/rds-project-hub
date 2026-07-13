@@ -9696,6 +9696,21 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
   const byPri=(a,b)=>(priOrder[a.priority]??3)-(priOrder[b.priority]??3);
   const d3=new Date(today);d3.setDate(d3.getDate()+3);const threeDaysStr=d3.toISOString().slice(0,10);
 
+  useEffect(()=>{
+    const id="myday-anim";
+    if(document.getElementById(id))return;
+    const s=document.createElement("style");s.id=id;
+    s.textContent=`
+      @keyframes mdUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes mdPop{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+      .mday-card{animation:mdUp .35s cubic-bezier(.22,1,.36,1) both;}
+      .mday-card:hover{transform:translateY(-5px) scale(1.01)!important;box-shadow:0 16px 40px rgba(0,0,0,.55)!important;z-index:2;}
+      .mday-card:active{transform:scale(.97)!important;transition:transform .08s!important;}
+      .mday-stat{animation:mdPop .4s cubic-bezier(.22,1,.36,1) both;}
+    `;
+    document.head.appendChild(s);
+  },[]);
+
   const myTasks=tasks.filter(t=>{
     if(isDone(t.status))return false;
     if(isRegularUser&&!userMatchesStr(me,t.assignee)&&!userMatchesStr(me,t.detailer)&&!userMatchesStr(me,t.checker))return false;
@@ -9712,88 +9727,113 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
   const dueSoon=myTasks.filter(t=>t.due_date&&t.due_date>today&&t.due_date<=threeDaysStr&&(t.status==="Not Yet Started"||t.status==="To Be Started")).sort(byPri);
   const total=overdue.length+dueToday.length+inProgress.length+dueSoon.length;
 
-  function myRole(t){
+  const myRole=t=>{
     if(userMatchesStr(me,t.assignee))return"Assignee";
     if(userMatchesStr(me,t.detailer))return"Detailer";
     if(userMatchesStr(me,t.checker))return"Checker";
     return null;
-  }
+  };
 
-  const renderSection=(title,color,list)=>{
+  const card=(t,accentColor,delay)=>{
+    const proj=projectById.get(t.project_id);
+    const role=isRegularUser?myRole(t):null;
+    const isOv=t.due_date&&t.due_date<today;
+    const isDT=t.due_date===today;
+    const priClr={High:C.red,Medium:"#f59e0b",Low:C.green}[t.priority];
+    return(
+      <div key={t.id} className="mday-card" onClick={()=>onEditTask(t)}
+        style={{
+          background:`linear-gradient(145deg,${C.card} 0%,${accentColor}08 100%)`,
+          border:`1px solid ${accentColor}33`,
+          borderTop:`3px solid ${accentColor}`,
+          borderRadius:14,padding:"16px 18px",cursor:"pointer",
+          transition:"transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s ease",
+          animationDelay:`${delay}ms`,display:"flex",flexDirection:"column",gap:11,
+          position:"relative",overflow:"hidden",
+        }}>
+        <div style={{position:"absolute",top:-30,right:-30,width:90,height:90,borderRadius:"50%",background:accentColor+"0a",pointerEvents:"none"}}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <span style={{fontSize:13,fontWeight:700,color:C.t1,lineHeight:1.45,flex:1}}>{t.title}</span>
+          {t.priority&&<span style={{fontSize:10,fontWeight:800,color:priClr,background:priClr+"20",padding:"3px 9px",borderRadius:20,flexShrink:0,border:`1px solid ${priClr}44`,letterSpacing:".03em"}}>{t.priority}</span>}
+        </div>
+        {proj&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:11}}>
+          <div style={{width:7,height:7,borderRadius:"50%",background:accentColor,flexShrink:0}}/>
+          <span style={{color:C.t3,fontWeight:500}}>{proj.name}</span>
+          {proj.client&&<><span style={{color:C.border}}>·</span><span style={{color:C.t2,fontWeight:600}}>{proj.client}</span></>}
+        </div>}
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${accentColor}22`}}>
+          <span style={{fontSize:10,fontWeight:700,color:STATUS_CLR[t.status]||C.t3,background:(STATUS_CLR[t.status]||C.t3)+"18",padding:"3px 9px",borderRadius:20}}>{t.status}</span>
+          {role&&<span style={{fontSize:10,fontWeight:700,color:C.blue,background:C.blue+"18",padding:"3px 9px",borderRadius:20}}>{role}</span>}
+          <div style={{flex:1}}/>
+          {t.due_date&&<span style={{fontSize:10,fontWeight:700,color:isOv?C.red:isDT?"#f59e0b":C.teal,display:"flex",alignItems:"center",gap:3}}>
+            <span>📅</span>{isOv?"Overdue · ":isDT?"Today · ":""}{fmtD(t.due_date)}
+          </span>}
+          {!isRegularUser&&t.assignee&&<span style={{fontSize:10,color:C.t3,fontWeight:500}}>→ {t.assignee}</span>}
+        </div>
+      </div>
+    );
+  };
+
+  const section=(title,icon,color,list)=>{
     if(!list.length)return null;
     return(
-      <div style={{marginBottom:28}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-          <div style={{width:3,height:18,background:color,borderRadius:2,flexShrink:0}}/>
-          <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:".07em"}}>{title}</span>
-          <span style={{background:color+"22",color:color,borderRadius:10,padding:"1px 8px",fontSize:11,fontWeight:800}}>{list.length}</span>
+      <div style={{marginBottom:36}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+          <div style={{width:36,height:36,borderRadius:10,background:color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,border:`1px solid ${color}33`,flexShrink:0}}>{icon}</div>
+          <span style={{fontSize:14,fontWeight:800,color:C.t1,letterSpacing:".04em",textTransform:"uppercase"}}>{title}</span>
+          <span style={{background:color,color:"#fff",borderRadius:20,padding:"2px 12px",fontSize:12,fontWeight:800,boxShadow:`0 2px 10px ${color}55`}}>{list.length}</span>
+          <div style={{flex:1,height:1,background:`linear-gradient(90deg,${color}55,transparent)`}}/>
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {list.map(t=>{
-            const proj=projectById.get(t.project_id);
-            const role=isRegularUser?myRole(t):null;
-            const isOv=t.due_date&&t.due_date<today;
-            const isDT=t.due_date===today;
-            const priClr={High:C.red,Medium:C.yellow,Low:C.green}[t.priority];
-            return(
-              <div key={t.id} onClick={()=>onEditTask(t)}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor=color;e.currentTarget.style.transform="translateX(3px)";}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.transform="translateX(0)";}}
-                style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",transition:"border-color .15s,transform .12s",display:"flex",alignItems:"flex-start",gap:12}}>
-                <div style={{width:3,minWidth:3,alignSelf:"stretch",background:priClr||C.t3,borderRadius:2}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:5}}>
-                    <span style={{fontSize:13,fontWeight:600,color:C.t1,flex:"1 1 120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
-                    {t.priority&&<span style={{fontSize:10,fontWeight:700,color:priClr,background:priClr+"18",padding:"1px 6px",borderRadius:4,flexShrink:0}}>{t.priority}</span>}
-                    {role&&<span style={{fontSize:10,fontWeight:600,color:C.blue,background:C.blue+"18",padding:"1px 6px",borderRadius:4,flexShrink:0}}>{role}</span>}
-                    <span style={{fontSize:10,fontWeight:600,color:STATUS_CLR[t.status]||C.t3,background:(STATUS_CLR[t.status]||C.t3)+"18",padding:"1px 6px",borderRadius:4,flexShrink:0}}>{t.status}</span>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                    {proj&&<span style={{fontSize:11,color:C.t3}}>{proj.name}{proj.client?` · ${proj.client}`:""}</span>}
-                    {t.due_date&&<span style={{fontSize:11,fontWeight:600,color:isOv?C.red:isDT?C.yellow:C.teal}}>📅 {isOv?"Overdue: ":isDT?"Today: ":""}{fmtD(t.due_date)}</span>}
-                    {!isRegularUser&&t.assignee&&<span style={{fontSize:11,color:C.t3}}>→ {t.assignee}</span>}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":list.length===1?"minmax(0,420px)":"repeat(auto-fill,minmax(290px,1fr))",gap:14}}>
+          {list.map((t,i)=>card(t,color,i*50))}
         </div>
       </div>
     );
   };
 
   const dayStr=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const stats=[
+    {label:"Overdue",count:overdue.length,color:C.red,icon:"🔴",delay:0},
+    {label:"Due Today",count:dueToday.length,color:"#f59e0b",icon:"📅",delay:60},
+    {label:"In Progress",count:inProgress.length,color:C.blue,icon:"🔄",delay:120},
+    {label:"Due Soon",count:dueSoon.length,color:C.teal,icon:"⏳",delay:180},
+  ];
   return(
-    <div style={{maxWidth:860,margin:"0 auto"}}>
-      <div style={{marginBottom:24}}>
-        <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t1}}>☀️ My Day</h2>
-        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>{dayStr} · {total} task{total!==1?"s":""} need{total===1?"s":""} attention</p>
+    <div style={{maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:28,display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontSize:28,fontWeight:900,color:C.t1,display:"flex",alignItems:"center",gap:10}}>
+            <span>☀️</span><span>My Day</span>
+          </div>
+          <div style={{color:C.t3,fontSize:13,marginTop:4}}>{dayStr}</div>
+        </div>
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,color:total>0?C.t1:C.t3}}>
+          {total===0?"All caught up 🎉":`${total} task${total!==1?"s":""} need attention`}
+        </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:10,marginBottom:28}}>
-        {[
-          {label:"Overdue",count:overdue.length,color:C.red,icon:"🔴"},
-          {label:"Due Today",count:dueToday.length,color:C.yellow,icon:"📅"},
-          {label:"In Progress",count:inProgress.length,color:C.blue,icon:"🔄"},
-          {label:"Due Soon",count:dueSoon.length,color:C.teal,icon:"⏳"},
-        ].map(s=>(
-          <div key={s.label} style={{background:C.card,border:`1px solid ${s.count>0?s.color+"55":C.border}`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-            <div style={{fontSize:20}}>{s.icon}</div>
-            <div style={{fontSize:22,fontWeight:800,color:s.count>0?s.color:C.t3,marginTop:2}}>{s.count}</div>
-            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{s.label}</div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:12,marginBottom:36}}>
+        {stats.map(s=>(
+          <div key={s.label} className="mday-stat"
+            style={{background:`linear-gradient(135deg,${C.card},${s.color}0a)`,border:`1px solid ${s.count>0?s.color+"44":C.border}`,borderRadius:14,padding:"18px 20px",display:"flex",alignItems:"center",gap:14,animationDelay:`${s.delay}ms`,boxShadow:s.count>0?`0 4px 20px ${s.color}18`:"none",transition:"box-shadow .2s"}}>
+            <div style={{width:46,height:46,borderRadius:12,background:s.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${s.color}22`}}>{s.icon}</div>
+            <div>
+              <div style={{fontSize:28,fontWeight:900,color:s.count>0?s.color:C.t3,lineHeight:1}}>{s.count}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:3,fontWeight:500}}>{s.label}</div>
+            </div>
           </div>
         ))}
       </div>
       {total===0&&(
-        <div style={{textAlign:"center",padding:"60px 20px"}}>
-          <div style={{fontSize:48,marginBottom:12}}>🎉</div>
-          <div style={{fontSize:16,fontWeight:700,color:C.t1,marginBottom:6}}>You're all caught up!</div>
+        <div style={{textAlign:"center",padding:"80px 20px",background:C.card,borderRadius:16,border:`1px solid ${C.border}`}}>
+          <div style={{fontSize:56,marginBottom:14}}>🎉</div>
+          <div style={{fontSize:18,fontWeight:800,color:C.t1,marginBottom:6}}>You're all caught up!</div>
           <div style={{fontSize:13,color:C.t3}}>No overdue, due-today, in-progress, or upcoming tasks.</div>
         </div>
       )}
-      {renderSection("🔴 Overdue",C.red,overdue)}
-      {renderSection("📅 Due Today",C.yellow,dueToday)}
-      {renderSection("🔄 In Progress",C.blue,inProgress)}
-      {renderSection("⏳ Due Soon",C.teal,dueSoon)}
+      {section("Overdue","🔴",C.red,overdue)}
+      {section("Due Today","📅","#f59e0b",dueToday)}
+      {section("In Progress","🔄",C.blue,inProgress)}
+      {section("Due Soon","⏳",C.teal,dueSoon)}
     </div>
   );
 }
