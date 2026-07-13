@@ -966,6 +966,7 @@ function MobileKMove({task,onDrop}){
   );
 }
 function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const [ov,so]=useState(false);
   const selectMode=!!onToggleTask;
   return(
@@ -1158,6 +1159,7 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
   );
 }
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
   const [statusFilter,ssf]=useState(null);
@@ -1533,6 +1535,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   );
 }
 function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,onViewProject,onClientClick,onOpenTaskModal}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   const matchesMe=v=>userMatchesStr(me,v);
   const [tab,setTab]=useState("detailer"); // "detailer" | "checker" | "all"
@@ -2017,6 +2020,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
   );
 }
 function exportExcel(projects,tasks,label="Report"){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const today=new Date().toISOString().slice(0,10);
   const safe=label.replace(/[/\\:*?"<>|]/g," ").trim();
   const pct=(d,t)=>t?Math.round((d/t)*100)+"%":"0%";
@@ -2331,6 +2335,7 @@ function Login({onLogin}){
   );
 }
 function ClientDashboard({me,tasks,projects,today,onViewProject}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   const [statusFilter,ssf]=useState("All");
   const [search,ss]=useState("");
@@ -2677,6 +2682,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
   );
 }
 function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const [q,sq]=useState("");
   const [fProj,sfp]=useState("All");
   const [fClient,sfc]=useState("All");
@@ -3301,6 +3307,7 @@ function NotificationCenter({me,onBadgeChange}){
 // ANALYTICS EXCEL EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 function exportAnalyticsReport(projects,tasks,users,clients,today){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
 
   // Computed data
@@ -3425,6 +3432,7 @@ ${overdueList.map((t,i)=>{const pj=projectById.get(t.project_id);const days=Math
 // SUBMISSION LIST EXCEL EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 function exportSubmissionList(projects,tasks,today){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const ws=new Date(today);ws.setDate(ws.getDate()-ws.getDay());
   const we=new Date(today);we.setDate(we.getDate()+(6-we.getDay()));
   const wsStr=ws.toISOString().slice(0,10);
@@ -4235,6 +4243,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 }
 
 function AnalyticsCenter({projects,tasks,users,clients,today,members}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
@@ -6420,6 +6429,7 @@ function TaskComments({taskId,projectId,me,users}){
 // ── ⌘K Command Palette ────────────────────────────────────────────
 
 function CapacityView({tasks,users,projects,onReassign,canEdit}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const [rangeDays,setRangeDays]=useState(28);
   const [weekOffset,setWeekOffset]=useState(0);
   const [baseDate,setBaseDate]=useState(null);
@@ -6624,6 +6634,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
 }
 
 function CommandPalette({projects,tasks,users,clients,onNav,onClose}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
   const [q,setQ]=useState("");
   const [sel,setSel]=useState(0);
   const inputRef=useRef();
