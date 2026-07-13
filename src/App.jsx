@@ -1885,17 +1885,17 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
               <div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>
                 {sData.map(d=>{
                   const tot=sData.reduce((s,x)=>s+x.value,0);
-                  const [lhov,setLH]=React.useState(false);
                   const filtered=d.label==="Completed"?allTasks.filter(t=>isDone(t.status)):d.label==="Not Yet Started"?allTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started"):allTasks.filter(t=>t.status===d.label);
                   return(
                     <div key={d.label}
-                      onMouseEnter={()=>setLH(true)} onMouseLeave={()=>setLH(false)}
+                      onMouseEnter={e=>{const el=e.currentTarget;el.style.background=d.color+"18";el.querySelector("span").style.color=d.color;el.querySelector("span").style.fontWeight="700";}}
+                      onMouseLeave={e=>{const el=e.currentTarget;el.style.background="transparent";el.querySelector("span").style.color=C.t2;el.querySelector("span").style.fontWeight="400";}}
                       onClick={()=>onOpenTaskModal(`${d.label} Tasks`,filtered)}
-                      style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:lhov?d.color+"18":"transparent",cursor:"pointer",transition:"background .15s"}}>
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:"transparent",cursor:"pointer",transition:"background .15s"}}>
                       <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                      <span style={{fontSize:12,color:lhov?d.color:C.t2,fontWeight:lhov?700:400,flex:1,transition:"color .15s"}}>{d.label}</span>
+                      <span style={{fontSize:12,color:C.t2,fontWeight:400,flex:1,transition:"color .15s"}}>{d.label}</span>
                       <div style={{width:120,height:8,background:C.surface,borderRadius:4,overflow:"hidden",flexShrink:0}}>
-                        <div style={{width:`${tot?Math.round(d.value/tot*100):0}%`,height:"100%",background:d.color,borderRadius:4,boxShadow:lhov?`0 0 6px ${d.color}88`:"none",transition:"box-shadow .15s"}}/>
+                        <div style={{width:`${tot?Math.round(d.value/tot*100):0}%`,height:"100%",background:d.color,borderRadius:4}}/>
                       </div>
                       <span style={{fontSize:12,fontWeight:700,color:d.color,minWidth:28,textAlign:"right"}}>{d.value}</span>
                     </div>
@@ -11193,14 +11193,14 @@ export default function App(){
                       <DonutChart data={sData} size={130} onSliceClick={s=>ssm({title:`${s.label} Tasks`,tasks:getStatusTasks(s)})}/>
                       <div style={{display:"flex",flexDirection:"column",gap:8}}>
                         {sData.map(d=>{
-                          const [lhov,setLH]=React.useState(false);
                           return(
                             <div key={d.label}
-                              onMouseEnter={()=>setLH(true)} onMouseLeave={()=>setLH(false)}
+                              onMouseEnter={e=>{const el=e.currentTarget;el.style.background=d.color+"18";el.querySelector("span").style.color=d.color;el.querySelector("span").style.fontWeight="700";}}
+                              onMouseLeave={e=>{const el=e.currentTarget;el.style.background="transparent";el.querySelector("span").style.color=C.t2;el.querySelector("span").style.fontWeight="400";}}
                               onClick={()=>ssm({title:`${d.label} Tasks`,tasks:getStatusTasks(d)})}
-                              style={{display:"flex",alignItems:"center",gap:8,padding:"4px 8px",borderRadius:7,background:lhov?d.color+"18":"transparent",cursor:"pointer",transition:"background .15s"}}>
+                              style={{display:"flex",alignItems:"center",gap:8,padding:"4px 8px",borderRadius:7,background:"transparent",cursor:"pointer",transition:"background .15s"}}>
                               <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                              <span style={{fontSize:11,color:lhov?d.color:C.t2,fontWeight:lhov?700:400,transition:"color .15s"}}>{d.label}</span>
+                              <span style={{fontSize:11,color:C.t2,fontWeight:400,transition:"color .15s"}}>{d.label}</span>
                               <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
                             </div>
                           );
