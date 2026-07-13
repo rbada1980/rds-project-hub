@@ -11139,6 +11139,45 @@ export default function App(){
               <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
+            {/* ── Charts: Status Donut + Client Bar ── */}
+            {(()=>{
+              const sData=[
+                {label:"Not Yet Started",value:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length,color:C.t3},
+                {label:"In Progress",value:activeDashTasks.filter(t=>t.status==="In Progress").length,color:C.blue},
+                {label:"Review",value:activeDashTasks.filter(t=>t.status==="Review").length,color:C.purple},
+                {label:"Completed",value:activeDashTasks.filter(t=>isDone(t.status)).length,color:C.green},
+              ].filter(d=>d.value>0);
+              const cNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
+              const cData=cNames.map(c=>{
+                const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===c);
+                const ct=activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id));
+                const hue=c.charCodeAt(0)*23%360;
+                return{label:c,value:ct.length,color:`hsl(${hue},60%,55%)`};
+              }).filter(d=>d.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
+              return(
+                <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:28,marginTop:8}}>
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flexShrink:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Tasks by Status</div>
+                    <div style={{display:"flex",gap:18,alignItems:"center"}}>
+                      <DonutChart data={sData} size={130}/>
+                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {sData.map(d=>(
+                          <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                            <span style={{fontSize:11,color:C.t2}}>{d.label}</span>
+                            <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flex:"1 1 280px"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>👤 Tasks by Client</div>
+                    <MiniBarChart data={cData}/>
+                  </div>
+                </div>
+              );
+            })()}
             {/* ── 1. Projects Overview ── */}
             {(()=>{
               const _rp=dashProject!=="All"&&dashClient!=="All"&&!accessibleProjects.find(p=>p.id===dashProject&&(p.client||"Unassigned")===dashClient);if(_rp)sdsp("All");
@@ -11300,45 +11339,6 @@ export default function App(){
                 </>);
               })()
             )}
-            {/* ── Charts: Status Donut + Client Bar ── */}
-            {(()=>{
-              const sData=[
-                {label:"Not Yet Started",value:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length,color:C.t3},
-                {label:"In Progress",value:activeDashTasks.filter(t=>t.status==="In Progress").length,color:C.blue},
-                {label:"Review",value:activeDashTasks.filter(t=>t.status==="Review").length,color:C.purple},
-                {label:"Completed",value:activeDashTasks.filter(t=>isDone(t.status)).length,color:C.green},
-              ].filter(d=>d.value>0);
-              const cNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
-              const cData=cNames.map(c=>{
-                const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===c);
-                const ct=activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id));
-                const hue=c.charCodeAt(0)*23%360;
-                return{label:c,value:ct.length,color:`hsl(${hue},60%,55%)`};
-              }).filter(d=>d.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
-              return(
-                <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:28,marginTop:8}}>
-                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flexShrink:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Tasks by Status</div>
-                    <div style={{display:"flex",gap:18,alignItems:"center"}}>
-                      <DonutChart data={sData} size={130}/>
-                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                        {sData.map(d=>(
-                          <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
-                            <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                            <span style={{fontSize:11,color:C.t2}}>{d.label}</span>
-                            <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flex:"1 1 280px"}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>👤 Tasks by Client</div>
-                    <MiniBarChart data={cData}/>
-                  </div>
-                </div>
-              );
-            })()}
           </>
         )}
         {view==="timings"&&(
