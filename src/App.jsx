@@ -78,7 +78,10 @@ function Stat({label,value,sub,color=C.accent,onClick}){
 }
 const SBtn={background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:"inherit"};
 const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:"inherit"};
-function DonutChart({data,size=130}){
+function DonutChart({data,size=130,onSliceClick}){
+  const [hov,setHov]=useState(null);
+  const [ready,setReady]=useState(false);
+  useEffect(()=>{const t=setTimeout(()=>setReady(true),60);return()=>clearTimeout(t);},[]);
   const total=data.reduce((s,d)=>s+d.value,0);
   if(!total)return <div style={{width:size,height:size,display:"flex",alignItems:"center",justifyContent:"center",color:C.t3,fontSize:11}}>No data</div>;
   const r=44,cx=size/2,cy=size/2,circ=2*Math.PI*r;
@@ -86,30 +89,69 @@ function DonutChart({data,size=130}){
   const slices=data.filter(d=>d.value>0).map(d=>{const dash=(d.value/total)*circ;const s={...d,dash,off};off+=dash;return s;});
   return(
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:"block",flexShrink:0}}>
-      {slices.map((s,i)=>(
-        <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth={20}
-          strokeDasharray={`${s.dash} ${circ-s.dash}`}
-          strokeDashoffset={-s.off}
-          transform={`rotate(-90 ${cx} ${cy})`}/>
-      ))}
+      <defs>{slices.map((_,i)=>(
+        <filter key={i} id={`dg${size}-${i}`} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      ))}</defs>
+      {slices.map((s,i)=>{
+        const isH=hov===i;
+        return(
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+            stroke={s.color}
+            strokeWidth={isH?27:20}
+            strokeDasharray={ready?`${s.dash} ${circ-s.dash}`:`0 ${circ}`}
+            strokeDashoffset={-s.off}
+            transform={`rotate(-90 ${cx} ${cy})`}
+            filter={isH?`url(#dg${size}-${i})`:"none"}
+            style={{
+              transition:"stroke-dasharray .7s cubic-bezier(.4,0,.2,1), stroke-width .15s, opacity .15s",
+              cursor:onSliceClick?"pointer":"default",
+              opacity:hov!==null&&!isH?.4:1,
+            }}
+            onMouseEnter={()=>setHov(i)}
+            onMouseLeave={()=>setHov(null)}
+            onClick={()=>onSliceClick&&onSliceClick(s)}
+          />
+        );
+      })}
       <text x={cx} y={cy-4} textAnchor="middle" fontSize={20} fontWeight="800" fill="#f1f5f9">{total}</text>
-      <text x={cx} y={cy+13} textAnchor="middle" fontSize={9} fill="#8899aa">total</text>
+      <text x={cx} y={cy+13} textAnchor="middle" fontSize={9} fill={hov!==null&&slices[hov]?slices[hov].color:"#8899aa"} style={{transition:"fill .15s"}}>
+        {hov!==null&&slices[hov]?slices[hov].label:"total"}
+      </text>
     </svg>
   );
 }
-function MiniBarChart({data}){
+function MiniBarChart({data,onBarClick}){
+  const [hov,setHov]=useState(null);
+  const [ready,setReady]=useState(false);
+  useEffect(()=>{const t=setTimeout(()=>setReady(true),80);return()=>clearTimeout(t);},[]);
   const max=Math.max(...data.map(d=>d.value),1);
   return(
-    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-      {data.map((d,i)=>(
-        <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:110,fontSize:11,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right",flexShrink:0}}>{d.label}</div>
-          <div style={{flex:1,height:14,background:C.surface,borderRadius:4,overflow:"hidden",minWidth:60}}>
-            <div style={{width:`${(d.value/max)*100}%`,height:"100%",background:d.color||C.accent,borderRadius:4,minWidth:d.value>0?4:0,transition:"width .5s"}}/>
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {data.map((d,i)=>{
+        const isH=hov===i;
+        const clr=d.color||C.accent;
+        return(
+          <div key={i}
+            onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
+            onClick={()=>onBarClick&&onBarClick(d)}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:8,background:isH?clr+"18":"transparent",transition:"background .15s",cursor:onBarClick?"pointer":"default"}}>
+            <div style={{width:110,fontSize:11,color:isH?clr:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right",flexShrink:0,fontWeight:isH?700:400,transition:"color .15s,font-weight .15s"}}>{d.label}</div>
+            <div style={{flex:1,height:14,background:C.surface,borderRadius:4,overflow:"hidden",minWidth:60}}>
+              <div style={{
+                width:ready?`${(d.value/max)*100}%`:"0%",
+                height:"100%",background:clr,borderRadius:4,
+                minWidth:d.value>0&&ready?4:0,
+                transition:"width .65s cubic-bezier(.4,0,.2,1)",
+                boxShadow:isH?`0 0 10px ${clr}88`:"none",
+              }}/>
+            </div>
+            <div style={{width:28,fontSize:12,fontWeight:700,color:isH?clr:C.t3,textAlign:"right",flexShrink:0,transition:"color .15s"}}>{d.value}</div>
           </div>
-          <div style={{width:28,fontSize:12,fontWeight:700,color:d.color||C.accent,textAlign:"right",flexShrink:0}}>{d.value}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1211,38 +1253,54 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         ].filter(d=>d.value>0);
         return(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,marginBottom:24,display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
-            <DonutChart data={sData} size={120}/>
+            <DonutChart data={sData} size={120} onSliceClick={s=>{
+              if(s.label==="Completed")ssf(statusFilter==="Completed"?null:"Completed");
+              else if(s.label==="In Progress")ssf(statusFilter==="In Progress"?null:"In Progress");
+              else ssf(statusFilter==="Not Yet Started"?null:"Not Yet Started");
+            }}/>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12}}>📊 My Progress</div>
               <div style={{display:"flex",gap:18,flexWrap:"wrap",marginBottom:12}}>
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:28,fontWeight:800,color:pctNum>=80?C.green:pctNum>=50?C.blue:C.accent}}>{pctNum}%</div>
-                  <div style={{fontSize:11,color:C.t3}}>completion rate</div>
-                </div>
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:28,fontWeight:800,color:C.green}}>{done}</div>
-                  <div style={{fontSize:11,color:C.t3}}>tasks done</div>
-                </div>
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:28,fontWeight:800,color:C.blue}}>{inprog}</div>
-                  <div style={{fontSize:11,color:C.t3}}>in progress</div>
-                </div>
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:28,fontWeight:800,color:C.red}}>{overdue}</div>
-                  <div style={{fontSize:11,color:C.t3}}>overdue</div>
-                </div>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {sData.map(d=>(
-                  <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                    <span style={{fontSize:11,color:C.t2,flex:1}}>{d.label}</span>
-                    <div style={{width:100,height:7,background:C.surface,borderRadius:3,overflow:"hidden",flexShrink:0}}>
-                      <div style={{width:`${Math.round(d.value/total*100)}%`,height:"100%",background:d.color,borderRadius:3}}/>
+                {[
+                  {v:pctNum+"%",label:"completion",color:pctNum>=80?C.green:pctNum>=50?C.blue:C.accent,onClick:null},
+                  {v:done,label:"tasks done",color:C.green,onClick:()=>ssf(statusFilter==="Completed"?null:"Completed")},
+                  {v:inprog,label:"in progress",color:C.blue,onClick:()=>ssf(statusFilter==="In Progress"?null:"In Progress")},
+                  {v:overdue,label:"overdue",color:C.red,onClick:()=>ssf(statusFilter==="Overdue"?null:"Overdue")},
+                ].map(s=>{
+                  const [h,sh]=React.useState(false);
+                  return(
+                    <div key={s.label} textAlign="center"
+                      onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
+                      onClick={s.onClick||undefined}
+                      style={{textAlign:"center",cursor:s.onClick?"pointer":"default",padding:"6px 10px",borderRadius:10,background:h&&s.onClick?s.color+"18":"transparent",transition:"background .15s"}}>
+                      <div style={{fontSize:28,fontWeight:800,color:s.color,transition:"transform .15s",transform:h&&s.onClick?"scale(1.1)":"scale(1)"}}>{s.v}</div>
+                      <div style={{fontSize:11,color:C.t3}}>{s.label}</div>
                     </div>
-                    <span style={{fontSize:11,fontWeight:700,color:d.color,minWidth:24,textAlign:"right"}}>{d.value}</span>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {sData.map(d=>{
+                  const [lhov,setLH]=React.useState(false);
+                  const onClick=()=>{
+                    if(d.label==="Completed")ssf(statusFilter==="Completed"?null:"Completed");
+                    else if(d.label==="In Progress")ssf(statusFilter==="In Progress"?null:"In Progress");
+                    else ssf(statusFilter==="Not Yet Started"?null:"Not Yet Started");
+                  };
+                  return(
+                    <div key={d.label}
+                      onMouseEnter={()=>setLH(true)} onMouseLeave={()=>setLH(false)}
+                      onClick={onClick}
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:7,background:lhov?d.color+"18":"transparent",cursor:"pointer",transition:"background .15s"}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                      <span style={{fontSize:11,color:lhov?d.color:C.t2,fontWeight:lhov?700:400,flex:1,transition:"color .15s"}}>{d.label}</span>
+                      <div style={{width:100,height:7,background:C.surface,borderRadius:3,overflow:"hidden",flexShrink:0}}>
+                        <div style={{width:`${Math.round(d.value/total*100)}%`,height:"100%",background:d.color,borderRadius:3,boxShadow:lhov?`0 0 6px ${d.color}88`:"none",transition:"box-shadow .15s"}}/>
+                      </div>
+                      <span style={{fontSize:11,fontWeight:700,color:d.color,minWidth:24,textAlign:"right"}}>{d.value}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1812,16 +1870,24 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,marginTop:8}}>
             <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Team Tasks by Status</div>
             <div style={{display:"flex",gap:18,alignItems:"center",flexWrap:"wrap"}}>
-              <DonutChart data={sData} size={130}/>
-              <div style={{flex:1,display:"flex",flexDirection:"column",gap:10}}>
+              <DonutChart data={sData} size={130} onSliceClick={s=>{
+                const filtered=s.label==="Completed"?allTasks.filter(t=>isDone(t.status)):s.label==="Not Yet Started"?allTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started"):allTasks.filter(t=>t.status===s.label);
+                onOpenTaskModal(`${s.label} Tasks`,filtered);
+              }}/>
+              <div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>
                 {sData.map(d=>{
                   const tot=sData.reduce((s,x)=>s+x.value,0);
+                  const [lhov,setLH]=React.useState(false);
+                  const filtered=d.label==="Completed"?allTasks.filter(t=>isDone(t.status)):d.label==="Not Yet Started"?allTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started"):allTasks.filter(t=>t.status===d.label);
                   return(
-                    <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div key={d.label}
+                      onMouseEnter={()=>setLH(true)} onMouseLeave={()=>setLH(false)}
+                      onClick={()=>onOpenTaskModal(`${d.label} Tasks`,filtered)}
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:8,background:lhov?d.color+"18":"transparent",cursor:"pointer",transition:"background .15s"}}>
                       <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                      <span style={{fontSize:12,color:C.t2,flex:1}}>{d.label}</span>
+                      <span style={{fontSize:12,color:lhov?d.color:C.t2,fontWeight:lhov?700:400,flex:1,transition:"color .15s"}}>{d.label}</span>
                       <div style={{width:120,height:8,background:C.surface,borderRadius:4,overflow:"hidden",flexShrink:0}}>
-                        <div style={{width:`${tot?Math.round(d.value/tot*100):0}%`,height:"100%",background:d.color,borderRadius:4}}/>
+                        <div style={{width:`${tot?Math.round(d.value/tot*100):0}%`,height:"100%",background:d.color,borderRadius:4,boxShadow:lhov?`0 0 6px ${d.color}88`:"none",transition:"box-shadow .15s"}}/>
                       </div>
                       <span style={{fontSize:12,fontWeight:700,color:d.color,minWidth:28,textAlign:"right"}}>{d.value}</span>
                     </div>
@@ -11106,26 +11172,40 @@ export default function App(){
                 const hue=c.charCodeAt(0)*23%360;
                 return{label:c,value:ct.length,color:`hsl(${hue},60%,55%)`};
               }).filter(d=>d.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
+              const getStatusTasks=s=>{
+                if(s.label==="Completed")return activeDashTasks.filter(t=>isDone(t.status));
+                if(s.label==="Not Yet Started")return activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started");
+                return activeDashTasks.filter(t=>t.status===s.label);
+              };
               return(
                 <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:20,marginTop:8}}>
                   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flexShrink:0}}>
                     <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Tasks by Status</div>
                     <div style={{display:"flex",gap:18,alignItems:"center"}}>
-                      <DonutChart data={sData} size={130}/>
+                      <DonutChart data={sData} size={130} onSliceClick={s=>ssm({title:`${s.label} Tasks`,tasks:getStatusTasks(s)})}/>
                       <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                        {sData.map(d=>(
-                          <div key={d.label} style={{display:"flex",alignItems:"center",gap:8}}>
-                            <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                            <span style={{fontSize:11,color:C.t2}}>{d.label}</span>
-                            <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
-                          </div>
-                        ))}
+                        {sData.map(d=>{
+                          const [lhov,setLH]=React.useState(false);
+                          return(
+                            <div key={d.label}
+                              onMouseEnter={()=>setLH(true)} onMouseLeave={()=>setLH(false)}
+                              onClick={()=>ssm({title:`${d.label} Tasks`,tasks:getStatusTasks(d)})}
+                              style={{display:"flex",alignItems:"center",gap:8,padding:"4px 8px",borderRadius:7,background:lhov?d.color+"18":"transparent",cursor:"pointer",transition:"background .15s"}}>
+                              <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                              <span style={{fontSize:11,color:lhov?d.color:C.t2,fontWeight:lhov?700:400,transition:"color .15s"}}>{d.label}</span>
+                              <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
                   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flex:"1 1 280px"}}>
                     <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>👤 Tasks by Client</div>
-                    <MiniBarChart data={cData}/>
+                    <MiniBarChart data={cData} onBarClick={d=>{
+                      const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===d.label);
+                      ssm({title:`${d.label} — Tasks`,tasks:activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id))});
+                    }}/>
                   </div>
                 </div>
               );
