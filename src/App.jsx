@@ -10500,7 +10500,7 @@ export default function App(){
         </div>
       </aside>
 
-      <main className="rds-main" style={{flex:1,padding:24,overflow:view==="warroom"?"hidden":"auto",height:"100vh",boxSizing:"border-box",paddingBottom:view==="warroom"?24:isMobile?80:24}}>
+      <main className="rds-main" style={{flex:1,padding:24,overflowY:view==="warroom"?"hidden":"auto",overflowX:"hidden",height:"100vh",boxSizing:"border-box",paddingBottom:view==="warroom"?24:isMobile?80:24}}>
         <div className="rds-topbar" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,gap:8,flexWrap:"wrap"}}>
           <div className="rds-topbar-left" style={{display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<div style={{width:34,height:34,borderRadius:8,background:"#000",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
