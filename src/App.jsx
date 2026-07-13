@@ -9688,6 +9688,116 @@ function BackupCenter({me}){
 }
 
 
+function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEditTask}){
+  const projectById=new Map(projects.map(p=>[p.id,p]));
+  const isMobile=useMobile();
+  const isRegularUser=!isAdmin&&!isManager&&!isTeamLeader;
+  const priOrder={High:0,Medium:1,Low:2};
+  const byPri=(a,b)=>(priOrder[a.priority]??3)-(priOrder[b.priority]??3);
+  const d3=new Date(today);d3.setDate(d3.getDate()+3);const threeDaysStr=d3.toISOString().slice(0,10);
+
+  const myTasks=tasks.filter(t=>{
+    if(isDone(t.status))return false;
+    if(isRegularUser&&!userMatchesStr(me,t.assignee)&&!userMatchesStr(me,t.detailer)&&!userMatchesStr(me,t.checker))return false;
+    const ov=t.due_date&&t.due_date<today;
+    const dt=t.due_date===today;
+    const ip=t.status==="In Progress";
+    const ds=t.due_date&&t.due_date>today&&t.due_date<=threeDaysStr&&(t.status==="Not Yet Started"||t.status==="To Be Started");
+    return ov||dt||ip||ds;
+  });
+
+  const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today).sort(byPri);
+  const dueToday=myTasks.filter(t=>t.due_date===today).sort(byPri);
+  const inProgress=myTasks.filter(t=>t.status==="In Progress"&&!(t.due_date&&t.due_date<=today)).sort(byPri);
+  const dueSoon=myTasks.filter(t=>t.due_date&&t.due_date>today&&t.due_date<=threeDaysStr&&(t.status==="Not Yet Started"||t.status==="To Be Started")).sort(byPri);
+  const total=overdue.length+dueToday.length+inProgress.length+dueSoon.length;
+
+  function myRole(t){
+    if(userMatchesStr(me,t.assignee))return"Assignee";
+    if(userMatchesStr(me,t.detailer))return"Detailer";
+    if(userMatchesStr(me,t.checker))return"Checker";
+    return null;
+  }
+
+  const renderSection=(title,color,list)=>{
+    if(!list.length)return null;
+    return(
+      <div style={{marginBottom:28}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+          <div style={{width:3,height:18,background:color,borderRadius:2,flexShrink:0}}/>
+          <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:".07em"}}>{title}</span>
+          <span style={{background:color+"22",color:color,borderRadius:10,padding:"1px 8px",fontSize:11,fontWeight:800}}>{list.length}</span>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {list.map(t=>{
+            const proj=projectById.get(t.project_id);
+            const role=isRegularUser?myRole(t):null;
+            const isOv=t.due_date&&t.due_date<today;
+            const isDT=t.due_date===today;
+            const priClr={High:C.red,Medium:C.yellow,Low:C.green}[t.priority];
+            return(
+              <div key={t.id} onClick={()=>onEditTask(t)}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=color;e.currentTarget.style.transform="translateX(3px)";}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.transform="translateX(0)";}}
+                style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",transition:"border-color .15s,transform .12s",display:"flex",alignItems:"flex-start",gap:12}}>
+                <div style={{width:3,minWidth:3,alignSelf:"stretch",background:priClr||C.t3,borderRadius:2}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:5}}>
+                    <span style={{fontSize:13,fontWeight:600,color:C.t1,flex:"1 1 120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
+                    {t.priority&&<span style={{fontSize:10,fontWeight:700,color:priClr,background:priClr+"18",padding:"1px 6px",borderRadius:4,flexShrink:0}}>{t.priority}</span>}
+                    {role&&<span style={{fontSize:10,fontWeight:600,color:C.blue,background:C.blue+"18",padding:"1px 6px",borderRadius:4,flexShrink:0}}>{role}</span>}
+                    <span style={{fontSize:10,fontWeight:600,color:STATUS_CLR[t.status]||C.t3,background:(STATUS_CLR[t.status]||C.t3)+"18",padding:"1px 6px",borderRadius:4,flexShrink:0}}>{t.status}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    {proj&&<span style={{fontSize:11,color:C.t3}}>{proj.name}{proj.client?` · ${proj.client}`:""}</span>}
+                    {t.due_date&&<span style={{fontSize:11,fontWeight:600,color:isOv?C.red:isDT?C.yellow:C.teal}}>📅 {isOv?"Overdue: ":isDT?"Today: ":""}{fmtD(t.due_date)}</span>}
+                    {!isRegularUser&&t.assignee&&<span style={{fontSize:11,color:C.t3}}>→ {t.assignee}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const dayStr=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  return(
+    <div style={{maxWidth:860,margin:"0 auto"}}>
+      <div style={{marginBottom:24}}>
+        <h2 style={{margin:0,fontSize:22,fontWeight:800,color:C.t1}}>☀️ My Day</h2>
+        <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>{dayStr} · {total} task{total!==1?"s":""} need{total===1?"s":""} attention</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:10,marginBottom:28}}>
+        {[
+          {label:"Overdue",count:overdue.length,color:C.red,icon:"🔴"},
+          {label:"Due Today",count:dueToday.length,color:C.yellow,icon:"📅"},
+          {label:"In Progress",count:inProgress.length,color:C.blue,icon:"🔄"},
+          {label:"Due Soon",count:dueSoon.length,color:C.teal,icon:"⏳"},
+        ].map(s=>(
+          <div key={s.label} style={{background:C.card,border:`1px solid ${s.count>0?s.color+"55":C.border}`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20}}>{s.icon}</div>
+            <div style={{fontSize:22,fontWeight:800,color:s.count>0?s.color:C.t3,marginTop:2}}>{s.count}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      {total===0&&(
+        <div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:48,marginBottom:12}}>🎉</div>
+          <div style={{fontSize:16,fontWeight:700,color:C.t1,marginBottom:6}}>You're all caught up!</div>
+          <div style={{fontSize:13,color:C.t3}}>No overdue, due-today, in-progress, or upcoming tasks.</div>
+        </div>
+      )}
+      {renderSection("🔴 Overdue",C.red,overdue)}
+      {renderSection("📅 Due Today",C.yellow,dueToday)}
+      {renderSection("🔄 In Progress",C.blue,inProgress)}
+      {renderSection("⏳ Due Soon",C.teal,dueSoon)}
+    </div>
+  );
+}
+
 export default function App(){
   useEffect(()=>{
     document.body.style.margin="0";
@@ -10535,7 +10645,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["myday","☀️","My Day"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["myday","☀️","My Day"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["myday","☀️","My Day"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -10609,7 +10719,7 @@ export default function App(){
               const hr=new Date().getHours();
               const greet=hr<12?"Good Morning":hr<17?"Good Afternoon":"Good Evening";
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="backup"?"Backup, Disaster Recovery & Business Continuity":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
+              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="myday"?"☀️ My Day":view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="backup"?"Backup, Disaster Recovery & Business Continuity":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
                 <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
                 <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
@@ -11441,6 +11551,9 @@ export default function App(){
               })()
             )}
           </>
+        )}
+        {view==="myday"&&!isClient&&(
+          <MyDayView me={me} tasks={filtered} projects={accessibleProjects} today={today} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} onEditTask={t=>{set(t);stm(true);}}/>
         )}
         {view==="timings"&&(
           <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}/>
