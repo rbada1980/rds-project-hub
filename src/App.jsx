@@ -1261,27 +1261,34 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12}}>📊 My Progress</div>
               <div style={{display:"flex",gap:18,flexWrap:"wrap",marginBottom:12}}>
-                {[
-                  {v:pctNum+"%",label:"completion",color:pctNum>=80?C.green:pctNum>=50?C.blue:C.accent,onClick:null},
-                  {v:done,label:"tasks done",color:C.green,onClick:()=>ssf(statusFilter==="Completed"?null:"Completed")},
-                  {v:inprog,label:"in progress",color:C.blue,onClick:()=>ssf(statusFilter==="In Progress"?null:"In Progress")},
-                  {v:overdue,label:"overdue",color:C.red,onClick:()=>ssf(statusFilter==="Overdue"?null:"Overdue")},
-                ].map(s=>{
-                  const [h,sh]=React.useState(false);
-                  return(
-                    <div key={s.label} textAlign="center"
-                      onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-                      onClick={s.onClick||undefined}
-                      style={{textAlign:"center",cursor:s.onClick?"pointer":"default",padding:"6px 10px",borderRadius:10,background:h&&s.onClick?s.color+"18":"transparent",transition:"background .15s"}}>
-                      <div style={{fontSize:28,fontWeight:800,color:s.color,transition:"transform .15s",transform:h&&s.onClick?"scale(1.1)":"scale(1)"}}>{s.v}</div>
-                      <div style={{fontSize:11,color:C.t3}}>{s.label}</div>
-                    </div>
-                  );
-                })}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:28,fontWeight:800,color:pctNum>=80?C.green:pctNum>=50?C.blue:C.accent}}>{pctNum}%</div>
+                  <div style={{fontSize:11,color:C.t3}}>completion rate</div>
+                </div>
+                <div style={{textAlign:"center",cursor:"pointer",padding:"4px 8px",borderRadius:8,transition:"background .15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.green+"18"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                  onClick={()=>ssf(statusFilter==="Completed"?null:"Completed")}>
+                  <div style={{fontSize:28,fontWeight:800,color:C.green}}>{done}</div>
+                  <div style={{fontSize:11,color:C.t3}}>tasks done</div>
+                </div>
+                <div style={{textAlign:"center",cursor:"pointer",padding:"4px 8px",borderRadius:8,transition:"background .15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.blue+"18"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                  onClick={()=>ssf(statusFilter==="In Progress"?null:"In Progress")}>
+                  <div style={{fontSize:28,fontWeight:800,color:C.blue}}>{inprog}</div>
+                  <div style={{fontSize:11,color:C.t3}}>in progress</div>
+                </div>
+                <div style={{textAlign:"center",cursor:"pointer",padding:"4px 8px",borderRadius:8,transition:"background .15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.red+"18"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                  onClick={()=>ssf(statusFilter==="Overdue"?null:"Overdue")}>
+                  <div style={{fontSize:28,fontWeight:800,color:C.red}}>{overdue}</div>
+                  <div style={{fontSize:11,color:C.t3}}>overdue</div>
+                </div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
                 {sData.map(d=>{
-                  const [lhov,setLH]=React.useState(false);
                   const onClick=()=>{
                     if(d.label==="Completed")ssf(statusFilter==="Completed"?null:"Completed");
                     else if(d.label==="In Progress")ssf(statusFilter==="In Progress"?null:"In Progress");
@@ -1289,13 +1296,14 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                   };
                   return(
                     <div key={d.label}
-                      onMouseEnter={()=>setLH(true)} onMouseLeave={()=>setLH(false)}
+                      onMouseEnter={e=>{e.currentTarget.style.background=d.color+"18";e.currentTarget.querySelector(".lbl").style.color=d.color;e.currentTarget.querySelector(".lbl").style.fontWeight="700";}}
+                      onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.querySelector(".lbl").style.color=C.t2;e.currentTarget.querySelector(".lbl").style.fontWeight="400";}}
                       onClick={onClick}
-                      style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:7,background:lhov?d.color+"18":"transparent",cursor:"pointer",transition:"background .15s"}}>
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"4px 6px",borderRadius:7,background:"transparent",cursor:"pointer",transition:"background .15s"}}>
                       <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                      <span style={{fontSize:11,color:lhov?d.color:C.t2,fontWeight:lhov?700:400,flex:1,transition:"color .15s"}}>{d.label}</span>
+                      <span className="lbl" style={{fontSize:11,color:C.t2,fontWeight:400,flex:1,transition:"color .15s"}}>{d.label}</span>
                       <div style={{width:100,height:7,background:C.surface,borderRadius:3,overflow:"hidden",flexShrink:0}}>
-                        <div style={{width:`${Math.round(d.value/total*100)}%`,height:"100%",background:d.color,borderRadius:3,boxShadow:lhov?`0 0 6px ${d.color}88`:"none",transition:"box-shadow .15s"}}/>
+                        <div style={{width:`${Math.round(d.value/total*100)}%`,height:"100%",background:d.color,borderRadius:3}}/>
                       </div>
                       <span style={{fontSize:11,fontWeight:700,color:d.color,minWidth:24,textAlign:"right"}}>{d.value}</span>
                     </div>
