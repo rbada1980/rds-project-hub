@@ -16,7 +16,7 @@ const C = {
   bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
   accent:"#f97316",teal:"#14b8a6",blue:"#3b82f6",purple:"#a855f7",
   green:"#22c55e",red:"#ef4444",yellow:"#eab308",
-  t1:"#f1f5f9",t2:"#94a3b8",t3:"#475569",
+  t1:"#f1f5f9",t2:"#b0bfcc",t3:"#8899aa",
 };
 const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Review","Completed"];
@@ -10517,7 +10517,7 @@ export default function App(){
               return(<>
                 <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
                 <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
-                <p className="rds-page-sub" style={{margin:"2px 0 0",color:C.t3,fontSize:12}}>{dateStr}</p>
+                <p className="rds-page-sub" style={{margin:"2px 0 0",color:C.t2,fontSize:12}}>{dateStr}</p>
               </>);
             })()}
             </div>
