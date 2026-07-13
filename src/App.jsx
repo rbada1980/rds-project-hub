@@ -9791,15 +9791,39 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
     );
   };
 
+  const [popup,setPopup]=useState(null);
   const dayStr=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const stats=[
-    {label:"Overdue",count:overdue.length,color:C.red,icon:"🔴",delay:0},
-    {label:"Due Today",count:dueToday.length,color:"#f59e0b",icon:"📅",delay:60},
-    {label:"In Progress",count:inProgress.length,color:C.blue,icon:"🔄",delay:120},
-    {label:"Due Soon",count:dueSoon.length,color:C.teal,icon:"⏳",delay:180},
+    {label:"Overdue",count:overdue.length,color:C.red,icon:"🔴",delay:0,list:overdue},
+    {label:"Due Today",count:dueToday.length,color:"#f59e0b",icon:"📅",delay:60,list:dueToday},
+    {label:"In Progress",count:inProgress.length,color:C.blue,icon:"🔄",delay:120,list:inProgress},
+    {label:"Due Soon",count:dueSoon.length,color:C.teal,icon:"⏳",delay:180,list:dueSoon},
   ];
   return(
     <div style={{maxWidth:1100,margin:"0 auto"}}>
+      {/* Stat popup modal */}
+      {popup&&(
+        <div onClick={()=>setPopup(null)} style={{position:"fixed",inset:0,background:"#00000085",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:"20px"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${popup.color}44`,borderRadius:18,width:"100%",maxWidth:900,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 32px 80px #00000090,0 0 0 1px ${popup.color}22`,animation:"mdUp .28s cubic-bezier(.22,1,.36,1) both"}}>
+            {/* Modal header */}
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"18px 22px",borderBottom:`1px solid ${popup.color}22`,flexShrink:0}}>
+              <div style={{width:40,height:40,borderRadius:10,background:popup.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,border:`1px solid ${popup.color}33`}}>{popup.icon}</div>
+              <div>
+                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>{popup.label}</div>
+                <div style={{fontSize:12,color:C.t3}}>{popup.list.length} task{popup.list.length!==1?"s":""}</div>
+              </div>
+              <div style={{flex:1}}/>
+              <button onClick={()=>setPopup(null)} style={{width:32,height:32,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
+            </div>
+            {/* Modal task grid */}
+            <div style={{overflowY:"auto",padding:"18px 22px",display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(270px,1fr))",gap:12}}>
+              {popup.list.length===0?(
+                <div style={{gridColumn:"1/-1",textAlign:"center",padding:"40px 20px",color:C.t3,fontSize:13}}>No tasks in this category</div>
+              ):popup.list.map((t,i)=>card(t,popup.color,i*40))}
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{marginBottom:28,display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
         <div>
           <div style={{fontSize:28,fontWeight:900,color:C.t1,display:"flex",alignItems:"center",gap:10}}>
@@ -9813,8 +9837,10 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:12,marginBottom:36}}>
         {stats.map(s=>(
-          <div key={s.label} className="mday-stat"
-            style={{background:`linear-gradient(135deg,${C.card},${s.color}0a)`,border:`1px solid ${s.count>0?s.color+"44":C.border}`,borderRadius:14,padding:"18px 20px",display:"flex",alignItems:"center",gap:14,animationDelay:`${s.delay}ms`,boxShadow:s.count>0?`0 4px 20px ${s.color}18`:"none",transition:"box-shadow .2s"}}>
+          <div key={s.label} className="mday-stat" onClick={()=>s.count>0&&setPopup(s)}
+            style={{background:`linear-gradient(135deg,${C.card},${s.color}0a)`,border:`1px solid ${s.count>0?s.color+"44":C.border}`,borderRadius:14,padding:"18px 20px",display:"flex",alignItems:"center",gap:14,animationDelay:`${s.delay}ms`,boxShadow:s.count>0?`0 4px 20px ${s.color}18`:"none",transition:"box-shadow .2s,transform .18s",cursor:s.count>0?"pointer":"default"}}
+            onMouseEnter={e=>{if(s.count>0){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 10px 30px ${s.color}33`;}}}
+            onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow=s.count>0?`0 4px 20px ${s.color}18`:"none";}}>
             <div style={{width:46,height:46,borderRadius:12,background:s.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${s.color}22`}}>{s.icon}</div>
             <div>
               <div style={{fontSize:28,fontWeight:900,color:s.count>0?s.color:C.t3,lineHeight:1}}>{s.count}</div>
