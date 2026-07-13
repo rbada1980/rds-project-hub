@@ -9985,9 +9985,9 @@ export default function App(){
           return chk(tk.assignee)||chk(tk.detailer)||chk(tk.checker);
         }
         const [{data:u},{data:p},{data:t}]=await Promise.all([
-          supabase.from("users").select("id,name,username,role,email").order("name"),
-          supabase.from("projects").select("*").order("name"),
-          supabase.from("tasks").select("*").order("created_at"),
+          supabase.from("users").select("id,name,username,role,email").order("name").limit(2000),
+          supabase.from("projects").select("*").order("name").limit(2000),
+          supabase.from("tasks").select("*").order("created_at").limit(9999),
         ]);
         su(u||[]);
         const myTasks=(t||[]).filter(taskBelongsToMe);
@@ -9996,11 +9996,11 @@ export default function App(){
         sp(myProjects); st(myTasks); scl([]);
       }else{
         const [{data:u},{data:p},{data:t},{data:cl},{data:wf}]=await Promise.all([
-          supabase.from("users").select("*").order("name"),
-          supabase.from("projects").select("*").order("name"),
-          supabase.from("tasks").select("*").order("created_at"),
-          supabase.from("clients").select("*").order("name"),
-          supabase.from("workflows").select("*").order("created_at"),
+          supabase.from("users").select("*").order("name").limit(2000),
+          supabase.from("projects").select("*").order("name").limit(2000),
+          supabase.from("tasks").select("*").order("created_at").limit(9999),
+          supabase.from("clients").select("*").order("name").limit(2000),
+          supabase.from("workflows").select("*").order("created_at").limit(2000),
         ]);
         su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);swf(wf||[]);
       }

@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-13T11:11:01.273Z",
-  "ist_time": "2026-07-13 16:41:01 IST",
+  "timestamp": "2026-07-13T11:46:41.931Z",
+  "ist_time": "2026-07-13 17:16:41 IST",
   "duration_sec": 5,
-  "total_synced": 2054,
+  "total_synced": 2060,
   "total_pushed": 887,
-  "total_pulled": 1167,
+  "total_pulled": 1173,
   "total_failed": 60,
   "status": "partial",
   "tables": [
@@ -58,7 +58,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 259
+      "pulled": 265
     },
     {
       "table": "announcements",
