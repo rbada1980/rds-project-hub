@@ -12,7 +12,7 @@ const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
-const EXCEL_FILE = path.join(__dirname, 'White Cap Projects Tracker2_2026.xlsx');
+const EXCEL_FILE = "C:\\Users\\HP\\Documents\\Claude\\Projects\\RDS PROJECTS HUB\\White Cap Projects Tracker2_2026.xlsx";
 const SHEET_NAME = 'White Cap Work Schedule';
 const CLIENT_NAME = 'White Cap';
 
@@ -93,19 +93,19 @@ function readExcel() {
   const projects = {};  // name → { tasks: [] }
   let currentProject = null;
 
-  for (let i = 4; i < rows.length; i++) {  // data starts at row 5 (index 4)
+  for (let i = 2; i < rows.length; i++) {  // data starts at row 3 (index 2); row 1 is header, row 2 is blank
     const row = rows[i];
     const colA = row[0] ? String(row[0]).trim() : null;
     const colB = row[1] ? String(row[1]).trim() : null;
     const colC = row[2] ? String(row[2]).trim() : null;
-    const colD = row[3];  // date (may be Date object or string)
+    const colD = row[3];  // CLIENT SUB. DATE
     const colE = row[4] ? String(row[4]).trim() : null;
     const colF = row[5] ? String(row[5]).trim() : null;
 
     if (colA) currentProject = colA;
     if (!colB || !currentProject) continue;
 
-    const dueDate = parseDate(colD);
+    const subDate = parseDate(colD);  // col D = CLIENT SUB. DATE → client_sub_date
 
     if (!projects[currentProject]) {
       projects[currentProject] = { tasks: [], maxDate: null };
@@ -113,14 +113,15 @@ function readExcel() {
     projects[currentProject].tasks.push({
       title: colB,
       status: fixStatus(colC),
-      due_date: dueDate,
-      client_sub_date: null,  // not in Excel — staff set this manually when submitting to client
+      due_date: null,           // not in this Excel — staff set manually
+      client_sub_date: subDate, // from CLIENT SUB. DATE column
       detailer: colE,
       checker: colF,
       assignee: colE,  // detailer = assignee
     });
-    if (dueDate && (!projects[currentProject].maxDate || dueDate > projects[currentProject].maxDate)) {
-      projects[currentProject].maxDate = dueDate;
+    // maxDate tracks latest client_sub_date for project deadline
+    if (subDate && (!projects[currentProject].maxDate || subDate > projects[currentProject].maxDate)) {
+      projects[currentProject].maxDate = subDate;
     }
   }
 
@@ -139,16 +140,13 @@ async function main() {
   console.log(`\n✓ Read ${projectNames.length} projects, ${totalTasks} tasks from Excel`);
 
   // Verify dates
-  const allDates = projectNames.flatMap(n => projects[n].tasks.map(t => t.due_date).filter(Boolean));
+  const allDates = projectNames.flatMap(n => projects[n].tasks.map(t => t.client_sub_date).filter(Boolean));
   const years = {};
   allDates.forEach(d => { const y = d.slice(0,4); years[y] = (years[y]||0)+1; });
-  console.log(`  Date distribution: ${JSON.stringify(years)}`);
-  console.log(`  Max due_date: ${allDates.sort().reverse()[0]}`);
-  console.log(`  No date: ${totalTasks - allDates.length}`);
-
-  const y2026count = allDates.filter(d => d.startsWith('2026')).length;
-  if (!allDates.length || y2026count < allDates.length * 0.9) {
-    console.error(`\n❌ Dates look wrong (only ${y2026count}/${allDates.length} are 2026). Aborting.`);
+  console.log(`  client_sub_date distribution: ${JSON.stringify(years)}`);
+  console.log(`  No sub date: ${totalTasks - allDates.length} (will be null — staff set later)`);
+  if (allDates.length === 0) {
+    console.error('\n❌ No dates found at all — check Excel column mapping. Aborting.');
     await pool.end(); return;
   }
 
@@ -278,21 +276,13 @@ async function main() {
   // Supabase
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/tasks?client=eq.${encodeURIComponent(CLIENT_NAME)}&select=due_date&limit=1000`,
+      `${SUPABASE_URL}/rest/v1/tasks?client=eq.${encodeURIComponent(CLIENT_NAME)}&select=client_sub_date,due_date&limit=1000`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     const sTasks = await res.json();
-    const today = new Date('2026-07-11');
-    let sOverdue=0, sFuture=0;
-    const sYears = {};
-    for (const t of sTasks) {
-      const yr = t.due_date ? t.due_date.slice(0,4) : 'null';
-      sYears[yr] = (sYears[yr]||0)+1;
-      if (t.due_date && new Date(t.due_date) < today) sOverdue++;
-      else if (t.due_date) sFuture++;
-    }
-    console.log(`  Supabase: ${sTasks.length} tasks | years: ${JSON.stringify(sYears)}`);
-    console.log(`  Supabase: ${sOverdue} overdue, ${sFuture} future`);
+    const withSub = sTasks.filter(t => t.client_sub_date).length;
+    const withDue = sTasks.filter(t => t.due_date).length;
+    console.log(`  Supabase: ${sTasks.length} tasks | withSubDate=${withSub} | withDueDate=${withDue}`);
   } catch(e) {
     console.warn('  ⚠ Supabase verify failed:', e.message);
   }
@@ -301,20 +291,14 @@ async function main() {
   try {
     const r = await pool.query(`
       SELECT
-        COUNT(*) FILTER (WHERE due_date IS NOT NULL AND EXTRACT(YEAR FROM due_date) = 2026) as y2026,
-        COUNT(*) FILTER (WHERE due_date IS NOT NULL AND EXTRACT(YEAR FROM due_date) < 2026) as old,
-        COUNT(*) FILTER (WHERE due_date IS NULL) as no_date,
-        COUNT(*) FILTER (WHERE due_date IS NOT NULL AND due_date < CURRENT_DATE) as overdue,
-        MAX(due_date) as max_date
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE client_sub_date IS NOT NULL) as with_sub,
+        COUNT(*) FILTER (WHERE due_date IS NOT NULL) as with_due
       FROM tasks WHERE LOWER(COALESCE(client,'')) LIKE '%white cap%'
     `);
     const v = r.rows[0];
-    console.log(`  Local: y2026=${v.y2026} | old=${v.old} | noDate=${v.no_date} | overdue=${v.overdue} | max=${v.max_date}`);
-    if (parseInt(v.old) > 5) {
-      console.warn('\n⚠ Warning: local still has some pre-2026 dates. Check date parsing.');
-    } else {
-      console.log('\n✅ Both Supabase and local updated successfully!');
-    }
+    console.log(`  Local: total=${v.total} | withSubDate=${v.with_sub} | withDueDate=${v.with_due}`);
+    console.log('\n✅ Both Supabase and local updated successfully!');
   } catch(e) {
     console.warn('  ⚠ Local verify failed:', e.message);
   }
