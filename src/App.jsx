@@ -315,7 +315,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
-        <div style={col}><FInput label={requireDates?"Client Sub Date *":"Client Sub Date"} value={f.client_sub_date} onChange={s("client_sub_date")} type="date"/></div>
+        <div style={col}><FInput label="Client Sub Date" value={f.client_sub_date} onChange={s("client_sub_date")} type="date"/></div>
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
@@ -10326,10 +10326,9 @@ export default function App(){
       ssv(false);stm(false);set(null);
       return;
     }
-    // ── Admin / Manager: require due_date and client_sub_date ──
+    // ── Admin / Manager: require due_date ──
     if(canEdit){
       if(!f.due_date){showToast("Due Date is required.",false);return;}
-      if(!f.client_sub_date){showToast("Client Sub Date is required.",false);return;}
     }
     // ── Admin / Manager: full task save ──
     ssv(true);
