@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, createContext, useContext, Fragment } from "react";
+import { useState, useRef, useEffect, useMemo, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { createLocalClient } from "./localApi.js";
 const MobileCtx=createContext(false);
@@ -977,7 +977,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
     </div>
   );
 }
@@ -1205,10 +1205,10 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
         const od=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
         const uModalData={
-          utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
-          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.blue};})},
-          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
+          utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
+          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.blue};})},
+          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=uModalData[uStatModal];if(!md)return null;
         return(<div onClick={()=>setUSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1328,7 +1328,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {dueWeek.slice(0,5).map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
+                const pj=projectById.get(t.project_id);
                 const daysLeft=Math.ceil((new Date(t.due_date)-new Date(today))/(1000*60*60*24));
                 return(
                   <div key={t.id} style={{display:"flex",alignItems:"center",gap:10,background:C.surface,borderRadius:8,padding:"9px 12px"}}>
@@ -1354,7 +1354,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         const allA=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
         const hasF=fSearch||fProject!=="All"||fAssignee!=="All"||fStatus!=="All";
         const ft=myTasks.filter(t=>{
-          const pj=projects.find(p=>p.id===t.project_id);
+          const pj=projectById.get(t.project_id);
           if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
           if(fProject!=="All"&&t.project_id!==fProject)return false;
           if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
@@ -1392,7 +1392,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                 ))}</tr></thead>
                 <tbody>{ft.length===0
                   ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-                  :ft.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -1419,7 +1419,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
             ?<p style={{color:C.t3,fontSize:13}}>No tasks in this category.</p>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filteredTasks.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
+                const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                 return(
                   <div key={t.id} onClick={()=>onEditTask(t)}
@@ -1598,13 +1598,13 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         const doneTasks=allTasks.filter(t=>isDone(t.status));
         const tlModalData={
           tlteam:{title:"👤 Team Members",color:"#8b5cf6",items:teamMembers.map(m=>{const mt=allTasks.filter(t=>t.assignee===m);const mip=mt.filter(t=>t.status==="In Progress").length;const md=mt.filter(t=>isDone(t.status)).length;return{label:m,sub:`${mip} in progress · ${md} done`,dot:"#8b5cf6"};})},
-          tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.accent};})},
-          tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"}`,dot:C.green};})},
-          tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${fmtD(t.due_date)}`,dot:isDone(t.status)?C.green:C.blue};})},
-          tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
-          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
+          tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.accent};})},
+          tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"}`,dot:C.green};})},
+          tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${fmtD(t.due_date)}`,dot:isDone(t.status)?C.green:C.blue};})},
+          tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
+          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=tlModalData[tlStatModal];if(!md)return null;
         return(<div onClick={()=>setTSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1761,7 +1761,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         const allA=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))].sort();
         const hasF=fSearch||fProject!=="All"||fAssignee!=="All"||fStatus!=="All";
         const ft=allTasks.filter(t=>{
-          const pj=projects.find(p=>p.id===t.project_id);
+          const pj=projectById.get(t.project_id);
           if(fSearch&&!t.title.toLowerCase().includes(fSearch.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(fSearch.toLowerCase()))return false;
           if(fProject!=="All"&&t.project_id!==fProject)return false;
           if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
@@ -1799,7 +1799,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                 ))}</tr></thead>
                 <tbody>{ft.length===0
                   ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-                  :ft.map(t=>{const pj=projects.find(p=>p.id===t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -1836,7 +1836,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           ?<p style={{color:C.t3,fontSize:13,margin:"12px 16px",padding:"12px 0"}}>No tasks in this category.</p>
           :<div style={{padding:"16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
             {shown.map(t=>{
-              const proj=projects.find(p=>p.id===t.project_id);
+              const proj=projectById.get(t.project_id);
               const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
               const iAmDetailer=matchesMe(t.detailer);
               const iAmChecker=matchesMe(t.checker);
@@ -2111,7 +2111,7 @@ function exportExcel(projects,tasks,label="Report"){
     <tr><td colspan="10" class="title">All Tasks &mdash; ${safe}</td></tr>
     <tr><th>#</th><th>Project</th><th>Client</th><th>Task Title</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Start Date</th><th>Due Date</th><th>Overdue?</th></tr>
     ${tasks.map((t,i)=>{
-      const proj=projects.find(p=>p.id===t.project_id);
+      const proj=projectById.get(t.project_id);
       const sc=statusClass(t.status,t.due_date);
       const ovd=t.due_date&&t.due_date<today&&!isDone(t.status);
       return`<tr>
@@ -2160,7 +2160,7 @@ function exportExcel(projects,tasks,label="Report"){
     html+=`<tr><td colspan="7" class="grp">${name} &mdash; ${ut.length} tasks</td></tr>`;
     html+=`<tr><th>#</th><th>Project</th><th>Task</th><th>Status</th><th>Priority</th><th>Due Date</th><th>Overdue?</th></tr>`;
     ut.forEach((t,i)=>{
-      const proj=projects.find(p=>p.id===t.project_id);
+      const proj=projectById.get(t.project_id);
       const sc=statusClass(t.status,t.due_date);
       const ovd=t.due_date&&t.due_date<today&&!isDone(t.status);
       html+=`<tr class="${i%2===0?"row1":"row2"}">
@@ -2350,7 +2350,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   const allAssignees=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
   const hasFilter=statusFilter!=="All"||filterProject!=="All"||filterAssignee!=="All"||search;
   const filtered=myTasks.filter(t=>{
-    const pj=projects.find(p=>p.id===t.project_id);
+    const pj=projectById.get(t.project_id);
     if(search&&!t.title.toLowerCase().includes(search.toLowerCase())&&!(pj?.name||"").toLowerCase().includes(search.toLowerCase()))return false;
     if(statusFilter!=="All"){const nsMatch=statusFilter==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==statusFilter)return false;}
     if(filterProject!=="All"&&t.project_id!==filterProject)return false;
@@ -2391,8 +2391,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
         const clModalData={
           clprojects:{title:"📁 My Projects",color:C.teal,items:myProjects.map(p=>{const pt=myTasks.filter(t=>t.project_id===p.id);const pd=pt.filter(t=>isDone(t.status)).length;return{label:p.name,sub:`${pt.length} tasks · ${pt.length?Math.round(pd/pt.length*100):0}% done`,dot:C.teal};})},
-          cltotal:{title:"📋 All Tasks",color:C.blue,items:myTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          clcompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
+          cltotal:{title:"📋 All Tasks",color:C.blue,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          clcompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
           clpct:{title:"📊 Tasks by Status",color:"#f59e0b",items:[{label:`✅ Completed`,sub:`${done} tasks`,dot:C.green},{label:`🔄 In Progress`,sub:`${inprog} tasks`,dot:C.blue},{label:`⏳ Not Started`,sub:`${notStarted} tasks`,dot:C.t3},{label:`⚠ Overdue`,sub:`${overdue} tasks`,dot:C.red}]},
         };
         const md=clModalData[clStatModal];if(!md)return null;
@@ -2461,7 +2461,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
             <tbody>{filtered.length===0
               ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
               :filtered.map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
+                const pj=projectById.get(t.project_id);
                 const tdy=new Date().toISOString().slice(0,10);
                 const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);
                 return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
@@ -2687,7 +2687,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
   const allAssignees=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
   const hasFilter=q||fProj!=="All"||fClient!=="All"||fAssignee!=="All"||fStatus!=="All";
   const shown=tasks.filter(t=>{
-    if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(projects.find(p=>p.id===t.project_id)?.name||"").toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
+    if(q&&!t.title.toLowerCase().includes(q.toLowerCase())&&!(projectById.get(t.project_id)?.name||"").toLowerCase().includes(q.toLowerCase())&&!(t.assignee||"").toLowerCase().includes(q.toLowerCase()))return false;
     if(fProj!=="All"&&t.project_id!==fProj)return false;
     if(fStatus!=="All"){const nsMatch=fStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==fStatus)return false;}
     if(fAssignee!=="All"&&t.assignee!==fAssignee)return false;
@@ -2754,7 +2754,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
                 ))}</tr>
               </thead>
               <tbody>{shown.map(t=>{
-                const pj=projects.find(p=>p.id===t.project_id);
+                const pj=projectById.get(t.project_id);
                 const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
                 const hi=q&&(t.title.toLowerCase().includes(q.toLowerCase())||(pj?.name||"").toLowerCase().includes(q.toLowerCase())||(t.assignee||"").toLowerCase().includes(q.toLowerCase()));
                 return(
@@ -3404,7 +3404,7 @@ ${priData.length===0?"<tr><td colspan='4' style='text-align:center;color:#94a3b8
 ${overdueList.length>0?`<h2>▌ OVERDUE TASKS — ACTION REQUIRED (${overdueList.length})</h2>
 <table>
 <tr><th>#</th><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Days Overdue</th><th>Status</th><th>Priority</th></tr>
-${overdueList.map((t,i)=>{const pj=projects.find(p=>p.id===t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"—"}</td><td style="color:#7c3aed">${t.assignee||"—"}</td><td style="color:#dc2626;font-weight:600">${fmtD(t.due_date)}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"—"}</span></td></tr>`;}).join("")}
+${overdueList.map((t,i)=>{const pj=projectById.get(t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"—"}</td><td style="color:#7c3aed">${t.assignee||"—"}</td><td style="color:#dc2626;font-weight:600">${fmtD(t.due_date)}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"—"}</span></td></tr>`;}).join("")}
 </table>`:""}
 
 <div style="margin-top:20px;padding:10px 14px;background:#f1f5f9;border-top:2px solid #1e3a5f;font-size:8pt;color:#64748b">
@@ -3441,7 +3441,7 @@ function exportSubmissionList(projects,tasks,today){
     if(!list.length){html+=`<tr><td colspan="10" style="text-align:center;color:#666;font-style:italic;">No submissions</td></tr><tr><td colspan="10"></td></tr>`;return;}
     html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Client</th><th class="hdr">Status</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Client Sub Date</th><th class="hdr">Due Date</th></tr>`;
     list.forEach((t,i)=>{
-      const proj=projects.find(p=>p.id===t.project_id);
+      const proj=projectById.get(t.project_id);
       const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
       html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
@@ -4572,7 +4572,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
                     <button onClick={()=>setExpanded(e=>({...e,[cl]:false}))} style={{background:"none",border:"none",color:C.t3,fontSize:16,cursor:"pointer",padding:0,lineHeight:1}}>✕</button>
                   </div>
                   {(expanded[cl+"_all"]?cts:cts.slice(0,SHOW)).map((t,i,arr)=>{
-                    const pj=projects.find(p=>p.id===t.project_id);
+                    const pj=projectById.get(t.project_id);
                     const s=getSLAStatus(t);
                     const dOver=Math.round(s.over/24);
                     return(
@@ -6596,7 +6596,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {selTasks.map(t=>{
-              const proj=projects.find(p=>p.id===t.project_id);
+              const proj=projectById.get(t.project_id);
               return(
                 <div key={t.id}
                   draggable={canEdit}
@@ -6639,13 +6639,13 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose}){
     projects.filter(p=>p.name.toLowerCase().includes(qL)||(p.client||"").toLowerCase().includes(qL)||(p.group_name||"").toLowerCase().includes(qL)||(p.description||"").toLowerCase().includes(qL)).slice(0,6)
       .forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
     tasks.filter(t=>t.title.toLowerCase().includes(qL)||(t.assignee||"").toLowerCase().includes(qL)||(t.status||"").toLowerCase().includes(qL)).slice(0,6)
-      .forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);const hasFiles=fc[t.id]>0;results.push({type:"task",icon:isDone(t.status)?"✅":hasFiles?"📎":"🔵",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status+(hasFiles?" · "+fc[t.id]+" file"+(fc[t.id]!==1?"s":""):""),data:t});});
+      .forEach(t=>{const pj=projectById.get(t.project_id);const hasFiles=fc[t.id]>0;results.push({type:"task",icon:isDone(t.status)?"✅":hasFiles?"📎":"🔵",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status+(hasFiles?" · "+fc[t.id]+" file"+(fc[t.id]!==1?"s":""):""),data:t});});
     clients.filter(c=>c.name.toLowerCase().includes(qL)||(c.email||"").toLowerCase().includes(qL)).slice(0,5)
       .forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
     users.filter(u=>u.name.toLowerCase().includes(qL)||u.role.toLowerCase().includes(qL)||(u.username||"").toLowerCase().includes(qL)).slice(0,6)
       .forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Admin"?"🛡":u.role==="Manager"?"🎯":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.username?" · @"+u.username:"")+(u.client_name?" · "+u.client_name:""),data:u}));
-    tasks.filter(t=>fc[t.id]>0&&(t.title.toLowerCase().includes(qL)||(projects.find(p=>p.id===t.project_id)?projects.find(p=>p.id===t.project_id).name:"").toLowerCase().includes(qL))).slice(0,4)
-      .forEach(t=>{const pj=projects.find(p=>p.id===t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:fc[t.id]+" file"+(fc[t.id]!==1?"s":"")+" · "+(pj?pj.name:"—")+" · "+t.status,data:t});});
+    tasks.filter(t=>fc[t.id]>0&&(t.title.toLowerCase().includes(qL)||(projectById.get(t.project_id)?projectById.get(t.project_id).name:"").toLowerCase().includes(qL))).slice(0,4)
+      .forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:fc[t.id]+" file"+(fc[t.id]!==1?"s":"")+" · "+(pj?pj.name:"—")+" · "+t.status,data:t});});
   }
   useEffect(()=>setSel(0),[q]);
   useEffect(()=>{
@@ -10251,11 +10251,14 @@ export default function App(){
   // Compute accessible projects (must be before useEffect that depends on it)
   // Team Leader: parse comma-separated client_name to restrict their view
   const tlClients=isTeamLeader&&me?.client_name?me.client_name.split(",").map(c=>c.trim().toLowerCase()).filter(Boolean):[];
-  const accessibleProjects=isAdmin||isManager?projects
+  const accessibleProjects=useMemo(()=>isAdmin||isManager?projects
     :isTeamLeader?(tlClients.length>0?projects.filter(p=>tlClients.includes((p.client||"").toLowerCase())):projects)
     :isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me?.client_name||"").toLowerCase())
-    // Regular users: ONLY projects where they have an assigned task.
-    :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))));
+    :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))))
+  ,[projects,tasks,isAdmin,isManager,isTeamLeader,isClient,tlClients,me]);
+  // O(1) lookup maps — rebuilt only when source arrays change
+  const projectById=useMemo(()=>new Map(projects.map(p=>[p.id,p])),[projects]);
+  const accessibleProjIds=useMemo(()=>new Set(accessibleProjects.map(p=>p.id)),[accessibleProjects]);
   // Parse initial URL after data loads (for direct-link support)
   useEffect(()=>{
     if(!me||!projects.length||initialParsed.current)return;
@@ -10329,6 +10332,29 @@ export default function App(){
     }else if(doSave){sToast({msg:"Timer stopped (< 1 min — not logged)",color:"#f59e0b"});}
     setActTmr(null);saveTmrLS(null);
   }
+  const isRegularUser=!isAdmin&&!isManager&&!isTeamLeader&&!isClient;
+  const filtered=useMemo(()=>tasks.filter(t=>{
+    if(!accessibleProjIds.has(t.project_id))return false;
+    if(isRegularUser&&!userMatchesStr(me,t.assignee)&&!userMatchesStr(me,t.detailer)&&!userMatchesStr(me,t.checker))return false;
+    if(activePid&&t.project_id!==activePid)return false;
+    if(activeClient){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
+    if(filterClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==filterClient)return false;}
+    if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
+    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==filterStatus)return false;}
+    if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
+    return true;
+  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,searchTask,filterStatus,filterAssignee,projectById]);
+  const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All";
+  const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
+    if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
+    if(dashUser!=="All"&&t.assignee!==dashUser)return false;
+    if(dashProject!=="All"&&t.project_id!==dashProject)return false;
+    if(dashTask!=="All"&&t.id!==dashTask)return false;
+    if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
+    if(dashClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
+    return true;
+  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById]);
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -10337,30 +10363,6 @@ export default function App(){
   );
   const members=users.map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
-  const isRegularUser=!isAdmin&&!isManager&&!isTeamLeader&&!isClient;
-  const filtered=tasks.filter(t=>{
-    if(!accessibleProjects.some(p=>p.id===t.project_id))return false;
-    // Regular users: ONLY see tasks explicitly assigned to them
-    if(isRegularUser&&!userMatchesStr(me,t.assignee)&&!userMatchesStr(me,t.detailer)&&!userMatchesStr(me,t.checker))return false;
-    if(activePid&&t.project_id!==activePid)return false;
-    if(activeClient){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
-    if(filterClient!=="All"){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==filterClient)return false;}
-    if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
-    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==filterStatus)return false;}
-    if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
-    return true;
-  });
-  const dashTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
-  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All";
-  const filteredDashTasks=dashTasks.filter(t=>{
-    if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
-    if(dashUser!=="All"&&t.assignee!==dashUser)return false;
-    if(dashProject!=="All"&&t.project_id!==dashProject)return false;
-    if(dashTask!=="All"&&t.id!==dashTask)return false;
-    if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
-    if(dashClient!=="All"){const proj=projects.find(p=>p.id===t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
-    return true;
-  });
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
   const overdueTasks=activeDashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
@@ -10491,7 +10493,7 @@ export default function App(){
       showToast("Reassign failed: "+(error?.message||"unknown"),false);
     }
   }
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projects.find(p=>p.id===task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projectById.get(task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
   async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());
     // In-app: notify assigned users
     const assignedIds=(f.assigned_users||[]).map(uname=>users.find(u=>u.username===uname||u.name===uname)?.id).filter(id=>id&&id!==me.id);
@@ -11496,7 +11498,7 @@ export default function App(){
                   return(
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       {colTasks.map(t=>{
-                        const proj=projects.find(p=>p.id===t.project_id);
+                        const proj=projectById.get(t.project_id);
                         const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                         const canEditTask=canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker));
                         return(
@@ -11574,7 +11576,7 @@ export default function App(){
           {isMobile?(
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
+                const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                 return(
                   <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
@@ -11609,7 +11611,7 @@ export default function App(){
                 </th>}
                 {["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"].map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
             </table>
           </div>
           )}
@@ -11673,10 +11675,10 @@ export default function App(){
           items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
         } else if(DSM==="completed"){
           title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
+          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
         } else if(DSM==="inprogress"){
           title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projects.find(p=>p.id===t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
+          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
         } else if(DSM==="team"){
           title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
           const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
