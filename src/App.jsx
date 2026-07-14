@@ -6530,6 +6530,159 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
   );
 }
 
+// ── Project Activity Feed (Audit Log Phase 2) ────────────────
+function ProjectActivityFeed({projectId,tasks,isAdmin,isManager}){
+  const [logs,setLogs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [open,setOpen]=useState(false);
+
+  useEffect(()=>{if(open)load();},[open,projectId]);
+
+  async function load(){
+    setLoading(true);
+    try{
+      const {data}=await supabase.from("audit_logs")
+        .select("*").eq("project_id",projectId)
+        .order("created_at",{ascending:false}).limit(80);
+      setLogs(Array.isArray(data)?data:[]);
+    }catch(e){}
+    setLoading(false);
+  }
+
+  const FIELD_ICON={Status:"✅",Assignee:"👤","Due Date":"📅","Client Sub Date":"🗓",
+    Priority:"🏷",Detailer:"✏",Checker:"✓",Title:"📝",Client:"🏢",Tags:"🏷",Scope:"📋",
+    name:"📁",client:"🏢",deadline:"📅",description:"📝"};
+
+  function fmtTime(ts){
+    const d=new Date(ts);const now=new Date();
+    const diff=Math.floor((now-d)/86400000);
+    const t=d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+    if(diff===0)return"Today, "+t;
+    if(diff===1)return"Yesterday, "+t;
+    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+", "+t;
+  }
+
+  // Group by date label
+  function groupByDate(logs){
+    const g={};
+    for(const l of logs){
+      const d=new Date(l.created_at);const now=new Date();
+      const diff=Math.floor((now-d)/86400000);
+      const label=diff===0?"Today":diff===1?"Yesterday":d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+      if(!g[label])g[label]=[];
+      g[label].push(l);
+    }
+    return g;
+  }
+
+  // Collapse rapid bulk edits (same actor, same minute)
+  function collapse(entries){
+    const out=[];
+    for(const l of entries){
+      const last=out[out.length-1];
+      const sameActor=last&&last.actor_id===l.actor_id;
+      const sameMin=last&&Math.abs(new Date(last.created_at)-new Date(l.created_at))<90000;
+      if(sameActor&&sameMin&&last._group){
+        last._group.push(l);
+      } else if(sameActor&&sameMin&&last.action==="update"&&l.action==="update"){
+        const g=[last,l];g._isGroup=true;
+        out[out.length-1]={...last,_group:g};
+      } else {
+        out.push(l);
+      }
+    }
+    return out;
+  }
+
+  function EntryLine({l}){
+    const icon=l.action==="create"?"🆕":l.action==="delete"?"🗑️":(FIELD_ICON[l.field]||"🔄");
+    const entityLabel=l.entity_type==="project"?"project":"task";
+    return(
+      <div style={{display:"flex",gap:9,alignItems:"flex-start",padding:"7px 0"}}>
+        <div style={{width:26,height:26,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,fontWeight:800,color:C.accent}}>
+          {(l.actor_name||"?").charAt(0).toUpperCase()}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:C.t1,fontSize:12}}>{l.actor_name||"Unknown"}</span>
+            {l.actor_role&&<span style={{fontSize:9,color:C.t3,background:C.border,borderRadius:3,padding:"1px 4px"}}>{l.actor_role}</span>}
+            <span style={{fontSize:10,color:C.t3,marginLeft:"auto",whiteSpace:"nowrap"}}>{fmtTime(l.created_at)}</span>
+          </div>
+          <div style={{fontSize:11,color:C.t2,marginTop:2}}>
+            {icon}{" "}
+            {l.action==="create"&&<>{entityLabel==="project"?"Created project":"Created task"}{l.entity_label&&<b style={{color:C.t1}}> "{l.entity_label}"</b>}</>}
+            {l.action==="delete"&&<>{entityLabel==="project"?"Deleted project":"Deleted task"}{l.entity_label&&<b style={{color:C.red}}> "{l.entity_label}"</b>}</>}
+            {l.action==="update"&&<>Changed <b style={{color:C.t1}}>{l.field}</b>
+              {l.entity_label&&<span style={{color:C.t3}}> on "{l.entity_label}"</span>}
+              {l.old_value&&<>{" "}<span style={{color:C.red,background:C.red+"15",borderRadius:3,padding:"0 4px",fontFamily:"monospace",fontSize:10}}>{l.old_value}</span></>}
+              {" → "}
+              {l.new_value?<span style={{color:C.green,background:C.green+"15",borderRadius:3,padding:"0 4px",fontFamily:"monospace",fontSize:10}}>{l.new_value}</span>:<span style={{color:C.t3}}>—</span>}
+            </>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const groups=open?groupByDate(logs):{};
+
+  return(
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,marginTop:16,overflow:"hidden"}}>
+      {/* Header — always visible */}
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",cursor:"pointer",userSelect:"none"}}>
+        <span style={{fontSize:15}}>📋</span>
+        <span style={{fontWeight:700,color:C.t1,fontSize:13,flex:1}}>Project Activity</span>
+        {!open&&<span style={{fontSize:11,color:C.t3}}>Click to expand</span>}
+        <span style={{color:C.t3,fontSize:13,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
+      </div>
+
+      {open&&(
+        <div style={{borderTop:`1px solid ${C.border}`,maxHeight:400,overflowY:"auto",padding:"0 16px"}}>
+          {loading&&<div style={{padding:24,textAlign:"center",color:C.t3,fontSize:13}}>Loading activity…</div>}
+          {!loading&&logs.length===0&&<div style={{padding:24,textAlign:"center",color:C.t3,fontSize:13}}>No activity yet. Changes to tasks and project settings will appear here.</div>}
+          {!loading&&Object.entries(groups).map(([date,entries])=>{
+            const collapsed=collapse(entries);
+            return(
+              <div key={date} style={{marginBottom:8}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",padding:"8px 0 4px",borderBottom:`1px solid ${C.border}`,marginBottom:4}}>{date}</div>
+                {collapsed.map((l,i)=>{
+                  if(l._group){
+                    return(
+                      <GroupedEntry key={i} entries={l._group} fmtTime={fmtTime}/>
+                    );
+                  }
+                  return<EntryLine key={l.id||i} l={l}/>;
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupedEntry({entries,fmtTime}){
+  const [exp,setExp]=useState(false);
+  const first=entries[0];
+  return(
+    <div>
+      <div onClick={()=>setExp(e=>!e)} style={{display:"flex",gap:9,alignItems:"center",padding:"7px 0",cursor:"pointer"}}>
+        <div style={{width:26,height:26,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,fontWeight:800,color:C.accent}}>
+          {(first.actor_name||"?").charAt(0).toUpperCase()}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <span style={{fontWeight:700,color:C.t1,fontSize:12}}>{first.actor_name}</span>
+          <span style={{fontSize:11,color:C.t2,marginLeft:6}}>🔄 updated {entries.length} fields</span>
+          {!exp&&<span style={{fontSize:10,color:C.accent,marginLeft:6}}>▾ expand</span>}
+        </div>
+        <span style={{fontSize:10,color:C.t3,whiteSpace:"nowrap"}}>{fmtTime(first.created_at)}</span>
+      </div>
+      {exp&&<div style={{paddingLeft:35}}>{entries.map((l,i)=><EntryLine key={l.id||i} l={l}/>)}</div>}
+    </div>
+  );
+}
+
 // ── Task Tab Panel (Time Logs | Comments | History) ──────────
 function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users}){
   const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
@@ -11092,9 +11245,9 @@ export default function App(){
     if(assignedIds.length)await createNotif(assignedIds,"project_assigned",`New project assigned: ${f.name}`,`You've been added to ${f.name}${f.client?` · Client: ${f.client}`:""}${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
     // Notify client
     if(pcu?.id&&pcu.id!==me.id)await createNotif([pcu.id],"project_assigned",`Project created: ${f.name}`,`A new project has been set up for your account${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
-  }spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
-  async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(data)sp(ps=>ps.map(p=>p.id===editProject.id?data:p));sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
-  async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
+  await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;const delProj=accessibleProjects.find(p=>p.id===id);await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data)su(us=>[...us,data]);showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data)su(us=>us.map(u=>u.id===id?data:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
@@ -12244,6 +12397,7 @@ export default function App(){
             </table>
           </div>
           )}
+          {activePid&&!isClient&&<ProjectActivityFeed projectId={activePid} tasks={tasks} isAdmin={isAdmin} isManager={isManager}/>}
           </div>
         )}
       </main>
