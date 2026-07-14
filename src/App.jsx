@@ -993,7 +993,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
     </div>
   );
 }
-function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false}){
+function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
   const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
@@ -1008,7 +1008,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      <td style={{...td,maxWidth:200,minWidth:100}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/><span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
+      <td style={{...td,maxWidth:200,minWidth:100}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
       <td style={{...td,maxWidth:110}}><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
       {!hideClient&&<td style={{...td,maxWidth:90}}><span style={{color:C.teal,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>}
       <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
@@ -1029,7 +1029,9 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
           <span style={{fontSize:11,fontWeight:700,color:apvClr,background:apvClr+"18",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>{APPROVAL_ICON[apv]} {apv}</span>
         </td>
       ):(
-        <td style={{...td,width:70}}><div style={{display:"flex",gap:3}}>
+        <td style={{...td,width:90}}><div style={{display:"flex",gap:3,alignItems:"center"}}>
+          {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.6:.2),transition:"opacity .15s",lineHeight:1}}>📌</button>}
+          {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isStarred?1:(h?.6:.2),transition:"opacity .15s",lineHeight:1}}>{isStarred?"⭐":"☆"}</button>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
         </div></td>
@@ -6831,7 +6833,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
   );
 }
 
-function CommandPalette({projects,tasks,users,clients,onNav,onClose}){
+function CommandPalette({projects,tasks,users,clients,onNav,onClose,pinnedTasks=new Set(),starredTasks=new Set()}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const [q,setQ]=useState("");
   const [sel,setSel]=useState(0);
@@ -6841,6 +6843,10 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose}){
   const results=[];
 
   if(!qL){
+    const pinnedList=tasks.filter(t=>pinnedTasks.has(t.id));
+    const starredList=tasks.filter(t=>starredTasks.has(t.id)&&!pinnedTasks.has(t.id));
+    pinnedList.slice(0,5).forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"pinned",icon:"📌",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status,data:t});});
+    starredList.slice(0,5).forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"starred",icon:"⭐",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status,data:t});});
     projects.slice(0,8).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
     clients.slice(0,5).forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
     users.filter(u=>u.role!=="Admin"&&u.role!=="Manager").slice(0,5).forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.client_name?" · "+u.client_name:""),data:u}));
@@ -6867,9 +6873,9 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose}){
     window.addEventListener("keydown",onKey);
     return()=>window.removeEventListener("keydown",onKey);
   },[results,sel]);
-  function go(item){onNav(item.type,item.data);onClose();}
-  const typeLabel={project:"Projects",task:"Tasks",client:"Clients",user:"People",file:"Files"};
-  const groups=["project","task","client","user","file"];
+  function go(item){onNav(item.type==="pinned"||item.type==="starred"?"task":item.type,item.data);onClose();}
+  const typeLabel={pinned:"📌 Pinned",starred:"⭐ Starred",project:"Projects",task:"Tasks",client:"Clients",user:"People",file:"Files"};
+  const groups=["pinned","starred","project","task","client","user","file"];
   return(
     <div style={{position:"fixed",inset:0,background:"#00000090",zIndex:9999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"10vh"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -10129,6 +10135,11 @@ export default function App(){
   const [attStats,sattStats]=useState(null);
   const [toast,sToast]      = useState(null);
   const [cmdOpen,setCmdOpen]    = useState(false); // ⌘K command palette
+  // ── Pin / Star tasks (per-user, localStorage) ─────────────────────────────
+  const [pinnedTasks,setPinnedTasks]=useState(()=>{try{const u=JSON.parse(localStorage.getItem("rds_user")||"{}");return new Set(JSON.parse(localStorage.getItem("rds_pinned_"+(u.id||""))||"[]"));}catch{return new Set();}});
+  const [starredTasks,setStarredTasks]=useState(()=>{try{const u=JSON.parse(localStorage.getItem("rds_user")||"{}");return new Set(JSON.parse(localStorage.getItem("rds_starred_"+(u.id||""))||"[]"));}catch{return new Set();}});
+  function togglePin(taskId){setPinnedTasks(prev=>{const n=new Set(prev);n.has(taskId)?n.delete(taskId):n.add(taskId);try{localStorage.setItem("rds_pinned_"+(me?.id||""),JSON.stringify([...n]));}catch{}return n;});}
+  function toggleStar(taskId){setStarredTasks(prev=>{const n=new Set(prev);n.has(taskId)?n.delete(taskId):n.add(taskId);try{localStorage.setItem("rds_starred_"+(me?.id||""),JSON.stringify([...n]));}catch{}return n;});}
   const [logo,sLogo]        = useState(null);
   const [selTasks,setSelTasks]   = useState(new Set());
   const [selProjects,setSelProjs]= useState(new Set());
@@ -12075,14 +12086,14 @@ export default function App(){
                 </th>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>{const ap=pinnedTasks.has(a.id)?2:starredTasks.has(a.id)?1:0;const bp=pinnedTasks.has(b.id)?2:starredTasks.has(b.id)?1:0;return bp-ap;}).map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>)}</tbody>
             </table>
           </div>
           )}
           </div>
         )}
       </main>
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} onNav={(type,data)=>{
+      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} pinnedTasks={pinnedTasks} starredTasks={starredTasks} onNav={(type,data)=>{
         if(type==="project")navTo("list",data.id);
         else if(type==="task")navTo("list",data.project_id);
         else if(type==="user"){sfa(data.name);sv("list");sap(null);}
