@@ -49,6 +49,7 @@ async function runMigrations() {
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_approval TEXT DEFAULT 'Pending Review'`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_comment  TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS det_weight      NUMERIC`,
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS notes           TEXT`,
     // ── Audit Log table ──────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS audit_logs (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),

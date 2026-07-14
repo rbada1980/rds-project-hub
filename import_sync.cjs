@@ -172,50 +172,79 @@ function parseExcel(filePath, sheetName) {
     }
   }
 
-  for (let i = dataStart; i < rows.length; i++) {
+  // ── Auto-detect columns from header row ──────────────────────────────────────
+  const HEADER_ALIASES = {
+    'project name': 'project', 'projects': 'project', 'project': 'project',
+    'tasks': 'title', 'task': 'title', 'description': 'title',
+    'status': 'status',
+    'client sub. date': 'client_sub_date', 'client sub date': 'client_sub_date',
+    'sub date': 'client_sub_date', 'client sub.date': 'client_sub_date',
+    'detailer': 'detailer', 'detailers': 'detailer', 'detaielrs': 'detailer',
+    'checker': 'checker',
+    'due date': 'due_date', 'due.date': 'due_date',
+    'scope': 'scope',
+    'det. wt.': 'det_weight', 'det.wt.': 'det_weight', 'det wt': 'det_weight',
+    'det. wt': 'det_weight', 'tonnage': 'det_weight', 'weight': 'det_weight',
+    'notes': 'notes', 'remarks': 'notes', 'note': 'notes',
+  };
+
+  // Scan rows 0-9 for header
+  let colMap = {};
+  let detectedHeaderRow = dataStart - 1;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const r = rows[i]; if (!r) continue;
+    const mapped = {}; let hits = 0;
+    r.forEach((cell, j) => {
+      if (!cell) return;
+      const k = String(cell).toLowerCase().trim();
+      if (HEADER_ALIASES[k]) { mapped[HEADER_ALIASES[k]] = j; hits++; }
+    });
+    if (hits >= 3) { colMap = mapped; detectedHeaderRow = i; break; }
+  }
+
+  // Fallback: positional defaults A=project B=title C=scope D=sub_date E=detailer F=checker G=det_weight H=due_date I=notes
+  if (Object.keys(colMap).length === 0) {
+    colMap = { project:0, title:1, scope:2, client_sub_date:3, detailer:4, checker:5, det_weight:6, due_date:7, notes:8 };
+    console.log('  ⚠ No header row detected — using positional column defaults');
+  } else {
+    console.log(`  ✓ Header detected at row ${detectedHeaderRow}: ${JSON.stringify(colMap)}`);
+  }
+
+  function g(row, field) { const i = colMap[field]; return i !== undefined ? row[i] : undefined; }
+
+  for (let i = detectedHeaderRow + 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.every(c => !c)) continue;   // blank row
+    if (!row || row.every(c => !c)) continue;
 
-    const colA = row[0] ? String(row[0]).trim() : null;
-    const colB = row[1] ? String(row[1]).trim() : null;
-    const colC = row[2] ? String(row[2]).trim() : null;
-    const colD = row[3];   // CLIENT SUB. DATE
-    const colE = row[4] ? String(row[4]).trim() : null;  // DETAILER
-    const colF = row[5] ? String(row[5]).trim() : null;  // CHECKER
-    const colG = row[6] !== undefined && row[6] !== null && row[6] !== '' ? parseFloat(row[6]) : null;  // DET. WT. (tons)
-    const colH = row[7];                                  // DUE DATE (col H)
-    const colI = row[8] ? String(row[8]).trim() : null;  // NOTES / extra
+    const projCell = g(row, 'project');
+    if (projCell) { currentProject = String(projCell).trim(); colorIdx++; }
+    const titleVal = g(row, 'title');
+    if (!titleVal || !currentProject) continue;
 
-    // Col A is project name (appears once per project block)
-    if (colA) { currentProject = colA; colorIdx++; }
-    if (!colB || !currentProject) continue;   // no task title → skip
-
-    // Some sheets put due_date in col G, others use same date as col D
-    const subDate = parseDate(colD);
-    const dueDate = colH ? parseDate(colH) : subDate;
-    const detWt   = (colG !== null && !isNaN(colG)) ? colG : null;
-
-    // Scope: some Excels put scope in title as prefix "CIP&CMU - Foundations..."
-    // Just store colB as title, colC as scope
-    const scope  = colC || '';
-    const title  = colB;
+    const subDate  = parseDate(g(row, 'client_sub_date'));
+    const dueDate  = parseDate(g(row, 'due_date')) || subDate;
+    const detRaw   = g(row, 'detailer') ? String(g(row, 'detailer')).trim() : '';
+    const chkRaw   = g(row, 'checker')  ? String(g(row, 'checker')).trim()  : '';
+    const detWtRaw = g(row, 'det_weight');
+    const detWt    = (detWtRaw !== undefined && detWtRaw !== null && detWtRaw !== '')
+                     ? parseFloat(detWtRaw) : null;
 
     parsed.push({
       project:         currentProject,
       _colorIdx:       colorIdx,
-      scope:           scope,
-      title:           title,
-      status:          fixStatus(row[8] || ''),   // col I if present, else Not Yet Started
+      scope:           g(row, 'scope') ? String(g(row, 'scope')).trim() : '',
+      title:           String(titleVal).trim(),
+      status:          fixStatus(g(row, 'status')),
       client_sub_date: subDate,
       due_date:        dueDate,
-      detailer:        normField(colE),
-      checker:         normField(colF),
-      assignee:        normName(colE ? colE.split(/[\/,]/)[0].trim() : ''),
+      detailer:        normField(detRaw),
+      checker:         normField(chkRaw),
+      assignee:        normName(detRaw.split(/[\/,]/)[0].trim()),
       priority:        'Medium',
-      det_weight:      detWt,
+      det_weight:      (!isNaN(detWt) && detWt !== null) ? detWt : null,
       tags:            [],
       files:           [],
-      notes:           colI || '',
+      notes:           g(row, 'notes') ? String(g(row, 'notes')).trim() : '',
     });
   }
 
