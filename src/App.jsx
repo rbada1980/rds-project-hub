@@ -993,16 +993,18 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
     </div>
   );
 }
-function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null}){
+function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null}){
   const [h,sh]=useState(false);
   const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
   const overdue=task.due_date&&task.due_date<today&&!isDone(task.status);
   const showCb=!!onSelect;
+  const apv=task.client_approval||"Pending Review";
+  const apvClr=APPROVAL_CLR[apv]||C.t3;
   return(
     <tr onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-      onClick={showCb?()=>onSelect(task.id):undefined}
-      style={{background:selected?C.accent+"14":h?C.surface:"transparent",transition:"background .12s",cursor:showCb?"pointer":"default"}}>
+      onClick={onReview?()=>onReview(task):showCb?()=>onSelect(task.id):undefined}
+      style={{background:selected?C.accent+"14":h?C.surface:"transparent",transition:"background .12s",cursor:(onReview||showCb)?"pointer":"default"}}>
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
@@ -1022,11 +1024,16 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         {task.client_sub_date?<span style={{color:C.teal,fontSize:11}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
         {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:11}}>—</span>}
       </div></td>
-      <td style={{...td,width:70}}><div style={{display:"flex",gap:3}}>
-
-        {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
-        {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
-      </div></td>
+      {onReview?(
+        <td style={{...td,minWidth:130}}>
+          <span style={{fontSize:11,fontWeight:700,color:apvClr,background:apvClr+"18",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>{APPROVAL_ICON[apv]} {apv}</span>
+        </td>
+      ):(
+        <td style={{...td,width:70}}><div style={{display:"flex",gap:3}}>
+          {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
+          {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
+        </div></td>
+      )}
     </tr>
   );
 }
@@ -2517,68 +2524,15 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
         <Stat label="Not Yet Started" value={notStarted} sub="pending" color={C.t2} onClick={()=>{ssf("Not Yet Started");sst(true);}}/>
         <Stat label="Overdue" value={overdue} sub="need attention" color={C.red} onClick={()=>{ssf("All");sst(true);}}/>
       </div>
-      {/* Filter bar */}
-      <div style={{background:C.card,border:`1px solid ${hasFilter?C.teal:C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:24,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-        <input placeholder="🔍 Search tasks or projects…" value={search} onChange={e=>ss(e.target.value)}
-          style={{flex:1,minWidth:160,background:C.surface,border:`1px solid ${search?C.teal:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-        <select value={filterProject} onChange={e=>{sfp(e.target.value);sst(true);}} style={selStyle(filterProject!=="All")}>
-          <option value="All">All Projects</option>
-          {myProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <select value={filterAssignee} onChange={e=>{sfa(e.target.value);sst(true);}} style={selStyle(filterAssignee!=="All")}>
-          <option value="All">All Assignees</option>
-          {allAssignees.map(a=><option key={a} value={a}>{a}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e=>{ssf(e.target.value);sst(true);}} style={selStyle(statusFilter!=="All")}>
-          <option value="All">All Statuses</option>
-          {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-        </select>
-        {hasFilter&&<button onClick={()=>{ssf("All");sfp("All");sfa("All");ss("");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
-        <button onClick={()=>sst(v=>!v)} style={{...GBtn,padding:"8px 14px",fontSize:13}}>{showTasks?"Hide Tasks ▲":"📋 Review Tasks ▼"}</button>
+      {/* Project search */}
+      <div style={{marginBottom:20}}>
+        <input placeholder="🔍 Search projects…" value={search} onChange={e=>ss(e.target.value)}
+          style={{width:"100%",background:C.card,border:`1px solid ${search?C.teal:C.border}`,borderRadius:10,padding:"10px 14px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
       </div>
-      {/* Task table (toggled) */}
-      {showTasks&&(
-        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",marginBottom:28}}>
-          <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Tasks ({filtered.length})</span>
-            <span style={{fontSize:12,color:C.teal,fontStyle:"italic"}}>👆 Click any row to add your approval or comment</span>
-            {hasFilter&&<span style={{fontSize:12,color:C.teal}}>Filtered</span>}
-          </div>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","My Approval"].map(h=>(
-              <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
-            ))}</tr></thead>
-            <tbody>{filtered.length===0
-              ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-              :filtered.map(t=>{
-                const pj=projectById.get(t.project_id);
-                const tdy=new Date().toISOString().slice(0,10);
-                const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);
-                const apv=t.client_approval||"Pending Review";
-                const apvClr=APPROVAL_CLR[apv];
-                return(<tr key={t.id} onClick={()=>setRT(t)} style={{borderBottom:`1px solid ${C.border}`,cursor:"pointer",transition:"background .12s"}}
-                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
-                  <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                  <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"—"}</Bdg></td>
-                  <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
-                  <td style={{padding:"10px 14px"}}><span style={{fontSize:11,fontWeight:700,color:apvClr,background:apvClr+"18",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>{APPROVAL_ICON[apv]} {apv}</span></td>
-                </tr>);
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
       {/* Projects */}
-      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
+      <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())).length})</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:28}}>
-        {myProjects.map(p=>{
+        {myProjects.filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())).map(p=>{
           const pt=myTasks.filter(t=>t.project_id===p.id);
           const pd=pt.filter(t=>isDone(t.status)).length;
           const pip=pt.filter(t=>t.status==="In Progress").length;
@@ -9991,6 +9945,8 @@ export default function App(){
   const [pwModal,spwm]      = useState(false);
 
   const [statModal,ssm]     = useState(null);
+  const [clientReviewTask,setCRT]=useState(null);
+  const [clientReviewSaving,setCRS]=useState(false);
   const [exportOpen,setExportOpen] = useState(false);
   const [exportSec,setExportSec] = useState(null);
   const exportRef = useRef();
@@ -10672,6 +10628,16 @@ export default function App(){
   }
   // keep for any residual internal callers
   function switchView(v){navTo(v,v==='list'?activePid:null,v==='clientprojects'?activeClient:null);}
+  async function saveClientReview(approval,comment){
+    if(!clientReviewTask)return;
+    setCRS(true);
+    try{
+      const {data,error}=await supabase.from("tasks").update({client_approval:approval,client_comment:comment}).eq("id",clientReviewTask.id).select().single();
+      if(!error&&data){st(ts=>ts.map(x=>x.id===data.id?data:x));showToast("Review submitted ✓",true);}
+      setCRT(null);
+    }catch(e){showToast("Save failed",false);}
+    finally{setCRS(false);}
+  }
   async function saveTask(f){
     // ── Clients are read-only ──
     if(isClient){showToast("Clients cannot modify tasks",false);return;}
@@ -11868,12 +11834,17 @@ export default function App(){
               {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
                 const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const apv=t.client_approval||"Pending Review";
                 return(
                   <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
                       <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
-                      <button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
+                      {isClient
+                        ?<button onClick={()=>setCRT(t)} style={{flexShrink:0,background:C.teal+"22",border:`1px solid ${C.teal}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.teal,cursor:"pointer",fontFamily:"inherit"}}>✍️ Review</button>
+                        :<button onClick={()=>{set(t);stm(true);}} style={{flexShrink:0,background:C.accent+"22",border:`1px solid ${C.accent}44`,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",fontFamily:"inherit"}}>✏️ Edit</button>
+                      }
                     </div>
+                    {isClient&&<div style={{marginBottom:6}}><span style={{fontSize:11,fontWeight:700,color:APPROVAL_CLR[apv]||C.t3,background:(APPROVAL_CLR[apv]||C.t3)+"18",padding:"3px 10px",borderRadius:20}}>{APPROVAL_ICON[apv]} {apv}</span></div>}
                     {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
                       <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
@@ -11899,9 +11870,9 @@ export default function App(){
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
                   </div>
                 </th>}
-                {["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"].map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
+                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:filtered.map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null}/>)}</tbody>
             </table>
           </div>
           )}
@@ -11920,6 +11891,7 @@ export default function App(){
 
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
+      {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
       {taskModal&&(
         <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
           {(canEdit||!editTask)?
@@ -12069,50 +12041,4 @@ export default function App(){
       </div>
     )}
     {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false
