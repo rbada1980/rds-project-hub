@@ -3001,6 +3001,7 @@ function stateToUrl(v,pid,client,projs=[]){
   if(v==='warroom')return'/message';
   if(v==='clientfeedback')return'/clientfeedback';
   if(v==='timings')return'/timings';
+  if(v==='auditlog')return'/auditlog';
   if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
   return'/';
 }
@@ -3016,6 +3017,7 @@ function urlToState(path,projs=[]){
   if(path==='/message'||path==='/warroom')return{view:'warroom',pid:null,client:null};
   if(path==='/clientfeedback')return{view:'clientfeedback',pid:null,client:null};
   if(path==='/timings')return{view:'timings',pid:null,client:null};
+  if(path==='/auditlog')return{view:'auditlog',pid:null,client:null};
   const pm=path.match(/^\/projects\/([^/]+)$/);
   if(pm){
     const slug=decodeURIComponent(pm[1]);
@@ -3058,6 +3060,8 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
     crumbs.push({label:'🏢 Client Feedback',active:true});
   }else if(view==='timings'){
     crumbs.push({label:'⏱ Timings',active:true});
+  }else if(view==='auditlog'){
+    crumbs.push({label:'🔎 Audit Log',active:true});
   }else if(view==='clientprojects'&&activeClient){
     crumbs.push({label:'🏢 Clients',onClick:onDashboard,active:false});
     crumbs.push({label:activeClient,active:true});
@@ -9421,6 +9425,178 @@ function LiveTimerBar({timer,onPause,onStop}){
 // ══════════════════════════════════════════════════════════
 // BACKUP, DISASTER RECOVERY & BUSINESS CONTINUITY CENTER
 // ══════════════════════════════════════════════════════════
+// ── Audit Log Page (Phase 3) ─────────────────────────────────
+function AuditLogPage({users,projects,me}){
+  const [logs,setLogs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [fActor,setFActor]=useState("all");
+  const [fProject,setFProject]=useState("all");
+  const [fEntity,setFEntity]=useState("all");
+  const [fAction,setFAction]=useState("all");
+  const [fDate,setFDate]=useState("30");
+  const [search,setSearch]=useState("");
+  const [page,setPage]=useState(0);
+  const PER_PAGE=50;
+
+  useEffect(()=>{load();},[fActor,fProject,fEntity,fAction,fDate]);
+
+  async function load(){
+    setLoading(true);setPage(0);
+    try{
+      let q=supabase.from("audit_logs").select("*").order("created_at",{ascending:false}).limit(500);
+      if(fActor!=="all")q=q.eq("actor_id",fActor);
+      if(fProject!=="all")q=q.eq("project_id",fProject);
+      if(fEntity!=="all")q=q.eq("entity_type",fEntity);
+      if(fAction!=="all")q=q.eq("action",fAction);
+      if(fDate!=="all"){
+        const d=new Date();d.setDate(d.getDate()-parseInt(fDate));
+        q=q.gte("created_at",d.toISOString());
+      }
+      const {data}=await q;
+      setLogs(Array.isArray(data)?data:[]);
+    }catch(e){}
+    setLoading(false);
+  }
+
+  const FIELD_ICON={Status:"✅",Assignee:"👤","Due Date":"📅","Client Sub Date":"🗓",
+    Priority:"🏷",Detailer:"✏",Checker:"✓",Title:"📝",Client:"🏢",Tags:"🏷",Scope:"📋"};
+  const ACTION_CLR={create:C.green,update:C.accent,delete:C.red};
+  const ACTION_ICON={create:"🆕",update:"🔄",delete:"🗑️"};
+
+  function fmtTs(ts){
+    const d=new Date(ts);
+    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+  }
+
+  const filtered=logs.filter(l=>{
+    if(!search)return true;
+    const s=search.toLowerCase();
+    return (l.actor_name||"").toLowerCase().includes(s)||(l.entity_label||"").toLowerCase().includes(s)||(l.field||"").toLowerCase().includes(s)||(l.old_value||"").toLowerCase().includes(s)||(l.new_value||"").toLowerCase().includes(s);
+  });
+
+  const paged=filtered.slice(page*PER_PAGE,(page+1)*PER_PAGE);
+  const totalPages=Math.ceil(filtered.length/PER_PAGE);
+
+  function exportCSV(){
+    const header=["Time","Actor","Role","Entity Type","Entity","Action","Field","Old Value","New Value","Project"];
+    const rows=filtered.map(l=>[fmtTs(l.created_at),l.actor_name||"",l.actor_role||"",l.entity_type||"",l.entity_label||"",l.action||"",l.field||"",l.old_value||"",l.new_value||"",projects.find(p=>p.id===l.project_id)?.name||""]);
+    const csv=[header,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download="rds_audit_log_"+new Date().toISOString().slice(0,10)+".csv";a.click();
+  }
+
+  const sel=active=>({background:C.surface,border:`1px solid ${active?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:active?C.accent:C.t1,fontSize:12,outline:"none",cursor:"pointer",fontFamily:"inherit"});
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+        <div>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>🔎 Audit Log</h2>
+          <p style={{margin:"2px 0 0",fontSize:12,color:C.t3}}>{filtered.length} records found</p>
+        </div>
+        <button onClick={exportCSV} style={{...GBtn,marginLeft:"auto",padding:"8px 16px",fontSize:13,color:C.green,borderColor:C.green,fontWeight:700}}>⬇ Export CSV</button>
+      </div>
+
+      {/* Filters */}
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:16}}>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <input placeholder="🔍 Search name, field, value…" value={search} onChange={e=>{setSearch(e.target.value);setPage(0);}}
+            style={{flex:2,minWidth:180,background:C.surface,border:`1px solid ${search?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+          <select value={fDate} onChange={e=>setFDate(e.target.value)} style={sel(fDate!=="all")}>
+            <option value="all">All Time</option>
+            <option value="1">Today</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </select>
+          <select value={fEntity} onChange={e=>setFEntity(e.target.value)} style={sel(fEntity!=="all")}>
+            <option value="all">All Types</option>
+            <option value="task">Tasks</option>
+            <option value="project">Projects</option>
+          </select>
+          <select value={fAction} onChange={e=>setFAction(e.target.value)} style={sel(fAction!=="all")}>
+            <option value="all">All Actions</option>
+            <option value="create">Created</option>
+            <option value="update">Updated</option>
+            <option value="delete">Deleted</option>
+          </select>
+          <select value={fActor} onChange={e=>setFActor(e.target.value)} style={sel(fActor!=="all")}>
+            <option value="all">All People</option>
+            {users.filter(u=>u.role!=="Client").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <select value={fProject} onChange={e=>setFProject(e.target.value)} style={sel(fProject!=="all")}>
+            <option value="all">All Projects</option>
+            {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          {(fActor!=="all"||fProject!=="all"||fEntity!=="all"||fAction!=="all"||fDate!=="30"||search)&&
+            <button onClick={()=>{setFActor("all");setFProject("all");setFEntity("all");setFAction("all");setFDate("30");setSearch("");}} style={{...GBtn,padding:"7px 12px",fontSize:12,color:C.red,borderColor:C.red}}>✕ Clear</button>}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+        {loading&&<div style={{padding:40,textAlign:"center",color:C.t3}}>Loading…</div>}
+        {!loading&&filtered.length===0&&<div style={{padding:40,textAlign:"center",color:C.t3}}>No records found for current filters.</div>}
+        {!loading&&filtered.length>0&&(
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead>
+                <tr style={{background:C.surface}}>
+                  {["Time","Person","Type","Entity","Action","Field","Old Value","New Value"].map(h=>(
+                    <th key={h} style={{padding:"8px 10px",textAlign:"left",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap",borderBottom:`1px solid ${C.border}`}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paged.map((l,i)=>{
+                  const aclr=ACTION_CLR[l.action]||C.t2;
+                  const proj=projects.find(p=>p.id===l.project_id);
+                  return(
+                    <tr key={l.id||i} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?"transparent":C.surface+"44"}}>
+                      <td style={{padding:"7px 10px",color:C.t3,whiteSpace:"nowrap",fontSize:11}}>{fmtTs(l.created_at)}</td>
+                      <td style={{padding:"7px 10px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <div style={{width:22,height:22,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:C.accent,flexShrink:0}}>{(l.actor_name||"?").charAt(0).toUpperCase()}</div>
+                          <div>
+                            <div style={{color:C.t1,fontWeight:600,fontSize:12}}>{l.actor_name||"—"}</div>
+                            {l.actor_role&&<div style={{color:C.t3,fontSize:10}}>{l.actor_role}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{padding:"7px 10px"}}><span style={{background:aclr+"18",color:aclr,borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,textTransform:"uppercase"}}>{l.entity_type||"task"}</span></td>
+                      <td style={{padding:"7px 10px",maxWidth:160}}>
+                        <div style={{color:C.t1,fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.entity_label||"—"}</div>
+                        {proj&&<div style={{color:C.t3,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {proj.name}</div>}
+                      </td>
+                      <td style={{padding:"7px 10px"}}><span style={{color:aclr,fontWeight:700,fontSize:12}}>{ACTION_ICON[l.action]||"🔄"} {l.action||"—"}</span></td>
+                      <td style={{padding:"7px 10px",color:C.t2,fontSize:11}}>{l.field?(FIELD_ICON[l.field]||"")+" "+l.field:"—"}</td>
+                      <td style={{padding:"7px 10px",maxWidth:120}}>{l.old_value?<span style={{background:C.red+"15",color:C.red,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.old_value}</span>:<span style={{color:C.t3}}>—</span>}</td>
+                      <td style={{padding:"7px 10px",maxWidth:120}}>{l.new_value?<span style={{background:C.green+"15",color:C.green,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.new_value}</span>:<span style={{color:C.t3}}>—</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {/* Pagination */}
+        {totalPages>1&&(
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderTop:`1px solid ${C.border}`}}>
+            <span style={{fontSize:12,color:C.t3}}>Showing {page*PER_PAGE+1}–{Math.min((page+1)*PER_PAGE,filtered.length)} of {filtered.length}</span>
+            <div style={{display:"flex",gap:6}}>
+              <button disabled={page===0} onClick={()=>setPage(p=>p-1)} style={{...GBtn,padding:"5px 12px",fontSize:12,opacity:page===0?.4:1}}>← Prev</button>
+              <span style={{padding:"5px 10px",fontSize:12,color:C.t2}}>{page+1} / {totalPages}</span>
+              <button disabled={page>=totalPages-1} onClick={()=>setPage(p=>p+1)} style={{...GBtn,padding:"5px 12px",fontSize:12,opacity:page>=totalPages-1?.4:1}}>Next →</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BackupCenter({me}){
   const [tab,setTab]=useState('dashboard');
   const [search,setSearch]=useState('');
@@ -11269,7 +11445,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["timings","⏱","Timings"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -11596,7 +11772,8 @@ export default function App(){
             </span>
           </div>
         )}
-        {view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
+        {view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
+        }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
