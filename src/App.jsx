@@ -1030,8 +1030,8 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         </td>
       ):(
         <td style={{...td,width:90}}><div style={{display:"flex",gap:3,alignItems:"center"}}>
-          {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.6:.2),transition:"opacity .15s",lineHeight:1}}>📌</button>}
-          {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isStarred?1:(h?.6:.2),transition:"opacity .15s",lineHeight:1}}>{isStarred?"⭐":"☆"}</button>}
+          {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
+          {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isStarred?1:(h?.8:.5),transition:"opacity .15s",lineHeight:1}}>{isStarred?"⭐":"☆"}</button>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
         </div></td>
@@ -10119,6 +10119,7 @@ export default function App(){
   const [filterAssignee,sfa]= useState("All");
   const [filterClient,sfc]  = useState("All");
   const [filterProject,sfp] = useState("All");
+  const [filterPinStar,sfps]= useState("all"); // "all"|"pinned"|"starred"
   const [uMenu,sMenu]       = useState(false);
   const [showMore,setShowMore] = useState(false);
   const [saving,ssv]        = useState(false);
@@ -10756,8 +10757,10 @@ export default function App(){
     if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase())&&!(projectById.get(t.project_id)?.name||"").toLowerCase().includes(searchTask.toLowerCase()))return false;
     if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==filterStatus)return false;}
     if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
+    if(filterPinStar==="pinned"&&!pinnedTasks.has(t.id))return false;
+    if(filterPinStar==="starred"&&!starredTasks.has(t.id))return false;
     return true;
-  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById]);
+  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
   const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
@@ -12000,7 +12003,7 @@ export default function App(){
           <div>
           {/* ── Advanced Filter Bar ── */}
           {(()=>{
-            const hasF=searchTask||filterClient!=="All"||filterProject!=="All"||filterAssignee!=="All"||filterStatus!=="All";
+            const hasF=searchTask||filterClient!=="All"||filterProject!=="All"||filterAssignee!=="All"||filterStatus!=="All"||filterPinStar!=="all";
             const clientList=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort();
             const projList=accessibleProjects.filter(p=>filterClient==="All"||(p.client||"Unassigned")===filterClient);
             const empList=members;
@@ -12026,11 +12029,13 @@ export default function App(){
                       {empList.map(m=><option key={m} value={m}>{m}</option>)}
                     </select>
                   )}
+                  <button onClick={()=>sfps(filterPinStar==="pinned"?"all":"pinned")} title="Show pinned tasks" style={{...GBtn,padding:"6px 10px",fontSize:12,flexShrink:0,fontWeight:700,borderColor:filterPinStar==="pinned"?C.accent:C.border,color:filterPinStar==="pinned"?C.accent:C.t2,background:filterPinStar==="pinned"?C.accent+"18":"transparent"}}>📌 Pinned</button>
+                  <button onClick={()=>sfps(filterPinStar==="starred"?"all":"starred")} title="Show starred tasks" style={{...GBtn,padding:"6px 10px",fontSize:12,flexShrink:0,fontWeight:700,borderColor:filterPinStar==="starred"?C.yellow:C.border,color:filterPinStar==="starred"?C.yellow:C.t2,background:filterPinStar==="starred"?C.yellow+"18":"transparent"}}>⭐ Starred</button>
                   <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={ssel(filterStatus!=="All")}>
                     <option value="All">All Statuses</option>
                     {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
-                  {hasF&&<button onClick={()=>{sst("");sfc("All");sfp("All");sfa("All");sfs("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
+                  {hasF&&<button onClick={()=>{sst("");sfc("All");sfp("All");sfa("All");sfs("All");sfps("all");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
                 </div>
                 {hasF&&<p style={{margin:"6px 0 0",fontSize:12,color:C.accent}}>Showing {filtered.length} task{filtered.length!==1?"s":""}</p>}
               </div>
