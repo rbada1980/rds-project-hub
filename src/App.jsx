@@ -12136,7 +12136,7 @@ export default function App(){
                 </div>
               );
             })()}
-            <MyDayView me={me} tasks={activeDashTasks} projects={accessibleProjects} today={today} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} onEditTask={t=>{set(t);stm(true);}} compact/>
+            {!isAdmin&&<MyDayView me={me} tasks={activeDashTasks} projects={accessibleProjects} today={today} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} onEditTask={t=>{set(t);stm(true);}} compact/>}
             {/* ── Clean Filter Bar ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
               {/* Search - full width on mobile */}
