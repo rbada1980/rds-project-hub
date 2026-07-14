@@ -2997,6 +2997,8 @@ function stateToUrl(v,pid,client,projs=[]){
   if(v==='submissions')return'/submissions';
   if(v==='announcements')return'/announcements';
   if(v==='warroom')return'/message';
+  if(v==='clientfeedback')return'/clientfeedback';
+  if(v==='timings')return'/timings';
   if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
   return'/';
 }
@@ -3010,6 +3012,8 @@ function urlToState(path,projs=[]){
   if(path==='/submissions')return{view:'submissions',pid:null,client:null};
   if(path==='/announcements')return{view:'announcements',pid:null,client:null};
   if(path==='/message'||path==='/warroom')return{view:'warroom',pid:null,client:null};
+  if(path==='/clientfeedback')return{view:'clientfeedback',pid:null,client:null};
+  if(path==='/timings')return{view:'timings',pid:null,client:null};
   const pm=path.match(/^\/projects\/([^/]+)$/);
   if(pm){
     const slug=decodeURIComponent(pm[1]);
@@ -3048,6 +3052,10 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
     crumbs.push({label:'📢 Announcements',active:true});
   }else if(view==='warroom'){
     crumbs.push({label:'💬 Messages',active:true});
+  }else if(view==='clientfeedback'){
+    crumbs.push({label:'🏢 Client Feedback',active:true});
+  }else if(view==='timings'){
+    crumbs.push({label:'⏱ Timings',active:true});
   }else if(view==='clientprojects'&&activeClient){
     crumbs.push({label:'🏢 Clients',onClick:onDashboard,active:false});
     crumbs.push({label:activeClient,active:true});
