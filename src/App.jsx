@@ -9958,6 +9958,7 @@ export default function App(){
   const [filterStatus,sfs]  = useState("All");
   const [filterAssignee,sfa]= useState("All");
   const [filterClient,sfc]  = useState("All");
+  const [filterProject,sfp] = useState("All");
   const [uMenu,sMenu]       = useState(false);
   const [showMore,setShowMore] = useState(false);
   const [saving,ssv]        = useState(false);
@@ -10487,7 +10488,7 @@ export default function App(){
       const v=s?.view||'dashboard';
       prevViewRef.current=v;
       sv(v);sap(s?.pid||null);sac(s?.client||null);
-      if(v==='dashboard'){sst('');sfs('All');sfa('All');sfc('All');}
+      if(v==='dashboard'){sst('');sfs('All');sfa('All');sfc('All');sfp('All');}
     }
     window.addEventListener('popstate',onPop);
     return()=>window.removeEventListener('popstate',onPop);
@@ -10583,11 +10584,12 @@ export default function App(){
     if(activePid&&t.project_id!==activePid)return false;
     if(activeClient){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==activeClient)return false;}
     if(filterClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==filterClient)return false;}
-    if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase()))return false;
+    if(filterProject!=="All"&&t.project_id!==filterProject)return false;
+    if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase())&&!(projectById.get(t.project_id)?.name||"").toLowerCase().includes(searchTask.toLowerCase()))return false;
     if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==filterStatus)return false;}
     if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     return true;
-  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,searchTask,filterStatus,filterAssignee,projectById]);
+  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
   const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
@@ -10624,7 +10626,7 @@ export default function App(){
     window.history.pushState({view:v,pid,client},'',url);
     prevViewRef.current=v;
     sv(v);sap(pid);sac(client);
-    if(v==='dashboard'){sst('');sfs('All');sfa('All');sfc('All');}
+    if(v==='dashboard'){sst('');sfs('All');sfa('All');sfc('All');sfp('All');}
   }
   // keep for any residual internal callers
   function switchView(v){navTo(v,v==='list'?activePid:null,v==='clientprojects'?activeClient:null);}
@@ -10865,20 +10867,7 @@ export default function App(){
             <NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>
             {!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn}/>}
             {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
-            <span className="rds-topbar-filters" style={{display:"contents"}}>{view!=="dashboard"&&(
-              <>
-                <input placeholder="🔍 Search…" value={searchTask} onChange={e=>sst(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",width:150,fontFamily:"inherit"}}/>
-                {(isAdmin||isManager||isTeamLeader)&&(()=>{const clList=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(Boolean))].sort();return clList.length>0&&(<select value={filterClient} onChange={e=>sfc(e.target.value)} style={{background:C.card,border:`1px solid ${filterClient!=="All"?C.teal:C.border}`,borderRadius:8,padding:"7px 12px",color:filterClient!=="All"?C.teal:C.t1,fontSize:13,fontFamily:"inherit",cursor:"pointer",outline:"none"}}><option value="All">All Clients</option>{clList.map(c=><option key={c} value={c}>{c}</option>)}</select>);})()}
-                <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Status</option>
-                  {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-                {canEdit&&<select value={filterAssignee} onChange={e=>sfa(e.target.value)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Assignees</option>
-                  {members.map(m=><option key={m} value={m}>{m}</option>)}
-                </select>}
-              </>
-            )}</span>
+            <span className="rds-topbar-filters" style={{display:"contents"}}></span>
             {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button className="rds-export-btn" onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export</span></button>);})()}
             {!isClient&&<div ref={exportRef} style={{position:"relative"}}>
               <button className="rds-export-btn" onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export ▾</span></button>
@@ -11822,6 +11811,44 @@ export default function App(){
         })()}
         {view==="list"&&(
           <div>
+          {/* ── Advanced Filter Bar ── */}
+          {(()=>{
+            const hasF=searchTask||filterClient!=="All"||filterProject!=="All"||filterAssignee!=="All"||filterStatus!=="All";
+            const clientList=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort();
+            const projList=accessibleProjects.filter(p=>filterClient==="All"||(p.client||"Unassigned")===filterClient);
+            const empList=members;
+            const ssel=active=>({flex:1,minWidth:0,background:C.surface,border:`1px solid ${active?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:active?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
+            return(
+              <div style={{background:C.card,border:`1px solid ${hasF?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:16}}>
+                <input placeholder="🔍 Search tasks or projects…" value={searchTask} onChange={e=>sst(e.target.value)}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${searchTask?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",display:"block",marginBottom:isMobile?8:0}}/>
+                <div style={{display:"flex",gap:isMobile?6:10,alignItems:"center",flexWrap:"wrap",marginTop:8}}>
+                  {!isClient&&!isRegularUser&&clientList.length>0&&(
+                    <select value={filterClient} onChange={e=>{sfc(e.target.value);sfp("All");}} style={ssel(filterClient!=="All")}>
+                      <option value="All">All Clients</option>
+                      {clientList.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  )}
+                  <select value={filterProject} onChange={e=>sfp(e.target.value)} style={ssel(filterProject!=="All")}>
+                    <option value="All">All Projects</option>
+                    {projList.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  {!isRegularUser&&!isClient&&(
+                    <select value={filterAssignee} onChange={e=>sfa(e.target.value)} style={ssel(filterAssignee!=="All")}>
+                      <option value="All">All Employees</option>
+                      {empList.map(m=><option key={m} value={m}>{m}</option>)}
+                    </select>
+                  )}
+                  <select value={filterStatus} onChange={e=>sfs(e.target.value)} style={ssel(filterStatus!=="All")}>
+                    <option value="All">All Statuses</option>
+                    {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {hasF&&<button onClick={()=>{sst("");sfc("All");sfp("All");sfa("All");sfs("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
+                </div>
+                {hasF&&<p style={{margin:"6px 0 0",fontSize:12,color:C.accent}}>Showing {filtered.length} task{filtered.length!==1?"s":""}</p>}
+              </div>
+            );
+          })()}
           {!isMobile&&canEdit&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
             <GmailSelect selectedCount={selTasks.size} total={filtered.length}
               onSelectAll={()=>{setBSO(true);setSelTasks(new Set(filtered.map(t=>t.id)));}}
@@ -12028,63 +12055,4 @@ export default function App(){
             <Av name={me.name} size={44}/>
             <div>
               <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+              <div style={{fontSize:12,
