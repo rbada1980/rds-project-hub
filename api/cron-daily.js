@@ -170,11 +170,16 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: `Skipped: today not in scheduled days.` });
     }
 
-    // ── ATOMIC idempotency claim ──────────────────────────────────────────────
-    // WRITE first, read second — prevents race condition where two concurrent
-    // Vercel executions both pass the check before either stamps the date.
-    //
-    // Step 1: PATCH only if value != today (atomic conditional update)
+    // ── Idempotency: READ first, then WRITE, then re-check ───────────────────
+    // Step 1: READ current last_digest_date (anon key can always read settings)
+    const preCheck = await supaFetch(`/rest/v1/settings?key=eq.last_digest_date&select=value`);
+    const existingDate = Array.isArray(preCheck) && preCheck[0]?.value;
+    if (existingDate === today) {
+      console.log(`Daily digest already ran for ${today} — duplicate suppressed (pre-check).`);
+      return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
+    }
+
+    // Step 2: PATCH to claim today's slot (atomic conditional update)
     const claimPatch = await fetch(
       `${SUPA_URL}/rest/v1/settings?key=eq.last_digest_date&value=neq.${today}`,
       { method: "PATCH",
@@ -189,8 +194,7 @@ export default async function handler(req, res) {
     }
 
     if (!claimed) {
-      // Row didn't exist yet — try INSERT with ignore-duplicates so only ONE concurrent
-      // request wins (the other gets 0 rows back and bails).
+      // Row may not exist yet — try INSERT
       const claimInsert = await fetch(`${SUPA_URL}/rest/v1/settings`, {
         method: "POST",
         headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`,
@@ -205,16 +209,17 @@ export default async function handler(req, res) {
     }
 
     if (!claimed) {
-      // Either already stamped today (race lost) or stamp failed entirely.
-      // Re-read to distinguish the two cases.
-      const check = await supaFetch(`/rest/v1/settings?key=eq.last_digest_date&select=value`);
-      const currentVal = Array.isArray(check) && check[0]?.value;
+      // Re-read to see if another instance already claimed it
+      const postCheck = await supaFetch(`/rest/v1/settings?key=eq.last_digest_date&select=value`);
+      const currentVal = Array.isArray(postCheck) && postCheck[0]?.value;
       if (currentVal === today) {
-        console.log(`Daily digest already ran for ${today} — duplicate suppressed.`);
+        console.log(`Daily digest already ran for ${today} — duplicate suppressed (post-claim check).`);
         return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
       }
-      // Stamp failed for unknown reason — log but proceed (better than silent skip).
-      console.warn(`last_digest_date stamp failed (current=${currentVal}) — proceeding anyway to avoid missing digest.`);
+      // Stamp failed entirely (likely SUPABASE_SERVICE_KEY not set in Vercel env).
+      // ABORT — never send without a successful stamp, as that guarantees duplicates.
+      console.error(`last_digest_date stamp FAILED (current=${currentVal}). ABORTING to prevent duplicate send. Fix: add SUPABASE_SERVICE_KEY to Vercel environment variables.`);
+      return res.status(200).json({ message: "Stamp failed — aborted to prevent duplicate. Set SUPABASE_SERVICE_KEY in Vercel env vars." });
     }
 
     const [allTasks, projects, users] = await Promise.all([
@@ -254,14 +259,4 @@ export default async function handler(req, res) {
         }
       });
       results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
-      await new Promise(r => setTimeout(r, 1200)); // avoid Resend rate limit
-    }
-
-    console.log(`Daily digest sent to ${results.length} recipients (Admin/Manager/Team Leader only), ${allTasks.length} tasks.`);
-    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
-
-  } catch (err) {
-    console.error("Daily cron error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}
+      await new Prom
