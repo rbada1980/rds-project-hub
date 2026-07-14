@@ -995,7 +995,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
 }
 function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
-  const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`};
+  const td={padding:"5px 7px",borderBottom:`1px solid ${C.border}`};
   const today=new Date().toISOString().slice(0,10);
   const overdue=task.due_date&&task.due_date<today&&!isDone(task.status);
   const showCb=!!onSelect;
@@ -1008,28 +1008,28 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      <td style={{...td,maxWidth:200,minWidth:100}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
-      <td style={{...td,maxWidth:110}}><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
-      {!hideClient&&<td style={{...td,maxWidth:90}}><span style={{color:C.teal,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>}
-      <td style={td}><Bdg color={getStatusColor(task.status)}>{task.status}</Bdg></td>
-      <td style={td}><Bdg color={PRI_CLR[task.priority]}>{task.priority}</Bdg></td>
-      <td style={{...td,maxWidth:100}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={task.assignee} size={20}/><span style={{color:C.t2,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>—</span>}</td>
-      <td style={{...td,minWidth:80}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
-        {task.detailer?<span style={{color:C.t2,fontSize:11}}>✏ {task.detailer}</span>:null}
-        {task.checker?<span style={{color:"#8b5cf6",fontSize:11}}>✓ {task.checker}</span>:null}
-        {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:11}}>—</span>}
+      <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
+      <td style={{...td,maxWidth:90}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
+      {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.teal,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>}
+      <td style={{...td,maxWidth:110,width:100}}><span style={{background:getStatusColor(task.status)+"22",color:getStatusColor(task.status),border:`1px solid ${getStatusColor(task.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{task.status}</span></td>
+      <td style={{...td,maxWidth:70,width:65}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"—"}</span></td>
+      <td style={{...td,maxWidth:85}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>—</span>}</td>
+      <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
+        {task.detailer?<span style={{color:C.t2,fontSize:10}}>✏ {task.detailer}</span>:null}
+        {task.checker?<span style={{color:"#8b5cf6",fontSize:10}}>✓ {task.checker}</span>:null}
+        {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>—</span>}
       </div></td>
-      <td style={{...td,minWidth:80}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
-        {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:11,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
-        {task.client_sub_date?<span style={{color:C.teal,fontSize:11}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
-        {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:11}}>—</span>}
+      <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
+        {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
+        {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
+        {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:10}}>—</span>}
       </div></td>
       {onReview?(
         <td style={{...td,minWidth:130}}>
           <span style={{fontSize:11,fontWeight:700,color:apvClr,background:apvClr+"18",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>{APPROVAL_ICON[apv]} {apv}</span>
         </td>
       ):(
-        <td style={{...td,width:90}}><div style={{display:"flex",gap:3,alignItems:"center"}}>
+        <td style={{...td,width:80}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
           {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
           {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",color:isStarred?"#f59e0b":"#94a3b8",opacity:isStarred?1:(h?.9:.6),transition:"all .15s",lineHeight:1}}>{isStarred?"★":"☆"}</button>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
@@ -12083,13 +12083,13 @@ export default function App(){
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:780}}>
               <thead><tr style={{background:C.surface}}>
-                {canEdit&&<th style={{padding:"9px 10px",width:36}}>
+                {canEdit&&<th style={{padding:"6px 7px",width:32}}>
                   <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
                     style={{width:18,height:18,borderRadius:4,border:`2px solid ${selTasks.size===filtered.length&&filtered.length>0?C.accent:C.t3}`,background:selTasks.size===filtered.length&&filtered.length>0?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,cursor:"pointer",margin:"0 auto",transition:"all .15s"}}>
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
                   </div>
                 </th>}
-                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{h}</th>))}
+                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"6px 7px",textAlign:"left",fontSize:10,color:h==="My Approval"?C.teal:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
               <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>{const ap=pinnedTasks.has(a.id)?2:starredTasks.has(a.id)?1:0;const bp=pinnedTasks.has(b.id)?2:starredTasks.has(b.id)?1:0;return bp-ap;}).map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>)}</tbody>
             </table>
