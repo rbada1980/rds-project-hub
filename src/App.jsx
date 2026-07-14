@@ -3118,6 +3118,40 @@ async function createNotif(userIds,type,title,description,entityType=null,entity
   await supabase.from("notifications").insert(rows);
 }
 
+// ── Audit Log helper ─────────────────────────────────────────
+// Tracked fields and their display labels
+const AUDIT_FIELDS = {
+  title:"Title", status:"Status", priority:"Priority", assignee:"Assignee",
+  detailer:"Detailer", checker:"Checker", due_date:"Due Date",
+  client_sub_date:"Client Sub Date", client:"Client", scope:"Scope", tags:"Tags",
+};
+async function logAudit(actor, entity_type, entity_id, entity_label, project_id, action, oldObj, newObj){
+  const rows = [];
+  if(action==="create"||action==="delete"){
+    rows.push({actor_id:actor?.id||null,actor_name:actor?.name||actor?.username||"?",actor_role:actor?.role||"",entity_type,entity_id,entity_label,action,field:null,old_value:null,new_value:null,project_id});
+  } else {
+    // diff field by field
+    for(const [key,label] of Object.entries(AUDIT_FIELDS)){
+      const ov = oldObj?.[key]??null;
+      const nv = newObj?.[key]??null;
+      const ovs = ov==null?"":String(ov);
+      const nvs = nv==null?"":String(nv);
+      if(ovs!==nvs){
+        rows.push({actor_id:actor?.id||null,actor_name:actor?.name||actor?.username||"?",actor_role:actor?.role||"",entity_type,entity_id,entity_label,action:"update",field:label,old_value:ovs||null,new_value:nvs||null,project_id});
+      }
+    }
+  }
+  if(!rows.length)return;
+  try{
+    // Insert to Supabase
+    await supabase.from("audit_logs").insert(rows);
+    // Also mirror to local if on LAN
+    if(IS_LOCAL){
+      await fetch(LOCAL_BASE+"/api/audit-logs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(rows)}).catch(()=>{});
+    }
+  }catch(e){console.warn("logAudit error:",e.message);}
+}
+
 function NotifCard({n,onRead,onUnread,onDelete,onPin}){
   const meta=NOTIF_META[n.type]||{icon:"🔔",color:C.accent};
   const [hov,setHov]=useState(false);
@@ -6492,6 +6526,117 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
         </div>
       )}
       {logs.length===0&&!showForm&&<div style={{fontSize:12,color:"#4b5563",textAlign:"center",padding:"12px 0"}}>No time logged yet — click "+ Log Time" to add</div>}
+    </div>
+  );
+}
+
+// ── Task Tab Panel (Time Logs | Comments | History) ──────────
+function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users}){
+  const [tab,setTab]=useState("timelogs");
+  const tabBtn=(key,label)=>(
+    <button onClick={()=>setTab(key)} style={{background:"none",border:"none",borderBottom:`2px solid ${tab===key?C.accent:"transparent"}`,padding:"8px 14px",fontSize:12,fontWeight:700,color:tab===key?C.accent:C.t3,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{label}</button>
+  );
+  const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
+  return(
+    <div style={{marginTop:8}}>
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:0}}>
+        {!isHideTimeLogs&&tabBtn("timelogs","⏱ Time Logs")}
+        {tabBtn("comments","💬 Comments")}
+        {!isClient&&tabBtn("history","📋 History")}
+      </div>
+      <div style={{padding:"4px 0"}}>
+        {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
+        {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
+        {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me}/>}
+      </div>
+    </div>
+  );
+}
+
+// ── Task History (Audit Log) ─────────────────────────────────
+function TaskHistory({taskId,me}){
+  const isClient=me?.role==="Client";
+  if(isClient)return null;
+  const [logs,setLogs]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{loadHistory();},[taskId]);
+
+  async function loadHistory(){
+    setLoading(true);
+    try{
+      const {data}=await supabase.from("audit_logs").select("*").eq("entity_id",taskId).order("created_at",{ascending:false}).limit(100);
+      setLogs(Array.isArray(data)?data:[]);
+    }catch(e){}
+    setLoading(false);
+  }
+
+  const ACTION_ICON={create:"🆕",update:"🔄",delete:"🗑",assign:"👤"};
+  const FIELD_ICON={Status:"✅",Assignee:"👤","Due Date":"📅","Client Sub Date":"🗓",Priority:"🏷",Detailer:"✏",Checker:"✓",Title:"📝",Client:"🏢",Tags:"🏷",Scope:"📋"};
+
+  function fmtTime(ts){
+    const d=new Date(ts);
+    const now=new Date();
+    const diffDays=Math.floor((now-d)/86400000);
+    const timeStr=d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+    if(diffDays===0)return timeStr;
+    if(diffDays===1)return"Yesterday "+timeStr;
+    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+", "+timeStr;
+  }
+
+  function groupByDate(logs){
+    const groups={};
+    for(const l of logs){
+      const d=new Date(l.created_at);
+      const now=new Date();
+      const diffDays=Math.floor((now-d)/86400000);
+      const label=diffDays===0?"Today":diffDays===1?"Yesterday":d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+      if(!groups[label])groups[label]=[];
+      groups[label].push(l);
+    }
+    return groups;
+  }
+
+  function entryText(l){
+    if(l.action==="create")return <span style={{color:C.t2,fontSize:12}}>created this task</span>;
+    if(l.action==="delete")return <span style={{color:C.red,fontSize:12}}>deleted this task</span>;
+    const icon=FIELD_ICON[l.field]||"🔄";
+    return(
+      <span style={{fontSize:12,color:C.t2}}>
+        {icon} changed <b style={{color:C.t1}}>{l.field}</b>
+        {l.old_value?<>{" "}<span style={{color:C.red,background:C.red+"18",borderRadius:3,padding:"1px 5px",fontSize:11,fontFamily:"monospace"}}>{l.old_value}</span></>:null}
+        {" → "}
+        {l.new_value?<span style={{color:C.green,background:C.green+"18",borderRadius:3,padding:"1px 5px",fontSize:11,fontFamily:"monospace"}}>{l.new_value}</span>:<span style={{color:C.t3,fontSize:11}}>—</span>}
+      </span>
+    );
+  }
+
+  if(loading)return<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:13}}>Loading history…</div>;
+  if(!logs.length)return<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:13}}>No history yet. Changes will appear here after editing.</div>;
+
+  const groups=groupByDate(logs);
+  return(
+    <div style={{padding:"16px 0"}}>
+      {Object.entries(groups).map(([date,entries])=>(
+        <div key={date} style={{marginBottom:16}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",padding:"0 0 8px",borderBottom:`1px solid ${C.border}`,marginBottom:8}}>{date}</div>
+          {entries.map((l,i)=>(
+            <div key={l.id||i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"6px 0",borderBottom:i<entries.length-1?`1px dashed ${C.border}22`:"none"}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0,fontWeight:700,color:C.accent}}>
+                {(l.actor_name||"?").charAt(0).toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontWeight:700,color:C.t1,fontSize:12}}>{l.actor_name||"Unknown"}</span>
+                  {l.actor_role&&<span style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px"}}>{l.actor_role}</span>}
+                  <span style={{fontSize:10,color:C.t3,marginLeft:"auto",whiteSpace:"nowrap"}}>{fmtTime(l.created_at)}</span>
+                </div>
+                <div style={{marginTop:3}}>{entryText(l)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -10880,6 +11025,8 @@ export default function App(){
         const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
         showToast("Task updated ✓");
+        // ── Audit: log field changes ──
+        await logAudit(me,"task",editTask.id,f.title,pid,"update",editTask,f);
         if(f.status!==editTask.status){
           if(f.status==="Completed"){
             // In-app: notify admins/managers on completion
@@ -10897,6 +11044,8 @@ export default function App(){
         const {data}=await supabase.from("tasks").insert(payload).select().single();
         if(data)st(ts=>[...ts,data]);
         showToast("Task created ✓");
+        // ── Audit: log task creation ──
+        if(data)await logAudit(me,"task",data.id,data.title,pid,"create",null,data);
         // ── In-app notifications ──
         if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_assigned",`New task assigned: ${f.title}`,`Assigned by ${me.name}${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
         if(detailerUser?.id&&detailerUser.id!==me.id)await createNotif([detailerUser.id],"task_assigned",`Detailing assigned: ${f.title}`,`You are the detailer${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
@@ -12117,8 +12266,7 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
-          {editTask&&<TaskTimeLogs taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
-          {editTask&&<TaskComments taskId={editTask.id} projectId={editTask.project_id} me={me} users={users}/>}
+          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users}/>}
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}

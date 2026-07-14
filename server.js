@@ -48,6 +48,25 @@ async function runMigrations() {
   const migrations = [
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_approval TEXT DEFAULT 'Pending Review'`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_comment  TEXT`,
+    // ── Audit Log table ──────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      actor_id     UUID,
+      actor_name   TEXT,
+      actor_role   TEXT,
+      entity_type  TEXT NOT NULL DEFAULT 'task',
+      entity_id    UUID,
+      entity_label TEXT,
+      action       TEXT NOT NULL,
+      field        TEXT,
+      old_value    TEXT,
+      new_value    TEXT,
+      project_id   UUID
+    )`,
+    `CREATE INDEX IF NOT EXISTS audit_logs_entity_idx  ON audit_logs (entity_id)`,
+    `CREATE INDEX IF NOT EXISTS audit_logs_project_idx ON audit_logs (project_id)`,
+    `CREATE INDEX IF NOT EXISTS audit_logs_created_idx ON audit_logs (created_at DESC)`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); } catch(e) { console.warn("Migration skipped:", e.message); }
@@ -1216,6 +1235,43 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// ── Audit Logs ───────────────────────────────────────────────
+app.post("/api/audit-logs", async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body) ? req.body : [req.body];
+    const inserted = [];
+    for (const r of rows) {
+      const result = await pool.query(
+        `INSERT INTO audit_logs
+           (actor_id, actor_name, actor_role, entity_type, entity_id, entity_label,
+            action, field, old_value, new_value, project_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         RETURNING *`,
+        [r.actor_id||null, r.actor_name||null, r.actor_role||null,
+         r.entity_type||"task", r.entity_id||null, r.entity_label||null,
+         r.action||"update", r.field||null, r.old_value||null, r.new_value||null,
+         r.project_id||null]
+      );
+      inserted.push(result.rows[0]);
+    }
+    res.json({ data: inserted });
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+app.get("/api/audit-logs", async (req, res) => {
+  try {
+    const { task_id, project_id, limit = 100 } = req.query;
+    let q = `SELECT * FROM audit_logs WHERE 1=1`;
+    const vals = [];
+    if (task_id)    { vals.push(task_id);    q += ` AND entity_id=$${vals.length}`; }
+    if (project_id) { vals.push(project_id); q += ` AND project_id=$${vals.length}`; }
+    q += ` ORDER BY created_at DESC LIMIT $${vals.length+1}`;
+    vals.push(parseInt(limit));
+    const r = await pool.query(q, vals);
+    res.json({ data: r.rows });
+  } catch (e) { res.json({ error: e.message }); }
+});
+
 // ═════════════════════════════════════════════════════════════
 // SPA FALLBACK — serve React app for all other routes
 // ══════════════════════════════════════════════════════════════
@@ -1223,61 +1279,4 @@ app.get("/api/health", async (req, res) => {
 app.get(/.*/, (req, res) => {
   const index = path.join(DIST, "index.html");
   if (fs.existsSync(index)) {
-    res.sendFile(index);
-  } else {
-    res.json({ message: "RDS Local API running. React build not found — run npm run build first." });
-  }
-});
-
-// ══════════════════════════════════════════════════════════════
-// START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
-// ══════════════════════════════════════════════════════════════
-
-const HTTPS_PORT = 8443;
-const certPath   = path.join(__dirname, "certs", "cert.pem");
-const keyPath    = path.join(__dirname, "certs",  "key.pem");
-
-if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-  // ── Primary: HTTPS only ────────────────────────────────────────────────────────
-  try {
-    require("https").createServer({
-      key:  fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-    }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
-      console.log(`\n🔒 RDS Local Server running at:`);
-      console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
-      console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
-      console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-
-      // ── Bidirectional sync schedule ───────────────────────────────────────────────────
-      let _syncBusy = false;
-      async function doSync(label) {
-        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
-        _syncBusy = true;
-        try { await runSync(); }
-        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
-        finally { _syncBusy = false; }
-      }
-      // Every 10 seconds
-      setInterval(() => doSync("10s"), 10000);
-      // Full sync at 2 AM IST daily
-      cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
-      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
-
-      // Run once 30s after startup to catch any changes since last restart
-      setTimeout(() => doSync("startup"), 30000);
-    });
-  } catch (e) {
-    console.error("HTTPS failed:", e.message);
-    process.exit(1);
-  }
-} else {
-  // ── Fallback: HTTP on 3000 (no cert yet) ──────────────────────────────────────────
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
-    console.log(`   http://192.168.0.159:${PORT}`);
-    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
-    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
-    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-  });
-}
+    re
