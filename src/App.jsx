@@ -9862,17 +9862,17 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
           </div>
         ))}
       </div>
-      {total===0&&(
+      {!compact&&total===0&&(
         <div style={{textAlign:"center",padding:"80px 20px",background:C.card,borderRadius:16,border:`1px solid ${C.border}`}}>
           <div style={{fontSize:56,marginBottom:14}}>🎉</div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1,marginBottom:6}}>You're all caught up!</div>
           <div style={{fontSize:13,color:C.t3}}>No overdue, due-today, in-progress, or upcoming tasks.</div>
         </div>
       )}
-      {section("Overdue","🔴",C.red,overdue)}
-      {section("Due Today","📅","#f59e0b",dueToday)}
-      {section("In Progress","🔄",C.blue,inProgress)}
-      {section("Due Soon","⏳",C.teal,dueSoon)}
+      {!compact&&section("Overdue","🔴",C.red,overdue)}
+      {!compact&&section("Due Today","📅","#f59e0b",dueToday)}
+      {!compact&&section("In Progress","🔄",C.blue,inProgress)}
+      {!compact&&section("Due Soon","⏳",C.teal,dueSoon)}
     </div>
   );
 }
