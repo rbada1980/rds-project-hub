@@ -397,6 +397,17 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
       </div>
+      {(initial.client_approval||initial.client_comment)&&(
+        <div style={{background:C.teal+"0d",border:`1px solid ${C.teal}33`,borderRadius:10,padding:"14px 16px",marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.teal,marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>🏢 Client Feedback</div>
+          {initial.client_approval&&(()=>{const col=APPROVAL_CLR[initial.client_approval]||C.t3;return(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:initial.client_comment?8:0}}>
+              <span style={{fontSize:12,fontWeight:700,color:col,background:col+"18",padding:"4px 12px",borderRadius:20}}>{APPROVAL_ICON[initial.client_approval]} {initial.client_approval}</span>
+            </div>
+          );})()}
+          {initial.client_comment&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",lineHeight:1.5,borderTop:initial.client_approval?`1px solid ${C.teal}22`:"none",paddingTop:initial.client_approval?8:0}}>"{initial.client_comment}"</div>}
+        </div>
+      )}
       {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker)&&(
         <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
           ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status",!f.checker&&"Checker"].filter(Boolean).join(", ")}
@@ -2336,7 +2347,66 @@ function Login({onLogin}){
     </div>
   );
 }
-function ClientDashboard({me,tasks,projects,today,onViewProject}){
+const APPROVAL_STATUSES=["Pending Review","Approved","Rejected","Needs Revision"];
+const APPROVAL_CLR={"Pending Review":C.t3,"Approved":C.green,"Rejected":C.red,"Needs Revision":"#f59e0b"};
+const APPROVAL_ICON={"Pending Review":"⏳","Approved":"✅","Rejected":"❌","Needs Revision":"🔄"};
+function ClientReviewModal({task,project,onSave,onClose,saving}){
+  const [approval,setApproval]=useState(task.client_approval||"Pending Review");
+  const [comment,setComment]=useState(task.client_comment||"");
+  const tdy=new Date().toISOString().slice(0,10);
+  const isOv=task.due_date&&task.due_date<tdy&&!isDone(task.status);
+  return(
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"#00000088",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:18,width:"100%",maxWidth:520,display:"flex",flexDirection:"column",boxShadow:"0 32px 80px #00000090",border:`1px solid ${C.teal}33`}}>
+        {/* Header */}
+        <div style={{padding:"18px 22px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:40,height:40,borderRadius:10,background:C.teal+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,border:`1px solid ${C.teal}33`}}>📋</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:15,fontWeight:800,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{task.title}</div>
+            {project&&<div style={{fontSize:12,color:C.t3,marginTop:2}}>{project.name}</div>}
+          </div>
+          <button onClick={onClose} style={{width:32,height:32,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,fontFamily:"inherit"}}>✕</button>
+        </div>
+        {/* Task meta */}
+        <div style={{padding:"12px 22px",borderBottom:`1px solid ${C.border}`,display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:12,fontWeight:700,color:STATUS_CLR[task.status]||C.t3,background:(STATUS_CLR[task.status]||C.t3)+"18",padding:"4px 12px",borderRadius:20}}>{task.status}</span>
+          {task.priority&&<span style={{fontSize:12,fontWeight:700,color:PRI_CLR[task.priority],background:PRI_CLR[task.priority]+"18",padding:"4px 12px",borderRadius:20}}>{task.priority}</span>}
+          {task.due_date&&<span style={{fontSize:12,fontWeight:700,color:isOv?C.red:C.t3}}>{isOv?"⚠ Overdue · ":"📅 "}{fmtD(task.due_date)}</span>}
+          {task.assignee&&<span style={{fontSize:12,color:C.t2}}>👤 {task.assignee}</span>}
+        </div>
+        {/* Approval buttons */}
+        <div style={{padding:"18px 22px",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:12,textTransform:"uppercase",letterSpacing:".06em"}}>Your Approval</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {APPROVAL_STATUSES.map(s=>{
+              const col=APPROVAL_CLR[s];const active=approval===s;
+              return(<button key={s} onClick={()=>setApproval(s)}
+                style={{background:active?col+"22":"transparent",border:`2px solid ${active?col:C.border}`,borderRadius:10,padding:"10px 14px",cursor:"pointer",color:active?col:C.t2,fontSize:13,fontWeight:active?800:500,fontFamily:"inherit",transition:"all .15s",display:"flex",alignItems:"center",gap:8,justifyContent:"center"}}>
+                <span>{APPROVAL_ICON[s]}</span><span>{s}</span>
+              </button>);
+            })}
+          </div>
+        </div>
+        {/* Comment */}
+        <div style={{padding:"16px 22px",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Your Comment / Feedback</div>
+          <textarea value={comment} onChange={e=>setComment(e.target.value)}
+            placeholder="Add your feedback, notes, or revision requests…"
+            rows={4} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",color:C.t1,fontSize:13,resize:"vertical",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>
+        </div>
+        {/* Footer */}
+        <div style={{padding:"14px 22px",display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
+          <button onClick={()=>onSave(approval,comment)} disabled={saving}
+            style={{background:C.teal,border:"none",borderRadius:8,padding:"10px 24px",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.6:1}}>
+            {saving?"Saving…":"Submit Review"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   const [statusFilter,ssf]=useState("All");
@@ -2345,6 +2415,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
   const [filterAssignee,sfa]=useState("All");
   const [showTasks,sst]=useState(false);
   const [clStatModal,setCSM]=useState(null);
+  const [reviewTask,setRT]=useState(null);
+  const [reviewSaving,setRS]=useState(false);
   const myProjects=projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase());
   const myPids=new Set(myProjects.map(p=>p.id));
   const myTasks=tasks.filter(t=>myPids.has(t.project_id));
@@ -2369,8 +2441,18 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
     const exportProjs=myProjects.filter(p=>filtered.some(t=>t.project_id===p.id));
     exportExcel(exportProjs,filtered,`${me.client_name||me.name} - Project Report`);
   }
+  async function saveReview(approval,comment){
+    if(!reviewTask)return;
+    setRS(true);
+    try{
+      const {data,error}=await supabase.from("tasks").update({client_approval:approval,client_comment:comment}).eq("id",reviewTask.id).select().single();
+      if(!error&&data){if(onUpdateTask)onUpdateTask(data);}
+      setRT(null);
+    }catch(e){console.error(e);}finally{setRS(false);}
+  }
   return(
     <div>
+      {reviewTask&&<ClientReviewModal task={reviewTask} project={projectById.get(reviewTask.project_id)} onSave={saveReview} onClose={()=>setRT(null)} saving={reviewSaving}/>}
       {/* Header */}
       <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.teal}11 100%)`,border:`1px solid ${C.teal}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",borderLeft:`4px solid ${C.teal}`}}>
         <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
@@ -2462,16 +2544,20 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
             {hasFilter&&<span style={{fontSize:12,color:C.teal}}>Filtered</span>}
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date"].map(h=>(
-              <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
+            <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","My Approval"].map(h=>(
+              <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
             ))}</tr></thead>
             <tbody>{filtered.length===0
-              ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+              ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
               :filtered.map(t=>{
                 const pj=projectById.get(t.project_id);
                 const tdy=new Date().toISOString().slice(0,10);
                 const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);
-                return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                const apv=t.client_approval||"Pending Review";
+                const apvClr=APPROVAL_CLR[apv];
+                return(<tr key={t.id} onClick={()=>setRT(t)} style={{borderBottom:`1px solid ${C.border}`,cursor:"pointer",transition:"background .12s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
                   <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -2481,6 +2567,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject}){
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
                   <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                   <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
+                  <td style={{padding:"10px 14px"}}><span style={{fontSize:11,fontWeight:700,color:apvClr,background:apvClr+"18",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>{APPROVAL_ICON[apv]} {apv}</span></td>
                 </tr>);
               })}
             </tbody>
@@ -11087,6 +11174,7 @@ export default function App(){
           <ClientDashboard
             me={me} tasks={tasks} projects={projects} today={today}
             onViewProject={pid=>navTo('list',pid)}
+            onUpdateTask={t=>st(ts=>ts.map(x=>x.id===t.id?t:x))}
           />
         )}
         {view==="dashboard"&&(isAdmin||isManager)&&(
@@ -11956,74 +12044,4 @@ export default function App(){
               ))}
             </div>
           </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+   

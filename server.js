@@ -43,6 +43,19 @@ const pool = new Pool({
   password: "rds2026",
 });
 
+// ── DB Migration: add new columns safely on startup ─────────
+async function runMigrations() {
+  const migrations = [
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_approval TEXT DEFAULT 'Pending Review'`,
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_comment  TEXT`,
+  ];
+  for (const sql of migrations) {
+    try { await pool.query(sql); } catch(e) { console.warn("Migration skipped:", e.message); }
+  }
+  console.log("✓ DB migrations applied");
+}
+runMigrations();
+
 // ── File storage (uploads go to ./uploads/) ─────────────────
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -1259,12 +1272,4 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
     process.exit(1);
   }
 } else {
-  // ── Fallback: HTTP on 3000 (no cert yet) ──────────────────────────────────────────
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
-    console.log(`   http://192.168.0.159:${PORT}`);
-    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
-    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
-    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-  });
-}
+  // ── Fallback: HTTP on 30
