@@ -6532,11 +6532,11 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
 
 // ── Task Tab Panel (Time Logs | Comments | History) ──────────
 function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users}){
-  const [tab,setTab]=useState("timelogs");
+  const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
+  const [tab,setTab]=useState(isHideTimeLogs?"comments":"timelogs");
   const tabBtn=(key,label)=>(
     <button onClick={()=>setTab(key)} style={{background:"none",border:"none",borderBottom:`2px solid ${tab===key?C.accent:"transparent"}`,padding:"8px 14px",fontSize:12,fontWeight:700,color:tab===key?C.accent:C.t3,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{label}</button>
   );
-  const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
   return(
     <div style={{marginTop:8}}>
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:0}}>
