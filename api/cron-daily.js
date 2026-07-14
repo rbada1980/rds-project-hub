@@ -33,7 +33,7 @@ async function postJson(url, payload) {
   return res.status;
 }
 
-const PORTAL = "https://hub-rdsprojects.com/submissions";
+const PORTAL = "https://hub-rdsprojects.com/?view=list";
 const aStyle = "text-decoration:none;color:inherit;display:block;";
 
 function statusBadge(s) {

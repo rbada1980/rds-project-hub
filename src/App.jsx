@@ -10080,7 +10080,7 @@ export default function App(){
   const [workflows,swf]     = useState([]);
   const [clients,scl]       = useState([]);
   const [loading,sl]        = useState(false);
-  const [view,sv]           = useState(()=>{try{return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
+  const [view,sv]           = useState(()=>{try{const p=new URLSearchParams(window.location.search).get("view");if(p)return p;return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
   useEffect(()=>{try{sessionStorage.setItem("rds_view",view);}catch(e){}},[view]);
   const [activePid,sap]     = useState(null);
   const [activeClient,sac]  = useState(null);
