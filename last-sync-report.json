@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-14T05:39:26.506Z",
-  "ist_time": "2026-07-14 11:09:26 IST",
-  "duration_sec": 6.8,
-  "total_synced": 2061,
+  "timestamp": "2026-07-14T05:55:57.300Z",
+  "ist_time": "2026-07-14 11:25:57 IST",
+  "duration_sec": 7.6,
+  "total_synced": 2065,
   "total_pushed": 887,
-  "total_pulled": 1174,
+  "total_pulled": 1178,
   "total_failed": 60,
   "status": "partial",
   "tables": [
@@ -58,7 +58,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 265
+      "pulled": 269
     },
     {
       "table": "announcements",
