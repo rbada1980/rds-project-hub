@@ -307,7 +307,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     assignee:initAssignee,due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
-    scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",
+    scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function onAssigneeChange(v){
@@ -393,6 +393,9 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
         <div style={col}><FInput label="Client Sub Date" value={f.client_sub_date} onChange={s("client_sub_date")} type="date"/></div>
+      </div>
+      <div className="rds-form-row" style={row}>
+        <div style={{...col,maxWidth:200}}><FInput label="Det. Wt. (Tons)" value={f.det_weight} onChange={s("det_weight")} type="number" placeholder="e.g. 12.5"/></div>
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
@@ -1019,6 +1022,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         {task.checker?<span style={{color:"#8b5cf6",fontSize:10}}>✓ {task.checker}</span>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>—</span>}
       </div></td>
+      <td style={{...td,minWidth:60,textAlign:"right"}}>{task.det_weight!=null?<span style={{color:C.t1,fontSize:11,fontWeight:600}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})} <span style={{color:C.t3,fontSize:9,fontWeight:400}}>T</span></span>:<span style={{color:C.t3,fontSize:10}}>—</span>}</td>
       <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
         {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
@@ -1410,11 +1414,11 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                 {hasF&&<span style={{fontSize:12,color:C.accent}}>Filtered</span>}
               </div>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date"].map(h=>(
+                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Det. Wt.","Due Date","Client Sub Date"].map(h=>(
                   <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{ft.length===0
-                  ?<tr><td colSpan={9} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+                  ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
                   :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
@@ -1819,11 +1823,11 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                 {hasF&&<span style={{fontSize:12,color:"#8b5cf6"}}>Filtered</span>}
               </div>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Due Date","Client Sub Date","Actions"].map(h=>(
+                <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Det. Wt.","Due Date","Client Sub Date","Actions"].map(h=>(
                   <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{ft.length===0
-                  ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
+                  ?<tr><td colSpan={11} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
                   :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
@@ -11345,7 +11349,7 @@ export default function App(){
         }
         else{pid=exists.id;}
       }
-      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",scope:f.scope||"",client_sub_date:f.client_sub_date||null};
+      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",scope:f.scope||"",client_sub_date:f.client_sub_date||null,det_weight:f.det_weight!==''&&f.det_weight!==null&&f.det_weight!==undefined?parseFloat(f.det_weight):null};
       const proj=projects.find(p=>p.id===pid);
       const assigneeUser=users.find(u=>u.username===f.assignee||u.name===f.assignee);
       const checkerUser=f.checker?users.find(u=>u.name===f.checker.split("/")[0].trim()):null;

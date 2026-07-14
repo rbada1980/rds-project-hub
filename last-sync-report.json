@@ -1,19 +1,19 @@
 {
-  "timestamp": "2026-07-14T11:02:41.893Z",
-  "ist_time": "2026-07-14 16:32:41 IST",
-  "duration_sec": 5,
-  "total_synced": 2065,
-  "total_pushed": 887,
-  "total_pulled": 1178,
+  "timestamp": "2026-07-14T12:01:44.553Z",
+  "ist_time": "2026-07-14 17:31:44 IST",
+  "duration_sec": 5.4,
+  "total_synced": 2067,
+  "total_pushed": 888,
+  "total_pulled": 1179,
   "total_failed": 60,
   "status": "partial",
   "tables": [
     {
       "table": "users",
-      "synced": 29,
+      "synced": 30,
       "failed": 0,
-      "total": 29,
-      "pulled": 29
+      "total": 30,
+      "pulled": 30
     },
     {
       "table": "clients",
