@@ -4290,7 +4290,7 @@ function EmailDigestCard(){
           sent++;
         }catch(e2){console.warn("Email failed",u.email,e2.message);}
       }
-      await supabase.from('settings').upsert({key:'last_digest_date',value:today},{onConflict:'key'}).catch(()=>{});
+      try{await supabase.from('settings').upsert({key:'last_digest_date',value:today},{onConflict:'key'});}catch(e){}
       setMsg("Sent to "+sent+" recipient(s) — "+tlist.length+" task(s) for today");
     }
     catch(e){setMsg("Error: "+e.message);}
@@ -12836,4 +12836,3 @@ export default function App(){
     <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
     </MobileCtx.Provider>
   );
-}
