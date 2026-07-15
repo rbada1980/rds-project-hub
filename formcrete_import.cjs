@@ -206,7 +206,7 @@ async function run() {
       if (t.checker    !== null) payload.checker         = t.checker;
       if (t.assignee   !== null) payload.assignee        = t.assignee;
       if (t.client_sub_date !== null) payload.client_sub_date = t.client_sub_date;
-      if (t.due_date   !== null) payload.due_date        = t.due_date;
+      payload.due_date = t.due_date;  // always write (null clears incorrectly set values)
       if (t.det_weight !== null) payload.det_weight      = t.det_weight;
       if (t.scope      !== null) payload.scope           = t.scope;
 
