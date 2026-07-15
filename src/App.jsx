@@ -12836,3 +12836,4 @@ export default function App(){
     <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
     </MobileCtx.Provider>
   );
+}
