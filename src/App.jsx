@@ -27,25 +27,6 @@ const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
 const fmtD=v=>{if(!v)return"—";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 
-const SLA_HOURS={Critical:24,High:72,Medium:168,Low:336};
-function getSLAStatus(task){
-  if(!task.created_at||isDone(task.status))return null;
-  const hours=SLA_HOURS[task.priority]||168;
-  const dl=new Date(task.created_at);
-  dl.setHours(dl.getHours()+hours);
-  const diff=(dl-new Date())/3600000;
-  if(diff<0)return{breach:true,over:Math.round(-diff)};
-  if(diff<24)return{warn:true,left:Math.round(diff)};
-  return null;
-}
-function SLABadge({task}){
-  const s=getSLAStatus(task);
-  if(!s)return null;
-  const bg=s.breach?"#450a0a":"#78350f44";
-  const cl=s.breach?"#fca5a5":"#fcd34d";
-  const txt=s.breach?"SLA +"+s.over+"h":"SLA "+s.left+"h left";
-  return <span style={{fontSize:9,fontWeight:800,background:bg,color:cl,borderRadius:4,padding:"2px 6px",whiteSpace:"nowrap",border:"1px solid "+(s.breach?"#7f1d1d":"#78350f")}}>{txt}</span>;
-}
 
 function Av({name,size=28}){
   const h=name?name.charCodeAt(0)*17%360:200;
@@ -1011,7 +992,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}<SLABadge task={task}/></div></td>
+      <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
       <td style={{...td,maxWidth:90}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
       {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.teal,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>}
       <td style={{...td,maxWidth:110,width:100}}><span style={{background:getStatusColor(task.status)+"22",color:getStatusColor(task.status),border:`1px solid ${getStatusColor(task.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{task.status}</span></td>
@@ -4911,90 +4892,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
           )}
         </Panel>
       </div>
-
-      {/* ── SLA Breach Report ── */}
-      {(()=>{
-        const SLABreachReport=()=>{
-          const [expanded,setExpanded]=useState({});
-          const breached=tasks.filter(t=>{const s=getSLAStatus(t);return s&&s.breach;}).sort((a,b)=>getSLAStatus(b).over-getSLAStatus(a).over);
-          if(breached.length===0)return(
-            <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"18px 20px",marginTop:8,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:18}}>✅</span>
-              <div>
-                <div style={{fontWeight:800,fontSize:14,color:C.t1}}>SLA Breach Report</div>
-                <div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>All tasks within SLA — no breaches</div>
-              </div>
-            </div>
-          );
-          const byClient={};
-          breached.forEach(t=>{const k=t.client||"No Client";if(!byClient[k])byClient[k]=[];byClient[k].push(t);});
-          const clients=Object.entries(byClient).sort((a,b)=>b[1].length-a[1].length);
-          const SHOW=5;
-          return(
-            <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20,marginTop:8}}>
-              {/* Header row */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,gap:10,flexWrap:"wrap"}}>
-                <div>
-                  <span style={{fontWeight:800,fontSize:15,color:C.t1}}>SLA Breach Report</span>
-                  <span style={{marginLeft:10,background:C.red+"22",color:C.red,border:"1px solid "+C.red+"44",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{breached.length} breached</span>
-                </div>
-                <span style={{fontSize:11,color:C.t3}}>Critical=24h · High=72h · Medium=7d · Low=14d</span>
-              </div>
-              {/* Client summary chips */}
-              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
-                {clients.map(([cl,cts])=>{
-                  const worst=getSLAStatus(cts[0]);
-                  const wDays=Math.round(worst.over/24);
-                  return(
-                    <div key={cl} onClick={()=>setExpanded(e=>({...e,[cl]:!e[cl]}))}
-                      style={{background:expanded[cl]?C.red+"18":C.surface,border:"1px solid "+(expanded[cl]?C.red+"66":C.border),borderRadius:10,padding:"8px 14px",cursor:"pointer",transition:"all .15s",minWidth:120}}>
-                      <div style={{fontSize:12,fontWeight:700,color:C.t1,whiteSpace:"nowrap"}}>{cl}</div>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
-                        <span style={{fontSize:11,fontWeight:800,color:C.red}}>{cts.length} tasks</span>
-                        <span style={{fontSize:10,color:C.t3}}>· worst {wDays>0?wDays+"d":worst.over+"h"} over</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Expanded client task list */}
-              {clients.map(([cl,cts])=>expanded[cl]&&(
-                <div key={cl} style={{marginBottom:12,background:C.surface,borderRadius:10,border:"1px solid "+C.border,overflow:"hidden"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",borderBottom:"1px solid "+C.border+"44",background:C.red+"0a"}}>
-                    <span style={{fontSize:12,fontWeight:800,color:C.teal}}>🏢 {cl}</span>
-                    <button onClick={()=>setExpanded(e=>({...e,[cl]:false}))} style={{background:"none",border:"none",color:C.t3,fontSize:16,cursor:"pointer",padding:0,lineHeight:1}}>✕</button>
-                  </div>
-                  {(expanded[cl+"_all"]?cts:cts.slice(0,SHOW)).map((t,i,arr)=>{
-                    const pj=projectById.get(t.project_id);
-                    const s=getSLAStatus(t);
-                    const dOver=Math.round(s.over/24);
-                    return(
-                      <div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 14px",borderBottom:i<arr.length-1?"1px solid "+C.border+"33":"none"}}>
-                        <div style={{width:6,height:6,borderRadius:"50%",background:C.red,flexShrink:0}}/>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                          <div style={{fontSize:10,color:C.t3}}>{(pj?.name||"No project")+" · "+(t.assignee||"—")}</div>
-                        </div>
-                        <div style={{flexShrink:0,textAlign:"right"}}>
-                          <div style={{fontSize:11,fontWeight:800,color:C.red}}>{dOver>0?dOver+"d over":s.over+"h over"}</div>
-                          <div style={{fontSize:9,color:C.t3}}>{(t.priority||"Medium")+" SLA"}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {cts.length>SHOW&&(
-                    <div onClick={()=>setExpanded(e=>({...e,[cl+"_all"]:!e[cl+"_all"]}))}
-                      style={{textAlign:"center",padding:"7px 0",fontSize:11,fontWeight:700,color:C.accent,cursor:"pointer",borderTop:"1px solid "+C.border+"44"}}>
-                      {expanded[cl+"_all"]?`▲ Show less`:`▼ Show ${cts.length-SHOW} more`}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          );
-        };
-        return <SLABreachReport/>;
-      })()}
 
       {modal&&modal.type==="tasks"&&<StatTaskModal title={modal.title} tasks={modal.list} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={tasks} today={today} onClose={()=>setModal(null)}/>}
