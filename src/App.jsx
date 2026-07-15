@@ -4408,6 +4408,97 @@ function EscalationAlertCard(){
   );
 }
 
+function SyncReportCard(){
+  const [report,setReport]=useState(null);
+  const [clients,setClients]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [expanded,setExpanded]=useState(false);
+  useEffect(()=>{
+    (async()=>{
+      const [settRes,taskRes]=await Promise.all([
+        fetch(SUPA_URL+"/rest/v1/settings?key=eq.last_sync_report&select=value",{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}),
+        supabase.from("tasks").select("client"),
+      ]);
+      const settData=await settRes.json();
+      if(Array.isArray(settData)&&settData[0]?.value){try{setReport(JSON.parse(settData[0].value));}catch(e){}}
+      const counts={};
+      (taskRes.data||[]).forEach(t=>{if(t.client){counts[t.client]=(counts[t.client]||0)+1;}});
+      setClients(Object.entries(counts).sort((a,b)=>b[1]-a[1]));
+      setLoading(false);
+    })();
+  },[]);
+  if(loading)return null;
+  if(!report)return(
+    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:20}}>🔄</span>
+        <div><div style={{fontSize:15,fontWeight:800,color:C.t1}}>Sync Report</div>
+        <div style={{fontSize:11,color:C.t3,marginTop:2}}>No report yet — run a sync first (node sync.cjs)</div></div>
+      </div>
+    </div>
+  );
+  const sColor=report.status==="success"?C.green:report.status==="partial"?"#f59e0b":C.red;
+  const sIcon=report.status==="success"?"✅":report.status==="partial"?"⚠️":"❌";
+  const keyTables=(report.tables||[]).filter(t=>(t.total||0)>0||(t.failed||0)>0||(t.pulled||0)>0);
+  const totalTasks=clients.reduce((s,[,c])=>s+c,0)||1;
+  return(
+    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+        <span style={{fontSize:20}}>🔄</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Last Sync Report</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{report.ist_time} · {report.duration_sec}s duration</div>
+        </div>
+        <span style={{fontSize:11,fontWeight:700,color:sColor,background:sColor+"22",borderRadius:20,padding:"3px 10px"}}>{sIcon} {report.status.charAt(0).toUpperCase()+report.status.slice(1)}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+        {[["↓ Pulled",report.total_pulled,"#3b82f6"],["↑ Pushed",report.total_pushed,"#10b981"],["⚠ Failed",report.total_failed,report.total_failed>0?C.red:C.t3]].map(([label,val,color])=>(
+          <div key={label} style={{background:C.surface,borderRadius:10,padding:"10px 12px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color}}>{val}</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:2}}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <button onClick={()=>setExpanded(v=>!v)} style={{...GBtn,fontSize:11,padding:"4px 10px",marginBottom:expanded?10:0}}>{expanded?"▲ Hide table details":"▼ Show table details"}</button>
+      {expanded&&(
+        <div style={{background:C.surface,borderRadius:10,overflow:"hidden",marginTop:10,marginBottom:14}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead><tr style={{background:C.border+"55"}}>
+              {["Table","Pulled","Pushed","Failed"].map(h=><th key={h} style={{padding:"7px 10px",textAlign:h==="Table"?"left":"right",color:C.t3,fontWeight:700,fontSize:10}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {keyTables.map((t,i)=>(
+                <tr key={t.table} style={{borderTop:`1px solid ${C.border}`,background:i%2===0?"transparent":C.border+"11"}}>
+                  <td style={{padding:"6px 10px",color:C.t1,fontWeight:600}}>{t.table}</td>
+                  <td style={{padding:"6px 10px",textAlign:"right",color:C.t2}}>{t.pulled||0}</td>
+                  <td style={{padding:"6px 10px",textAlign:"right",color:C.t2}}>{t.synced||0}</td>
+                  <td style={{padding:"6px 10px",textAlign:"right",color:(t.failed||0)>0?C.red:C.t3}}>{t.failed||0}{(t.failed||0)>0?" ⚠":""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {clients.length>0&&(
+        <div style={{marginTop:expanded?0:14}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.07em"}}>Tasks by Client</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {clients.map(([name,count])=>(
+              <div key={name} style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:11,color:C.t2,width:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{name}</div>
+                <div style={{flex:1,height:6,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:Math.round(count/totalTasks*100)+"%",background:C.accent,borderRadius:3}}/>
+                </div>
+                <div style={{fontSize:11,fontWeight:700,color:C.t2,width:28,textAlign:"right",flexShrink:0}}>{count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}){
   const [showForm,setShowForm]=useState(false);
   const [editWf,setEditWf]=useState(null);
@@ -4427,6 +4518,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <EmailDigestCard/>
       <EscalationAlertCard/>
+      <SyncReportCard/>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Workflow Automation</div>
@@ -12785,58 +12877,4 @@ export default function App(){
           </div>
           <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
             {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:
