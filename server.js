@@ -1112,9 +1112,15 @@ app.post("/api/rpc", async (req, res) => {
     if (op === "update") {
       const vals = [];
       const keys = Object.keys(data).filter(k => data[k] !== undefined);
-      const sets = keys.map(k => { vals.push(data[k]); return `"${k}"=$${vals.length}`; }).join(",");
+      const sets = keys.map(k => { vals.push(data[k]); return `"${k}"=$${vals.length}`; });
+      // Auto-stamp updated_at so LAN changes are always marked as newer than last pull
+      const TABLES_WITH_UPDATED_AT = new Set(["tasks","projects","users","clients"]);
+      if (TABLES_WITH_UPDATED_AT.has(table) && !data.hasOwnProperty("updated_at")) {
+        vals.push(new Date().toISOString());
+        sets.push(`"updated_at"=$${vals.length}`);
+      }
       const where = buildWhere(vals);
-      const r = await pool.query(`UPDATE "${table}" SET ${sets}${where} RETURNING *`, vals);
+      const r = await pool.query(`UPDATE "${table}" SET ${sets.join(",")}${where} RETURNING *`, vals);
       return res.json({ data: single ? r.rows[0] : r.rows, error: null });
     }
 

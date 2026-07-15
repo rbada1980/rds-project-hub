@@ -11378,7 +11378,8 @@ export default function App(){
       ssv(true);
       try{
         const updates={status:f.status,...(f.notes!==undefined&&{notes:f.notes})};
-        const {data}=await supabase.from("tasks").update(updates).eq("id",editTask.id).select().single();
+        const {data,error:updateErr2}=await supabase.from("tasks").update(updates).eq("id",editTask.id).select().single();
+        if(updateErr2){showToast("Update failed: "+updateErr2.message,false);ssv(false);return;}
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...updates}):t));
         showToast("Status updated ✓");
         if(f.status!==editTask.status){
@@ -11416,7 +11417,8 @@ export default function App(){
       const checkerUser=f.checker?users.find(u=>u.name===f.checker.split("/")[0].trim()):null;
       const detailerUser=f.detailer?users.find(u=>u.name===f.detailer.split("/")[0].trim()):null;
       if(editTask){
-        const {data}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
+        const {data,error:updateErr}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
+        if(updateErr){showToast("Update failed: "+updateErr.message,false);ssv(false);return;}
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
         showToast("Task updated ✓");
         // ── Audit: log field changes ──
@@ -11487,7 +11489,7 @@ export default function App(){
     // Notify client
     if(pcu?.id&&pcu.id!==me.id)await createNotif([pcu.id],"project_assigned",`Project created: ${f.name}`,`A new project has been set up for your account${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
   await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
-  async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;const delProj=accessibleProjects.find(p=>p.id===id);await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||""};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}

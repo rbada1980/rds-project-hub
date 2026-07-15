@@ -229,11 +229,54 @@ async function pushTable({ table, conflict, pushConflict, excludeFromRow = [], s
     return out;
   });
 
+  // ── Timestamp-aware push: only overwrite Supabase rows when local is newer ──
+  // This prevents the 10s sync from reverting online changes made on hub-rdsprojects.com
+  let toPush = cleaned;
+  const hasUpdatedAt = cleaned.length > 0 && cleaned[0].updated_at !== undefined;
+  if (hasUpdatedAt && effectiveConflict === "id") {
+    try {
+      // Fetch current updated_at timestamps from Supabase
+      const supaTimestamps = {};
+      const PAGE = 1000;
+      let offset = 0;
+      while (true) {
+        const res = await fetch(`${SUPA_URL}/rest/v1/${table}?select=id,updated_at&limit=${PAGE}&offset=${offset}`, {
+          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        if (!Array.isArray(data) || !data.length) break;
+        data.forEach(r => { supaTimestamps[r.id] = r.updated_at; });
+        if (data.length < PAGE) break;
+        offset += PAGE;
+      }
+      // Only push local rows that are NEW or NEWER than what's in Supabase
+      const before = cleaned.length;
+      toPush = cleaned.filter(row => {
+        const supaTime = supaTimestamps[row.id];
+        if (!supaTime) return true;              // not in Supabase yet → push
+        if (!row.updated_at) return true;        // no local timestamp → push
+        return new Date(row.updated_at) >= new Date(supaTime);
+      });
+      const skipped = before - toPush.length;
+      if (skipped > 0)
+        console.log(`   ⏭  → ${table.padEnd(24)} skipped ${skipped} row(s) (Supabase is newer)`);
+    } catch (e) {
+      console.log(`   ⚠️  ${table} timestamp check failed: ${e.message.slice(0,80)} — pushing all`);
+      toPush = cleaned;
+    }
+  }
+
+  if (!toPush.length) {
+    console.log(`   ✅ → ${table.padEnd(24)} 0 rows to push (Supabase up-to-date)`);
+    return { table, synced: 0, failed: 0, total: rows.length };
+  }
+
   let synced = 0, failed = 0;
   const BATCH = 100;
 
-  for (let i = 0; i < cleaned.length; i += BATCH) {
-    const batch = cleaned.slice(i, i + BATCH);
+  for (let i = 0; i < toPush.length; i += BATCH) {
+    const batch = toPush.slice(i, i + BATCH);
     const { error } = await supabase
       .from(table)
       .upsert(batch, { onConflict: effectiveConflict, ignoreDuplicates: false });
