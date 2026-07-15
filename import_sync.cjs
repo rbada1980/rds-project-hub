@@ -37,15 +37,21 @@ const pool = new Pool({
 });
 
 // ── Name normalisation (shared across all clients) ────────────────────────────
+// RULE: map Excel name variants → canonical DB name
+// DELETE_USERS: these are NOT real employees — delete from DB immediately on every sync
 const NAME_MAP = {
+  // Siva Kumar variants
   'siav kumar':          'Siva Kumar',
+  'siav_kumar':          'Siva Kumar',
   'siva kumar':          'Siva Kumar',
   'shiva':               'Siva Kumar',
   'shiva kumar':         'Siva Kumar',
+  // Other fixes
   'danush':              'Dhanush',
   'allu sai':            'Sai',
   'lokesh reddy':        'Lokesh',
   'nnj':                 'Nanaji',
+  // Combo fields
   'eswar/siav kumar':    'Eswar',
   'allu sai/nanaji':     'Sai',
   'lokesh reddy/nanaji': 'Lokesh',
@@ -53,6 +59,9 @@ const NAME_MAP = {
   'balaram/jagadeesh':   'Balaram',
   'sridevi / vaishnavi': 'Sridevi',
 };
+
+// Users to DELETE from DB immediately — not real employees
+const DELETE_USERS = ['out source', 'outsource', 'out_source', 'rds'];
 
 const COLORS = [
   '#6366f1','#22d3ee','#f59e0b','#10b981','#ef4444',
@@ -311,28 +320,19 @@ async function main() {
     if (u.username) byName[u.username.toLowerCase().trim()] = u;
   }
 
-  // Auto-create missing users
-  const neededNames = new Set();
-  for (const r of excelRows) {
-    [r.detailer, r.checker, r.assignee].forEach(f => {
-      if (f) f.split('/').forEach(n => { if (n.trim()) neededNames.add(normName(n.trim())); });
-    });
-  }
-  for (const name of neededNames) {
-    if (!name || byName[name.toLowerCase()]) continue;
-    const username = name.toLowerCase().replace(/\s+/g, '_');
-    try {
-      const [nu] = await supa('POST', 'users', {
-        name, username, password: 'RDSTechserv@2026', role: 'Rebar', client_name: '', email: '',
-      });
-      byName[name.toLowerCase()] = nu;
-      byName[username] = nu;
-      console.log(`  ➕ Created user: ${name}`);
-    } catch (e) {
-      console.warn(`  ⚠ Could not create user "${name}":`, e.message);
+  // Delete junk users (not real employees) immediately
+  for (const u of users) {
+    if (DELETE_USERS.includes((u.name||'').toLowerCase().trim())) {
+      await supa('DELETE', `users?id=eq.${u.id}`);
+      try { await pool.query('DELETE FROM users WHERE id=$1',[u.id]); } catch(_){}
+      console.log(`  🗑 Deleted junk user: "${u.name}"`);
+      delete byName[(u.name||'').toLowerCase().trim()];
+      if (u.username) delete byName[u.username.toLowerCase()];
     }
   }
-  console.log(`  ✓ ${users.length} users loaded`);
+  // NO auto-create — never create new users during sync
+  // If a name is not found in DB, field is left as the normalised name string only
+  console.log(`  ✓ ${users.length} users loaded (no auto-create)`);
 
   // ── 4. Load existing DB state for this client ─────────────────────────────
   console.log(`\n── Loading existing "${CLIENT_NAME}" data from DB …`);
