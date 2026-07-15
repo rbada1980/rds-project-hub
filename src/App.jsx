@@ -12737,7 +12737,7 @@ export default function App(){
             </div>
           ):(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.bg}}>
                 {canEdit&&<th style={{padding:"11px 8px",width:36,borderBottom:`2px solid ${C.border}`,background:C.bg}}>
                   <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
