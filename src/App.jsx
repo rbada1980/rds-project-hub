@@ -4241,7 +4241,6 @@ function EmailDigestCard(){
     try{
       const today=new Date(new Date().getTime()+5.5*60*60*1000).toISOString().slice(0,10);
       const dateLabel=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-      // Fetch today's tasks + projects from Supabase
       const [{data:tasks},{data:projects},{data:recips}]=await Promise.all([
         supabase.from("tasks").select("id,title,client,status,assignee,client_sub_date,due_date,project_id").or(`client_sub_date.eq.${today},due_date.eq.${today}`).order("client_sub_date"),
         supabase.from("projects").select("id,name,client"),
@@ -4253,8 +4252,39 @@ function EmailDigestCard(){
       const tlist=tasks||[];
       let sent=0;
       for(const u of recipients){
-        const rows=tlist.map(t=>{const p=projMap[t.project_id]||{};return`<tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${t.client||p.client||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${p.name||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:600;">${t.title}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${t.assignee||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:center;">${t.client_sub_date||"—"}</td></tr>`;}).join("");
-        const html=`<!DOCTYPE html><html><body style="margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;"><tr><td><table width="100%" style="background:#1a3a6b;border-radius:10px 10px 0 0;"><tr><td style="padding:20px 28px;"><div style="font-size:18px;font-weight:700;color:#fff;">Daily Submission List</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;">${dateLabel}</div></td></tr></table><table width="100%" style="background:#fff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;"><tr><td style="padding:26px 28px;"><p style="font-size:14px;color:#374151;margin:0 0 16px;">Dear ${u.name||u.email},</p><p style="font-size:14px;color:#374151;margin:0 0 20px;">${tlist.length} submission(s) due today.</p><table width="100%" style="border-collapse:collapse;border:1px solid #e5e7eb;"><thead><tr style="background:#1a3a6b;"><th style="padding:10px 12px;text-align:left;color:#fff;font-size:11px;">CLIENT</th><th style="padding:10px 12px;text-align:left;color:#fff;font-size:11px;">PROJECT</th><th style="padding:10px 12px;text-align:left;color:#fff;font-size:11px;">TASK</th><th style="padding:10px 12px;text-align:left;color:#fff;font-size:11px;">ASSIGNEE</th><th style="padding:10px 12px;text-align:center;color:#fff;font-size:11px;">SUB DATE</th></tr></thead><tbody>${rows||`<tr><td colspan="5" style="padding:20px;text-align:center;color:#9ca3af;font-style:italic;">No submissions today.</td></tr>`}</tbody></table><div style="margin-top:22px;font-size:13px;color:#1a3a6b;font-weight:700;">RDS TechServ Team</div></td></tr></table><table width="100%" style="background:#1a3a6b;border-radius:0 0 10px 10px;"><tr><td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);">Automated digest — do not reply.</td></tr></table></td></tr></table></body></html>`;
+        const rows=tlist.map(t=>{
+          const p=projMap[t.project_id]||{};
+          const badge=s=>s==="Completed"?`<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">Done</span>`:s==="In Progress"?`<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">In Progress</span>`:`<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">${s||"Not Started"}</span>`;
+          return `<tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${t.client||p.client||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${p.name||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:600;">${t.title}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${badge(t.status)}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${t.assignee||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:center;">${t.client_sub_date||"—"}</td></tr>`;
+        }).join("");
+        const noRows=`<tr><td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;font-style:italic;">No submissions today.</td></tr>`;
+        const html=[
+          "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>",
+          "<body style='margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,sans-serif;'>",
+          "<table width='100%' cellpadding='0' cellspacing='0' style='max-width:680px;margin:0 auto;'><tr><td>",
+          "<table width='100%' style='background:#1a3a6b;border-radius:10px 10px 0 0;'><tr><td style='padding:20px 28px;'>",
+          "<div style='font-size:18px;font-weight:700;color:#fff;'>Daily Submission List</div>",
+          `<div style='font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;'>${dateLabel}</div>`,
+          "</td></tr></table>",
+          "<table width='100%' style='background:#fff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;'><tr><td style='padding:26px 28px;'>",
+          `<p style='font-size:14px;color:#374151;margin:0 0 16px;'>Dear ${u.name||u.email},</p>`,
+          `<p style='font-size:14px;color:#374151;margin:0 0 20px;'>${tlist.length} submission(s) due today.</p>`,
+          "<table width='100%' style='border-collapse:collapse;border:1px solid #e5e7eb;'>",
+          "<thead><tr style='background:#1a3a6b;'>",
+          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>CLIENT</th>",
+          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>PROJECT</th>",
+          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>TASK</th>",
+          "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>STATUS</th>",
+          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>ASSIGNEE</th>",
+          "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>SUB DATE</th>",
+          "</tr></thead>",
+          `<tbody>${rows||noRows}</tbody></table>`,
+          "<div style='margin-top:22px;font-size:13px;color:#1a3a6b;font-weight:700;'>RDS TechServ Team</div>",
+          "</td></tr></table>",
+          "<table width='100%' style='background:#1a3a6b;border-radius:0 0 10px 10px;'>",
+          "<tr><td style='padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);'>Automated digest — do not reply.</td></tr>",
+          "</table></td></tr></table></body></html>",
+        ].join("");
         try{
           await fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},body:JSON.stringify({type:"submission_digest",data:{taskName:"Daily Submission List — "+today,projectName:tlist.length+" task(s) due today",completedBy:"RDS TechServ Automated Digest",completedAt:dateLabel,recipientEmail:u.email,subject:"RDS Daily Submission List — "+dateLabel,htmlBody:html}})});
           sent++;
@@ -12767,4 +12797,43 @@ export default function App(){
             <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
               style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
               <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight
+              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
+              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
+            </button>
+          );})}
+          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
+            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
+            <Av name={me.name} size={24}/>
+            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
+          </button>
+        </div>
+      </div>
+    </div>}
+    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
+      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
+        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
+          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
+          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
+          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
+        </button>
+      );})}
+      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
+        <span style={{fontSize:21,lineHeight:1}}>···</span>
+        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
+      </button>}
+      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
+        <Av name={me.name} size={22}/>
+        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
+      </button>}
+    </nav>
+    {/* ── Live Timer floating bar ── */}
+    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
+    </MobileCtx.Provider>
+  );
+}
