@@ -4240,6 +4240,9 @@ function EmailDigestCard(){
     setTriggering(true);setMsg(null);
     try{
       const today=new Date(new Date().getTime()+5.5*60*60*1000).toISOString().slice(0,10);
+      // Block duplicate sends on same day
+      const {data:lastSent}=await supabase.from('settings').select('value').eq('key','last_digest_date').single().catch(()=>({data:null}));
+      if(lastSent&&lastSent.value===today){setMsg("Already sent today ("+today+"). Cannot send twice in one day.");setTriggering(false);setTimeout(()=>setMsg(null),6000);return;}
       const dateLabel=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
       const [{data:tasks},{data:projects},{data:recips}]=await Promise.all([
         supabase.from("tasks").select("id,title,client,status,assignee,client_sub_date,due_date,project_id").or(`client_sub_date.eq.${today},due_date.eq.${today}`).order("client_sub_date"),
@@ -12827,13 +12830,4 @@ export default function App(){
       </button>}
       {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadi
