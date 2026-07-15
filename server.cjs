@@ -1052,21 +1052,150 @@ app.post("/api/sync-now", async (req, res) => {
   }
 });
 
-// ═════════════════════════════════════════════════════════════
-// SPA FALLBACK — serve React app for all other routes
-// ═════════════════════════════════════════════════════════════
+// =============================================================
+// DAILY SUBMISSION EMAIL — /api/cron-daily
+// =============================================================
 
-app.use((req, res) => {
+const _SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
+const _SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+
+function _supaGet(p) {
+  return fetch(_SUPA_URL + p, {
+    headers: { "apikey": _SUPA_KEY, "Authorization": "Bearer " + _SUPA_KEY }
+  }).then(r => r.json());
+}
+
+function _statusBadge(s) {
+  if (s === "Completed")
+    return "<span style=\"background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;\">Completed</span>";
+  if (s === "In Progress")
+    return "<span style=\"background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;\">In Progress</span>";
+  return "<span style=\"background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;\">" + (s || "Not Started") + "</span>";
+}
+
+function _buildDigestHtml(recipient, tasks, projMap, dateLabel) {
+  const total  = tasks.length;
+  const done   = tasks.filter(function(t) { return t.status === "Completed"; }).length;
+  const inProg = tasks.filter(function(t) { return t.status === "In Progress"; }).length;
+  const ns     = total - done - inProg;
+  const year   = new Date().getFullYear();
+  let rows = "";
+  if (!tasks.length) {
+    rows = "<tr><td colspan=6 style=\"padding:20px;text-align:center;color:#9ca3af;font-style:italic;\">No submissions planned for today.</td></tr>";
+  } else {
+    for (let i = 0; i < tasks.length; i++) {
+      const t    = tasks[i];
+      const proj = projMap[t.project_id] || {};
+      rows += "<tr>"
+        + "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;\">" + (t.client || proj.client || "-") + "</td>"
+        + "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;\">" + (proj.name || "-") + "</td>"
+        + "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:600;\">" + (t.title || "") + "</td>"
+        + "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;\">" + _statusBadge(t.status) + "</td>"
+        + "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;\">" + (t.assignee || "-") + "</td>"
+        + "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:center;\">" + (t.client_sub_date || "-") + "</td>"
+        + "</tr>";
+    }
+  }
+  const parts = [];
+  parts.push("<!DOCTYPE html><html><head><meta charset=UTF-8></head>");
+  parts.push("<body style=\"margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,sans-serif;\">");
+  parts.push("<table width=100% cellpadding=0 cellspacing=0 style=\"max-width:680px;margin:0 auto;\"><tr><td>");
+  parts.push("<table width=100% style=\"background:#1a3a6b;border-radius:10px 10px 0 0;\"><tr><td style=\"padding:20px 28px;\">");
+  parts.push("<div style=\"font-size:18px;font-weight:700;color:#fff;\">Daily Submission List</div>");
+  parts.push("<div style=\"font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;\">" + dateLabel + "</div>");
+  parts.push("</td></tr></table>");
+  parts.push("<table width=100% style=\"background:#fff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;\"><tr><td style=\"padding:26px 28px;\">");
+  parts.push("<p style=\"font-size:14px;color:#374151;margin:0 0 16px;\">Dear " + recipient + ",</p>");
+  parts.push("<p style=\"font-size:14px;color:#374151;margin:0 0 20px;\">" + total + " submission(s) due today.</p>");
+  parts.push("<table width=100% style=\"background:#f8fafc;border-radius:8px;margin-bottom:20px;border-left:4px solid #1a3a6b;\"><tr>");
+  parts.push("<td width=25% style=\"padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;\"><div style=\"font-size:22px;font-weight:700;color:#1a3a6b;\">" + total + "</div><div style=\"font-size:11px;color:#6b7280;\">TOTAL</div></td>");
+  parts.push("<td width=25% style=\"padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;\"><div style=\"font-size:22px;font-weight:700;color:#059669;\">" + done + "</div><div style=\"font-size:11px;color:#6b7280;\">DONE</div></td>");
+  parts.push("<td width=25% style=\"padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;\"><div style=\"font-size:22px;font-weight:700;color:#d97706;\">" + inProg + "</div><div style=\"font-size:11px;color:#6b7280;\">IN PROGRESS</div></td>");
+  parts.push("<td width=25% style=\"padding:14px 0;text-align:center;\"><div style=\"font-size:22px;font-weight:700;color:#ef4444;\">" + ns + "</div><div style=\"font-size:11px;color:#6b7280;\">NOT STARTED</div></td>");
+  parts.push("</tr></table>");
+  parts.push("<table width=100% style=\"border-collapse:collapse;border:1px solid #e5e7eb;\"><thead>");
+  parts.push("<tr style=\"background:#1a3a6b;\"><th style=\"padding:10px 12px;text-align:left;color:#fff;font-size:11px;\">CLIENT</th><th style=\"padding:10px 12px;text-align:left;color:#fff;font-size:11px;\">PROJECT</th><th style=\"padding:10px 12px;text-align:left;color:#fff;font-size:11px;\">TASK</th><th style=\"padding:10px 12px;text-align:center;color:#fff;font-size:11px;\">STATUS</th><th style=\"padding:10px 12px;text-align:left;color:#fff;font-size:11px;\">ASSIGNEE</th><th style=\"padding:10px 12px;text-align:center;color:#fff;font-size:11px;\">SUB DATE</th></tr>");
+  parts.push("</thead><tbody>" + rows + "</tbody></table>");
+  parts.push("<div style=\"margin-top:22px;font-size:13px;color:#1a3a6b;font-weight:700;\">RDS TechServ Team</div>");
+  parts.push("</td></tr></table>");
+  parts.push("<table width=100% style=\"background:#1a3a6b;border-radius:0 0 10px 10px;\"><tr><td style=\"padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);\">Copyright " + year + " RDS TechServ - Automated digest.</td></tr></table>");
+  parts.push("</td></tr></table></body></html>");
+  return parts.join("");
+}
+
+app.get("/api/cron-daily", async function(req, res) {
+  try {
+    const force = req.query.force === "true";
+    const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
+
+    if (!force) {
+      try {
+        const r = await pool.query("SELECT value FROM settings WHERE key=$1 LIMIT 1", ["last_digest_date"]);
+        if (r.rows.length && r.rows[0].value === today) return res.json({ message: "Already sent today" });
+      } catch(e) {}
+    }
+
+    const dateLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+    const tasks     = await _supaGet("/rest/v1/tasks?or=(client_sub_date.eq." + today + ",due_date.eq." + today + ")&select=id,title,client,status,assignee,client_sub_date,due_date,project_id&order=client_sub_date.asc");
+    const projects  = await _supaGet("/rest/v1/projects?select=id,name,client");
+    const projMap   = {};
+    for (const p of (projects || [])) projMap[p.id] = p;
+
+    const users      = await _supaGet("/rest/v1/users?select=name,email,role&role=in.(Admin,Manager,Team Leader)");
+    const recipients = (users || []).filter(function(u) { return u.email && u.email.includes("@"); });
+    if (!recipients.length) return res.json({ error: "No recipients - add email to Admin/Manager/Team Leader accounts" });
+
+    let sent = 0;
+    for (let i = 0; i < recipients.length; i++) {
+      const u = recipients[i];
+      try {
+        await fetch(_SUPA_URL + "/functions/v1/notify", {
+          method: "POST",
+          headers: { "apikey": _SUPA_KEY, "Authorization": "Bearer " + _SUPA_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "submission_digest",
+            data: {
+              taskName:       "Daily Submission List - " + today,
+              projectName:    (tasks || []).length + " task(s) due today",
+              completedBy:    "RDS TechServ Automated Digest",
+              completedAt:    dateLabel,
+              recipientEmail: u.email,
+              subject:        "RDS Daily Submission List - " + dateLabel,
+              htmlBody:       _buildDigestHtml(u.name || u.email, tasks || [], projMap, dateLabel)
+            }
+          })
+        });
+        sent++;
+      } catch(e) { console.warn("[cron-daily] failed for", u.email, e.message); }
+    }
+
+    try {
+      await pool.query("INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=$2", ["last_digest_date", today]);
+    } catch(e) {}
+
+    console.log("[cron-daily] Sent to", sent, "recipients,", (tasks||[]).length, "tasks for", today);
+    res.json({ sent: sent, tasks: (tasks || []).length, date: today });
+  } catch(e) {
+    console.error("[cron-daily] Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// =============================================================
+// SPA FALLBACK — serve React app for all other routes
+// =============================================================
+
+app.use(function(req, res) {
   const index = path.join(DIST, "index.html");
   if (fs.existsSync(index)) {
     res.sendFile(index);
   } else {
-    res.json({ message: "RDS Local API running. React build not found — run npm run build first." });
+    res.json({ message: "RDS Local API running. React build not found." });
   }
 });
 
-// GET /install-cert — download RDS CA cert (HTTP, no SSL warning)
-app.get("/install-cert", (req, res) => {
+// GET /install-cert
+app.get("/install-cert", function(req, res) {
   const caFile = path.join(__dirname, "certs", "RDS-Local-CA.crt");
   if (!fs.existsSync(caFile)) return res.status(404).send("CA cert not found");
   res.setHeader("Content-Disposition", "attachment; filename=RDS-Local-CA.crt");
@@ -1074,32 +1203,30 @@ app.get("/install-cert", (req, res) => {
   res.sendFile(caFile);
 });
 
-// ═════════════════════════════════════════════════════════════
+// =============================================================
 // START
-// ═════════════════════════════════════════════════════════════
+// =============================================================
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`\n🚀 RDS Local Server running at:`);
-  console.log(`   http://localhost:${PORT}`);
-  console.log(`   http://192.168.0.159:${PORT}  ← Office LAN`);
-  console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
-  console.log(`📁 Uploads:  ${UPLOAD_DIR}`);
+app.listen(PORT, "0.0.0.0", function() {
+  console.log("\n RDS Server running on port " + PORT);
+  console.log("   http://localhost:" + PORT);
+  console.log("   http://192.168.0.159:" + PORT + "  <- Office LAN");
+  console.log("\n Database: rds_local (PostgreSQL 16)");
+  console.log(" Uploads:  " + UPLOAD_DIR);
 
-  // ── Schedule 2 AM IST sync (IST = UTC+5:30 → 2:00 AM IST = 20:30 UTC) ──
-  cron.schedule("30 20 * * *", async () => {
-    console.log("\n[Sync] ⏰ 2 AM IST — starting automatic sync...");
-    try { await runSync(); console.log("[Sync] Done ✓"); }
+  cron.schedule("30 20 * * *", async function() {
+    console.log("\n[Sync] 2 AM IST - starting automatic sync...");
+    try { await runSync(); console.log("[Sync] Done"); }
     catch (e) { console.error("[Sync] Error:", e.message); }
   }, { timezone: "Asia/Kolkata" });
 
-  // ── Auto-rebuild when new commits are pushed ────────────
   let _lastCommit = null;
   function _run(cmd) {
-    return new Promise((resolve, reject) =>
-      exec(cmd, { cwd: __dirname }, (err, out, stderr) =>
-        err ? reject(new Error(stderr || err.message)) : resolve(out.trim())
-      )
-    );
+    return new Promise(function(resolve, reject) {
+      exec(cmd, { cwd: __dirname }, function(err, out, stderr) {
+        if (err) reject(new Error(stderr || err.message)); else resolve(out.trim());
+      });
+    });
   }
   async function autoRebuild() {
     try {
@@ -1107,17 +1234,16 @@ app.listen(PORT, "0.0.0.0", () => {
       const remote = await _run("git rev-parse origin/main");
       if (_lastCommit === null) { _lastCommit = await _run("git rev-parse HEAD"); }
       if (remote !== _lastCommit) {
-        console.log(`[AutoBuild] New commit ${remote.slice(0,7)} detected — pulling & rebuilding...`);
+        console.log("[AutoBuild] New commit " + remote.slice(0,7) + " - pulling & rebuilding...");
         await _run("git pull origin main");
         await _run("npm run build");
         _lastCommit = remote;
-        console.log("[AutoBuild] Build complete. Refresh browser to see latest changes.");
+        console.log("[AutoBuild] Build complete.");
       }
     } catch (e) { console.error("[AutoBuild] Error:", e.message); }
   }
-  cron.schedule("*/5 * * * *", autoRebuild); // every 5 minutes
-  setTimeout(autoRebuild, 15000);            // also run 15s after startup
-  console.log("Auto-rebuild: polls git every 5 min, rebuilds on new commit.");
-
-  console.log(`⏰ Auto-sync: daily at 2:00 AM IST\n`);
+  cron.schedule("*/5 * * * *", autoRebuild);
+  setTimeout(autoRebuild, 15000);
+  console.log("Auto-rebuild: polls git every 5 min.");
+  console.log(" Auto-sync: daily at 2:00 AM IST\n");
 });

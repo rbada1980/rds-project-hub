@@ -1274,6 +1274,173 @@ app.get("/api/audit-logs", async (req, res) => {
   } catch (e) { res.json({ error: e.message }); }
 });
 
+
+// ═════════════════════════════════════════════════════════════
+// DAILY SUBMISSION EMAIL — /api/cron-daily
+// Called by "Send Now" button in admin dashboard
+// ══════════════════════════════════════════════════════════════
+
+const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+
+function supaGet(p) {
+  return fetch(SUPA_URL + p, {
+    headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json" }
+  }).then(r => r.json());
+}
+
+function statusBadgeInline(s) {
+  if (s === "Completed")   return '<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">Completed</span>';
+  if (s === "In Progress") return '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">In Progress</span>';
+  return '<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">' + (s || "Not Started") + '</span>';
+}
+
+function buildDigestHtml(recipientName, tasks, projMap, dateLabel) {
+  const total  = tasks.length;
+  const done   = tasks.filter(t => t.status === "Completed").length;
+  const inProg = tasks.filter(t => t.status === "In Progress").length;
+  const ns     = total - done - inProg;
+  const year   = new Date().getFullYear();
+
+  let rows = "";
+  if (!tasks.length) {
+    rows = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;font-style:italic;">No submissions planned for today.</td></tr>';
+  } else {
+    for (const t of tasks) {
+      const proj = projMap[t.project_id] || {};
+      rows += "<tr>" +
+        '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#374151;">' + (t.client || proj.client || "—") + "</td>" +
+        '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#374151;">' + (proj.name || "—") + "</td>" +
+        '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#111827;">' + t.title + "</td>" +
+        '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">' + statusBadgeInline(t.status) + "</td>" +
+        '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#374151;">' + (t.assignee || "—") + "</td>" +
+        '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:center;color:#374151;">' + (t.client_sub_date || "—") + "</td>" +
+        "</tr>";
+    }
+  }
+
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>" +
+    "<body style='margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,sans-serif;'>" +
+    "<table width='100%' cellpadding='0' cellspacing='0' style='max-width:680px;margin:0 auto;'><tr><td>" +
+
+    // HEADER
+    "<table width='100%' cellpadding='0' cellspacing='0' style='background:#1a3a6b;border-radius:10px 10px 0 0;'>" +
+    "<tr><td style='padding:20px 28px;'>" +
+    "<div style='font-size:18px;font-weight:700;color:#fff;'>&#128236; Daily Submission List</div>" +
+    "<div style='font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;'>" + dateLabel + "</div>" +
+    "</td></tr></table>" +
+
+    // BODY
+    "<table width='100%' cellpadding='0' cellspacing='0' style='background:#fff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;'>" +
+    "<tr><td style='padding:26px 28px;'>" +
+    "<p style='font-size:14px;color:#374151;margin:0 0 18px;'>Dear " + recipientName + ",</p>" +
+    "<p style='font-size:14px;color:#374151;margin:0 0 20px;line-height:1.7;'>Here are the <strong>" + total + " submission(s)</strong> due today.</p>" +
+
+    // Stats strip
+    "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f8fafc;border-radius:8px;margin-bottom:20px;border-left:4px solid #1a3a6b;'><tr>" +
+    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#1a3a6b;'>" + total + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>TOTAL</div></td>" +
+    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#059669;'>" + done + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>COMPLETED</div></td>" +
+    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#d97706;'>" + inProg + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>IN PROGRESS</div></td>" +
+    "<td width='25%' style='padding:14px 0;text-align:center;'><div style='font-size:22px;font-weight:700;color:#ef4444;'>" + ns + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>NOT STARTED</div></td>" +
+    "</tr></table>" +
+
+    // Task table
+    "<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #e5e7eb;'>" +
+    "<thead><tr style='background:#1a3a6b;'>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>CLIENT</th>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>PROJECT</th>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>TASK</th>" +
+    "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>STATUS</th>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>ASSIGNEE</th>" +
+    "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>SUB DATE</th>" +
+    "</tr></thead><tbody>" + rows + "</tbody></table>" +
+
+    "<div style='margin-top:22px;padding-top:18px;border-top:1px solid #f3f4f6;font-size:13px;color:#1a3a6b;font-weight:700;'>RDS TechServ Team</div>" +
+    "</td></tr></table>" +
+
+    // FOOTER
+    "<table width='100%' cellpadding='0' cellspacing='0' style='background:#1a3a6b;border-radius:0 0 10px 10px;'>" +
+    "<tr><td style='padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);'>&copy; " + year + " RDS TechServ &mdash; Automated digest, do not reply.</td></tr>" +
+    "</table>" +
+
+    "</td></tr></table></body></html>";
+}
+
+app.get("/api/cron-daily", async (req, res) => {
+  try {
+    const force = req.query.force === "true";
+
+    // Check if already sent today (skip if forced)
+    if (!force) {
+      try {
+        const rows = await pool.query("SELECT value FROM settings WHERE key='last_digest_date' LIMIT 1");
+        const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
+        if (rows.rows.length && rows.rows[0].value === today) {
+          return res.json({ message: "Already sent today" });
+        }
+      } catch(_) {}
+    }
+
+    const today     = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
+    const dateLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+
+    // Get today's tasks
+    const tasks = await supaGet(
+      "/rest/v1/tasks?or=(client_sub_date.eq." + today + ",due_date.eq." + today + ")&select=id,title,client,status,assignee,client_sub_date,due_date,project_id&order=client_sub_date.asc"
+    );
+    const projects = await supaGet("/rest/v1/projects?select=id,name,client");
+    const projMap  = {};
+    for (const p of (projects || [])) projMap[p.id] = p;
+
+    // Recipients: Admin, Manager, Team Leader with email
+    const users = await supaGet("/rest/v1/users?select=name,email,role&role=in.(Admin,Manager,Team Leader)");
+    const recipients = (users || []).filter(u => u.email && u.email.includes("@"));
+
+    if (!recipients.length) {
+      return res.json({ error: "No recipients found — add email addresses to Admin/Manager/Team Leader accounts" });
+    }
+
+    let sent = 0;
+    for (const u of recipients) {
+      const html = buildDigestHtml(u.name || u.email, tasks || [], projMap, dateLabel);
+      const payload = {
+        type: "submission_digest",
+        data: {
+          taskName:       "Daily Submission List — " + today,
+          projectName:    (tasks || []).length + " submission(s) planned for today",
+          completedBy:    "RDS TechServ Automated Digest",
+          completedAt:    dateLabel,
+          recipientEmail: u.email,
+          subject:        "📬 RDS Daily Submission List — " + dateLabel,
+          htmlBody:       html
+        }
+      };
+      try {
+        await fetch(SUPA_URL + "/functions/v1/notify", {
+          method: "POST",
+          headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        sent++;
+      } catch(e) { console.warn("[cron-daily] Email failed for", u.email, e.message); }
+    }
+
+    // Record send date in local PG
+    try {
+      await pool.query(
+        "INSERT INTO settings(key,value) VALUES('last_digest_date',$1) ON CONFLICT(key) DO UPDATE SET value=$1",
+        [today]
+      );
+    } catch(_) {}
+
+    console.log("[cron-daily] Sent digest to", sent, "recipients |", (tasks||[]).length, "tasks for", today);
+    res.json({ sent, tasks: (tasks || []).length, date: today });
+  } catch(e) {
+    console.error("[cron-daily] Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ═════════════════════════════════════════════════════════════
 // SPA FALLBACK — serve React app for all other routes
 // ══════════════════════════════════════════════════════════════
