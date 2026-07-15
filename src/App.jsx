@@ -1021,8 +1021,8 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         {task.detailer?<span style={{color:C.t2,fontSize:10}}>✏ {task.detailer}</span>:null}
         {task.checker?<span style={{color:"#8b5cf6",fontSize:10}}>✓ {task.checker}</span>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>—</span>}
+        {task.det_weight!=null&&<span style={{color:C.t3,fontSize:9,marginTop:1}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})} T</span>}
       </div></td>
-      <td style={{...td,minWidth:60,textAlign:"right"}}>{task.det_weight!=null?<span style={{color:C.t1,fontSize:11,fontWeight:600}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})} <span style={{color:C.t3,fontSize:9,fontWeight:400}}>T</span></span>:<span style={{color:C.t3,fontSize:10}}>—</span>}</td>
       <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
         {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
