@@ -36,9 +36,11 @@ const pool = new Pool({
   options: '-c timezone=UTC',
 });
 
-// ── Name normalisation (shared across all clients) ────────────────────────────
-// RULE: map Excel name variants → canonical DB name
-// DELETE_USERS: these are NOT real employees — delete from DB immediately on every sync
+// ══════════════════════════════════════════════════════════════
+// NAME MERGE RULES — applied on EVERY sync run
+// ══════════════════════════════════════════════════════════════
+
+// 1. Canonical name map — variant → correct name (tasks + projects updated)
 const NAME_MAP = {
   // Siva Kumar variants
   'siav kumar':          'Siva Kumar',
@@ -60,8 +62,88 @@ const NAME_MAP = {
   'sridevi / vaishnavi': 'Sridevi',
 };
 
-// Users to DELETE from DB immediately — not real employees
+// 2. After merging tasks/projects, DELETE these duplicate user accounts
+const MERGE_DELETE_USERS = [
+  'siav kumar', 'siav_kumar', 'shiva', 'shiva kumar',
+  'danush', 'allu sai', 'lokesh reddy', 'nnj',
+];
+
+// 3. Junk users (not real people) — delete immediately, no merge needed
 const DELETE_USERS = ['out source', 'outsource', 'out_source', 'rds'];
+
+// ── Merge: update all tasks + projects then delete duplicate accounts ──────────
+async function mergeAndCleanUsers(supa, pool, localOk) {
+  console.log('\n── Merging duplicate user names …');
+  const users = await supa('GET', 'users?select=id,name,username');
+  let merged = 0, deleted = 0;
+
+  // Build: variant name → canonical name
+  const variantToCanonical = {};
+  for (const [k, v] of Object.entries(NAME_MAP)) {
+    variantToCanonical[k] = v;
+    // Also match by username style (underscores)
+    variantToCanonical[k.replace(/\s+/g,'_')] = v;
+  }
+
+  // Find canonical user usernames (for assigned_users arrays in projects)
+  const canonicalUsername = {};
+  for (const u of users) {
+    const nm = (u.name||'').toLowerCase().trim();
+    // Check if this IS a canonical name
+    const isCanonical = Object.values(NAME_MAP).some(v => v.toLowerCase() === nm);
+    if (isCanonical) canonicalUsername[u.name] = u.username;
+  }
+
+  // Fix tasks — assignee, detailer, checker fields
+  const tasks = await supa('GET', 'tasks?select=id,assignee,detailer,checker');
+  for (const t of tasks) {
+    const fix = v => {
+      if (!v) return v;
+      const canonical = variantToCanonical[v.toLowerCase().trim()];
+      return canonical || v;
+    };
+    const na = fix(t.assignee), nd = fix(t.detailer), nc = fix(t.checker);
+    if (na !== t.assignee || nd !== t.detailer || nc !== t.checker) {
+      await supa('PATCH', `tasks?id=eq.${t.id}`, { assignee:na, detailer:nd, checker:nc });
+      if (localOk) await pool.query(
+        'UPDATE tasks SET assignee=$1,detailer=$2,checker=$3 WHERE id=$4',
+        [na,nd,nc,t.id]
+      ).catch(()=>{});
+      merged++;
+    }
+  }
+
+  // Fix projects — assigned_users username arrays
+  const projects = await supa('GET', 'projects?select=id,assigned_users');
+  for (const p of projects) {
+    const arr = p.assigned_users || [];
+    const fixed = [...new Set(arr.map(u => {
+      const canonical = variantToCanonical[u.toLowerCase().trim()];
+      if (canonical) return canonicalUsername[canonical] || u;
+      return u;
+    }))];
+    const changed = JSON.stringify(fixed) !== JSON.stringify(arr);
+    if (changed) {
+      await supa('PATCH', `projects?id=eq.${p.id}`, { assigned_users: fixed });
+      if (localOk) await pool.query('UPDATE projects SET assigned_users=$1 WHERE id=$2',[JSON.stringify(fixed),p.id]).catch(()=>{});
+    }
+  }
+
+  // Delete duplicate + junk user accounts
+  const toDelete = [...MERGE_DELETE_USERS, ...DELETE_USERS];
+  for (const u of users) {
+    const nm = (u.name||'').toLowerCase().trim();
+    const un = (u.username||'').toLowerCase().trim();
+    if (toDelete.some(d => d === nm || d === un)) {
+      await supa('DELETE', `users?id=eq.${u.id}`);
+      if (localOk) await pool.query('DELETE FROM users WHERE id=$1',[u.id]).catch(()=>{});
+      console.log(`  🗑 Deleted duplicate/junk user: "${u.name}"`);
+      deleted++;
+    }
+  }
+
+  console.log(`  ✓ Merged ${merged} tasks · Deleted ${deleted} user accounts`);
+}
 
 const COLORS = [
   '#6366f1','#22d3ee','#f59e0b','#10b981','#ef4444',
@@ -320,18 +402,9 @@ async function main() {
     if (u.username) byName[u.username.toLowerCase().trim()] = u;
   }
 
-  // Delete junk users (not real employees) immediately
-  for (const u of users) {
-    if (DELETE_USERS.includes((u.name||'').toLowerCase().trim())) {
-      await supa('DELETE', `users?id=eq.${u.id}`);
-      try { await pool.query('DELETE FROM users WHERE id=$1',[u.id]); } catch(_){}
-      console.log(`  🗑 Deleted junk user: "${u.name}"`);
-      delete byName[(u.name||'').toLowerCase().trim()];
-      if (u.username) delete byName[u.username.toLowerCase()];
-    }
-  }
+  // Run merge + cleanup (fixes tasks/projects, deletes duplicate accounts)
+  await mergeAndCleanUsers(supa, pool, localOk);
   // NO auto-create — never create new users during sync
-  // If a name is not found in DB, field is left as the normalised name string only
   console.log(`  ✓ ${users.length} users loaded (no auto-create)`);
 
   // ── 4. Load existing DB state for this client ─────────────────────────────

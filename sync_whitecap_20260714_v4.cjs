@@ -58,8 +58,81 @@ const NAME_ALIASES = {
   'lokesh reddy': 'Lokesh',
   'danush':       'Dhanush',
 };
-// Users to DELETE from DB immediately (not real employees)
+
+// After merging tasks/projects → delete these duplicate user accounts
+const MERGE_DELETE_USERS = [
+  'siav kumar', 'siav_kumar', 'shiva', 'shiva kumar',
+  'danush', 'allu sai', 'lokesh reddy', 'nnj',
+];
+
+// Junk users (not real people) — delete immediately, no merge needed
 const DELETE_USERS = ['out source', 'outsource', 'out_source', 'rds'];
+
+// ── Merge + cleanup: runs on EVERY sync ─────────────────────────────────────
+async function mergeAndCleanUsers(localOk) {
+  console.log('\n── Merging duplicate user names …');
+  const users = await supa('GET', 'users?select=id,name,username');
+  let merged = 0, deleted = 0;
+
+  // Build variant → canonical lookup (name and username variants)
+  const variantToCanonical = {};
+  for (const [k, v] of Object.entries(NAME_ALIASES)) {
+    variantToCanonical[k] = v;
+    variantToCanonical[k.replace(/\s+/g,'_')] = v;
+  }
+
+  // Find canonical usernames (for assigned_users arrays)
+  const canonicalUsername = {};
+  for (const u of users) {
+    const nm = (u.name||'').toLowerCase().trim();
+    if (Object.values(NAME_ALIASES).some(v => v.toLowerCase() === nm)) {
+      canonicalUsername[u.name] = u.username;
+    }
+  }
+
+  // Fix all tasks — assignee, detailer, checker
+  const tasks = await supa('GET', 'tasks?select=id,assignee,detailer,checker');
+  for (const t of tasks) {
+    const fix = v => {
+      if (!v) return v;
+      return variantToCanonical[v.toLowerCase().trim()] || v;
+    };
+    const na = fix(t.assignee), nd = fix(t.detailer), nc = fix(t.checker);
+    if (na !== t.assignee || nd !== t.detailer || nc !== t.checker) {
+      await supa('PATCH', `tasks?id=eq.${t.id}`, { assignee:na, detailer:nd, checker:nc });
+      if (localOk) await pgRun('UPDATE tasks SET assignee=$1,detailer=$2,checker=$3 WHERE id=$4',[na,nd,nc,t.id]).catch(()=>{});
+      merged++;
+    }
+  }
+
+  // Fix projects — assigned_users username arrays
+  const projects = await supa('GET', 'projects?select=id,assigned_users');
+  for (const p of projects) {
+    const arr = p.assigned_users || [];
+    const fixed = [...new Set(arr.map(u => {
+      const canonical = variantToCanonical[u.toLowerCase().trim()];
+      return canonical ? (canonicalUsername[canonical] || u) : u;
+    }))];
+    if (JSON.stringify(fixed) !== JSON.stringify(arr)) {
+      await supa('PATCH', `projects?id=eq.${p.id}`, { assigned_users: fixed });
+      if (localOk) await pgRun('UPDATE projects SET assigned_users=$1 WHERE id=$2',[JSON.stringify(fixed),p.id]).catch(()=>{});
+    }
+  }
+
+  // Delete duplicate + junk accounts
+  const toDelete = [...MERGE_DELETE_USERS, ...DELETE_USERS];
+  for (const u of users) {
+    const nm = (u.name||'').toLowerCase().trim();
+    const un = (u.username||'').toLowerCase().trim();
+    if (toDelete.some(d => d === nm || d === un)) {
+      await supa('DELETE', `users?id=eq.${u.id}`);
+      if (localOk) await pgRun('DELETE FROM users WHERE id=$1',[u.id]).catch(()=>{});
+      console.log(`  🗑 Deleted duplicate/junk user: "${u.name}"`);
+      deleted++;
+    }
+  }
+  console.log(`  ✓ Merged ${merged} tasks · Deleted ${deleted} user accounts`);
+}
 
 function normaliseName(n){
   if(!n) return '';
@@ -98,16 +171,8 @@ async function main() {
     if (u.username) byName[u.username.toLowerCase().trim()] = u;
   }
 
-  // ── Delete junk users immediately ────────────────────────────
-  for (const u of users) {
-    const k = (u.name||'').toLowerCase().trim();
-    if (DELETE_USERS.includes(k)) {
-      await supa('DELETE', `users?id=eq.${u.id}`);
-      if (localOk) await pgRun('DELETE FROM users WHERE id=$1',[u.id]).catch(()=>{});
-      console.log(`  🗑 Deleted junk user: "${u.name}"`);
-    }
-  }
-
+  // ── Merge variant names + delete duplicate/junk accounts ───────
+  await mergeAndCleanUsers(localOk);
   // No auto-create — use NAME_ALIASES to normalise, match existing users only
 
     const dbProjects = await supa('GET', `projects?client=eq.${encodeURIComponent(CLIENT_NAME)}&select=id,name,client`);
