@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-15T12:19:45.560Z",
-  "ist_time": "2026-07-15 17:49:45 IST",
-  "duration_sec": 3.8,
-  "total_synced": 2041,
-  "total_pushed": 872,
-  "total_pulled": 1169,
+  "timestamp": "2026-07-15T13:01:17.567Z",
+  "ist_time": "2026-07-15 18:31:17 IST",
+  "duration_sec": 4.5,
+  "total_synced": 2166,
+  "total_pushed": 934,
+  "total_pulled": 1232,
   "total_failed": 56,
   "status": "partial",
   "tables": [
@@ -24,17 +24,17 @@
     },
     {
       "table": "projects",
-      "synced": 93,
+      "synced": 94,
       "failed": 0,
-      "total": 93,
-      "pulled": 93
+      "total": 94,
+      "pulled": 94
     },
     {
       "table": "tasks",
-      "synced": 716,
+      "synced": 776,
       "failed": 0,
-      "total": 716,
-      "pulled": 716
+      "total": 776,
+      "pulled": 776
     },
     {
       "table": "task_files",
@@ -81,7 +81,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 22
+      "pulled": 23
     },
     {
       "table": "war_room_pins",
@@ -101,10 +101,10 @@
     },
     {
       "table": "war_room_reads",
-      "synced": 16,
+      "synced": 17,
       "failed": 0,
-      "total": 16,
-      "pulled": 16
+      "total": 17,
+      "pulled": 17
     },
     {
       "table": "war_room_scheduled",
