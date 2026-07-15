@@ -326,4 +326,16 @@ async function runSync() {
       { onConflict: "key" }
     );
     console.log(`☁️   Report saved → Supabase settings\n`);
-  } catch(e) { console.warn("⚠️  Supabase report save failed:", e.
+  } catch(e) { console.warn("⚠️  Supabase report save failed:", e.message, "\n"); }
+
+  return report;
+}
+
+// ── Run directly (node sync.cjs) ─────────────────────────────
+if (require.main === module) {
+  runSync()
+    .then(() => pool.end())
+    .catch(e => { console.error("Fatal:", e.message); pool.end(); process.exit(1); });
+}
+
+module.exports = { runSync };
