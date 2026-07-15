@@ -319,4 +319,31 @@ async function runSync() {
     total_pulled:  totalPulled,
     total_failed:  totalFailed + pullFailed,
     status:        (totalFailed + pullFailed) === 0 ? "success"
-                   : (totalSynced + totalPulled > 0 ? 
+                   : (totalSynced + totalPulled > 0 ? "partial" : "failed"),
+    tables:        tableResults,
+  };
+
+  const reportPath = path.join(__dirname, "last-sync-report.json");
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+  console.log(`📄  Report saved → last-sync-report.json`);
+
+  // Save to Supabase so the dashboard can read it
+  try {
+    await supabase.from("settings").upsert(
+      { key: "last_sync_report", value: JSON.stringify(report) },
+      { onConflict: "key" }
+    );
+    console.log(`☁️   Report saved → Supabase settings\n`);
+  } catch(e) { console.warn("⚠️  Supabase report save failed:", e.message, "\n"); }
+
+  return report;
+}
+
+// ── Run directly (node sync.cjs) ─────────────────────────────
+if (require.main === module) {
+  runSync()
+    .then(() => pool.end())
+    .catch(e => { console.error("Fatal:", e.message); pool.end(); process.exit(1); });
+}
+
+module.exports = { runSync };
