@@ -1413,7 +1413,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                 <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Tasks ({ft.length})</span>
                 {hasF&&<span style={{fontSize:12,color:C.accent}}>Filtered</span>}
               </div>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",minWidth:860}}>
                 <thead><tr style={{background:C.surface}}>{["Task","Project","Status","Priority","Assignee","Detailer","Checker","Det. Wt.","Due Date","Client Sub Date"].map(h=>(
                   <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
                 ))}</tr></thead>
@@ -10830,6 +10830,7 @@ export default function App(){
         .rds-mini-grid{grid-template-columns:repeat(2,1fr)!important;}
         .rds-table-outer{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
         .rds-table-outer table{min-width:500px;}
+        .rds-tasklist-wrap::-webkit-scrollbar{display:none!important;}
         .rds-hide-mob{display:none!important;}
         .rds-form-row{flex-direction:column!important;}
         input,select,textarea{font-size:16px!important;}
@@ -12736,7 +12737,7 @@ export default function App(){
               })}
             </div>
           ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"hidden"}}>
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto",scrollbarWidth:"none"}} className="rds-tasklist-wrap">
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.bg}}>
                 {canEdit&&<th style={{padding:"11px 8px",width:36,borderBottom:`2px solid ${C.border}`,background:C.bg}}>
