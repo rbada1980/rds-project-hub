@@ -61,8 +61,8 @@ const TABLE_CONFIG = [
   { table: "war_room_reads",     conflict: "client_id,user_username" },
   { table: "war_room_scheduled", conflict: "id" },
   { table: "settings",           conflict: "key", excludeFromRow: ["id"], excludeFromPull: ["id"] },
-  { table: "attendance",         conflict: "id" },
-  { table: "breaks",             conflict: "id", excludeFromRow: ["created_at"] },
+  { table: "attendance",         conflict: "id", pushConflict: "user_id,date", skipPull: true },
+  { table: "breaks",             conflict: "id", excludeFromRow: ["created_at"], skipPull: true },
   { table: "time_logs",          conflict: "id" },
 ];
 
@@ -80,9 +80,14 @@ async function getLocalSchema(table) {
 }
 
 // ── Phase 1: Pull FROM Supabase → Local ─────────────────────
-async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull, deleteOrphans = false }) {
+async function pullTable({ table, conflict, pullConflict, excludeFromRow = [], excludeFromPull, deleteOrphans = false, skipPull = false }) {
+  if (skipPull) {
+    console.log(`   ⏭  ← ${table.padEnd(24)} skipped (push-only table)`);
+    return { table, pulled: 0, failed: 0, total: 0, note: "push-only" };
+  }
   const skipCols    = excludeFromPull !== undefined ? excludeFromPull : excludeFromRow;
-  const conflictCols = conflict.split(",").map(c => c.trim());
+  const effectivePullConflict = pullConflict || conflict;
+  const conflictCols = effectivePullConflict.split(",").map(c => c.trim());
 
   // Check local table exists
   const localSchema = await getLocalSchema(table);
@@ -121,8 +126,10 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
 
   if (!cols.length) return { table, pulled: 0, failed: 0, total: allRows.length, note: "no matching cols" };
 
+  // When conflict is NOT on "id", never overwrite the local primary key in the SET clause
+  const neverUpdate = conflictCols.includes("id") ? [] : ["id"];
   const sets = cols
-    .filter(c => !conflictCols.includes(c))
+    .filter(c => !conflictCols.includes(c) && !neverUpdate.includes(c))
     .map(c => `"${c}" = EXCLUDED."${c}"`);
   const conflictClause = `ON CONFLICT (${conflictCols.map(c => `"${c}"`).join(", ")})`;
   const updateClause   = sets.length ? `DO UPDATE SET ${sets.join(", ")}` : "DO NOTHING";
@@ -194,7 +201,8 @@ async function pullTable({ table, conflict, excludeFromRow = [], excludeFromPull
 }
 
 // ── Phase 2: Push FROM Local → Supabase ─────────────────────
-async function pushTable({ table, conflict, excludeFromRow = [], skipPush = false }) {
+async function pushTable({ table, conflict, pushConflict, excludeFromRow = [], skipPush = false }) {
+  const effectiveConflict = pushConflict || conflict;
   if (skipPush) {
     console.log(`   ⏭  → ${table.padEnd(24)} skipped (pull-only table)`);
     return { table, synced: 0, failed: 0, total: 0, note: "pull-only" };
@@ -228,7 +236,7 @@ async function pushTable({ table, conflict, excludeFromRow = [], skipPush = fals
     const batch = cleaned.slice(i, i + BATCH);
     const { error } = await supabase
       .from(table)
-      .upsert(batch, { onConflict: conflict, ignoreDuplicates: false });
+      .upsert(batch, { onConflict: effectiveConflict, ignoreDuplicates: false });
 
     if (error) {
       console.log(`   ⚠️  ${table} push batch ${Math.floor(i/BATCH)+1}: ${error.message.slice(0, 100)}`);
@@ -311,31 +319,4 @@ async function runSync() {
     total_pulled:  totalPulled,
     total_failed:  totalFailed + pullFailed,
     status:        (totalFailed + pullFailed) === 0 ? "success"
-                   : (totalSynced + totalPulled > 0 ? "partial" : "failed"),
-    tables:        tableResults,
-  };
-
-  const reportPath = path.join(__dirname, "last-sync-report.json");
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-  console.log(`📄  Report saved → last-sync-report.json`);
-
-  // Save to Supabase so the dashboard can read it
-  try {
-    await supabase.from("settings").upsert(
-      { key: "last_sync_report", value: JSON.stringify(report) },
-      { onConflict: "key" }
-    );
-    console.log(`☁️   Report saved → Supabase settings\n`);
-  } catch(e) { console.warn("⚠️  Supabase report save failed:", e.message, "\n"); }
-
-  return report;
-}
-
-// ── Run directly (node sync.cjs) ─────────────────────────────
-if (require.main === module) {
-  runSync()
-    .then(() => pool.end())
-    .catch(e => { console.error("Fatal:", e.message); pool.end(); process.exit(1); });
-}
-
-module.exports = { runSync };
+                   : (totalSynced + totalPulled > 0 ? 
