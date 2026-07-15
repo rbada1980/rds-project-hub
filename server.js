@@ -7,8 +7,13 @@
 // ============================================================
 
 const express  = require("express");
-const { Pool } = require("pg");
+const pg       = require("pg");
+const { Pool } = pg;
 const cors     = require("cors");
+
+// Return DATE columns as plain "YYYY-MM-DD" strings (not JS Date objects).
+// Without this, pg converts DATE → JS Date → UTC ISO string → 1-day shift in IST.
+pg.types.setTypeParser(1082, val => val);
 const path     = require("path");
 const multer   = require("multer");
 const fs       = require("fs");

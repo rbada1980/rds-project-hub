@@ -1,3 +1,4 @@
 Pushing to origin main... 
-Everything up-to-date
+To https://github.com/rbada1980/rds-project-hub.git
+   6892161..04fd748  main -> main
 ExitCode: 0 
