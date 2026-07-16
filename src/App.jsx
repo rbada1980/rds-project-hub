@@ -12,11 +12,33 @@ const LOCAL_BASE = IS_LOCAL ? `${typeof window!=="undefined"?window.location.pro
 const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
 
-const DARK_C={bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",accent:"#f97316",teal:"#14b8a6",blue:"#3b82f6",purple:"#a855f7",green:"#22c55e",red:"#ef4444",yellow:"#eab308",t1:"#f1f5f9",t2:"#b0bfcc",t3:"#8899aa"};
-const LIGHT_C={bg:"#f1f5f9",surface:"#e2e8f0",card:"#ffffff",border:"#cbd5e1",accent:"#ea580c",teal:"#0d9488",blue:"#2563eb",purple:"#9333ea",green:"#16a34a",red:"#dc2626",yellow:"#d97706",t1:"#0f172a",t2:"#334155",t3:"#64748b"};
+const DARK_C={
+  bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
+  accent:"#f97316",teal:"#14b8a6",blue:"#3b82f6",purple:"#a855f7",green:"#22c55e",red:"#ef4444",yellow:"#eab308",
+  t1:"#f1f5f9",t2:"#b0bfcc",t3:"#8899aa",
+  // sidebar (dark in both modes)
+  sideBg:"#171b26",sideActive:"#1e2433",sideBorder:"#2a3040",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
+};
+const LIGHT_C={
+  bg:"#f0f4f8",surface:"#e4ecf4",card:"#ffffff",border:"#d0dae6",
+  accent:"#f97316",teal:"#0d9488",blue:"#2563eb",purple:"#9333ea",green:"#16a34a",red:"#dc2626",yellow:"#d97706",
+  t1:"#111827",t2:"#374151",t3:"#6b7280",
+  // sidebar stays dark even in light mode
+  sideBg:"#1a2035",sideActive:"#252d42",sideBorder:"#2e3a52",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
+};
 const _initTheme=(typeof window!=="undefined"?localStorage.getItem("rds_theme")||"dark":"dark");
 const C={...(_initTheme==="light"?LIGHT_C:DARK_C)};
-function applyTheme(mode){const src=mode==="light"?LIGHT_C:DARK_C;Object.keys(src).forEach(k=>{C[k]=src[k];});if(typeof window!=="undefined")document.body.style.background=C.bg;}
+function applyTheme(mode){
+  const src=mode==="light"?LIGHT_C:DARK_C;
+  Object.keys(src).forEach(k=>{C[k]=src[k];});
+  if(typeof window!=="undefined"){
+    document.body.style.background=C.bg;
+    if(mode==="light")document.body.classList.add("rds-light");
+    else document.body.classList.remove("rds-light");
+  }
+}
+// Apply saved theme on page load
+if(typeof window!=="undefined"&&_initTheme==="light"){document.body.classList.add("rds-light");document.body.style.background=LIGHT_C.bg;}
 const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Review","Completed"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
@@ -11171,6 +11193,12 @@ export default function App(){
         }
         *{transition-duration:.01ms!important;}
       }
+
+      /* ── Light mode enhancements ── */
+      body.rds-light{ color-scheme: light; }
+      body.rds-light .rds-sidebar{ box-shadow: 4px 0 24px rgba(0,0,0,0.15)!important; }
+      body.rds-light .rds-sidebar button:hover{ background: rgba(255,255,255,0.08)!important; box-shadow: inset 3px 0 0 rgba(249,115,22,.85)!important; }
+      body.rds-light .rds-main{ background: #f0f4f8; }
     `;
     document.head.appendChild(a);
     return()=>{const el=document.getElementById("rds-anim-css");if(el)el.remove();};
@@ -11786,20 +11814,20 @@ export default function App(){
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
   const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
-  const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.card:"transparent",border:active?`1px solid ${C.border}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.t1:C.t2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
+  const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
       {isMobile&&sideOpen&&<div onClick={()=>setSO(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:150,backdropFilter:"blur(2px)"}}/>}
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
-      <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
-        <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:12,flexShrink:0}}>
+      <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:C.sideBg,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
+        <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.sideBorder}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div onClick={()=>logoRef.current.click()} title="Click to upload logo" className="rds-logo-anim" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
               {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>}
             </div>
             <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}}}/>
-            <div><div style={{fontSize:13,fontWeight:800,color:C.t1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.t3}}>PROJECT HUB</div></div>
+            <div><div style={{fontSize:13,fontWeight:800,color:C.sideT1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.sideT3}}>PROJECT HUB</div></div>
           </div>
         </div>
         <div style={{padding:"0 12px",flex:1,overflow:"auto"}}>
@@ -11822,18 +11850,18 @@ export default function App(){
             );
           })}
         </div>
-        <div style={{padding:"12px 10px",borderTop:`1px solid ${C.border}`,flexShrink:0,position:"relative"}}>
+        <div style={{padding:"12px 10px",borderTop:`1px solid ${C.sideBorder}`,flexShrink:0,position:"relative"}}>
           <button onClick={()=>sMenu(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",minWidth:0,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"inherit",overflow:"hidden"}}>
             <Av name={me.name} size={32}/>
             <div style={{textAlign:"left",flex:1,minWidth:0}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:9,marginLeft:4}}>★</span>}</div>
-              <div style={{fontSize:10,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.role}{me.client_name?` · ${me.client_name}`:""}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.sideT1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:9,marginLeft:4}}>★</span>}</div>
+              <div style={{fontSize:10,color:C.sideT3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.role}{me.client_name?` · ${me.client_name}`:""}</div>
             </div>
             <span style={{color:C.t3,fontSize:12}}>⌄</span>
           </button>
           {uMenu&&(
-            <div style={{position:"absolute",bottom:64,left:12,right:12,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:8,boxShadow:"0 8px 24px #00000060",zIndex:50}}>
-              <div style={{padding:"8px 10px 10px",borderBottom:`1px solid ${C.border}`,marginBottom:6}}>
+            <div style={{position:"absolute",bottom:64,left:12,right:12,background:C.sideActive,border:`1px solid ${C.sideBorder}`,borderRadius:10,padding:8,boxShadow:"0 8px 24px #00000060",zIndex:50}}>
+              <div style={{padding:"8px 10px 10px",borderBottom:`1px solid ${C.sideBorder}`,marginBottom:6}}>
                 <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★ Super Admin</span>}</div>
                 <div style={{fontSize:11,color:C.t3}}>@{me.username} · {me.role}</div>
               </div>
