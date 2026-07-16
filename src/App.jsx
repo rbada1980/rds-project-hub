@@ -7552,7 +7552,19 @@ function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClo
       </button>
     );
   }
-  if(attRec.logout_at)return null;
+  if(attRec.logout_at){
+    if(!IS_LOCAL)return(
+      <span style={{fontSize:12,color:"#f59e0b",background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:8,padding:"5px 12px",fontWeight:600,whiteSpace:"nowrap"}}>
+        ⚠ Attendance not counted online
+      </span>
+    );
+    return(
+      <button onClick={onClockIn}
+        style={{background:"#22c55e22",color:"#22c55e",border:"1px solid #22c55e55",borderRadius:8,padding:"6px 16px",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+        🟢 Login
+      </button>
+    );
+  }
   const now=Date.now();
   const loginMs=new Date(attRec.login_at).getTime();
   const liveBrk=attBreak?Math.floor((now-new Date(attBreak.break_start).getTime())/60000):0;
