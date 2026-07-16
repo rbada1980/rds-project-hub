@@ -6787,7 +6787,7 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
         <div style={{fontSize:13,fontWeight:800,color:"#a0a0b0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           ⏱ Time Logged
           <span style={{fontSize:11,background:"#05966922",color:"#059669",borderRadius:10,padding:"1px 8px",fontWeight:700}}>{fmtDur(totalMins)}</span>
-          {logs.length>0&&<span style={{fontSize:11,background:"#33415522",color:"#94a3b8",borderRadius:10,padding:"1px 7px"}}>{logs.length} {logs.length===1?"entry":"entries"}</span>}
+          {logs.length>0&&<span style={{fontSize:11,background:C.surface,color:C.t2,borderRadius:10,padding:"1px 7px"}}>{logs.length} {logs.length===1?"entry":"entries"}</span>}
         </div>
         {!isClient&&<button onClick={()=>setShowForm(v=>!v)} style={{background:showForm?"#059669":"none",border:"1px solid #059669",borderRadius:6,padding:"3px 12px",color:showForm?"#fff":"#059669",fontSize:12,cursor:"pointer",fontWeight:600,transition:"all .15s"}}>{showForm?"✕ Cancel":"+ Log Time"}</button>}
       </div>
@@ -6839,24 +6839,24 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
       {logs.length>0&&(
         <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:220,overflowY:"auto"}}>
           {logs.map(l=>(
-            <div key={l.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",background:"#1e293b",borderRadius:6,border:"1px solid #334155"}}>
+            <div key={l.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",background:C.surface,borderRadius:6,border:`1px solid ${C.border}`}}>
               <div style={{width:26,height:26,borderRadius:"50%",background:"#05966922",border:"1px solid #05966944",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#059669",flexShrink:0}}>
                 {(l.user_name?.[0]||"?").toUpperCase()}
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                  <span style={{fontSize:11,fontWeight:700,color:"#d1d5db"}}>{l.user_name}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:C.t1}}>{l.user_name}</span>
                   <span style={{fontSize:11,fontWeight:700,color:"#059669",background:"#05966918",borderRadius:4,padding:"1px 6px"}}>{fmtDur(l.duration_minutes)}</span>
-                  <span style={{fontSize:10,color:"#6b7280"}}>{fmtDate(l.logged_date)}</span>
+                  <span style={{fontSize:10,color:C.t3}}>{fmtDate(l.logged_date)}</span>
                 </div>
-                {l.notes&&<div style={{fontSize:11,color:"#94a3b8",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.notes}</div>}
+                {l.notes&&<div style={{fontSize:11,color:C.t2,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.notes}</div>}
               </div>
-              {l.user_id===me.id&&<button onClick={()=>deleteLog(l.id)} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 4px",flexShrink:0}} title="Delete entry">✕</button>}
+              {l.user_id===me.id&&<button onClick={()=>deleteLog(l.id)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 4px",flexShrink:0}} title="Delete entry">✕</button>}
             </div>
           ))}
         </div>
       )}
-      {logs.length===0&&!showForm&&<div style={{fontSize:12,color:"#4b5563",textAlign:"center",padding:"12px 0"}}>No time logged yet — click "+ Log Time" to add</div>}
+      {logs.length===0&&!showForm&&<div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"12px 0"}}>No time logged yet — click "+ Log Time" to add</div>}
     </div>
   );
 }
@@ -7508,38 +7508,38 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose,pinnedTasks=
   return(
     <div style={{position:"fixed",inset:0,background:"#00000090",zIndex:9999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"10vh"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{width:"min(620px,94vw)",background:"#1a1f2e",border:"1px solid #2a3040",borderRadius:16,overflow:"hidden",boxShadow:"0 32px 80px #000000c0"}}>
+      <div style={{width:"min(620px,94vw)",background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:"hidden",boxShadow:"0 32px 80px #00000060"}}>
         {/* Search input */}
-        <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid #2a3040"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
           <span style={{fontSize:18,opacity:.6}}>⌘</span>
           <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)}
             placeholder="Search projects, tasks, people…"
-            style={{flex:1,background:"transparent",border:"none",outline:"none",color:"#f1f5f9",fontSize:16,fontFamily:"inherit"}}/>
-          <kbd onClick={onClose} style={{background:"#2a3040",border:"1px solid #3a4050",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#94a3b8",cursor:"pointer"}}>Esc</kbd>
+            style={{flex:1,background:"transparent",border:"none",outline:"none",color:C.t1,fontSize:16,fontFamily:"inherit"}}/>
+          <kbd onClick={onClose} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 8px",fontSize:11,color:C.t2,cursor:"pointer"}}>Esc</kbd>
         </div>
         {/* Results */}
         <div style={{maxHeight:"60vh",overflowY:"auto"}}>
-          {results.length===0&&<div style={{padding:"32px 20px",textAlign:"center",color:"#475569",fontSize:14}}>{qL?"No results found":"Start typing to search…"}</div>}
+          {results.length===0&&<div style={{padding:"32px 20px",textAlign:"center",color:C.t3,fontSize:14}}>{qL?"No results found":"Start typing to search…"}</div>}
           {groups.map(type=>{
             const gr=results.filter(r=>r.type===type);
             if(!gr.length)return null;
             return(
               <div key={type}>
-                <div style={{padding:"10px 16px 4px",fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em"}}>{typeLabel[type]}</div>
+                <div style={{padding:"10px 16px 4px",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em"}}>{typeLabel[type]}</div>
                 {gr.map((item,i)=>{
                   const globalIdx=results.indexOf(item);
                   const isSelected=globalIdx===sel;
                   return(
                     <div key={item.data.id||item.data.username} onClick={()=>go(item)}
                       style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer",
-                        background:isSelected?"#2a3040":"transparent",borderLeft:`3px solid ${isSelected?"#14b8a6":"transparent"}`}}
+                        background:isSelected?C.surface:"transparent",borderLeft:`3px solid ${isSelected?C.teal:"transparent"}`}}
                       onMouseEnter={()=>setSel(globalIdx)}>
                       <span style={{fontSize:18,width:24,textAlign:"center",flexShrink:0}}>{item.icon}</span>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:14,fontWeight:600,color:isSelected?"#f1f5f9":"#cbd5e1",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
-                        <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>
+                        <div style={{fontSize:14,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
+                        <div style={{fontSize:11,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>
                       </div>
-                      {isSelected&&<span style={{fontSize:11,color:"#14b8a6",flexShrink:0}}>Enter ↵</span>}
+                      {isSelected&&<span style={{fontSize:11,color:C.teal,flexShrink:0}}>Enter ↵</span>}
                     </div>
                   );
                 })}
@@ -7548,10 +7548,10 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose,pinnedTasks=
           })}
         </div>
         {/* Footer */}
-        <div style={{padding:"8px 16px",borderTop:"1px solid #2a3040",display:"flex",gap:16,fontSize:11,color:"#475569"}}>
-          <span><kbd style={{background:"#2a3040",borderRadius:4,padding:"1px 5px",fontSize:10}}>↑↓</kbd> navigate</span>
-          <span><kbd style={{background:"#2a3040",borderRadius:4,padding:"1px 5px",fontSize:10}}>↵</kbd> open</span>
-          <span><kbd style={{background:"#2a3040",borderRadius:4,padding:"1px 5px",fontSize:10}}>Esc</kbd> close</span>
+        <div style={{padding:"8px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:16,fontSize:11,color:C.t3}}>
+          <span><kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 5px",fontSize:10,color:C.t1}}>↑↓</kbd> navigate</span>
+          <span><kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 5px",fontSize:10,color:C.t1}}>↵</kbd> open</span>
+          <span><kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 5px",fontSize:10,color:C.t1}}>Esc</kbd> close</span>
           <span style={{marginLeft:"auto"}}>{results.length} result{results.length!==1?"s":""}</span>
         </div>
       </div>
@@ -7711,7 +7711,7 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   return(
     <>
       <div style={{marginBottom:24}}>
-        <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⏱ Your Work Hours</h2>
+        <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:C.t1}}>⏱ Your Work Hours</h2>
         <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:12}}>
           {items.map(it=>(
             <div key={it.label} onClick={()=>openModal(it)}
@@ -7840,7 +7840,7 @@ function AttendancePage({users}){
   return(
     <div style={{marginTop:32,marginBottom:32}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-        <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#f1f5f9"}}>📋 Team Attendance Report</h2>
+        <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>📋 Team Attendance Report</h2>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{background:C.card,border:"1px solid "+C.border,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",colorScheme:"dark"}}/>
           <span style={{color:C.t3,fontSize:13}}>to</span>
@@ -7943,7 +7943,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
           <div style={{fontSize:15,fontWeight:800,color:C.t1,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
             ⏱ Task Time Tracking
             <span style={{fontSize:11,background:"#05966922",color:"#059669",borderRadius:10,padding:"2px 9px",fontWeight:700}}>{fmtDur(totalAll)} total</span>
-            {withTime>0&&<span style={{fontSize:11,background:"#33415522",color:"#94a3b8",borderRadius:10,padding:"2px 8px"}}>{withTime}/{myTasks.length} tasks logged</span>}
+            {withTime>0&&<span style={{fontSize:11,background:C.surface,color:C.t2,borderRadius:10,padding:"2px 8px"}}>{withTime}/{myTasks.length} tasks logged</span>}
           </div>
           <div style={{fontSize:12,color:C.t3,marginTop:3}}>{isClient?"Your project tasks":"Tasks with time logged by your team"}</div>
         </div>
@@ -8050,7 +8050,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
                     <td style={{padding:"8px 10px"}}>
                       {isClient?(
                         r.workers.length>0
-                          ?<span style={{fontSize:11,background:"#33415544",color:"#94a3b8",borderRadius:6,padding:"2px 8px"}}>Our Team ({r.workers.length})</span>
+                          ?<span style={{fontSize:11,background:C.surface,color:C.t2,borderRadius:6,padding:"2px 8px"}}>Our Team ({r.workers.length})</span>
                           :<span style={{color:C.t3,fontSize:11}}>—</span>
                       ):(
                         <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
@@ -9646,7 +9646,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
                               <td style={{padding:"7px 14px",fontWeight:600,color:C.t1,maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</td>
                               <td style={{padding:"7px 10px"}}>
                                 {isClient
-                                  ?<span style={{fontSize:11,background:"#33415544",color:"#94a3b8",borderRadius:6,padding:"2px 8px"}}>Our Team ({Object.keys(td.workers).length})</span>
+                                  ?<span style={{fontSize:11,background:C.surface,color:C.t2,borderRadius:6,padding:"2px 8px"}}>Our Team ({Object.keys(td.workers).length})</span>
                                   :<div style={{display:"flex",flexWrap:"wrap",gap:3}}>
                                     {Object.entries(td.workers).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([w,wm])=>(
                                       <span key={w} style={{fontSize:10,background:"#05966918",color:"#059669",borderRadius:10,padding:"1px 7px",fontWeight:600}} title={fmtDur(wm)}>{w.split(" ")[0]}</span>
@@ -9687,7 +9687,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
                         <td style={{padding:"8px 12px"}}>{p&&<span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:7,height:7,borderRadius:"50%",background:p.color||C.accent,flexShrink:0,display:"inline-block"}}/><span style={{color:C.t2,fontSize:12}}>{p.name}</span></span>}</td>
                         <td style={{padding:"8px 12px"}}>
                           {isClient
-                            ?<span style={{fontSize:11,background:"#33415544",color:"#94a3b8",borderRadius:6,padding:"2px 8px"}}>Our Team ({Object.keys(td.workers).length})</span>
+                            ?<span style={{fontSize:11,background:C.surface,color:C.t2,borderRadius:6,padding:"2px 8px"}}>Our Team ({Object.keys(td.workers).length})</span>
                             :<div style={{display:"flex",flexWrap:"wrap",gap:3}}>
                               {Object.entries(td.workers).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([w,wm])=>(
                                 <span key={w} style={{fontSize:11,background:"#05966918",color:"#059669",borderRadius:10,padding:"1px 8px",fontWeight:600}} title={fmtDur(wm)}>{w.split(" ")[0]}</span>
@@ -9769,7 +9769,7 @@ function LiveTimerBar({timer,onPause,onStop}){
       {/* Info */}
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontSize:10,color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>{isLong?"⚠️ TIMER >4 HRS":isPaused?"PAUSED":"TIMING NOW"}</div>
-        <div style={{fontSize:isMobile?12:13,fontWeight:700,color:"#f1f5f9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{timer.taskTitle}</div>
+        <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{timer.taskTitle}</div>
       </div>
       {/* Clock */}
       <div style={{fontFamily:"monospace",fontSize:isMobile?17:22,fontWeight:800,color:accentClr,flexShrink:0,letterSpacing:"0.05em",minWidth:isMobile?60:80,textAlign:"right"}}>{fmt(el)}</div>
