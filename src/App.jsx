@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, createContext, useContext, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { createLocalClient } from "./localApi.js";
+import * as XLSX from "xlsx";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
 // email notifications removed — daily scheduled digest replaces per-update emails
@@ -9985,7 +9986,18 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     <script>window.onload=()=>window.print()<\/script></body></html>`;
   }
 
-  function openPdf(html){const w=window.open("","_blank","width=960,height=720");w.document.write(html);w.document.close();}
+  function openPdf(html){
+    const blob=new Blob([html],{type:"text/html"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    // Try open in new tab (for print/save as PDF)
+    const w=window.open(url,"_blank");
+    if(!w){
+      // Fallback: download as .html file
+      a.href=url;a.download="RDS_Invoice.html";a.click();
+    }
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }
 
   function pdfAll(){
     const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
@@ -10007,18 +10019,17 @@ function BillingSummaryPage({tasks,projects,clients,me}){
 
   // Excel export
   function exportExcel(){
-    const XL=window.XLSX;if(!XL){alert("XLSX not available");return;}
-    const rows=[["RDS Billing — "+periodLabel],[],["Client","Project","Task","Tons","Rate/T","Amount","Assignee","Sub Date"]];
+    const rows=[["RDS Billing — "+periodLabel],[],["Client","Project","Task","Tons","Rate/T ($)","Amount ($)","Assignee","Sub Date"]];
     clientNames.forEach(cl=>{
       Object.values(clientMap[cl].projMap).forEach(pg=>{
         pg.tasks.forEach(t=>rows.push([cl,t._proj?.name||"—",t.title,+t._wt.toFixed(2),+t._rate.toFixed(2),+t._amt.toFixed(2),t.assignee||"",t.client_sub_date||""]));
       });
     });
     rows.push([]); rows.push(["TOTAL","","",+totalTons.toFixed(2),"",+totalAmt.toFixed(2)]);
-    const ws=XL.utils.aoa_to_sheet(rows);
-    ws["!cols"]=[{wch:25},{wch:28},{wch:38},{wch:10},{wch:10},{wch:14},{wch:15},{wch:14}];
-    const wb=XL.utils.book_new();XL.utils.book_append_sheet(wb,ws,"Billing");
-    XL.writeFile(wb,"RDS_Billing_"+year+"_"+month+".xlsx");
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"]=[{wch:25},{wch:28},{wch:38},{wch:10},{wch:12},{wch:14},{wch:15},{wch:14}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Billing");
+    XLSX.writeFile(wb,"RDS_Billing_"+year+"_"+month+".xlsx");
   }
 
   const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",boxShadow:C.shadow};
