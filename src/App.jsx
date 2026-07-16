@@ -2296,15 +2296,25 @@ function ChangePasswordModal({me,onClose}){
 }
 function Login({onLogin}){
   const [un,sun]=useState(""),[pw,spw]=useState(""),[show,ss]=useState(false),[err,se]=useState(""),[ld,sl]=useState(false);
+  const [offlineWarn,setOfflineWarn]=useState(null); // holds user data when online+employee warning shown
   async function go(){
     if(!un.trim()||!pw.trim()){se("Please enter username and password.");return;}
-    sl(true);se("");
+    sl(true);se("");setOfflineWarn(null);
     try{
       const {data,error}=await supabase.from("users").select("*").eq("username",un.trim().toLowerCase()).eq("password",pw).single();
       if(error||!data){se("Invalid username or password.");}
-      else{localStorage.setItem("rds_user",JSON.stringify(data));onLogin(data);}
+      else{
+        const isOnline=!IS_LOCAL;
+        const isEmp=data.role!=="Admin"&&data.role!=="Manager"&&data.role!=="Team Leader"&&data.role!=="Client"&&data.username!==SUPER_ADMIN;
+        if(isOnline&&isEmp){setOfflineWarn(data);sl(false);return;}
+        localStorage.setItem("rds_user",JSON.stringify(data));onLogin(data);
+      }
     }catch(e){se("Connection error: "+e.message);}
     sl(false);
+  }
+  function proceedAnyway(){
+    if(!offlineWarn)return;
+    localStorage.setItem("rds_user",JSON.stringify(offlineWarn));onLogin(offlineWarn);
   }
   return(
     <div style={{height:"100vh",width:"100vw",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif",overflow:"auto",position:"fixed",top:0,left:0}}>
@@ -2334,7 +2344,15 @@ function Login({onLogin}){
             </div>
           </div>
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:16,color:C.red,fontSize:13}}>⚠ {err}</div>}
-          <button onClick={go} disabled={ld} style={{...SBtn,width:"100%",padding:"12px",fontSize:15,opacity:ld?.7:1}}>{ld?"Signing in…":"Sign In →"}</button>
+          {offlineWarn&&(
+            <div style={{background:"#f59e0b18",border:"1px solid #f59e0b55",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
+              <div style={{color:"#f59e0b",fontSize:13,fontWeight:700,marginBottom:6}}>⚠ Office Network Required</div>
+              <div style={{color:"#f59e0b",fontSize:12,lineHeight:1.5}}>Employee login is only allowed on the offline office server. Please connect to your office network.</div>
+              <button onClick={proceedAnyway} style={{marginTop:10,background:"#f59e0b22",border:"1px solid #f59e0b66",borderRadius:6,padding:"6px 14px",color:"#f59e0b",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Continue Anyway →</button>
+            </div>
+          )}
+          {!offlineWarn&&<button onClick={go} disabled={ld} style={{...SBtn,width:"100%",padding:"12px",fontSize:15,opacity:ld?.7:1}}>{ld?"Signing in…":"Sign In →"}</button>}
+          {offlineWarn&&<button onClick={()=>{setOfflineWarn(null);se("");}} style={{...SBtn,width:"100%",padding:"12px",fontSize:15,background:C.surface}}>← Back</button>}
         </div>
         <p style={{textAlign:"center",marginTop:20,color:C.t3,fontSize:11}}>RDS · Project Hub v2.0 · Powered by Supabase</p>
       </div>
@@ -13110,6 +13128,7 @@ export default function App(){
       {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
         {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
+        <Av name={me.name} size={22}/>
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
