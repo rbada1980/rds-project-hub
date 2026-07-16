@@ -9791,6 +9791,343 @@ function LiveTimerBar({timer,onPause,onStop}){
 // BACKUP, DISASTER RECOVERY & BUSINESS CONTINUITY CENTER
 // ══════════════════════════════════════════════════════════
 // ── Audit Log Page (Phase 3) ─────────────────────────────────
+// ─── 💰 Billing Summary Page ──────────────────────────────────────────────────
+function BillingSummaryPage({tasks,projects,clients,me}){
+  const isMobile=useMobile();
+  const now=new Date();
+  const [month,setMonth]=useState(String(now.getMonth()+1).padStart(2,"0"));
+  const [year,setYear]=useState(String(now.getFullYear()));
+  const [defaultRate,setDefaultRate]=useState("");
+  const [clientRates,setClientRates]=useState({});  // {clientName: rate}
+  const [editingRate,setEditingRate]=useState(null); // clientName or "default"
+  const [editRateVal,setEditRateVal]=useState("");
+  const [expanded,setExpanded]=useState({});
+  const [savingRate,setSavingRate]=useState(false);
+  const [msg,setMsg]=useState(null);
+  const CURRENCY="$";
+  const RATE_KEY="billing_rate_default";
+  const clientRateKey=n=>"billing_rate_client__"+n.replace(/\s+/g,"_").toLowerCase();
+
+  // Load rates from settings
+  useEffect(()=>{
+    const allClNames=[...(new Set(projects.map(p=>p.client||"Unassigned")))];
+    const keys=[RATE_KEY,...allClNames.map(clientRateKey)];
+    fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.map(k=>encodeURIComponent(k)).join(",")+")",{
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+    }).then(r=>r.ok?r.json():[]).then(rows=>{
+      const rm={};
+      (Array.isArray(rows)?rows:[]).forEach(r=>{
+        if(r.key===RATE_KEY) setDefaultRate(r.value||"");
+        else if(r.key.startsWith("billing_rate_client__")){
+          const cName=allClNames.find(n=>clientRateKey(n)===r.key)||r.key;
+          rm[cName]=r.value||"";
+        }
+      });
+      setClientRates(rm);
+    }).catch(()=>{});
+  },[projects.length]);
+
+  async function upsertSetting(key,value){
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
+      method:"PATCH",
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value:String(value)})
+    });
+    const d=await r.json();
+    if(!Array.isArray(d)||d.length===0){
+      await fetch(SUPA_URL+"/rest/v1/settings",{
+        method:"POST",
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key,value:String(value)})
+      });
+    }
+  }
+
+  async function saveRate(target){
+    setSavingRate(true);
+    const val=parseFloat(editRateVal)||0;
+    const key=target==="default"?RATE_KEY:clientRateKey(target);
+    await upsertSetting(key,val);
+    if(target==="default") setDefaultRate(String(val));
+    else setClientRates(p=>({...p,[target]:String(val)}));
+    setEditingRate(null); setEditRateVal("");
+    setMsg("Rate saved ✓"); setTimeout(()=>setMsg(null),2500);
+    setSavingRate(false);
+  }
+
+  // Filter completed tasks in selected month
+  const selY=parseInt(year); const selM=parseInt(month);
+  const isDone=s=>s==="Done"||s==="Completed";
+
+  const billableTasks=tasks.filter(t=>{
+    if(!isDone(t.status))return false;
+    // Use updated_at or client_sub_date for month bucketing
+    const d=t.client_sub_date||t.updated_at;
+    if(!d)return false;
+    const td=new Date(d);
+    return td.getFullYear()===selY&&td.getMonth()+1===selM;
+  });
+
+  const noWeightTasks=billableTasks.filter(t=>t.det_weight==null||t.det_weight==="");
+  const pendingTasks=tasks.filter(t=>!isDone(t.status)&&t.det_weight!=null&&t.det_weight!=="");
+
+  // Group by client
+  const clientMap={};
+  billableTasks.forEach(t=>{
+    const proj=projects.find(p=>p.id===t.project_id);
+    const cl=(proj?.client||"Unassigned").trim();
+    if(!clientMap[cl])clientMap[cl]={tasks:[],totalTons:0};
+    clientMap[cl].tasks.push({...t,_proj:proj});
+    clientMap[cl].totalTons+=parseFloat(t.det_weight)||0;
+  });
+
+  const clientNames=Object.keys(clientMap).sort();
+  const getRate=cl=>{
+    const cr=parseFloat(clientRates[cl]);
+    if(!isNaN(cr)&&cr>0)return cr;
+    const dr=parseFloat(defaultRate);
+    return(!isNaN(dr)&&dr>0)?dr:0;
+  };
+
+  const totalTons=clientNames.reduce((s,cl)=>s+clientMap[cl].totalTons,0);
+  const totalAmt=clientNames.reduce((s,cl)=>s+clientMap[cl].totalTons*getRate(cl),0);
+  const pendingTons=pendingTasks.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+
+  function fmtTons(v){return v.toLocaleString("en-US",{maximumFractionDigits:2})+" T";}
+  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0});}
+
+  function exportExcel(){
+    const rows=[
+      ["RDS PROJECT HUB — BILLING SUMMARY"],
+      [`Period: ${month}/${year}   |   Generated: ${new Date().toLocaleString()}`],
+      [],
+      ["Client","Tasks","Total Tons","Rate/Ton","Amount ($)"],
+    ];
+    clientNames.forEach(cl=>{
+      const {tasks:ct,totalTons:tons}=clientMap[cl];
+      const rate=getRate(cl);
+      rows.push([cl,ct.length,tons.toFixed(2),rate.toFixed(2),(tons*rate).toFixed(2)]);
+    });
+    rows.push([]);
+    rows.push(["TOTAL","",totalTons.toFixed(2),"",totalAmt.toFixed(2)]);
+    rows.push([]);
+    rows.push(["TASK DETAIL"]);
+    rows.push(["Client","Project","Task Title","Status","Det. Wt (T)","Client Sub Date","Assignee"]);
+    clientNames.forEach(cl=>{
+      clientMap[cl].tasks.forEach(t=>{
+        rows.push([cl,t._proj?.name||"—",t.title,t.status,parseFloat(t.det_weight)||0,t.client_sub_date||"",t.assignee||""]);
+      });
+    });
+    const ws=window.XLSX?.utils?.aoa_to_sheet?window.XLSX.utils.aoa_to_sheet(rows):null;
+    if(!ws){alert("XLSX not loaded. Use the browser print option instead.");return;}
+    const wb=window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb,ws,"Billing "+month+"-"+year);
+    window.XLSX.writeFile(wb,"RDS_Billing_"+year+"_"+month+".xlsx");
+  }
+
+  const months=["01","02","03","04","05","06","07","08","09","10","11","12"];
+  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const years=[2024,2025,2026,2027].map(String);
+
+  const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",boxShadow:C.shadow};
+  const th={padding:"10px 14px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".06em",textAlign:"left",borderBottom:`1px solid ${C.border}`};
+  const td2={padding:"11px 14px",borderBottom:`1px solid ${C.border}44`,fontSize:13,color:C.t1,verticalAlign:"middle"};
+
+  return(
+    <div style={{maxWidth:1100,margin:"0 auto"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>💰 Billing Summary</h2>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tonnage-based billing by client · Completed tasks only</p>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <select value={month} onChange={e=>setMonth(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
+            {months.map((m,i)=><option key={m} value={m}>{monthNames[i]}</option>)}
+          </select>
+          <select value={year} onChange={e=>setYear(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
+            {years.map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+          <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:6}}>
+            ⬇ Export Excel
+          </button>
+        </div>
+      </div>
+
+      {msg&&<div style={{background:C.green+"22",border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 16px",color:C.green,fontWeight:600,marginBottom:16}}>{msg}</div>}
+
+      {/* Warning: missing weights */}
+      {noWeightTasks.length>0&&(
+        <div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:18}}>⚠️</span>
+          <div>
+            <span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed task{noWeightTasks.length>1?"s":""} have no weight entered</span>
+            <span style={{color:C.t2,fontSize:12,marginLeft:8}}>— these are excluded from billing. Open the task and fill in Det. Wt. (Tons).</span>
+          </div>
+        </div>
+      )}
+
+      {/* Summary stat cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:14,marginBottom:28}}>
+        {[
+          {label:"Total Billed Tons",value:fmtTons(totalTons),color:C.blue,icon:"⚖️"},
+          {label:"Total Revenue",value:fmtMoney(totalAmt),color:C.green,icon:"💵"},
+          {label:"Clients Billed",value:clientNames.length,color:C.accent,icon:"🏢"},
+          {label:"Tasks Completed",value:billableTasks.length,color:C.teal,icon:"✅"},
+          {label:"Pending Pipeline",value:fmtTons(pendingTons),color:C.purple,icon:"🔄"},
+        ].map(s=>(
+          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`}}>
+            <div style={{fontSize:20,marginBottom:6}}>{s.icon}</div>
+            <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
+            <div style={{fontSize:26,fontWeight:800,color:C.t1,margin:"6px 0 2px"}}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Default rate config */}
+      <div style={{...card,marginBottom:24,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+        <span style={{fontSize:14,fontWeight:700,color:C.t1}}>⚙️ Default Rate per Ton:</span>
+        {editingRate==="default"?(
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <span style={{color:C.t2,fontSize:14}}>$</span>
+            <input autoFocus type="number" value={editRateVal} onChange={e=>setEditRateVal(e.target.value)}
+              style={{width:100,background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,padding:"5px 8px",color:C.t1,fontSize:14,outline:"none"}}
+              onKeyDown={e=>{if(e.key==="Enter")saveRate("default");if(e.key==="Escape")setEditingRate(null);}}
+            />
+            <button onClick={()=>saveRate("default")} disabled={savingRate} style={{...SBtn,padding:"5px 14px",fontSize:12}}>Save</button>
+            <button onClick={()=>setEditingRate(null)} style={{...GBtn,padding:"5px 14px",fontSize:12}}>Cancel</button>
+          </div>
+        ):(
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:18,fontWeight:800,color:C.green}}>{defaultRate?`$${defaultRate}/T`:"Not set"}</span>
+            <button onClick={()=>{setEditingRate("default");setEditRateVal(defaultRate);}} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
+          </div>
+        )}
+        <span style={{color:C.t3,fontSize:12,marginLeft:"auto"}}>Set per-client overrides in the table below</span>
+      </div>
+
+      {/* Client billing table */}
+      {clientNames.length===0?(
+        <div style={{...card,textAlign:"center",padding:48,color:C.t3}}>
+          No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}
+        </div>
+      ):(
+        <div style={{...card,padding:0,overflow:"hidden"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead>
+              <tr style={{background:C.surface}}>
+                <th style={{...th,width:28}}></th>
+                <th style={th}>Client</th>
+                <th style={{...th,textAlign:"right"}}>Tasks</th>
+                <th style={{...th,textAlign:"right"}}>Total Tons</th>
+                <th style={{...th,textAlign:"right"}}>Rate / Ton</th>
+                <th style={{...th,textAlign:"right"}}>Amount</th>
+                <th style={{...th,textAlign:"center"}}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientNames.map(cl=>{
+                const {tasks:ct,totalTons:tons}=clientMap[cl];
+                const rate=getRate(cl);
+                const amt=tons*rate;
+                const hasCustomRate=clientRates[cl]&&parseFloat(clientRates[cl])>0;
+                const isExp=expanded[cl];
+                return(
+                  <>
+                    <tr key={cl} style={{cursor:"pointer",background:isExp?C.surface:"transparent",transition:"background .15s"}}
+                      onClick={()=>setExpanded(p=>({...p,[cl]:!p[cl]}))}>
+                      <td style={{...td2,textAlign:"center",fontSize:12,color:C.t3}}>{isExp?"▼":"▶"}</td>
+                      <td style={td2}>
+                        <div style={{fontWeight:700,color:C.t1}}>{cl}</div>
+                        <div style={{fontSize:11,color:C.t3}}>{ct.length} task{ct.length!==1?"s":""}</div>
+                      </td>
+                      <td style={{...td2,textAlign:"right",fontWeight:700}}>{ct.length}</td>
+                      <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtTons(tons)}</td>
+                      <td style={{...td2,textAlign:"right"}} onClick={e=>e.stopPropagation()}>
+                        {editingRate===cl?(
+                          <div style={{display:"flex",gap:6,justifyContent:"flex-end",alignItems:"center"}}>
+                            <span style={{color:C.t3,fontSize:12}}>$</span>
+                            <input autoFocus type="number" value={editRateVal} onChange={e=>setEditRateVal(e.target.value)}
+                              style={{width:80,background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,padding:"3px 6px",color:C.t1,fontSize:13,outline:"none",textAlign:"right"}}
+                              onKeyDown={e=>{if(e.key==="Enter")saveRate(cl);if(e.key==="Escape")setEditingRate(null);}}
+                            />
+                            <button onClick={()=>saveRate(cl)} style={{...SBtn,padding:"3px 10px",fontSize:11}}>✓</button>
+                          </div>
+                        ):(
+                          <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}>
+                            <span style={{fontWeight:700,color:hasCustomRate?C.accent:C.t2}}>{rate>0?`$${rate}/T`:"—"}</span>
+                            {hasCustomRate&&<span style={{fontSize:9,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"1px 5px"}}>custom</span>}
+                            <button onClick={()=>{setEditingRate(cl);setEditRateVal(hasCustomRate?clientRates[cl]:defaultRate);}}
+                              style={{background:"none",border:"none",cursor:"pointer",color:C.t3,fontSize:12,padding:"2px 4px"}}>✏️</button>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{...td2,textAlign:"right",fontWeight:800,color:rate>0?C.green:C.t3,fontSize:15}}>
+                        {rate>0?fmtMoney(amt):"—"}
+                      </td>
+                      <td style={{...td2,textAlign:"center"}}>
+                        {rate>0
+                          ?<span style={{background:C.green+"22",color:C.green,border:`1px solid ${C.green}44`,borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700}}>✅ Ready</span>
+                          :<span style={{background:C.yellow+"22",color:C.yellow,border:`1px solid ${C.yellow}44`,borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700}}>⚠ No Rate</span>
+                        }
+                      </td>
+                    </tr>
+                    {isExp&&ct.map(t=>(
+                      <tr key={t.id} style={{background:C.bg}}>
+                        <td style={{...td2,padding:"7px 14px"}}></td>
+                        <td colSpan={2} style={{...td2,padding:"7px 14px",fontSize:12}}>
+                          <span style={{color:C.t2,marginRight:8}}>↳</span>
+                          <span style={{fontWeight:600,color:C.t1}}>{t.title}</span>
+                          <span style={{color:C.t3,marginLeft:8,fontSize:11}}>{t._proj?.name||"—"}</span>
+                        </td>
+                        <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px"}}>{t.det_weight?fmtTons(parseFloat(t.det_weight)):"—"}</td>
+                        <td style={{...td2,padding:"7px 14px"}}></td>
+                        <td style={{...td2,textAlign:"right",fontSize:12,padding:"7px 14px",color:rate>0?C.t1:C.t3}}>
+                          {rate>0&&t.det_weight?fmtMoney(parseFloat(t.det_weight)*rate):"—"}
+                        </td>
+                        <td style={{...td2,textAlign:"center",padding:"7px 14px",fontSize:11,color:C.t3}}>{t.assignee||"—"}</td>
+                      </tr>
+                    ))}
+                  </>
+                );
+              })}
+              {/* Total row */}
+              <tr style={{background:C.surface,borderTop:`2px solid ${C.border}`}}>
+                <td style={{...td2,borderBottom:"none"}}></td>
+                <td style={{...td2,fontWeight:800,fontSize:14,color:C.t1,borderBottom:"none"}}>TOTAL</td>
+                <td style={{...td2,textAlign:"right",fontWeight:800,borderBottom:"none"}}>{billableTasks.length}</td>
+                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtTons(totalTons)}</td>
+                <td style={{...td2,borderBottom:"none"}}></td>
+                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtMoney(totalAmt):"—"}</td>
+                <td style={{...td2,borderBottom:"none"}}></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pipeline section */}
+      {pendingTasks.length>0&&(
+        <div style={{...card,marginTop:24}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:4}}>🔄 Pending Pipeline (not yet billed)</div>
+          <div style={{color:C.t3,fontSize:12,marginBottom:12}}>Tasks in progress with weight entered — not completed this month</div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+            <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
+              <div style={{fontSize:22,fontWeight:800,color:C.purple}}>{fmtTons(pendingTons)}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:2}}>Pending Tons</div>
+            </div>
+            <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
+              <div style={{fontSize:22,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:2}}>Active Tasks</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function AuditLogPage({users,projects,me}){
   const [logs,setLogs]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -11853,7 +12190,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -12210,7 +12547,8 @@ export default function App(){
             </span>
           </div>
         )}
-        {view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
+        {view==="billing"&&(isAdmin||isManager)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me}/>
+}{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
