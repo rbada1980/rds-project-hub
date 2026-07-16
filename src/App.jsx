@@ -12,12 +12,11 @@ const LOCAL_BASE = IS_LOCAL ? `${typeof window!=="undefined"?window.location.pro
 const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
 
-const C = {
-  bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
-  accent:"#f97316",teal:"#14b8a6",blue:"#3b82f6",purple:"#a855f7",
-  green:"#22c55e",red:"#ef4444",yellow:"#eab308",
-  t1:"#f1f5f9",t2:"#b0bfcc",t3:"#8899aa",
-};
+const DARK_C={bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",accent:"#f97316",teal:"#14b8a6",blue:"#3b82f6",purple:"#a855f7",green:"#22c55e",red:"#ef4444",yellow:"#eab308",t1:"#f1f5f9",t2:"#b0bfcc",t3:"#8899aa"};
+const LIGHT_C={bg:"#f1f5f9",surface:"#e2e8f0",card:"#ffffff",border:"#cbd5e1",accent:"#ea580c",teal:"#0d9488",blue:"#2563eb",purple:"#9333ea",green:"#16a34a",red:"#dc2626",yellow:"#d97706",t1:"#0f172a",t2:"#334155",t3:"#64748b"};
+const _initTheme=(typeof window!=="undefined"?localStorage.getItem("rds_theme")||"dark":"dark");
+const C={...(_initTheme==="light"?LIGHT_C:DARK_C)};
+function applyTheme(mode){const src=mode==="light"?LIGHT_C:DARK_C;Object.keys(src).forEach(k=>{C[k]=src[k];});if(typeof window!=="undefined")document.body.style.background=C.bg;}
 const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Review","Completed"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
@@ -10898,6 +10897,8 @@ export default function App(){
     document.documentElement.style.padding="0";
   },[]);
   const [me,sm] = useState(()=>{try{const s=localStorage.getItem("rds_user");return s?JSON.parse(s):null;}catch{return null;}});
+  const [theme,setTheme]=useState(_initTheme);
+  function toggleTheme(){const next=theme==="dark"?"light":"dark";applyTheme(next);localStorage.setItem("rds_theme",next);setTheme(next);}
   const [users,su]          = useState([]);
   const [projects,sp]       = useState([]);
   const [tasks,st]          = useState([]);
@@ -11868,6 +11869,7 @@ export default function App(){
             </div>
           </div>
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <button onClick={toggleTheme} title={theme==="dark"?"Switch to Light Mode":"Switch to Dark Mode"} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",fontSize:16,cursor:"pointer",color:C.t2,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>{theme==="dark"?"☀️":"🌙"}</button>
             {!isClient&&<NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>}
             {!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn}/>}
             {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
