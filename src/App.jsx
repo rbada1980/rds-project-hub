@@ -9792,102 +9792,115 @@ function LiveTimerBar({timer,onPause,onStop}){
 // ══════════════════════════════════════════════════════════
 // ── Audit Log Page (Phase 3) ─────────────────────────────────
 // ─── 💰 Billing Summary Page ──────────────────────────────────────────────────
-// ─── 💰 Billing Summary Page ──────────────────────────────────────────────────
 function BillingSummaryPage({tasks,projects,clients,me}){
   const isMobile=useMobile();
   const now=new Date();
   const [month,setMonth]=useState(String(now.getMonth()+1).padStart(2,"0"));
   const [year,setYear]=useState(String(now.getFullYear()));
   const [defaultRate,setDefaultRate]=useState("");
-  const [clientRates,setClientRates]=useState({});   // {clientName: "rate"}
-  const [projRates,setProjRates]=useState({});        // {projectId: "rate"}
-  const [taskRates,setTaskRates]=useState({});        // {taskId: "rate"}
-  const [editingRate,setEditingRate]=useState(null);  // {type:"default"|"client"|"project"|"task", key}
-  const [editRateVal,setEditRateVal]=useState("");
+  const [clientRates,setClientRates]=useState({});
+  const [projRates,setProjRates]=useState({});
+  const [taskRates,setTaskRates]=useState({});
+  // Custom per-entity fields: {key: {rate,note,label}}
+  const [clientCustom,setClientCustom]=useState({});  // {clientName:{rate,note,label}}
+  const [projCustom,setProjCustom]=useState({});       // {projId:{rate,note,label}}
+  const [taskCustom,setTaskCustom]=useState({});       // {taskId:{rate,note,label}}
+  const [editEntity,setEditEntity]=useState(null);     // {type,key,name} currently open
+  const [editVal,setEditVal]=useState({rate:"",note:"",label:""});
   const [expanded,setExpanded]=useState({});
-  const [rateTab,setRateTab]=useState("client");      // "client"|"project"|"task"
   const [showRates,setShowRates]=useState(false);
-  const [savingRate,setSavingRate]=useState(false);
+  const [rateTab,setRateTab]=useState("client");
+  const [saving,setSaving]=useState(false);
   const [msg,setMsg]=useState(null);
   const CURRENCY="$";
   const RATE_DEFAULT="billing_rate_default";
-  const rkClient=n=>"billing_rate_client__"+n.replace(/\s+/g,"_").toLowerCase();
-  const rkProj=id=>"billing_rate_proj__"+id;
-  const rkTask=id=>"billing_rate_task__"+id;
+  const rkClient=n=>"billing_rc__"+n.replace(/\s+/g,"_").toLowerCase();
+  const rkProj=id=>"billing_rp__"+id;
+  const rkTask=id=>"billing_rt__"+id;
 
-  // Load all saved rates
+  // Load all saved settings from DB
   useEffect(()=>{
     const allClients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-    const keys=[
-      RATE_DEFAULT,
-      ...allClients.map(rkClient),
-      ...projects.map(p=>rkProj(p.id)),
-    ];
+    const keys=[RATE_DEFAULT,...allClients.map(rkClient),...projects.map(p=>rkProj(p.id)),...tasks.map(t=>rkTask(t.id))];
     fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.map(encodeURIComponent).join(",")+")",{
       headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
     }).then(r=>r.ok?r.json():[]).then(rows=>{
-      const cr={},pr={};
+      const cc={},pc={},tc={};
       (Array.isArray(rows)?rows:[]).forEach(r=>{
-        if(r.key===RATE_DEFAULT)setDefaultRate(r.value||"");
-        else if(r.key.startsWith("billing_rate_client__")){
-          const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;
-          cr[cl]=r.value||"";
-        } else if(r.key.startsWith("billing_rate_proj__")){
-          const pid=r.key.replace("billing_rate_proj__","");
-          pr[pid]=r.value||"";
+        try{
+          const v=JSON.parse(r.value);
+          if(r.key===RATE_DEFAULT)setDefaultRate(v.rate||v||"");
+          else if(r.key.startsWith("billing_rc__")){const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;cc[cl]=v;}
+          else if(r.key.startsWith("billing_rp__")){const pid=r.key.replace("billing_rp__","");pc[pid]=v;}
+          else if(r.key.startsWith("billing_rt__")){const tid=r.key.replace("billing_rt__","");tc[tid]=v;}
+        }catch{
+          if(r.key===RATE_DEFAULT)setDefaultRate(r.value||"");
         }
       });
-      setClientRates(cr);setProjRates(pr);
+      setClientCustom(cc);setProjCustom(pc);setTaskCustom(tc);
     }).catch(()=>{});
-  },[projects.length]);
+  },[projects.length,tasks.length]);
 
   async function upsertSetting(key,value){
     const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
       method:"PATCH",
       headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
-      body:JSON.stringify({value:String(value)})
+      body:JSON.stringify({value:JSON.stringify(value)})
     });
     const d=await r.json();
     if(!Array.isArray(d)||d.length===0){
       await fetch(SUPA_URL+"/rest/v1/settings",{
         method:"POST",
         headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
-        body:JSON.stringify({key,value:String(value)})
+        body:JSON.stringify({key,value:JSON.stringify(value)})
       });
     }
   }
 
-  async function saveRate(){
-    if(!editingRate)return;
-    setSavingRate(true);
-    const val=parseFloat(editRateVal)||0;
-    const {type,key}=editingRate;
-    if(type==="default"){await upsertSetting(RATE_DEFAULT,val);setDefaultRate(String(val));}
-    else if(type==="client"){await upsertSetting(rkClient(key),val);setClientRates(p=>({...p,[key]:String(val)}));}
-    else if(type==="project"){await upsertSetting(rkProj(key),val);setProjRates(p=>({...p,[key]:String(val)}));}
-    else if(type==="task"){setTaskRates(p=>({...p,[key]:String(val)}));}
-    setEditingRate(null);setEditRateVal("");
-    setMsg("Rate saved ✓");setTimeout(()=>setMsg(null),2500);
-    setSavingRate(false);
+  async function saveCustom(){
+    if(!editEntity)return;
+    setSaving(true);
+    const {type,key}=editEntity;
+    const payload={rate:parseFloat(editVal.rate)||0,note:editVal.note||"",label:editVal.label||""};
+    if(type==="default"){await upsertSetting(RATE_DEFAULT,payload);setDefaultRate(String(payload.rate));}
+    else if(type==="client"){await upsertSetting(rkClient(key),payload);setClientCustom(p=>({...p,[key]:payload}));}
+    else if(type==="project"){await upsertSetting(rkProj(key),payload);setProjCustom(p=>({...p,[key]:payload}));}
+    else if(type==="task"){await upsertSetting(rkTask(key),payload);setTaskCustom(p=>({...p,[key]:payload}));}
+    setEditEntity(null);setEditVal({rate:"",note:"",label:""});
+    setMsg("Saved ✓");setTimeout(()=>setMsg(null),2500);
+    setSaving(false);
   }
 
-  function startEdit(type,key,current){
-    setEditingRate({type,key});
-    setEditRateVal(current||"");
+  function openEdit(type,key,name){
+    let cur={rate:"",note:"",label:""};
+    if(type==="default")cur={rate:defaultRate,note:"",label:""};
+    else if(type==="client")cur=clientCustom[key]||{rate:"",note:"",label:""};
+    else if(type==="project")cur=projCustom[key]||{rate:"",note:"",label:""};
+    else if(type==="task")cur=taskCustom[key]||{rate:"",note:"",label:""};
+    setEditEntity({type,key,name});
+    setEditVal({rate:cur.rate||"",note:cur.note||"",label:cur.label||""});
   }
 
-  // Rate lookup: task > project > client > default
+  // Rate: task custom > project custom > client custom > default
   function getRate(t,proj,cl){
-    if(taskRates[t.id]&&parseFloat(taskRates[t.id])>0)return{rate:parseFloat(taskRates[t.id]),level:"task"};
-    const pid=proj?.id;
-    if(pid&&projRates[pid]&&parseFloat(projRates[pid])>0)return{rate:parseFloat(projRates[pid]),level:"project"};
-    if(cl&&clientRates[cl]&&parseFloat(clientRates[cl])>0)return{rate:parseFloat(clientRates[cl]),level:"client"};
-    const dr=parseFloat(defaultRate);
-    return{rate:(!isNaN(dr)&&dr>0)?dr:0,level:"default"};
+    const tc=taskCustom[t.id];if(tc&&tc.rate>0)return{rate:tc.rate,level:"task"};
+    const pc=projCustom[proj?.id];if(pc&&pc.rate>0)return{rate:pc.rate,level:"project"};
+    const cc=clientCustom[cl];if(cc&&cc.rate>0)return{rate:cc.rate,level:"client"};
+    const dr=parseFloat(defaultRate);return{rate:(!isNaN(dr)&&dr>0)?dr:0,level:"default"};
+  }
+
+  function getNote(type,key){
+    const m={client:clientCustom,project:projCustom,task:taskCustom}[type];
+    return m?.[key]?.note||"";
+  }
+  function getLabel(type,key){
+    const m={client:clientCustom,project:projCustom,task:taskCustom}[type];
+    return m?.[key]?.label||"";
   }
 
   const selY=parseInt(year);const selM=parseInt(month);
   const isDone=s=>s==="Done"||s==="Completed";
+  const monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   const billableTasks=tasks.filter(t=>{
     if(!isDone(t.status))return false;
@@ -9900,7 +9913,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const noWeightTasks=billableTasks.filter(t=>t.det_weight==null||t.det_weight==="");
   const pendingTasks=tasks.filter(t=>!isDone(t.status)&&t.det_weight!=null&&t.det_weight!=="");
 
-  // Group by client
+  // Group by client → project → tasks
   const clientMap={};
   billableTasks.forEach(t=>{
     const proj=projects.find(p=>p.id===t.project_id);
@@ -9909,9 +9922,9 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     const pName=proj?.name||"—";
     if(!clientMap[cl].projMap[pName])clientMap[cl].projMap[pName]={tasks:[],proj,totalTons:0,totalAmt:0};
     const wt=parseFloat(t.det_weight)||0;
-    const {rate}=getRate(t,proj,cl);
+    const {rate,level}=getRate(t,proj,cl);
     const amt=wt*rate;
-    clientMap[cl].projMap[pName].tasks.push({...t,_proj:proj,_wt:wt,_rate:rate,_amt:amt});
+    clientMap[cl].projMap[pName].tasks.push({...t,_proj:proj,_wt:wt,_rate:rate,_level:level,_amt:amt});
     clientMap[cl].projMap[pName].totalTons+=wt;
     clientMap[cl].projMap[pName].totalAmt+=amt;
     clientMap[cl].totalTons+=wt;
@@ -9922,140 +9935,155 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const totalAmt=clientNames.reduce((s,cl)=>s+clientMap[cl].totalAmt,0);
   const pendingTons=pendingTasks.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
 
-  function fmtTons(v){return Number(v).toLocaleString("en-US",{maximumFractionDigits:2})+" T";}
-  function fmtMoney(v){return CURRENCY+Number(v).toLocaleString("en-US",{maximumFractionDigits:0});}
-  const months=["01","02","03","04","05","06","07","08","09","10","11","12"];
-  const monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const years=["2024","2025","2026","2027"];
+  function fmtT(v){return Number(v).toLocaleString("en-US",{maximumFractionDigits:2})+" T";}
+  function fmtM(v){return CURRENCY+Number(v).toLocaleString("en-US",{maximumFractionDigits:0});}
+  const periodLabel=monthNames[parseInt(month)-1]+" "+year;
 
-  // ── PDF Invoice Print ──────────────────────────────────────────────
-  function printInvoice(){
-    const periodLabel=monthNames[parseInt(month)-1]+" "+year;
-    const rows=clientNames.map(cl=>{
-      const {totalTons:tons,totalAmt:amt}=clientMap[cl];
-      const allT=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
-      return `<tr>
-        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600">${cl}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:center">${allT.length}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:right">${fmtTons(tons)}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:right">${fmtMoney(amt)}</td>
-      </tr>`;
-    }).join("");
-    const taskRows=clientNames.flatMap(cl=>
-      Object.values(clientMap[cl].projMap).flatMap(pg=>
-        pg.tasks.map(t=>`<tr>
-          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;color:#374151">${cl}</td>
-          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;color:#374151">${t._proj?.name||"—"}</td>
-          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6">${t.title}</td>
-          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;text-align:right">${fmtTons(t._wt)}</td>
-          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;text-align:right">$${t._rate}/T</td>
-          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">${fmtMoney(t._amt)}</td>
-        </tr>`)
-      )
-    ).join("");
-    const html=`<!DOCTYPE html><html><head><title>RDS Billing — ${periodLabel}</title>
-    <style>
-      body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:0;padding:32px}
-      h1{font-size:22px;margin:0 0 4px}
-      .sub{color:#6b7280;font-size:13px;margin-bottom:28px}
-      table{width:100%;border-collapse:collapse;margin-bottom:28px}
-      th{background:#f9fafb;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;text-align:left;border-bottom:2px solid #e5e7eb}
-      .total-row td{background:#f0fdf4;font-weight:800;font-size:15px;padding:12px 14px;border-top:2px solid #16a34a}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #111}
-      .company{font-size:20px;font-weight:800}
-      .meta{text-align:right;font-size:13px;color:#6b7280}
-      @media print{body{padding:20px}button{display:none}}
-    </style></head><body>
-    <div class="header">
-      <div><div class="company">RDS TechServ</div><div style="color:#6b7280;font-size:13px">RDS Project Hub</div></div>
-      <div class="meta"><div style="font-size:15px;font-weight:700;color:#111">BILLING SUMMARY</div><div>${periodLabel}</div><div>Generated: ${new Date().toLocaleDateString()}</div></div>
+  // ── PDF generator (shared) ─────────────────────────────────────────
+  function buildPdf({title,subtitle,note,label,taskList}){
+    const rows=taskList.map(t=>`<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">${t._proj?.name||"—"}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">${t.title}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;text-align:right">${t.assignee||"—"}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;text-align:right">${t.client_sub_date||"—"}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;text-align:right">${fmtT(t._wt)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;text-align:right">$${t._rate}/T</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700">${fmtM(t._amt)}</td>
+    </tr>`).join("");
+    const totT=taskList.reduce((s,t)=>s+t._wt,0);
+    const totA=taskList.reduce((s,t)=>s+t._amt,0);
+    const noteHtml=note?`<div style="background:#f9fafb;border-left:3px solid #6366f1;padding:10px 14px;margin:16px 0;font-size:13px;color:#374151"><b>Note:</b> ${note}</div>`:"";
+    const labelHtml=label?`<div style="display:inline-block;background:#e0e7ff;color:#4338ca;border-radius:4px;padding:2px 10px;font-size:12px;font-weight:700;margin-bottom:8px">${label}</div>`:"";
+    return `<!DOCTYPE html><html><head><title>${title}</title>
+    <style>body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:0;padding:32px;font-size:14px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{background:#f3f4f6;padding:9px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;text-align:left;border-bottom:2px solid #e5e7eb}
+    th:last-child,th:nth-child(3),th:nth-child(4),th:nth-child(5),th:nth-child(6){text-align:right}
+    .tot{background:#f0fdf4;font-weight:800}
+    .tot td{padding:10px;border-top:2px solid #16a34a}
+    .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #111;margin-bottom:20px}
+    @media print{button{display:none!important}}</style></head><body>
+    <div class="hdr">
+      <div><div style="font-size:20px;font-weight:800">RDS TechServ</div><div style="color:#6b7280;font-size:13px">RDS Project Hub</div></div>
+      <div style="text-align:right"><div style="font-size:16px;font-weight:800">INVOICE / BILLING</div><div style="color:#6b7280;font-size:13px">${periodLabel}</div><div style="color:#6b7280;font-size:12px">Generated: ${new Date().toLocaleDateString()}</div></div>
     </div>
-    <h2 style="font-size:15px;margin:0 0 12px;color:#374151">Client Summary</h2>
+    ${labelHtml}
+    <h2 style="margin:0 0 4px;font-size:18px">${title}</h2>
+    <div style="color:#6b7280;font-size:13px;margin-bottom:4px">${subtitle}</div>
+    ${noteHtml}
     <table>
-      <thead><tr><th>Client</th><th style="text-align:center">Tasks</th><th style="text-align:right">Total Tons</th><th style="text-align:right">Amount</th></tr></thead>
+      <thead><tr><th>Project</th><th>Task</th><th>Assignee</th><th>Sub Date</th><th>Tons</th><th>Rate</th><th>Amount</th></tr></thead>
       <tbody>${rows}
-        <tr class="total-row"><td>TOTAL</td><td style="text-align:center">${billableTasks.length}</td><td style="text-align:right">${fmtTons(totalTons)}</td><td style="text-align:right">${fmtMoney(totalAmt)}</td></tr>
+        <tr class="tot"><td colspan="4" style="padding:10px;font-weight:800">TOTAL</td>
+          <td style="padding:10px;text-align:right;font-weight:800">${fmtT(totT)}</td>
+          <td></td>
+          <td style="padding:10px;text-align:right;font-weight:800;color:#16a34a;font-size:16px">${fmtM(totA)}</td>
+        </tr>
       </tbody>
     </table>
-    <h2 style="font-size:15px;margin:0 0 12px;color:#374151;page-break-before:auto">Task Detail</h2>
-    <table>
-      <thead><tr><th>Client</th><th>Project</th><th>Task</th><th style="text-align:right">Tons</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>${taskRows}</tbody>
-    </table>
-    <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center">RDS TechServ · Generated from RDS Project Hub · ${new Date().toLocaleString()}</div>
-    <script>window.onload=()=>{window.print();}<\/script>
-    </body></html>`;
-    const w=window.open("","_blank","width=900,height=700");
-    w.document.write(html);w.document.close();
+    <div style="margin-top:40px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center">RDS TechServ · RDS Project Hub · ${new Date().toLocaleString()}</div>
+    <script>window.onload=()=>window.print()<\/script></body></html>`;
   }
 
-  // ── Excel Export ──────────────────────────────────────────────────
+  function openPdf(html){const w=window.open("","_blank","width=960,height=720");w.document.write(html);w.document.close();}
+
+  function pdfAll(){
+    const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
+    openPdf(buildPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",label:""}));
+  }
+  function pdfClient(cl){
+    const taskList=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
+    const note=getNote("client",cl);const label=getLabel("client",cl)||cl;
+    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${periodLabel} · ${taskList.length} tasks · ${fmtT(clientMap[cl].totalTons)} · ${fmtM(clientMap[cl].totalAmt)}`,note,label}));
+  }
+  function pdfProject(cl,pName,pg){
+    const note=getNote("project",pg.proj?.id);const label=getLabel("project",pg.proj?.id)||pName;
+    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${periodLabel} · ${pg.tasks.length} tasks · ${fmtT(pg.totalTons)} · ${fmtM(pg.totalAmt)}`,note,label}));
+  }
+  function pdfTask(t,cl){
+    const note=getNote("task",t.id);const label=getLabel("task",t.id)||t.title;
+    openPdf(buildPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"} · ${periodLabel}`,note,label,taskList:[t]}));
+  }
+
+  // Excel export
   function exportExcel(){
-    if(typeof XLSX==="undefined"&&!window.XLSX){alert("Run: node generate_master_excel.cjs instead");return;}
-    const XL=window.XLSX||XLSX;
-    const rows=[
-      ["RDS PROJECT HUB — BILLING SUMMARY"],
-      ["Period: "+monthNames[parseInt(month)-1]+" "+year,"","","Generated: "+new Date().toLocaleString()],
-      [],
-      ["Client","Tasks","Total Tons","Amount ($)"],
-    ];
-    clientNames.forEach(cl=>{
-      const{totalTons:tons,totalAmt:amt}=clientMap[cl];
-      const ct=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
-      rows.push([cl,ct.length,+tons.toFixed(2),+amt.toFixed(2)]);
-    });
-    rows.push([]); rows.push(["TOTAL",billableTasks.length,+totalTons.toFixed(2),+totalAmt.toFixed(2)]);
-    rows.push([]); rows.push(["TASK DETAIL"]);
-    rows.push(["Client","Project","Task Title","Det.Wt (T)","Rate/T ($)","Amount ($)","Assignee","Client Sub Date"]);
+    const XL=window.XLSX;if(!XL){alert("XLSX not available");return;}
+    const rows=[["RDS Billing — "+periodLabel],[],["Client","Project","Task","Tons","Rate/T","Amount","Assignee","Sub Date"]];
     clientNames.forEach(cl=>{
       Object.values(clientMap[cl].projMap).forEach(pg=>{
-        pg.tasks.forEach(t=>{
-          rows.push([cl,t._proj?.name||"—",t.title,+t._wt.toFixed(2),+t._rate.toFixed(2),+t._amt.toFixed(2),t.assignee||"",t.client_sub_date||""]);
-        });
+        pg.tasks.forEach(t=>rows.push([cl,t._proj?.name||"—",t.title,+t._wt.toFixed(2),+t._rate.toFixed(2),+t._amt.toFixed(2),t.assignee||"",t.client_sub_date||""]));
       });
     });
+    rows.push([]); rows.push(["TOTAL","","",+totalTons.toFixed(2),"",+totalAmt.toFixed(2)]);
     const ws=XL.utils.aoa_to_sheet(rows);
-    ws["!cols"]=[{wch:25},{wch:30},{wch:40},{wch:12},{wch:12},{wch:14},{wch:15},{wch:15}];
-    const wb=XL.utils.book_new();
-    XL.utils.book_append_sheet(wb,ws,"Billing "+month+"-"+year);
+    ws["!cols"]=[{wch:25},{wch:28},{wch:38},{wch:10},{wch:10},{wch:14},{wch:15},{wch:14}];
+    const wb=XL.utils.book_new();XL.utils.book_append_sheet(wb,ws,"Billing");
     XL.writeFile(wb,"RDS_Billing_"+year+"_"+month+".xlsx");
   }
 
   const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",boxShadow:C.shadow};
   const th2={padding:"10px 14px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".06em",textAlign:"left",borderBottom:`1px solid ${C.border}`,background:C.surface};
   const td2={padding:"11px 14px",borderBottom:`1px solid ${C.border}44`,fontSize:13,color:C.t1,verticalAlign:"middle"};
-  const levelBadge={task:{bg:C.purple+"22",color:C.purple,label:"task"},project:{bg:C.blue+"22",color:C.blue,label:"proj"},client:{bg:C.teal+"22",color:C.teal,label:"client"},default:{bg:C.t3+"22",color:C.t3,label:"default"}};
+  const lvlBadge={task:{bg:C.purple+"22",color:C.purple},project:{bg:C.blue+"22",color:C.blue},client:{bg:C.teal+"22",color:C.teal},default:{bg:C.t3+"22",color:C.t3}};
+  const months=["01","02","03","04","05","06","07","08","09","10","11","12"];
+  const years=["2024","2025","2026","2027"];
 
-  function RateCell({type,keyVal,current,level}){
-    const isEditing=editingRate?.type===type&&editingRate?.key===keyVal;
-    const lb=levelBadge[level]||levelBadge.default;
-    if(isEditing)return(
-      <div style={{display:"flex",gap:5,alignItems:"center",justifyContent:"flex-end"}}>
-        <span style={{color:C.t3,fontSize:12}}>$</span>
-        <input autoFocus type="number" min="0" step="0.01" value={editRateVal} onChange={e=>setEditRateVal(e.target.value)}
-          style={{width:75,background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,padding:"3px 6px",color:C.t1,fontSize:13,outline:"none",textAlign:"right"}}
-          onKeyDown={e=>{if(e.key==="Enter")saveRate();if(e.key==="Escape")setEditingRate(null);}}/>
-        <button onClick={saveRate} disabled={savingRate} style={{...SBtn,padding:"3px 10px",fontSize:11}}>✓</button>
-        <button onClick={()=>setEditingRate(null)} style={{...GBtn,padding:"3px 8px",fontSize:11}}>✕</button>
+  // ── Custom Edit Modal ────────────────────────────────────────────────
+  const typeLabel={client:"Client",project:"Project",task:"Task",default:"Default"};
+  const EditModal=editEntity&&(
+    <div style={{position:"fixed",inset:0,background:"#00000070",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditEntity(null);}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:28,width:"min(460px,94vw)",boxShadow:"0 24px 64px #00000080"}}>
+        <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:4}}>
+          ✏️ Edit {typeLabel[editEntity.type]} Settings
+        </div>
+        <div style={{color:C.t3,fontSize:13,marginBottom:20}}>{editEntity.name}</div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Rate per Ton ($)</label>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{color:C.t2,fontWeight:700}}>$</span>
+            <input type="number" min="0" step="0.01" value={editVal.rate} onChange={e=>setEditVal(v=>({...v,rate:e.target.value}))}
+              placeholder="e.g. 2500" autoFocus
+              style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:15,outline:"none"}}/>
+            <span style={{color:C.t3,fontSize:13}}>/T</span>
+          </div>
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Invoice Label (optional)</label>
+          <input type="text" value={editVal.label} onChange={e=>setEditVal(v=>({...v,label:e.target.value}))}
+            placeholder={`e.g. "${editEntity.name}" or "Special Contract"`}
+            style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none"}}/>
+          <div style={{color:C.t3,fontSize:11,marginTop:3}}>Appears as a badge on the PDF invoice</div>
+        </div>
+
+        <div style={{marginBottom:22}}>
+          <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Note / Description (optional)</label>
+          <textarea value={editVal.note} onChange={e=>setEditVal(v=>({...v,note:e.target.value}))}
+            placeholder="e.g. Includes revision cycle charges. Net 30 days."
+            rows={3}
+            style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+          <div style={{color:C.t3,fontSize:11,marginTop:3}}>Appears as a highlighted note block on the PDF invoice</div>
+        </div>
+
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <button onClick={()=>setEditEntity(null)} style={{...GBtn,padding:"8px 20px"}}>Cancel</button>
+          <button onClick={saveCustom} disabled={saving} style={{...SBtn,padding:"8px 24px"}}>{saving?"Saving…":"Save"}</button>
+        </div>
       </div>
-    );
-    return(
-      <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}>
-        {current>0&&<span style={{fontSize:9,background:lb.bg,color:lb.color,borderRadius:4,padding:"1px 5px",fontWeight:700}}>{lb.label}</span>}
-        <span style={{fontWeight:600,color:current>0?C.t1:C.t3}}>{current>0?`$${current}/T`:"—"}</span>
-        <button onClick={()=>startEdit(type,keyVal,current>0?String(current):"")}
-          style={{background:"none",border:"none",cursor:"pointer",color:C.t3,fontSize:12,padding:"2px 4px",lineHeight:1}}>✏️</button>
-      </div>
-    );
-  }
+    </div>
+  );
 
   return(
     <div style={{maxWidth:1100,margin:"0 auto"}}>
+      {EditModal}
+      {msg&&<div style={{position:"fixed",top:20,right:20,zIndex:9998,background:C.green,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:700,boxShadow:"0 4px 16px #00000040"}}>{msg}</div>}
+
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>💰 Billing Summary</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tonnage-based · Completed tasks only · Rate: Task → Project → Client → Default</p>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tonnage-based · Completed tasks only · Priority: Task → Project → Client → Default</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <select value={month} onChange={e=>setMonth(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
@@ -10064,168 +10092,172 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           <select value={year} onChange={e=>setYear(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
             {years.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={()=>setShowRates(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:6}}>⚙️ Rate Settings</button>
-          <button onClick={printInvoice} style={{...GBtn,display:"flex",alignItems:"center",gap:6}}>🖨️ Print / PDF</button>
-          <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:6}}>⬇ Excel</button>
+          <button onClick={()=>setShowRates(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>⚙️ Rate Settings</button>
+          <button onClick={pdfAll} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>🖨️ Full PDF</button>
+          <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:5}}>⬇ Excel</button>
         </div>
       </div>
 
-      {msg&&<div style={{background:C.green+"22",border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 16px",color:C.green,fontWeight:600,marginBottom:14}}>{msg}</div>}
-      {noWeightTasks.length>0&&<div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-        <span>⚠️</span><div><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks have no weight</span><span style={{color:C.t2,fontSize:12,marginLeft:8}}>— excluded from billing. Fill Det. Wt. in the task.</span></div>
+      {noWeightTasks.length>0&&<div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
+        <span>⚠️</span><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks missing weight</span><span style={{color:C.t2,fontSize:12}}>— excluded from billing</span>
       </div>}
 
       {/* Rate Settings Panel */}
       {showRates&&(
         <div style={{...card,marginBottom:20}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-            <span style={{fontWeight:700,color:C.t1,fontSize:14}}>⚙️ Rate Settings</span>
-            <span style={{fontSize:12,color:C.t3}}>Higher-priority rates override lower ones: Task &gt; Project &gt; Client &gt; Default</span>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:4}}>⚙️ Rate Settings</div>
+          <p style={{margin:"0 0 14px",color:C.t3,fontSize:12}}>Priority: Task rate &gt; Project rate &gt; Client rate &gt; Default rate. Click ✏️ to edit rate + note + label for any entity.</p>
+          {/* Default */}
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.surface,borderRadius:8,marginBottom:14}}>
+            <span style={{flex:1,fontWeight:700,color:C.t1,fontSize:13}}>🌐 Default Rate</span>
+            <span style={{color:defaultRate>0?C.green:C.t3,fontWeight:700}}>{defaultRate>0?`$${defaultRate}/T`:"Not set"}</span>
+            <button onClick={()=>openEdit("default","default","Default Rate")} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
           </div>
-          {/* Default rate */}
-          <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:C.surface,borderRadius:8,marginBottom:16}}>
-            <span style={{fontWeight:700,color:C.t1,fontSize:13,flex:1}}>🌐 Default Rate (all clients)</span>
-            <RateCell type="default" keyVal="default" current={parseFloat(defaultRate)||0} level="default"/>
-          </div>
-          {/* Tabs: by Client / by Project / by Task */}
-          <div style={{display:"flex",gap:4,marginBottom:14}}>
+          {/* Tabs */}
+          <div style={{display:"flex",gap:4,marginBottom:12}}>
             {[["client","🏢 By Client"],["project","📁 By Project"],["task","✅ By Task"]].map(([k,lbl])=>(
               <button key={k} onClick={()=>setRateTab(k)} style={{...GBtn,padding:"6px 16px",fontSize:12,background:rateTab===k?C.accent:"transparent",color:rateTab===k?"#fff":C.t2,border:rateTab===k?"none":`1px solid ${C.border}`}}>{lbl}</button>
             ))}
           </div>
-          {/* Client rates */}
-          {rateTab==="client"&&(
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {[...new Set(projects.map(p=>p.client||"Unassigned"))].sort().map(cl=>{
-                const cv=parseFloat(clientRates[cl])||0;
-                return(
-                  <div key={cl} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:8}}>
-                    <span style={{flex:1,color:C.t1,fontSize:13,fontWeight:600}}>{cl}</span>
-                    <RateCell type="client" keyVal={cl} current={cv} level={cv>0?"client":"default"}/>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {/* Project rates */}
-          {rateTab==="project"&&(
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {projects.sort((a,b)=>(a.client||"").localeCompare(b.client||"")||a.name.localeCompare(b.name)).map(p=>{
-                const pv=parseFloat(projRates[p.id])||0;
-                return(
-                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:8}}>
-                    <div style={{flex:1}}>
-                      <div style={{color:C.t1,fontSize:13,fontWeight:600}}>{p.name}</div>
-                      <div style={{color:C.t3,fontSize:11}}>{p.client||"Unassigned"}</div>
-                    </div>
-                    <RateCell type="project" keyVal={p.id} current={pv} level={pv>0?"project":(parseFloat(clientRates[p.client||"Unassigned"])||0)>0?"client":"default"}/>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {/* Task rates */}
+          {rateTab==="client"&&[...new Set(projects.map(p=>p.client||"Unassigned"))].sort().map(cl=>{
+            const cv=clientCustom[cl];
+            return <div key={cl} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,color:C.t1,fontSize:13}}>{cl}</div>
+                {cv?.note&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {cv.note}</div>}
+                {cv?.label&&<div style={{fontSize:10,color:C.accent,marginTop:1}}>🏷 {cv.label}</div>}
+              </div>
+              <span style={{color:cv?.rate>0?C.green:C.t3,fontWeight:700,fontSize:13}}>{cv?.rate>0?`$${cv.rate}/T`:"Using default"}</span>
+              <button onClick={()=>openEdit("client",cl,cl)} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
+            </div>;
+          })}
+          {rateTab==="project"&&projects.sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(p=>{
+            const pv=projCustom[p.id];
+            return <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,color:C.t1,fontSize:13}}>{p.name}</div>
+                <div style={{fontSize:11,color:C.t3}}>{p.client||"Unassigned"}</div>
+                {pv?.note&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {pv.note}</div>}
+              </div>
+              <span style={{color:pv?.rate>0?C.green:C.t3,fontWeight:700,fontSize:13}}>{pv?.rate>0?`$${pv.rate}/T`:"Inherited"}</span>
+              <button onClick={()=>openEdit("project",p.id,p.name)} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
+            </div>;
+          })}
           {rateTab==="task"&&(
-            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:360,overflowY:"auto"}}>
-              <div style={{fontSize:12,color:C.t3,marginBottom:4}}>Note: Task rates are session-only — for permanent task rates, add a custom field or use project rates.</div>
-              {billableTasks.map(t=>{
-                const proj=projects.find(p=>p.id===t.project_id);
-                const tv=parseFloat(taskRates[t.id])||0;
-                return(
-                  <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:8}}>
-                    <div style={{flex:1}}>
-                      <div style={{color:C.t1,fontSize:12,fontWeight:600}}>{t.title}</div>
-                      <div style={{color:C.t3,fontSize:11}}>{proj?.client||"—"} · {proj?.name||"—"}</div>
-                    </div>
-                    <RateCell type="task" keyVal={t.id} current={tv} level={tv>0?"task":"default"}/>
-                  </div>
-                );
-              })}
+            <div style={{maxHeight:320,overflowY:"auto"}}>
               {billableTasks.length===0&&<div style={{color:C.t3,fontSize:13,textAlign:"center",padding:20}}>No completed tasks in selected month</div>}
+              {billableTasks.map(t=>{
+                const tv=taskCustom[t.id];const proj=projects.find(p=>p.id===t.project_id);
+                return <div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600,color:C.t1,fontSize:13}}>{t.title}</div>
+                    <div style={{fontSize:11,color:C.t3}}>{proj?.client||"—"} · {proj?.name||"—"}</div>
+                    {tv?.note&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {tv.note}</div>}
+                  </div>
+                  <span style={{color:tv?.rate>0?C.green:C.t3,fontWeight:700,fontSize:13}}>{tv?.rate>0?`$${tv.rate}/T`:"Inherited"}</span>
+                  <button onClick={()=>openEdit("task",t.id,t.title)} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
+                </div>;
+              })}
             </div>
           )}
         </div>
       )}
 
       {/* Stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:14,marginBottom:24}}>
-        {[
-          {label:"Total Billed Tons",value:fmtTons(totalTons),color:C.blue,icon:"⚖️"},
-          {label:"Total Revenue",value:fmtMoney(totalAmt),color:C.green,icon:"💵"},
-          {label:"Clients Billed",value:clientNames.length,color:C.accent,icon:"🏢"},
-          {label:"Tasks Completed",value:billableTasks.length,color:C.teal,icon:"✅"},
-          {label:"Pending Pipeline",value:fmtTons(pendingTons),color:C.purple,icon:"🔄"},
-        ].map(s=>(
-          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"16px 18px"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:14,marginBottom:24}}>
+        {[{label:"Total Billed Tons",value:fmtT(totalTons),color:C.blue,icon:"⚖️"},{label:"Total Revenue",value:fmtM(totalAmt),color:C.green,icon:"💵"},{label:"Clients Billed",value:clientNames.length,color:C.accent,icon:"🏢"},{label:"Tasks Completed",value:billableTasks.length,color:C.teal,icon:"✅"},{label:"Pending Pipeline",value:fmtT(pendingTons),color:C.purple,icon:"🔄"}].map(s=>(
+          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"14px 16px"}}>
             <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
             <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
-            <div style={{fontSize:24,fontWeight:800,color:C.t1,margin:"4px 0 0"}}>{s.value}</div>
+            <div style={{fontSize:22,fontWeight:800,color:C.t1,margin:"4px 0 0"}}>{s.value}</div>
           </div>
         ))}
       </div>
 
       {/* Billing table */}
-      {clientNames.length===0?(
-        <div style={{...card,textAlign:"center",padding:48,color:C.t3}}>No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}</div>
-      ):(
-        <div style={{...card,padding:0,overflow:"hidden"}}>
+      {clientNames.length===0
+        ?<div style={{...card,textAlign:"center",padding:48,color:C.t3}}>No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}</div>
+        :<div style={{...card,padding:0,overflow:"hidden"}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead>
-              <tr>
-                <th style={{...th2,width:32}}></th>
-                <th style={th2}>Client / Project / Task</th>
-                <th style={{...th2,textAlign:"right"}}>Tons</th>
-                <th style={{...th2,textAlign:"right"}}>Rate</th>
-                <th style={{...th2,textAlign:"right"}}>Amount</th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th style={{...th2,width:32}}></th>
+              <th style={th2}>Client / Project / Task</th>
+              <th style={{...th2,textAlign:"right"}}>Tons</th>
+              <th style={{...th2,textAlign:"right"}}>Rate</th>
+              <th style={{...th2,textAlign:"right"}}>Amount</th>
+              <th style={{...th2,textAlign:"center",width:110}}>Actions</th>
+            </tr></thead>
             <tbody>
               {clientNames.map(cl=>{
-                const{projMap,totalTons:cTons,totalAmt:cAmt}=clientMap[cl];
-                const isExpCl=expanded["cl_"+cl];
-                const allCTasks=Object.values(projMap).flatMap(p=>p.tasks);
+                const{projMap,totalTons:cT,totalAmt:cA}=clientMap[cl];
+                const isEC=expanded["c_"+cl];
+                const allT=Object.values(projMap).flatMap(p=>p.tasks);
                 return(
                   <Fragment key={cl}>
                     {/* Client row */}
-                    <tr style={{cursor:"pointer",background:isExpCl?C.surface:C.card}} onClick={()=>setExpanded(p=>({...p,["cl_"+cl]:!p["cl_"+cl]}))}>
-                      <td style={{...td2,textAlign:"center",fontSize:12,color:C.t3,fontWeight:700}}>{isExpCl?"▼":"▶"}</td>
-                      <td style={td2}><span style={{fontWeight:800,fontSize:14,color:C.t1}}>🏢 {cl}</span><span style={{color:C.t3,fontSize:11,marginLeft:8}}>{allCTasks.length} tasks</span></td>
-                      <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtTons(cTons)}</td>
+                    <tr style={{cursor:"pointer",background:isEC?C.surface:C.card}} onClick={()=>setExpanded(p=>({...p,["c_"+cl]:!p["c_"+cl]}))}>
+                      <td style={{...td2,textAlign:"center",color:C.t3,fontWeight:700}}>{isEC?"▼":"▶"}</td>
+                      <td style={td2}>
+                        <span style={{fontWeight:800,fontSize:14,color:C.t1}}>🏢 {cl}</span>
+                        <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{allT.length} tasks</span>
+                        {getLabel("client",cl)&&<span style={{marginLeft:8,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("client",cl)}</span>}
+                        {getNote("client",cl)&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {getNote("client",cl)}</div>}
+                      </td>
+                      <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtT(cT)}</td>
                       <td style={{...td2,textAlign:"right",color:C.t3,fontSize:12}}>mixed</td>
-                      <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cAmt>0?fmtMoney(cAmt):"—"}</td>
+                      <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cA>0?fmtM(cA):"—"}</td>
+                      <td style={{...td2,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+                        <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                          <button onClick={()=>openEdit("client",cl,cl)} title="Edit rate/note/label" style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
+                          <button onClick={()=>pdfClient(cl)} title="Download PDF for this client" style={{...GBtn,padding:"3px 8px",fontSize:11}}>📄</button>
+                        </div>
+                      </td>
                     </tr>
-                    {isExpCl&&Object.entries(projMap).map(([pName,pg])=>{
-                      const isExpP=expanded["pr_"+pName+"_"+cl];
-                      const pv=parseFloat(projRates[pg.proj?.id])||0;
-                      const cv=parseFloat(clientRates[cl])||0;
-                      const dr=parseFloat(defaultRate)||0;
-                      const projEffRate=pv||cv||dr;
+                    {isEC&&Object.entries(projMap).map(([pName,pg])=>{
+                      const isEP=expanded["p_"+pName+"_"+cl];
                       return(
                         <Fragment key={pName}>
                           {/* Project row */}
-                          <tr style={{cursor:"pointer",background:isExpP?C.bg:C.surface}} onClick={()=>setExpanded(p=>({...p,["pr_"+pName+"_"+cl]:!p["pr_"+pName+"_"+cl]}))}>
-                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,paddingLeft:28,fontSize:11,color:C.t3}}>{isExpP?"▼":"▶"}</td>
-                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,paddingLeft:20}}><span style={{fontWeight:700,color:C.t1}}>📁 {pName}</span><span style={{color:C.t3,fontSize:11,marginLeft:8}}>{pg.tasks.length} tasks</span></td>
-                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,textAlign:"right",color:C.blue}}>{fmtTons(pg.totalTons)}</td>
-                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,textAlign:"right",fontSize:12,color:C.t2}}>{projEffRate>0?`$${projEffRate}/T`:"—"}</td>
-                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,textAlign:"right",fontWeight:700,color:C.green}}>{pg.totalAmt>0?fmtMoney(pg.totalAmt):"—"}</td>
+                          <tr style={{cursor:"pointer",background:isEP?C.bg:C.surface}} onClick={()=>setExpanded(p=>({...p,["p_"+pName+"_"+cl]:!p["p_"+pName+"_"+cl]}))}>
+                            <td style={{...td2,paddingLeft:28,fontSize:11,color:C.t3,borderBottom:`1px solid ${C.border}22`}}>{isEP?"▼":"▶"}</td>
+                            <td style={{...td2,paddingLeft:20,borderBottom:`1px solid ${C.border}22`}}>
+                              <span style={{fontWeight:700,color:C.t1}}>📁 {pName}</span>
+                              <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{pg.tasks.length} tasks</span>
+                              {getLabel("project",pg.proj?.id)&&<span style={{marginLeft:8,fontSize:10,background:C.blue+"22",color:C.blue,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("project",pg.proj?.id)}</span>}
+                              {getNote("project",pg.proj?.id)&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {getNote("project",pg.proj?.id)}</div>}
+                            </td>
+                            <td style={{...td2,textAlign:"right",color:C.blue,borderBottom:`1px solid ${C.border}22`}}>{fmtT(pg.totalTons)}</td>
+                            <td style={{...td2,textAlign:"right",fontSize:12,color:C.t2,borderBottom:`1px solid ${C.border}22`}}>{pg.tasks[0]?`$${pg.tasks[0]._rate}/T`:"—"}</td>
+                            <td style={{...td2,textAlign:"right",fontWeight:700,color:C.green,borderBottom:`1px solid ${C.border}22`}}>{pg.totalAmt>0?fmtM(pg.totalAmt):"—"}</td>
+                            <td style={{...td2,textAlign:"center",borderBottom:`1px solid ${C.border}22`}} onClick={e=>e.stopPropagation()}>
+                              <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                                <button onClick={()=>openEdit("project",pg.proj?.id,pName)} title="Edit rate/note/label" style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
+                                <button onClick={()=>pdfProject(cl,pName,pg)} title="Download PDF for this project" style={{...GBtn,padding:"3px 8px",fontSize:11}}>📄</button>
+                              </div>
+                            </td>
                           </tr>
-                          {/* Task rows */}
-                          {isExpP&&pg.tasks.map(t=>(
+                          {isEP&&pg.tasks.map(t=>(
                             <tr key={t.id} style={{background:C.bg}}>
-                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,padding:"7px 14px 7px 40px",fontSize:11,color:C.t3}}>✅</td>
-                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,padding:"7px 14px",fontSize:12}}>
+                              <td style={{...td2,padding:"7px 14px 7px 42px",fontSize:11,color:C.t3,borderBottom:`1px solid ${C.border}11`}}>✅</td>
+                              <td style={{...td2,padding:"7px 14px",fontSize:12,borderBottom:`1px solid ${C.border}11`}}>
                                 <span style={{color:C.t1}}>{t.title}</span>
                                 {t.assignee&&<span style={{color:C.t3,marginLeft:8,fontSize:11}}>· {t.assignee}</span>}
+                                {getNote("task",t.id)&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>📝 {getNote("task",t.id)}</div>}
                               </td>
-                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px"}}>{t._wt>0?fmtTons(t._wt):"—"}</td>
-                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",padding:"7px 14px"}}>
+                              <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._wt>0?fmtT(t._wt):"—"}</td>
+                              <td style={{...td2,textAlign:"right",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>
                                 <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>
-                                  <span style={{fontSize:9,background:levelBadge[t._rate>0?(taskRates[t.id]?"task":projRates[t._proj?.id]?"project":clientRates[cl]?"client":"default"):"default"]?.bg,color:levelBadge[t._rate>0?(taskRates[t.id]?"task":projRates[t._proj?.id]?"project":clientRates[cl]?"client":"default"):"default"]?.color,borderRadius:4,padding:"1px 4px",fontWeight:700,fontSize:9}}>{levelBadge[t._rate>0?(taskRates[t.id]?"task":projRates[t._proj?.id]?"project":clientRates[cl]?"client":"default"):"default"]?.label}</span>
+                                  <span style={{fontSize:9,background:lvlBadge[t._level]?.bg,color:lvlBadge[t._level]?.color,borderRadius:4,padding:"1px 4px",fontWeight:700}}>{t._level}</span>
                                   <span style={{fontSize:12,color:t._rate>0?C.t2:C.t3}}>{t._rate>0?`$${t._rate}/T`:"—"}</span>
                                 </div>
                               </td>
-                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px"}}>{t._amt>0?fmtMoney(t._amt):"—"}</td>
+                              <td style={{...td2,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._amt>0?fmtM(t._amt):"—"}</td>
+                              <td style={{...td2,textAlign:"center",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}} onClick={e=>e.stopPropagation()}>
+                                <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                                  <button onClick={()=>openEdit("task",t.id,t.title)} title="Edit rate/note/label" style={{...GBtn,padding:"3px 6px",fontSize:10}}>✏️</button>
+                                  <button onClick={()=>pdfTask(t,cl)} title="Download PDF for this task" style={{...GBtn,padding:"3px 6px",fontSize:10}}>📄</button>
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </Fragment>
@@ -10237,35 +10269,34 @@ function BillingSummaryPage({tasks,projects,clients,me}){
               <tr style={{background:C.surface,borderTop:`2px solid ${C.border}`}}>
                 <td style={{...td2,borderBottom:"none"}}></td>
                 <td style={{...td2,fontWeight:800,fontSize:14,color:C.t1,borderBottom:"none"}}>TOTAL</td>
-                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtTons(totalTons)}</td>
+                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtT(totalTons)}</td>
                 <td style={{...td2,borderBottom:"none"}}></td>
-                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtMoney(totalAmt):"—"}</td>
+                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtM(totalAmt):"—"}</td>
+                <td style={{...td2,borderBottom:"none"}}></td>
               </tr>
             </tbody>
           </table>
         </div>
-      )}
+      }
 
-      {/* Pending pipeline */}
-      {pendingTasks.length>0&&(
-        <div style={{...card,marginTop:20}}>
-          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline — not yet billed</div>
-          <div style={{color:C.t3,fontSize:12,marginBottom:12}}>In-progress tasks with weight entered</div>
-          <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-            <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
-              <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{fmtTons(pendingTons)}</div>
-              <div style={{fontSize:11,color:C.t3,marginTop:2}}>Pending Tons</div>
-            </div>
-            <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
-              <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
-              <div style={{fontSize:11,color:C.t3,marginTop:2}}>Active Tasks</div>
-            </div>
+      {pendingTasks.length>0&&<div style={{...card,marginTop:20}}>
+        <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline — not yet billed</div>
+        <div style={{color:C.t3,fontSize:12,marginBottom:10}}>In-progress tasks with weight entered</div>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+          <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{fmtT(pendingTons)}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>Pending Tons</div>
+          </div>
+          <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>Active Tasks</div>
           </div>
         </div>
-      )}
+      </div>}
     </div>
   );
 }
+
 
 
 function AuditLogPage({users,projects,me}){
