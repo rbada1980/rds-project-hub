@@ -9986,36 +9986,36 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     <script>window.onload=()=>window.print()<\/script></body></html>`;
   }
 
-  function openPdf(html){
-    const blob=new Blob([html],{type:"text/html"});
+  function openPdf(html,filename="RDS_Invoice"){
+    // Direct download — never blocked by popup blocker
+    const blob=new Blob([html],{type:"text/html;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    // Try open in new tab (for print/save as PDF)
-    const w=window.open(url,"_blank");
-    if(!w){
-      // Fallback: download as .html file
-      a.href=url;a.download="RDS_Invoice.html";a.click();
-    }
-    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    a.href=url; a.download=filename+".html";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
   }
 
   function pdfAll(){
     const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
-    openPdf(buildPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",label:""}));
+    openPdf(buildPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",label:"",taskList}),`RDS_Billing_All_${year}_${month}`);
   }
   function pdfClient(cl){
-    const taskList=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
+    const taskList=Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks);
     const note=getNote("client",cl);const label=getLabel("client",cl)||cl;
-    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${periodLabel} · ${taskList.length} tasks · ${fmtT(clientMap[cl].totalTons)} · ${fmtM(clientMap[cl].totalAmt)}`,note,label,taskList}));
+    const fname="RDS_Billing_"+cl.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
+    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${periodLabel} · ${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,label,taskList}),fname);
   }
   function pdfProject(cl,pName,pg){
-    const taskList=pg.tasks;
+    const taskList=pg?.tasks||[];
     const note=getNote("project",pg.proj?.id);const label=getLabel("project",pg.proj?.id)||pName;
-    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${periodLabel} · ${taskList.length} tasks · ${fmtT(pg.totalTons)} · ${fmtM(pg.totalAmt)}`,note,label,taskList}));
+    const fname="RDS_Billing_"+pName.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
+    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${periodLabel} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,label,taskList}),fname);
   }
   function pdfTask(t,cl){
     const note=getNote("task",t.id);const label=getLabel("task",t.id)||t.title;
-    openPdf(buildPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"} · ${periodLabel}`,note,label,taskList:[t]}));
+    const fname="RDS_Billing_Task_"+t.id+"_"+year+"_"+month;
+    openPdf(buildPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"} · ${periodLabel}`,note,label,taskList:[t]}),fname);
   }
 
   // Excel export
