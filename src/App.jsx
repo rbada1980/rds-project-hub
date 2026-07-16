@@ -9941,9 +9941,9 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const periodLabel=monthNames[parseInt(month)-1]+" "+year;
 
   // ── PDF generator (shared) ─────────────────────────────────────────
-  function buildPdf({title,subtitle,note,label,taskList}){
+  function buildPdf({title,subtitle,note,label,taskList,hideProject=false}){
     const rows=taskList.map((t,i)=>`<tr class="${i%2===0?'row-even':'row-odd'}">
-      <td class="td">${t._proj?.name||"—"}</td>
+      ${hideProject?"":`<td class="td">${t._proj?.name||"—"}</td>`}
       <td class="td">${t.title}</td>
       <td class="td-r">${t.assignee||"—"}</td>
       <td class="td-r">${t.client_sub_date||"—"}</td>
@@ -9973,7 +9973,6 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       .invoice-title{font-size:22px;font-weight:900;color:#1e3a8a;letter-spacing:.08em;text-transform:uppercase}
       .inv-no{font-size:12px;color:#64748b;margin-top:4px}
       .inv-period{display:inline-block;background:#dbeafe;color:#1e40af;border-radius:20px;padding:3px 14px;font-size:12px;font-weight:700;margin-top:6px}
-      .inv-date{font-size:11.5px;color:#94a3b8;margin-top:4px}
 
       /* ── TITLE STRIP ── */
       .strip{background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);border-radius:10px;padding:16px 22px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between}
@@ -10016,8 +10015,8 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       /* ── FOOTER ── */
       .footer{margin-top:40px;padding-top:14px;border-top:1.5px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
       .footer-co{font-size:12px;font-weight:700;color:#1e3a8a}
-      .footer-date{font-size:11px;color:#94a3b8}
-      .footer-tag{font-size:10.5px;color:#cbd5e1;letter-spacing:.04em}
+      .footer-date{font-size:11px;color:#374151}
+      .footer-tag{font-size:10.5px;color:#4b5563;letter-spacing:.04em}
 
       @media print{
         @page{margin:18mm 16mm}
@@ -10039,7 +10038,6 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           <div class="invoice-title">Billing Summary</div>
           <div class="inv-no">${invoiceNo}</div>
           <div><span class="inv-period">${periodLabel}</span></div>
-          <div class="inv-date">${todayDate}</div>
         </div>
       </div>
 
@@ -10057,7 +10055,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       <!-- TABLE -->
       <table>
         <thead><tr>
-          <th>Project</th><th>Task</th>
+          ${hideProject?"":'<th>Project</th>'}<th>Task</th>
           <th style="text-align:right">Assignee</th>
           <th style="text-align:right">Sub Date</th>
           <th style="text-align:right">Tons</th>
@@ -10067,7 +10065,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         <tbody>
           ${rows}
           <tr class="tot-row">
-            <td colspan="4" style="text-align:left;padding:13px 12px;font-size:13px">TOTAL</td>
+            <td colspan="${hideProject?3:4}" style="text-align:left;padding:13px 12px;font-size:13px">TOTAL</td>
             <td style="text-align:right">${fmtT(totT)}</td>
             <td></td>
             <td class="tot-amt" style="text-align:right">${fmtM(totA)}</td>
@@ -10115,18 +10113,18 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     const taskList=Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks);
     const note=getNote("client",cl);const label=getLabel("client",cl)||cl;
     const fname="RDS_Billing_"+cl.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
-    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${periodLabel} · ${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,label,taskList}),fname);
+    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,label,taskList}),fname);
   }
   function pdfProject(cl,pName,pg){
     const taskList=pg?.tasks||[];
     const note=getNote("project",pg.proj?.id);const label=getLabel("project",pg.proj?.id)||pName;
     const fname="RDS_Billing_"+pName.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
-    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${periodLabel} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,label,taskList}),fname);
+    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,label,taskList,hideProject:true}),fname);
   }
   function pdfTask(t,cl){
     const note=getNote("task",t.id);const label=getLabel("task",t.id)||t.title;
     const fname="RDS_Billing_Task_"+t.id+"_"+year+"_"+month;
-    openPdf(buildPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"} · ${periodLabel}`,note,label,taskList:[t]}),fname);
+    openPdf(buildPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,label,taskList:[t],hideProject:true}),fname);
   }
 
   // Excel export
