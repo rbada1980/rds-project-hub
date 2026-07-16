@@ -3756,6 +3756,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const [subSearch,setSubSearch]=useState("");
   const [subExportOpen,setSubExportOpen]=useState(false);
   const subExportRef=useRef(null);
+  const [viewMode,setViewMode]=useState("flat"); // "flat" | "groups"
   useEffect(()=>{
     if(!subExportOpen)return;
     const h=e=>{if(subExportRef.current&&!subExportRef.current.contains(e.target))setSubExportOpen(false);};
@@ -3928,7 +3929,16 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               {q.icon} {q.label}
             </button>
           ))}
-          {!isClient&&<div ref={subExportRef} style={{position:"relative",marginLeft:"auto"}}>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`}}>
+            {[["flat","≡ List"],["groups","🗂 Groups"]].map(([m,label])=>(
+              <button key={m} onClick={()=>setViewMode(m)}
+                style={{padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:"none",background:viewMode===m?C.accent:C.surface,color:viewMode===m?"#fff":C.t2,transition:"all .15s"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {!isClient&&<div ref={subExportRef} style={{position:"relative"}}>
             <button onClick={()=>setSubExportOpen(v=>!v)}
               style={{padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${C.accent}`,background:C.accent+"18",color:C.accent,display:"flex",alignItems:"center",gap:6}}>
               ⬇ Export Excel ▾
@@ -4077,6 +4087,64 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               })}
             </div>
           ):(
+          {viewMode==="groups"?(()=>{
+            // Group tasks by project group_name
+            const grouped={};
+            const ungrouped=[];
+            periodTasks.forEach(t=>{
+              const proj=scopedProjects.find(p=>p.id===t.project_id);
+              const grp=proj?.group_name||null;
+              if(grp){if(!grouped[grp])grouped[grp]=[];grouped[grp].push(t);}
+              else ungrouped.push(t);
+            });
+            const groupEntries=[...Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0]))];
+            if(ungrouped.length)groupEntries.push(["(Ungrouped)",ungrouped]);
+            if(!groupEntries.length)return<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>No groups found.</div>;
+            return(
+              <div>
+                {groupEntries.map(([grpName,grpTasks])=>{
+                  const done=grpTasks.filter(t=>isDone(t.status)).length;
+                  const overdue=grpTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                  const pct=grpTasks.length?Math.round(done/grpTasks.length*100):0;
+                  const isUng=grpName==="(Ungrouped)";
+                  return(
+                    <div key={grpName} style={{borderBottom:`1px solid ${C.border}`}}>
+                      {/* Group header */}
+                      <div style={{padding:"12px 20px",background:isUng?C.surface+"88":C.accent+"12",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+                        <span style={{fontSize:16}}>{isUng?"📂":"🗂"}</span>
+                        <span style={{fontWeight:800,fontSize:14,color:isUng?C.t3:C.accent}}>{grpName}</span>
+                        <span style={{fontSize:12,color:C.t3}}>{grpTasks.length} task{grpTasks.length!==1?"s":""}</span>
+                        <div style={{display:"flex",gap:10,fontSize:11,marginLeft:4}}>
+                          <span style={{color:C.green,fontWeight:700}}>✅ {done}</span>
+                          <span style={{color:C.t3}}>📋 {grpTasks.length-done} pending</span>
+                          {overdue>0&&<span style={{color:C.red,fontWeight:700}}>⚠ {overdue} overdue</span>}
+                        </div>
+                        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:80,height:6,background:C.border,borderRadius:4,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:pct+"%",background:pct===100?C.green:C.accent,borderRadius:4,transition:"width .4s"}}/>
+                          </div>
+                          <span style={{fontSize:11,fontWeight:700,color:pct===100?C.green:C.accent,minWidth:32}}>{pct}%</span>
+                        </div>
+                      </div>
+                      {/* Tasks table */}
+                      <div className="rds-table-outer" style={{overflowX:"hidden",maxWidth:"100%"}}>
+                        <table style={{width:"100%",maxWidth:"100%",tableLayout:"fixed",borderCollapse:"collapse",fontSize:13}}>
+                          <thead>
+                            <tr style={{background:C.surface}}>
+                              {HEADERS.map((h,i)=>(
+                                <th key={i} style={{padding:"8px 12px",textAlign:i===0?"left":"center",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap",borderBottom:`1px solid ${C.border}`}}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>{grpTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })():(
           <div className="rds-table-outer" style={{overflowX:"hidden",maxWidth:"100%"}}>
             <table style={{width:"100%",maxWidth:"100%",tableLayout:"fixed",borderCollapse:"collapse",fontSize:13}}>
               <thead>
@@ -4089,6 +4157,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               <tbody>{periodTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
             </table>
           </div>
+          )}
           )
         )}
       </div>
@@ -13003,48 +13072,4 @@ export default function App(){
     {/* ── Mobile bottom nav ── */}
     {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
       <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        <div style={{display:"fl
