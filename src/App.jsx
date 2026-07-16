@@ -10006,11 +10006,12 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   function pdfClient(cl){
     const taskList=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
     const note=getNote("client",cl);const label=getLabel("client",cl)||cl;
-    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${periodLabel} · ${taskList.length} tasks · ${fmtT(clientMap[cl].totalTons)} · ${fmtM(clientMap[cl].totalAmt)}`,note,label}));
+    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${periodLabel} · ${taskList.length} tasks · ${fmtT(clientMap[cl].totalTons)} · ${fmtM(clientMap[cl].totalAmt)}`,note,label,taskList}));
   }
   function pdfProject(cl,pName,pg){
+    const taskList=pg.tasks;
     const note=getNote("project",pg.proj?.id);const label=getLabel("project",pg.proj?.id)||pName;
-    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${periodLabel} · ${pg.tasks.length} tasks · ${fmtT(pg.totalTons)} · ${fmtM(pg.totalAmt)}`,note,label}));
+    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${periodLabel} · ${taskList.length} tasks · ${fmtT(pg.totalTons)} · ${fmtM(pg.totalAmt)}`,note,label,taskList}));
   }
   function pdfTask(t,cl){
     const note=getNote("task",t.id);const label=getLabel("task",t.id)||t.title;
