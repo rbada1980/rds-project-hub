@@ -9955,6 +9955,13 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     const totA=taskList.reduce((s,t)=>s+t._amt,0);
     const noteHtml=note?`<div style="background:#f9fafb;border-left:3px solid #6366f1;padding:10px 14px;margin:16px 0;font-size:13px;color:#374151"><b>Note:</b> ${note}</div>`:"";
     const labelHtml=label?`<div style="display:inline-block;background:#e0e7ff;color:#4338ca;border-radius:4px;padding:2px 10px;font-size:12px;font-weight:700;margin-bottom:8px">${label}</div>`:"";
+    const todayDate=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+    const rdsSvgLogo=`<svg width="54" height="54" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+      <rect width="54" height="54" rx="10" fill="#1e3a8a"/>
+      <text x="27" y="22" text-anchor="middle" font-family="'Segoe UI',Arial,sans-serif" font-size="14" font-weight="900" fill="#ffffff">RDS</text>
+      <rect x="8" y="27" width="38" height="1.5" fill="#60a5fa"/>
+      <text x="27" y="39" text-anchor="middle" font-family="'Segoe UI',Arial,sans-serif" font-size="7.5" font-weight="700" fill="#93c5fd" letter-spacing="1.2">TECHSERV</text>
+    </svg>`;
     return `<!DOCTYPE html><html><head><title>${title}</title>
     <style>body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:0;padding:32px;font-size:14px}
     table{width:100%;border-collapse:collapse;margin-top:16px}
@@ -9962,11 +9969,24 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     th:last-child,th:nth-child(3),th:nth-child(4),th:nth-child(5),th:nth-child(6){text-align:right}
     .tot{background:#f0fdf4;font-weight:800}
     .tot td{padding:10px;border-top:2px solid #16a34a}
-    .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #111;margin-bottom:20px}
+    .hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:2.5px solid #1e3a8a;margin-bottom:22px}
+    .logo-wrap{display:flex;align-items:center;gap:14px}
+    .co-name{font-size:19px;font-weight:800;color:#1e3a8a;line-height:1.2}
+    .co-sub{font-size:11.5px;color:#6b7280;margin-top:2px;letter-spacing:.03em}
     @media print{button{display:none!important}}</style></head><body>
     <div class="hdr">
-      <div><div style="font-size:20px;font-weight:800">RDS TechServ</div><div style="color:#6b7280;font-size:13px">RDS Project Hub</div></div>
-      <div style="text-align:right"><div style="font-size:16px;font-weight:800">INVOICE / BILLING</div><div style="color:#6b7280;font-size:13px">${periodLabel}</div><div style="color:#6b7280;font-size:12px">Generated: ${new Date().toLocaleDateString()}</div></div>
+      <div class="logo-wrap">
+        ${rdsSvgLogo}
+        <div>
+          <div class="co-name">RDS Techserv Pvt Ltd</div>
+          <div class="co-sub">Billing &amp; Invoice Summary</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:15px;font-weight:800;color:#1e3a8a;letter-spacing:.04em">INVOICE / BILLING</div>
+        <div style="color:#6b7280;font-size:13px;margin-top:4px">${periodLabel}</div>
+        <div style="color:#9ca3af;font-size:11.5px;margin-top:2px">${todayDate}</div>
+      </div>
     </div>
     ${labelHtml}
     <h2 style="margin:0 0 4px;font-size:18px">${title}</h2>
@@ -9982,7 +10002,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         </tr>
       </tbody>
     </table>
-    <div style="margin-top:40px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center">RDS TechServ · RDS Project Hub · ${new Date().toLocaleString()}</div>
+    <div style="margin-top:40px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center">RDS Techserv Pvt Ltd &nbsp;·&nbsp; ${todayDate}</div>
     <script>window.onload=()=>window.print()<\/script></body></html>`;
   }
 
