@@ -18,6 +18,7 @@ const DARK_C={
   t1:"#f1f5f9",t2:"#b0bfcc",t3:"#8899aa",
   // sidebar (dark in both modes)
   sideBg:"#171b26",sideActive:"#1e2433",sideBorder:"#2a3040",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
+  shadow:"none",
 };
 const LIGHT_C={
   bg:"#f0f4f8",surface:"#e4ecf4",card:"#ffffff",border:"#d0dae6",
@@ -25,6 +26,7 @@ const LIGHT_C={
   t1:"#111827",t2:"#374151",t3:"#6b7280",
   // sidebar stays dark even in light mode
   sideBg:"#1a2035",sideActive:"#252d42",sideBorder:"#2e3a52",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
+  shadow:"0 2px 8px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.05)",
 };
 const _initTheme=(typeof window!=="undefined"?localStorage.getItem("rds_theme")||"dark":"dark");
 const C={...(_initTheme==="light"?LIGHT_C:DARK_C)};
@@ -70,7 +72,7 @@ function Stat({label,value,sub,color=C.accent,onClick}){
   const [hov,sh]=useState(false);
   return(
     <div onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
-      style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
+      className="rds-stat-card" style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
       <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</p>
       <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800}}>{value}</p>
       {sub&&<p style={{margin:0,color:C.t2,fontSize:12}}>{sub}</p>}
@@ -5008,7 +5010,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   };
 
   const Panel=({title,children,style={}})=>(
-    <div className="rds-panel" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?14:22,overflow:"hidden",...style}}>
+    <div className="rds-panel" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?14:22,overflow:"hidden",boxShadow:C.shadow,...style}}>
       <h3 style={{margin:`0 0 ${isMobile?10:16}px`,fontSize:12,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".08em"}}>{title}</h3>
       {children}
     </div>
@@ -11196,9 +11198,41 @@ export default function App(){
 
       /* ── Light mode enhancements ── */
       body.rds-light{ color-scheme: light; }
-      body.rds-light .rds-sidebar{ box-shadow: 4px 0 24px rgba(0,0,0,0.15)!important; }
-      body.rds-light .rds-sidebar button:hover{ background: rgba(255,255,255,0.08)!important; box-shadow: inset 3px 0 0 rgba(249,115,22,.85)!important; }
+
+      /* Sidebar */
+      body.rds-light .rds-sidebar{ box-shadow: 4px 0 24px rgba(0,0,0,0.18)!important; }
+      body.rds-light .rds-sidebar button:hover{ background: rgba(255,255,255,0.09)!important; box-shadow: inset 3px 0 0 rgba(249,115,22,.9)!important; }
+
+      /* Main area */
       body.rds-light .rds-main{ background: #f0f4f8; }
+
+      /* Stat cards & panels */
+      body.rds-light .rds-stat-card{ box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)!important; transition: box-shadow .2s, transform .2s!important; }
+      body.rds-light .rds-stat-card:hover{ box-shadow: 0 6px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)!important; transform: translateY(-1px)!important; }
+      body.rds-light .rds-panel{ box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)!important; }
+      body.rds-light .rds-acard{ box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)!important; }
+      body.rds-light .rds-modal-inner{ box-shadow: 0 24px 64px rgba(0,0,0,0.18)!important; }
+
+      /* Topbar */
+      body.rds-light .rds-topbar{ padding-bottom: 20px!important; border-bottom: 1px solid #d0dae6; margin-bottom: 20px!important; }
+
+      /* Search & input fields */
+      body.rds-light input, body.rds-light select, body.rds-light textarea{
+        background: #ffffff!important; color: #111827!important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06) inset!important;
+      }
+      body.rds-light input:focus, body.rds-light select:focus, body.rds-light textarea:focus{
+        box-shadow: 0 0 0 2.5px rgba(249,115,22,.3), 0 1px 3px rgba(0,0,0,0.06) inset!important;
+      }
+
+      /* Kanban columns */
+      body.rds-light .rds-kcol{ box-shadow: 0 2px 8px rgba(0,0,0,0.06)!important; }
+
+      /* Scrollbar */
+      body.rds-light ::-webkit-scrollbar{ width: 6px; height: 6px; }
+      body.rds-light ::-webkit-scrollbar-track{ background: #e4ecf4; border-radius: 3px; }
+      body.rds-light ::-webkit-scrollbar-thumb{ background: #b0bfcc; border-radius: 3px; }
+      body.rds-light ::-webkit-scrollbar-thumb:hover{ background: #8899aa; }
     `;
     document.head.appendChild(a);
     return()=>{const el=document.getElementById("rds-anim-css");if(el)el.remove();};
@@ -11820,7 +11854,7 @@ export default function App(){
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
       {isMobile&&sideOpen&&<div onClick={()=>setSO(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:150,backdropFilter:"blur(2px)"}}/>}
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
-      <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:C.sideBg,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
+      <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:`linear-gradient(180deg,${C.sideBg} 0%,${C.sideActive} 100%)`,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.sideBorder}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div onClick={()=>logoRef.current.click()} title="Click to upload logo" className="rds-logo-anim" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
