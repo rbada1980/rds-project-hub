@@ -6795,39 +6795,39 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
       {Object.keys(byUser).length>0&&(
         <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
           {Object.entries(byUser).sort((a,b)=>b[1]-a[1]).map(([name,min])=>(
-            <span key={name} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#94a3b8",display:"flex",alignItems:"center",gap:5}}>
+            <span key={name} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",gap:5}}>
               <span style={{width:16,height:16,borderRadius:"50%",background:"#05966933",border:"1px solid #05966966",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#059669",flexShrink:0}}>{(name[0]||"?").toUpperCase()}</span>
-              {name}&nbsp;·&nbsp;<strong style={{color:"#e2e8f0"}}>{fmtDur(min)}</strong>
+              {name}&nbsp;·&nbsp;<strong style={{color:C.t1}}>{fmtDur(min)}</strong>
             </span>
           ))}
         </div>
       )}
 
       {showForm&&(
-        <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:8,padding:"12px 14px",marginBottom:10}}>
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",marginBottom:10}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8,alignItems:"flex-end"}}>
             <div>
-              <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Hours</div>
+              <div style={{fontSize:11,color:C.t3,marginBottom:3}}>Hours</div>
               <input type="number" min="0" max="24" value={hrs} onChange={e=>setHrs(e.target.value)} placeholder="0"
-                style={{width:64,background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:13}}/>
+                style={{width:64,background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:C.t1,fontSize:13}}/>
             </div>
             <div>
-              <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Minutes</div>
+              <div style={{fontSize:11,color:C.t3,marginBottom:3}}>Minutes</div>
               <select value={mins} onChange={e=>setMins(e.target.value)}
-                style={{width:76,background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:13}}>
+                style={{width:76,background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:C.t1,fontSize:13}}>
                 {[0,15,30,45].map(m=><option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div>
-              <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Date</div>
+              <div style={{fontSize:11,color:C.t3,marginBottom:3}}>Date</div>
               <input type="date" value={logDate} onChange={e=>setLogDate(e.target.value)}
-                style={{background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:13}}/>
+                style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:C.t1,fontSize:13}}/>
             </div>
           </div>
           <div style={{marginBottom:8}}>
-            <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>Notes (optional)</div>
+            <div style={{fontSize:11,color:C.t3,marginBottom:3}}>Notes (optional)</div>
             <input type="text" value={notes} onChange={e=>setNotes(e.target.value)} placeholder="What did you work on?" maxLength={200}
-              style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:6,padding:"5px 8px",color:"#f1f5f9",fontSize:12,boxSizing:"border-box"}}/>
+              style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 8px",color:C.t1,fontSize:12,boxSizing:"border-box"}}/>
           </div>
           <button onClick={saveLog} disabled={saving||!canSave}
             style={{background:"#059669",border:"none",borderRadius:6,padding:"6px 18px",color:"#fff",fontSize:12,fontWeight:700,cursor:canSave?"pointer":"not-allowed",opacity:saving||!canSave?0.5:1}}>
@@ -7201,7 +7201,7 @@ function TaskComments({taskId,projectId,me,users}){
       {/* Comment list */}
       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14,maxHeight:260,overflowY:"auto"}}>
         {comments.length===0?
-          <div style={{fontSize:12,color:"#666",textAlign:"center",padding:"16px 0"}}>No comments yet — add the first one below</div>:
+          <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"16px 0"}}>No comments yet — add the first one below</div>:
           comments.map(cm=>{
             const isMe=cm.author===me.username;
             return(
@@ -7211,10 +7211,10 @@ function TaskComments({taskId,projectId,me,users}){
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                    <span style={{fontSize:11,fontWeight:700,color:"#d1d5db"}}>{cm.author_name}</span>
-                    <span style={{fontSize:10,color:"#6b7280"}}>{fmt(cm.created_at)}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:C.t1}}>{cm.author_name}</span>
+                    <span style={{fontSize:10,color:C.t3}}>{fmt(cm.created_at)}</span>
                   </div>
-                  <div style={{fontSize:12,color:"#e5e7eb",lineHeight:1.5,wordBreak:"break-word",background:"#1f2937",borderRadius:"4px 12px 12px 12px",padding:"7px 10px"}}>
+                  <div style={{fontSize:12,color:C.t1,lineHeight:1.5,wordBreak:"break-word",background:C.surface,border:`1px solid ${C.border}`,borderRadius:"4px 12px 12px 12px",padding:"7px 10px"}}>
                     {renderBody(cm.body)}
                   </div>
                 </div>
@@ -7226,15 +7226,15 @@ function TaskComments({taskId,projectId,me,users}){
 
       {/* Mention dropdown */}
       {mentionOpen&&mentionList.length>0&&(
-        <div style={{background:"#111827",border:"1px solid #6366f1",borderRadius:8,padding:4,marginBottom:6}}>
+        <div style={{background:C.card,border:`1px solid ${C.accent}`,borderRadius:8,padding:4,marginBottom:6}}>
           {mentionList.map(m=>(
             <div key={m.username} onClick={()=>insertMention(m)}
               style={{padding:"6px 10px",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
               onMouseEnter={e=>e.currentTarget.style.background="#1f2937"}
               onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <div style={{width:22,height:22,borderRadius:"50%",background:"#6366f1",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff"}}>{m.name.charAt(0)}</div>
-              <span style={{fontSize:12,color:"#d1d5db",fontWeight:600}}>{m.name}</span>
-              <span style={{fontSize:10,color:"#6b7280"}}>@{m.username}</span>
+              <span style={{fontSize:12,color:C.t1,fontWeight:600}}>{m.name}</span>
+              <span style={{fontSize:10,color:C.t3}}>@{m.username}</span>
             </div>
           ))}
         </div>
@@ -7245,7 +7245,7 @@ function TaskComments({taskId,projectId,me,users}){
         <textarea ref={inputRef} value={input} onChange={handleInput}
           onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();postComment();}if(e.key==="Escape")setMentionOpen(false);}}
           placeholder="Add a comment… use @ to mention  (Enter to send)"
-          rows={2} style={{flex:1,background:"#1f2937",border:"1px solid #374151",borderRadius:8,padding:"8px 10px",color:"#f3f4f6",fontSize:12,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
+          rows={2} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",resize:"none",boxSizing:"border-box"}}/>
         <button onClick={postComment} disabled={saving||!input.trim()}
           style={{flexShrink:0,background:"#6366f1",border:"none",borderRadius:8,padding:"9px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving||!input.trim()?0.5:1}}>
           {saving?"…":"Send"}
@@ -12204,8 +12204,8 @@ export default function App(){
             <span style={{fontSize:17}}>⌨️</span>
             <span style={{fontSize:14,color:C.t1,lineHeight:1.5}}>
               Press{" "}
-              <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#fff",fontWeight:700}}>ctrl + k</kbd>
-              {" "}<span style={{color:C.t2}}>(or{" "}<kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:"#fff",fontWeight:700}}>cmd k</kbd>{" "}on Mac)</span>
+              <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:C.t1,fontWeight:700}}>ctrl + k</kbd>
+              {" "}<span style={{color:C.t2}}>(or{" "}<kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:C.t1,fontWeight:700}}>cmd k</kbd>{" "}on Mac)</span>
               {" "}anywhere in the website — search projects, tasks, clients, people and files
             </span>
           </div>
