@@ -80,8 +80,14 @@ function Stat({label,value,sub,color=C.accent,onClick}){
     </div>
   );
 }
-const SBtn={background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:"inherit"};
-const GBtn={background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:"inherit"};
+// Live-theme button style proxies — always read current C values on spread
+const _mkBtn=fn=>new Proxy({},{
+  get(_,k){return fn()[k];},
+  ownKeys(){return Object.keys(fn());},
+  getOwnPropertyDescriptor(_,k){return{enumerable:true,configurable:true,value:fn()[k]};},
+});
+const SBtn=_mkBtn(()=>({background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:"inherit"}));
+const GBtn=_mkBtn(()=>({background:"transparent",color:C.t2,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 20px",cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:"inherit"}));
 function DonutChart({data,size=130,onSliceClick}){
   const [hov,setHov]=useState(null);
   const [ready,setReady]=useState(false);
