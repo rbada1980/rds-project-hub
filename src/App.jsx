@@ -21,12 +21,12 @@ const DARK_C={
   shadow:"none",
 };
 const LIGHT_C={
-  bg:"#f0f4f8",surface:"#e4ecf4",card:"#ffffff",border:"#d0dae6",
+  bg:"#ddd9d2",surface:"#ccc8c0",card:"#e8e4dc",border:"#b8b4ac",
   accent:"#f97316",teal:"#0d9488",blue:"#2563eb",purple:"#9333ea",green:"#16a34a",red:"#dc2626",yellow:"#d97706",
-  t1:"#111827",t2:"#374151",t3:"#6b7280",
+  t1:"#1a1814",t2:"#3d3a34",t3:"#6e6b64",
   // sidebar stays dark even in light mode
   sideBg:"#1a2035",sideActive:"#252d42",sideBorder:"#2e3a52",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
-  shadow:"0 2px 8px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.05)",
+  shadow:"0 2px 8px rgba(0,0,0,0.10),0 0 0 1px rgba(0,0,0,0.06)",
 };
 const _initTheme=(typeof window!=="undefined"?localStorage.getItem("rds_theme")||"dark":"dark");
 const C={...(_initTheme==="light"?LIGHT_C:DARK_C)};
@@ -11204,7 +11204,7 @@ export default function App(){
       body.rds-light .rds-sidebar button:hover{ background: rgba(255,255,255,0.09)!important; box-shadow: inset 3px 0 0 rgba(249,115,22,.9)!important; }
 
       /* Main area */
-      body.rds-light .rds-main{ background: #f0f4f8; }
+      body.rds-light .rds-main{ background: #ddd9d2; }
 
       /* Stat cards & panels */
       body.rds-light .rds-stat-card{ box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)!important; transition: box-shadow .2s, transform .2s!important; }
@@ -11230,9 +11230,9 @@ export default function App(){
 
       /* Scrollbar */
       body.rds-light ::-webkit-scrollbar{ width: 6px; height: 6px; }
-      body.rds-light ::-webkit-scrollbar-track{ background: #e4ecf4; border-radius: 3px; }
-      body.rds-light ::-webkit-scrollbar-thumb{ background: #b0bfcc; border-radius: 3px; }
-      body.rds-light ::-webkit-scrollbar-thumb:hover{ background: #8899aa; }
+      body.rds-light ::-webkit-scrollbar-track{ background: #ccc8c0; border-radius: 3px; }
+      body.rds-light ::-webkit-scrollbar-thumb{ background: #9c9890; border-radius: 3px; }
+      body.rds-light ::-webkit-scrollbar-thumb:hover{ background: #6e6b64; }
     `;
     document.head.appendChild(a);
     return()=>{const el=document.getElementById("rds-anim-css");if(el)el.remove();};
