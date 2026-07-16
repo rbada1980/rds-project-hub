@@ -1,11 +1,11 @@
 // /api/cron-daily.js
-// Vercel Cron: runs Mon–Sat at 1:00 AM IST (= 19:30 UTC Sun–Fri)
-// Schedule in vercel.json: "30 19 * * 0-5"
+// Vercel Cron: runs Mon-Sat at 1:00 AM IST (= 19:30 UTC Mon-Sat)
+// Schedule in vercel.json: "30 19 * * 1-6"
 
 const SUPA_URL  = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY  = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
-// Service role key bypasses RLS — used for writing last_digest_date (anon key is blocked by RLS INSERT policy)
-// Add SUPABASE_SERVICE_KEY to Vercel env vars: Supabase dashboard → Project Settings → API → service_role
+// Service role key bypasses RLS - used for writing last_digest_date (anon key is blocked by RLS INSERT policy)
+// Add SUPABASE_SERVICE_KEY to Vercel env vars: Supabase dashboard -> Project Settings -> API -> service_role
 const SUPA_WRITE_KEY = process.env.SUPABASE_SERVICE_KEY || SUPA_KEY;
 const NOTIFY_URL = `${SUPA_URL}/functions/v1/notify`;
 
@@ -48,13 +48,13 @@ function tableRows(tasks, pm) {
   return tasks.map(t => {
     const p = pm[t.project_id];
     return `<tr style="background:${rowBg(t.status)}">
-      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client || (p && p.client) || "—"}</a></td>
-      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${p ? p.name : "—"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client || (p && p.client) || "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${p ? p.name : "-"}</a></td>
       <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#111827;font-weight:600;font-size:12px;">${t.title}</a></td>
       <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${statusBadge(t.status)}</td>
-      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.assignee || "—"}</a></td>
-      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client_sub_date || "—"}</a></td>
-      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.due_date || "—"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.assignee || "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client_sub_date || "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.due_date || "-"}</a></td>
     </tr>`;
   }).join("");
 }
@@ -74,7 +74,9 @@ function buildEmail(name, tasks, pm, dateLabel) {
   <table cellpadding="0" cellspacing="0" width="100%"><tr>
     <td style="width:1px;white-space:nowrap;">
       <table cellpadding="0" cellspacing="0"><tr><td style="background:#ffffff;border-radius:8px;padding:6px 12px;">
-        <img src="https://hub-rdsprojects.com/logo.png" alt="RDS" style="height:44px;width:auto;display:block;" />
+        <a href="${PORTAL}" style="text-decoration:none;display:block;">
+          <img src="https://hub-rdsprojects.com/logo.png" alt="RDS" style="height:44px;width:auto;display:block;" />
+        </a>
       </td></tr></table>
     </td>
     <td style="width:1px;padding:0 16px;"><div style="width:1px;height:36px;background:rgba(255,255,255,0.2);"></div></td>
@@ -90,7 +92,7 @@ function buildEmail(name, tasks, pm, dateLabel) {
 <tr><td style="background:#163060;padding:9px 28px;">
   <table cellpadding="0" cellspacing="0"><tr>
     <td style="width:7px;height:7px;background:#4ade80;border-radius:50%;"></td>
-    <td style="padding-left:8px;font-size:11px;color:rgba(255,255,255,0.75);">Automated daily digest &mdash; sent at 1:00 AM IST every day except Sunday</td>
+    <td style="padding-left:8px;font-size:11px;color:rgba(255,255,255,0.75);">Automated daily digest - sent at 1:00 AM IST every day except Sunday</td>
   </tr></table>
 </td></tr>
 </table>
@@ -124,13 +126,13 @@ function buildEmail(name, tasks, pm, dateLabel) {
     <p style="font-size:13px;color:#374151;margin:0 0 8px;line-height:1.7;">Please review the above and ensure all tasks marked <em>Not Started</em> are actioned immediately. For any clarification, contact the respective project lead.</p>
     <p style="font-size:13px;color:#374151;margin:0;">Thank you for your continued efforts.</p>
     <p style="font-size:13px;color:#1a3a6b;margin:14px 0 0;font-weight:700;">RDS TechServ Team</p>
-    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal &mdash; <a href="${PORTAL}" style="color:#1a3a6b;text-decoration:none;font-weight:600;">hub-rdsprojects.com</a></p>
+    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal - <a href="${PORTAL}" style="color:#1a3a6b;text-decoration:none;font-weight:600;">hub-rdsprojects.com</a></p>
   </div>
 </td></tr></table>
 
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:0 0 10px 10px;">
 <tr>
-  <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.5);">&copy; ${new Date().getFullYear()} RDS TechServ. Automated email &mdash; do not reply.</td>
+  <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.5);">&copy; ${new Date().getFullYear()} RDS TechServ. Automated email - do not reply.</td>
   <td style="padding:14px 28px;font-size:11px;text-align:right;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.6);text-decoration:none;">hub-rdsprojects.com</a></td>
 </tr>
 </table>
@@ -161,21 +163,21 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: "Daily digest is disabled." });
     }
 
-    // Check allowed days (0=Sun,1=Mon,...6=Sat). Default: Mon–Sat (1,2,3,4,5,6)
+    // Check allowed days (0=Sun,1=Mon,...6=Sat). Default: Mon-Sat (1,2,3,4,5,6)
     const allowedDays = (settingsMap["daily_digest_days"] || "1,2,3,4,5,6")
       .split(",").map(Number);
     const todayDow = istDate.getDay(); // 0=Sun
     if (!allowedDays.includes(todayDow)) {
-      console.log(`Daily digest skipped — ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days.`);
+      console.log(`Daily digest skipped - ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days.`);
       return res.status(200).json({ message: `Skipped: today not in scheduled days.` });
     }
 
-    // ── Idempotency: READ first, then WRITE, then re-check ───────────────────
-    // Step 1: READ current last_digest_date (anon key can always read settings)
+    // Idempotency: READ first, then WRITE, then re-check
+    // Step 1: READ current last_digest_date
     const preCheck = await supaFetch(`/rest/v1/settings?key=eq.last_digest_date&select=value`);
     const existingDate = Array.isArray(preCheck) && preCheck[0]?.value;
     if (existingDate === today) {
-      console.log(`Daily digest already ran for ${today} — duplicate suppressed (pre-check).`);
+      console.log(`Daily digest already ran for ${today} - duplicate suppressed (pre-check).`);
       return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
     }
 
@@ -194,7 +196,7 @@ export default async function handler(req, res) {
     }
 
     if (!claimed) {
-      // Row may not exist yet — try INSERT
+      // Row may not exist yet - try INSERT
       const claimInsert = await fetch(`${SUPA_URL}/rest/v1/settings`, {
         method: "POST",
         headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`,
@@ -209,17 +211,14 @@ export default async function handler(req, res) {
     }
 
     if (!claimed) {
-      // Re-read to see if another instance already claimed it
       const postCheck = await supaFetch(`/rest/v1/settings?key=eq.last_digest_date&select=value`);
       const currentVal = Array.isArray(postCheck) && postCheck[0]?.value;
       if (currentVal === today) {
-        console.log(`Daily digest already ran for ${today} — duplicate suppressed (post-claim check).`);
+        console.log(`Daily digest already ran for ${today} - duplicate suppressed (post-claim check).`);
         return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
       }
-      // Stamp failed entirely (likely SUPABASE_SERVICE_KEY not set in Vercel env).
-      // ABORT — never send without a successful stamp, as that guarantees duplicates.
-      console.error(`last_digest_date stamp FAILED (current=${currentVal}). ABORTING to prevent duplicate send. Fix: add SUPABASE_SERVICE_KEY to Vercel environment variables.`);
-      return res.status(200).json({ message: "Stamp failed — aborted to prevent duplicate. Set SUPABASE_SERVICE_KEY in Vercel env vars." });
+      console.error(`last_digest_date stamp FAILED (current=${currentVal}). ABORTING to prevent duplicate send.`);
+      return res.status(200).json({ message: "Stamp failed - aborted to prevent duplicate. Set SUPABASE_SERVICE_KEY in Vercel env vars." });
     }
 
     const [allTasks, projects, users] = await Promise.all([
@@ -237,9 +236,8 @@ export default async function handler(req, res) {
     for (const p of (projects || [])) pm[p.id] = p;
 
     const results = [];
-    const sent = new Set(); // normalised lowercase email keys — prevents case-dupe sends
+    const sent = new Set();
 
-    // Admins, Managers, Team Leaders only — full list
     const DIGEST_ROLES = ["Admin", "Manager", "Team Leader"];
     for (const u of (users || []).filter(u => DIGEST_ROLES.includes(u.role) && u.email?.trim())) {
       const emailKey = u.email.trim().toLowerCase();
@@ -254,9 +252,19 @@ export default async function handler(req, res) {
           completedBy: "RDS TechServ",
           completedAt: dateLabel,
           recipientEmail: u.email.trim(),
-          subject: `📬 RDS Daily Submission List — ${dateLabel}`,
+          subject: `RDS Daily Submission List - ${dateLabel}`,
           htmlBody: html
         }
       });
       results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
-      await new Prom
+      await new Promise(r => setTimeout(r, 1200));
+    }
+
+    console.log(`Daily digest sent to ${results.length} recipients, ${allTasks.length} tasks.`);
+    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
+
+  } catch (err) {
+    console.error("Daily cron error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
