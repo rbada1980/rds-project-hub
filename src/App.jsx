@@ -50,7 +50,7 @@ function Stat({label,value,sub,color=C.accent,onClick}){
     <div onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
       style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
       <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</p>
-      <p style={{margin:"8px 0 4px",color:"#ffffff",fontSize:32,fontWeight:800}}>{value}</p>
+      <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800}}>{value}</p>
       {sub&&<p style={{margin:0,color:C.t2,fontSize:12}}>{sub}</p>}
       {onClick&&<p style={{margin:"6px 0 0",color:color,fontSize:11,fontWeight:600}}>Click to view →</p>}
     </div>
@@ -1752,7 +1752,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                     onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
                     onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
                     <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
-                    <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
+                    <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
                     <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
                     {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
                     <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
@@ -1925,7 +1925,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
   const today=new Date().toISOString().slice(0,10);
   return(
     <div style={{marginBottom:32}}>
-      <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:"#ffffff"}}>Client-wise Overview</h2>
+      <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:C.t1}}>Client-wise Overview</h2>
       {isMobile?(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {clientNames.map(client=>{
@@ -1941,7 +1941,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
               <div key={client} onClick={()=>onSelectClient(client)}
                 style={{background:C.card,border:`1px solid ${cOv>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${clr}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
-                  <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{client}</span>
+                  <span style={{fontSize:13,fontWeight:800,color:C.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{client}</span>
                   <span style={{fontSize:13,fontWeight:800,color:clr,flexShrink:0}}>{pct}%</span>
                 </div>
                 <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
@@ -11861,7 +11861,7 @@ export default function App(){
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
               const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="clientfeedback"?"🏢 Client Feedback":view==="backup"?"Backup, Disaster Recovery & Business Continuity":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
-                <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:"#ffffff"}}>{greet}, {displayName} 👋</h1>
+                <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:C.t1}}>{greet}, {displayName} 👋</h1>
                 <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
                 <p className="rds-page-sub" style={{margin:"2px 0 0",color:C.t2,fontSize:12}}>{dateStr}</p>
               </>);
@@ -12556,7 +12556,7 @@ export default function App(){
               const _ru=dashUser!=="All"&&dashClient!=="All"&&(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return!dashTasks.some(t=>cPIds.has(t.project_id)&&t.assignee===dashUser);})();if(_ru)sdsu("All");
             })()}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#ffffff"}}>Projects Overview</h2>
+              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>Projects Overview</h2>
               {canEdit&&<GmailSelect selectedCount={selProjects.size} total={accessibleProjects.length} label="Select Projects"
                 onSelectAll={()=>{setBSO(true);setSelProjs(new Set(accessibleProjects.map(p=>p.id)));}}
                 onSelectNone={()=>{setSelProjs(new Set());setBSO(false);}}/>}
@@ -12581,7 +12581,7 @@ export default function App(){
                     <div key={p.id} onClick={()=>navTo('list',p.id)}
                       style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${p.color}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
-                        <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+                        <span style={{fontSize:13,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
                         <span style={{fontSize:13,fontWeight:800,color:p.color,flexShrink:0}}>{pv}%</span>
                       </div>
                       <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
