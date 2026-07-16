@@ -3693,6 +3693,57 @@ function exportSubmissionList(projects,tasks,today){
   URL.revokeObjectURL(url2);
 }
 
+function exportSubmissionListByPeriod(projects,tasks,period,today){
+  const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
+  const mondayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?6:dow-1));return r.toISOString().slice(0,10);};
+  const sundayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()+(dow===0?0:7-dow));return r.toISOString().slice(0,10);};
+  const yesterday=addDays(today,-1);
+  const tom=addDays(today,1);
+  const wkStart=mondayOf(today);const wkEnd=sundayOf(today);
+  const nwStart=addDays(wkStart,7);const nwEnd=addDays(nwStart,6);
+  const d=new Date(today);
+  const nmStart=new Date(d.getFullYear(),d.getMonth()+1,1).toISOString().slice(0,10);
+  const nmEnd=new Date(d.getFullYear(),d.getMonth()+2,0).toISOString().slice(0,10);
+  const CFG={
+    overdue:{from:"2000-01-01",to:yesterday,label:"Overdue Tasks",icon:"⚠️",filename:`RDS_Overdue_${today}`},
+    today:{from:today,to:today,label:`Today — ${today}`,icon:"📅",filename:`RDS_Today_${today}`},
+    tomorrow:{from:tom,to:tom,label:`Tomorrow — ${tom}`,icon:"🌅",filename:`RDS_Tomorrow_${tom}`},
+    this_week:{from:wkStart,to:wkEnd,label:`This Week (${wkStart} → ${wkEnd})`,icon:"📆",filename:`RDS_ThisWeek_${wkStart}`},
+    next_week:{from:nwStart,to:nwEnd,label:`Next Week (${nwStart} → ${nwEnd})`,icon:"🗓",filename:`RDS_NextWeek_${nwStart}`},
+    next_month:{from:nmStart,to:nmEnd,label:`Next Month (${nmStart} → ${nmEnd})`,icon:"📅",filename:`RDS_NextMonth_${nmStart}`},
+  };
+  const cfg=CFG[period]||CFG.today;
+  const ds=v=>v?String(v).slice(0,10):null;
+  const projectById=new Map(projects.map(p=>[p.id,p]));
+  const allTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id));
+  const filtered=allTasks.filter(t=>{
+    const d1=ds(t.client_sub_date);const d2=ds(t.due_date);
+    const inWindow=(d1&&d1>=cfg.from&&d1<=cfg.to)||(d2&&d2>=cfg.from&&d2<=cfg.to);
+    if(!inWindow)return false;
+    if(period==="overdue"&&isDone(t.status))return false;
+    return true;
+  }).sort((a,b)=>(a.client_sub_date||a.due_date||"zzz").localeCompare(b.client_sub_date||b.due_date||"zzz"));
+  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;text-align:center;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;text-align:center;}.sec{background:#1d4ed8;color:#fff;font-weight:bold;font-size:13px;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.notstarted{background:#f3f4f6;color:#374151;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
+  html+=`<table><tr><td colspan="10" class="hdr" style="font-size:16px;">RDS TechServ — ${cfg.icon} ${cfg.label}</td></tr>`;
+  html+=`<tr><td colspan="10" class="sec">${filtered.length} submission(s)</td></tr>`;
+  if(!filtered.length){
+    html+=`<tr><td colspan="10" style="text-align:center;color:#666;font-style:italic;">No submissions for this period</td></tr>`;
+  }else{
+    html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Client</th><th class="hdr">Status</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Client Sub Date</th><th class="hdr">Due Date</th></tr>`;
+    filtered.forEach((t,i)=>{
+      const proj=projectById.get(t.project_id);
+      const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+      const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
+      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
+    });
+  }
+  html+=`</table></body></html>`;
+  const blob=new Blob([html],{type:"application/vnd.ms-excel;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=`${cfg.filename}.xls`;a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBMISSIONS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3703,6 +3754,13 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const [customTo,setCustomTo]=useState(today);
   const [showCal,setShowCal]=useState(false);
   const [subSearch,setSubSearch]=useState("");
+  const [subExportOpen,setSubExportOpen]=useState(false);
+  const subExportRef=useRef(null);
+  useEffect(()=>{
+    if(!subExportOpen)return;
+    const h=e=>{if(subExportRef.current&&!subExportRef.current.contains(e.target))setSubExportOpen(false);};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
+  },[subExportOpen]);
 
   // ── Date range helpers ──
   const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
@@ -3870,10 +3928,39 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               {q.icon} {q.label}
             </button>
           ))}
-          {!isClient&&<button onClick={()=>exportSubmissionList(scopedProjects,allTasks,today)}
-            style={{marginLeft:"auto",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${C.accent}`,background:C.accent+"18",color:C.accent}}>
-            ⬇ Export Excel
-          </button>}
+          {!isClient&&<div ref={subExportRef} style={{position:"relative",marginLeft:"auto"}}>
+            <button onClick={()=>setSubExportOpen(v=>!v)}
+              style={{padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${C.accent}`,background:C.accent+"18",color:C.accent,display:"flex",alignItems:"center",gap:6}}>
+              ⬇ Export Excel ▾
+            </button>
+            {subExportOpen&&(()=>{
+              const close=()=>setSubExportOpen(false);
+              const SUB_PERIODS=[
+                {id:"overdue",icon:"⚠️",label:"Overdue",color:"#ef4444"},
+                {id:"today",icon:"📅",label:"Today",color:"#f97316"},
+                {id:"tomorrow",icon:"🌅",label:"Tomorrow",color:"#22c55e"},
+                {id:"this_week",icon:"📆",label:"This Week",color:"#f59e0b"},
+                {id:"next_week",icon:"🗓",label:"Next Week",color:"#8b5cf6"},
+                {id:"next_month",icon:"📅",label:"Next Month",color:"#06b6d4"},
+              ];
+              return(
+                <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,boxShadow:"0 12px 40px #00000099",zIndex:999,width:220,paddingBottom:8}}>
+                  <div style={{padding:"9px 14px 7px",borderBottom:`1px solid ${C.border}`,fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>Export Submission List</span>
+                    <button onClick={close} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:5,padding:"1px 7px",color:C.t2,fontSize:12,cursor:"pointer"}}>✕</button>
+                  </div>
+                  {SUB_PERIODS.map(sp=>(
+                    <button key={sp.id} onClick={()=>{exportSubmissionListByPeriod(scopedProjects,allTasks,sp.id,today);close();}}
+                      style={{display:"flex",alignItems:"center",gap:9,width:"100%",background:"none",border:"none",padding:"9px 16px",color:C.t1,fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                      <span>{sp.icon}</span>
+                      <span style={{color:sp.color}}>{sp.label}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>}
         </div>
 
         {/* ── Custom date range picker ── */}
@@ -11714,7 +11801,26 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 6 — Analytics Report (admin/manager/TL) */}
+                    {/* 6 — Submission List */}
+                    <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+                    <SHdr id="submissions" icon="📬" label="Submission List"/>
+                    {exportSec==="submissions"&&(
+                      <div style={{background:C.surface+"33",paddingBottom:4}}>
+                        {[
+                          {id:"overdue",icon:"⚠️",label:"Overdue",color:"#ef4444"},
+                          {id:"today",icon:"📅",label:"Today",color:"#f97316"},
+                          {id:"tomorrow",icon:"🌅",label:"Tomorrow",color:"#22c55e"},
+                          {id:"this_week",icon:"📆",label:"This Week",color:"#f59e0b"},
+                          {id:"next_week",icon:"🗓",label:"Next Week",color:"#8b5cf6"},
+                          {id:"next_month",icon:"📅",label:"Next Month",color:"#06b6d4"},
+                        ].map(sp=>(
+                          <SBtn2 key={sp.id} label={sp.label} count={null} icon={sp.icon} color={sp.color}
+                            onClick={()=>{exportSubmissionListByPeriod(accessibleProjects,tasks,sp.id,today2);closeExport();}}/>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 7 — Analytics Report (admin/manager/TL) */}
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {(isAdmin||isManager||isTeamLeader)&&(
                       <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
@@ -12780,86 +12886,4 @@ export default function App(){
                 <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
                   style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
                   onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+                  onMouseLeave={e=>{e.currentTarget.style.backgro
