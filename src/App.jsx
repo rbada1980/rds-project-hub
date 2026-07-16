@@ -9792,38 +9792,52 @@ function LiveTimerBar({timer,onPause,onStop}){
 // ══════════════════════════════════════════════════════════
 // ── Audit Log Page (Phase 3) ─────────────────────────────────
 // ─── 💰 Billing Summary Page ──────────────────────────────────────────────────
+// ─── 💰 Billing Summary Page ──────────────────────────────────────────────────
 function BillingSummaryPage({tasks,projects,clients,me}){
   const isMobile=useMobile();
   const now=new Date();
   const [month,setMonth]=useState(String(now.getMonth()+1).padStart(2,"0"));
   const [year,setYear]=useState(String(now.getFullYear()));
   const [defaultRate,setDefaultRate]=useState("");
-  const [clientRates,setClientRates]=useState({});  // {clientName: rate}
-  const [editingRate,setEditingRate]=useState(null); // clientName or "default"
+  const [clientRates,setClientRates]=useState({});   // {clientName: "rate"}
+  const [projRates,setProjRates]=useState({});        // {projectId: "rate"}
+  const [taskRates,setTaskRates]=useState({});        // {taskId: "rate"}
+  const [editingRate,setEditingRate]=useState(null);  // {type:"default"|"client"|"project"|"task", key}
   const [editRateVal,setEditRateVal]=useState("");
   const [expanded,setExpanded]=useState({});
+  const [rateTab,setRateTab]=useState("client");      // "client"|"project"|"task"
+  const [showRates,setShowRates]=useState(false);
   const [savingRate,setSavingRate]=useState(false);
   const [msg,setMsg]=useState(null);
   const CURRENCY="$";
-  const RATE_KEY="billing_rate_default";
-  const clientRateKey=n=>"billing_rate_client__"+n.replace(/\s+/g,"_").toLowerCase();
+  const RATE_DEFAULT="billing_rate_default";
+  const rkClient=n=>"billing_rate_client__"+n.replace(/\s+/g,"_").toLowerCase();
+  const rkProj=id=>"billing_rate_proj__"+id;
+  const rkTask=id=>"billing_rate_task__"+id;
 
-  // Load rates from settings
+  // Load all saved rates
   useEffect(()=>{
-    const allClNames=[...(new Set(projects.map(p=>p.client||"Unassigned")))];
-    const keys=[RATE_KEY,...allClNames.map(clientRateKey)];
-    fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.map(k=>encodeURIComponent(k)).join(",")+")",{
+    const allClients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
+    const keys=[
+      RATE_DEFAULT,
+      ...allClients.map(rkClient),
+      ...projects.map(p=>rkProj(p.id)),
+    ];
+    fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.map(encodeURIComponent).join(",")+")",{
       headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
     }).then(r=>r.ok?r.json():[]).then(rows=>{
-      const rm={};
+      const cr={},pr={};
       (Array.isArray(rows)?rows:[]).forEach(r=>{
-        if(r.key===RATE_KEY) setDefaultRate(r.value||"");
+        if(r.key===RATE_DEFAULT)setDefaultRate(r.value||"");
         else if(r.key.startsWith("billing_rate_client__")){
-          const cName=allClNames.find(n=>clientRateKey(n)===r.key)||r.key;
-          rm[cName]=r.value||"";
+          const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;
+          cr[cl]=r.value||"";
+        } else if(r.key.startsWith("billing_rate_proj__")){
+          const pid=r.key.replace("billing_rate_proj__","");
+          pr[pid]=r.value||"";
         }
       });
-      setClientRates(rm);
+      setClientRates(cr);setProjRates(pr);
     }).catch(()=>{});
   },[projects.length]);
 
@@ -9843,25 +9857,40 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     }
   }
 
-  async function saveRate(target){
+  async function saveRate(){
+    if(!editingRate)return;
     setSavingRate(true);
     const val=parseFloat(editRateVal)||0;
-    const key=target==="default"?RATE_KEY:clientRateKey(target);
-    await upsertSetting(key,val);
-    if(target==="default") setDefaultRate(String(val));
-    else setClientRates(p=>({...p,[target]:String(val)}));
-    setEditingRate(null); setEditRateVal("");
-    setMsg("Rate saved ✓"); setTimeout(()=>setMsg(null),2500);
+    const {type,key}=editingRate;
+    if(type==="default"){await upsertSetting(RATE_DEFAULT,val);setDefaultRate(String(val));}
+    else if(type==="client"){await upsertSetting(rkClient(key),val);setClientRates(p=>({...p,[key]:String(val)}));}
+    else if(type==="project"){await upsertSetting(rkProj(key),val);setProjRates(p=>({...p,[key]:String(val)}));}
+    else if(type==="task"){setTaskRates(p=>({...p,[key]:String(val)}));}
+    setEditingRate(null);setEditRateVal("");
+    setMsg("Rate saved ✓");setTimeout(()=>setMsg(null),2500);
     setSavingRate(false);
   }
 
-  // Filter completed tasks in selected month
-  const selY=parseInt(year); const selM=parseInt(month);
+  function startEdit(type,key,current){
+    setEditingRate({type,key});
+    setEditRateVal(current||"");
+  }
+
+  // Rate lookup: task > project > client > default
+  function getRate(t,proj,cl){
+    if(taskRates[t.id]&&parseFloat(taskRates[t.id])>0)return{rate:parseFloat(taskRates[t.id]),level:"task"};
+    const pid=proj?.id;
+    if(pid&&projRates[pid]&&parseFloat(projRates[pid])>0)return{rate:parseFloat(projRates[pid]),level:"project"};
+    if(cl&&clientRates[cl]&&parseFloat(clientRates[cl])>0)return{rate:parseFloat(clientRates[cl]),level:"client"};
+    const dr=parseFloat(defaultRate);
+    return{rate:(!isNaN(dr)&&dr>0)?dr:0,level:"default"};
+  }
+
+  const selY=parseInt(year);const selM=parseInt(month);
   const isDone=s=>s==="Done"||s==="Completed";
 
   const billableTasks=tasks.filter(t=>{
     if(!isDone(t.status))return false;
-    // Use updated_at or client_sub_date for month bucketing
     const d=t.client_sub_date||t.updated_at;
     if(!d)return false;
     const td=new Date(d);
@@ -9876,70 +9905,157 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   billableTasks.forEach(t=>{
     const proj=projects.find(p=>p.id===t.project_id);
     const cl=(proj?.client||"Unassigned").trim();
-    if(!clientMap[cl])clientMap[cl]={tasks:[],totalTons:0};
-    clientMap[cl].tasks.push({...t,_proj:proj});
-    clientMap[cl].totalTons+=parseFloat(t.det_weight)||0;
+    if(!clientMap[cl])clientMap[cl]={projMap:{},totalTons:0,totalAmt:0};
+    const pName=proj?.name||"—";
+    if(!clientMap[cl].projMap[pName])clientMap[cl].projMap[pName]={tasks:[],proj,totalTons:0,totalAmt:0};
+    const wt=parseFloat(t.det_weight)||0;
+    const {rate}=getRate(t,proj,cl);
+    const amt=wt*rate;
+    clientMap[cl].projMap[pName].tasks.push({...t,_proj:proj,_wt:wt,_rate:rate,_amt:amt});
+    clientMap[cl].projMap[pName].totalTons+=wt;
+    clientMap[cl].projMap[pName].totalAmt+=amt;
+    clientMap[cl].totalTons+=wt;
+    clientMap[cl].totalAmt+=amt;
   });
-
   const clientNames=Object.keys(clientMap).sort();
-  const getRate=cl=>{
-    const cr=parseFloat(clientRates[cl]);
-    if(!isNaN(cr)&&cr>0)return cr;
-    const dr=parseFloat(defaultRate);
-    return(!isNaN(dr)&&dr>0)?dr:0;
-  };
-
   const totalTons=clientNames.reduce((s,cl)=>s+clientMap[cl].totalTons,0);
-  const totalAmt=clientNames.reduce((s,cl)=>s+clientMap[cl].totalTons*getRate(cl),0);
+  const totalAmt=clientNames.reduce((s,cl)=>s+clientMap[cl].totalAmt,0);
   const pendingTons=pendingTasks.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
 
-  function fmtTons(v){return v.toLocaleString("en-US",{maximumFractionDigits:2})+" T";}
-  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0});}
+  function fmtTons(v){return Number(v).toLocaleString("en-US",{maximumFractionDigits:2})+" T";}
+  function fmtMoney(v){return CURRENCY+Number(v).toLocaleString("en-US",{maximumFractionDigits:0});}
+  const months=["01","02","03","04","05","06","07","08","09","10","11","12"];
+  const monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const years=["2024","2025","2026","2027"];
 
-  function exportExcel(){
-    const rows=[
-      ["RDS PROJECT HUB — BILLING SUMMARY"],
-      [`Period: ${month}/${year}   |   Generated: ${new Date().toLocaleString()}`],
-      [],
-      ["Client","Tasks","Total Tons","Rate/Ton","Amount ($)"],
-    ];
-    clientNames.forEach(cl=>{
-      const {tasks:ct,totalTons:tons}=clientMap[cl];
-      const rate=getRate(cl);
-      rows.push([cl,ct.length,tons.toFixed(2),rate.toFixed(2),(tons*rate).toFixed(2)]);
-    });
-    rows.push([]);
-    rows.push(["TOTAL","",totalTons.toFixed(2),"",totalAmt.toFixed(2)]);
-    rows.push([]);
-    rows.push(["TASK DETAIL"]);
-    rows.push(["Client","Project","Task Title","Status","Det. Wt (T)","Client Sub Date","Assignee"]);
-    clientNames.forEach(cl=>{
-      clientMap[cl].tasks.forEach(t=>{
-        rows.push([cl,t._proj?.name||"—",t.title,t.status,parseFloat(t.det_weight)||0,t.client_sub_date||"",t.assignee||""]);
-      });
-    });
-    const ws=window.XLSX?.utils?.aoa_to_sheet?window.XLSX.utils.aoa_to_sheet(rows):null;
-    if(!ws){alert("XLSX not loaded. Use the browser print option instead.");return;}
-    const wb=window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb,ws,"Billing "+month+"-"+year);
-    window.XLSX.writeFile(wb,"RDS_Billing_"+year+"_"+month+".xlsx");
+  // ── PDF Invoice Print ──────────────────────────────────────────────
+  function printInvoice(){
+    const periodLabel=monthNames[parseInt(month)-1]+" "+year;
+    const rows=clientNames.map(cl=>{
+      const {totalTons:tons,totalAmt:amt}=clientMap[cl];
+      const allT=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
+      return `<tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600">${cl}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:center">${allT.length}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:right">${fmtTons(tons)}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;text-align:right">${fmtMoney(amt)}</td>
+      </tr>`;
+    }).join("");
+    const taskRows=clientNames.flatMap(cl=>
+      Object.values(clientMap[cl].projMap).flatMap(pg=>
+        pg.tasks.map(t=>`<tr>
+          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;color:#374151">${cl}</td>
+          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;color:#374151">${t._proj?.name||"—"}</td>
+          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6">${t.title}</td>
+          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;text-align:right">${fmtTons(t._wt)}</td>
+          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;text-align:right">$${t._rate}/T</td>
+          <td style="padding:6px 14px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">${fmtMoney(t._amt)}</td>
+        </tr>`)
+      )
+    ).join("");
+    const html=`<!DOCTYPE html><html><head><title>RDS Billing — ${periodLabel}</title>
+    <style>
+      body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:0;padding:32px}
+      h1{font-size:22px;margin:0 0 4px}
+      .sub{color:#6b7280;font-size:13px;margin-bottom:28px}
+      table{width:100%;border-collapse:collapse;margin-bottom:28px}
+      th{background:#f9fafb;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;text-align:left;border-bottom:2px solid #e5e7eb}
+      .total-row td{background:#f0fdf4;font-weight:800;font-size:15px;padding:12px 14px;border-top:2px solid #16a34a}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #111}
+      .company{font-size:20px;font-weight:800}
+      .meta{text-align:right;font-size:13px;color:#6b7280}
+      @media print{body{padding:20px}button{display:none}}
+    </style></head><body>
+    <div class="header">
+      <div><div class="company">RDS TechServ</div><div style="color:#6b7280;font-size:13px">RDS Project Hub</div></div>
+      <div class="meta"><div style="font-size:15px;font-weight:700;color:#111">BILLING SUMMARY</div><div>${periodLabel}</div><div>Generated: ${new Date().toLocaleDateString()}</div></div>
+    </div>
+    <h2 style="font-size:15px;margin:0 0 12px;color:#374151">Client Summary</h2>
+    <table>
+      <thead><tr><th>Client</th><th style="text-align:center">Tasks</th><th style="text-align:right">Total Tons</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>${rows}
+        <tr class="total-row"><td>TOTAL</td><td style="text-align:center">${billableTasks.length}</td><td style="text-align:right">${fmtTons(totalTons)}</td><td style="text-align:right">${fmtMoney(totalAmt)}</td></tr>
+      </tbody>
+    </table>
+    <h2 style="font-size:15px;margin:0 0 12px;color:#374151;page-break-before:auto">Task Detail</h2>
+    <table>
+      <thead><tr><th>Client</th><th>Project</th><th>Task</th><th style="text-align:right">Tons</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>${taskRows}</tbody>
+    </table>
+    <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center">RDS TechServ · Generated from RDS Project Hub · ${new Date().toLocaleString()}</div>
+    <script>window.onload=()=>{window.print();}<\/script>
+    </body></html>`;
+    const w=window.open("","_blank","width=900,height=700");
+    w.document.write(html);w.document.close();
   }
 
-  const months=["01","02","03","04","05","06","07","08","09","10","11","12"];
-  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const years=[2024,2025,2026,2027].map(String);
+  // ── Excel Export ──────────────────────────────────────────────────
+  function exportExcel(){
+    if(typeof XLSX==="undefined"&&!window.XLSX){alert("Run: node generate_master_excel.cjs instead");return;}
+    const XL=window.XLSX||XLSX;
+    const rows=[
+      ["RDS PROJECT HUB — BILLING SUMMARY"],
+      ["Period: "+monthNames[parseInt(month)-1]+" "+year,"","","Generated: "+new Date().toLocaleString()],
+      [],
+      ["Client","Tasks","Total Tons","Amount ($)"],
+    ];
+    clientNames.forEach(cl=>{
+      const{totalTons:tons,totalAmt:amt}=clientMap[cl];
+      const ct=Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks);
+      rows.push([cl,ct.length,+tons.toFixed(2),+amt.toFixed(2)]);
+    });
+    rows.push([]); rows.push(["TOTAL",billableTasks.length,+totalTons.toFixed(2),+totalAmt.toFixed(2)]);
+    rows.push([]); rows.push(["TASK DETAIL"]);
+    rows.push(["Client","Project","Task Title","Det.Wt (T)","Rate/T ($)","Amount ($)","Assignee","Client Sub Date"]);
+    clientNames.forEach(cl=>{
+      Object.values(clientMap[cl].projMap).forEach(pg=>{
+        pg.tasks.forEach(t=>{
+          rows.push([cl,t._proj?.name||"—",t.title,+t._wt.toFixed(2),+t._rate.toFixed(2),+t._amt.toFixed(2),t.assignee||"",t.client_sub_date||""]);
+        });
+      });
+    });
+    const ws=XL.utils.aoa_to_sheet(rows);
+    ws["!cols"]=[{wch:25},{wch:30},{wch:40},{wch:12},{wch:12},{wch:14},{wch:15},{wch:15}];
+    const wb=XL.utils.book_new();
+    XL.utils.book_append_sheet(wb,ws,"Billing "+month+"-"+year);
+    XL.writeFile(wb,"RDS_Billing_"+year+"_"+month+".xlsx");
+  }
 
   const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",boxShadow:C.shadow};
-  const th={padding:"10px 14px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".06em",textAlign:"left",borderBottom:`1px solid ${C.border}`};
+  const th2={padding:"10px 14px",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:".06em",textAlign:"left",borderBottom:`1px solid ${C.border}`,background:C.surface};
   const td2={padding:"11px 14px",borderBottom:`1px solid ${C.border}44`,fontSize:13,color:C.t1,verticalAlign:"middle"};
+  const levelBadge={task:{bg:C.purple+"22",color:C.purple,label:"task"},project:{bg:C.blue+"22",color:C.blue,label:"proj"},client:{bg:C.teal+"22",color:C.teal,label:"client"},default:{bg:C.t3+"22",color:C.t3,label:"default"}};
+
+  function RateCell({type,keyVal,current,level}){
+    const isEditing=editingRate?.type===type&&editingRate?.key===keyVal;
+    const lb=levelBadge[level]||levelBadge.default;
+    if(isEditing)return(
+      <div style={{display:"flex",gap:5,alignItems:"center",justifyContent:"flex-end"}}>
+        <span style={{color:C.t3,fontSize:12}}>$</span>
+        <input autoFocus type="number" min="0" step="0.01" value={editRateVal} onChange={e=>setEditRateVal(e.target.value)}
+          style={{width:75,background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,padding:"3px 6px",color:C.t1,fontSize:13,outline:"none",textAlign:"right"}}
+          onKeyDown={e=>{if(e.key==="Enter")saveRate();if(e.key==="Escape")setEditingRate(null);}}/>
+        <button onClick={saveRate} disabled={savingRate} style={{...SBtn,padding:"3px 10px",fontSize:11}}>✓</button>
+        <button onClick={()=>setEditingRate(null)} style={{...GBtn,padding:"3px 8px",fontSize:11}}>✕</button>
+      </div>
+    );
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}>
+        {current>0&&<span style={{fontSize:9,background:lb.bg,color:lb.color,borderRadius:4,padding:"1px 5px",fontWeight:700}}>{lb.label}</span>}
+        <span style={{fontWeight:600,color:current>0?C.t1:C.t3}}>{current>0?`$${current}/T`:"—"}</span>
+        <button onClick={()=>startEdit(type,keyVal,current>0?String(current):"")}
+          style={{background:"none",border:"none",cursor:"pointer",color:C.t3,fontSize:12,padding:"2px 4px",lineHeight:1}}>✏️</button>
+      </div>
+    );
+  }
 
   return(
     <div style={{maxWidth:1100,margin:"0 auto"}}>
       {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>💰 Billing Summary</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tonnage-based billing by client · Completed tasks only</p>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tonnage-based · Completed tasks only · Rate: Task → Project → Client → Default</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <select value={month} onChange={e=>setMonth(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
@@ -9948,27 +10064,91 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           <select value={year} onChange={e=>setYear(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
             {years.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:6}}>
-            ⬇ Export Excel
-          </button>
+          <button onClick={()=>setShowRates(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:6}}>⚙️ Rate Settings</button>
+          <button onClick={printInvoice} style={{...GBtn,display:"flex",alignItems:"center",gap:6}}>🖨️ Print / PDF</button>
+          <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:6}}>⬇ Excel</button>
         </div>
       </div>
 
-      {msg&&<div style={{background:C.green+"22",border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 16px",color:C.green,fontWeight:600,marginBottom:16}}>{msg}</div>}
+      {msg&&<div style={{background:C.green+"22",border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 16px",color:C.green,fontWeight:600,marginBottom:14}}>{msg}</div>}
+      {noWeightTasks.length>0&&<div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+        <span>⚠️</span><div><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks have no weight</span><span style={{color:C.t2,fontSize:12,marginLeft:8}}>— excluded from billing. Fill Det. Wt. in the task.</span></div>
+      </div>}
 
-      {/* Warning: missing weights */}
-      {noWeightTasks.length>0&&(
-        <div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:18}}>⚠️</span>
-          <div>
-            <span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed task{noWeightTasks.length>1?"s":""} have no weight entered</span>
-            <span style={{color:C.t2,fontSize:12,marginLeft:8}}>— these are excluded from billing. Open the task and fill in Det. Wt. (Tons).</span>
+      {/* Rate Settings Panel */}
+      {showRates&&(
+        <div style={{...card,marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+            <span style={{fontWeight:700,color:C.t1,fontSize:14}}>⚙️ Rate Settings</span>
+            <span style={{fontSize:12,color:C.t3}}>Higher-priority rates override lower ones: Task &gt; Project &gt; Client &gt; Default</span>
           </div>
+          {/* Default rate */}
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:C.surface,borderRadius:8,marginBottom:16}}>
+            <span style={{fontWeight:700,color:C.t1,fontSize:13,flex:1}}>🌐 Default Rate (all clients)</span>
+            <RateCell type="default" keyVal="default" current={parseFloat(defaultRate)||0} level="default"/>
+          </div>
+          {/* Tabs: by Client / by Project / by Task */}
+          <div style={{display:"flex",gap:4,marginBottom:14}}>
+            {[["client","🏢 By Client"],["project","📁 By Project"],["task","✅ By Task"]].map(([k,lbl])=>(
+              <button key={k} onClick={()=>setRateTab(k)} style={{...GBtn,padding:"6px 16px",fontSize:12,background:rateTab===k?C.accent:"transparent",color:rateTab===k?"#fff":C.t2,border:rateTab===k?"none":`1px solid ${C.border}`}}>{lbl}</button>
+            ))}
+          </div>
+          {/* Client rates */}
+          {rateTab==="client"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {[...new Set(projects.map(p=>p.client||"Unassigned"))].sort().map(cl=>{
+                const cv=parseFloat(clientRates[cl])||0;
+                return(
+                  <div key={cl} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:8}}>
+                    <span style={{flex:1,color:C.t1,fontSize:13,fontWeight:600}}>{cl}</span>
+                    <RateCell type="client" keyVal={cl} current={cv} level={cv>0?"client":"default"}/>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Project rates */}
+          {rateTab==="project"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {projects.sort((a,b)=>(a.client||"").localeCompare(b.client||"")||a.name.localeCompare(b.name)).map(p=>{
+                const pv=parseFloat(projRates[p.id])||0;
+                return(
+                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{color:C.t1,fontSize:13,fontWeight:600}}>{p.name}</div>
+                      <div style={{color:C.t3,fontSize:11}}>{p.client||"Unassigned"}</div>
+                    </div>
+                    <RateCell type="project" keyVal={p.id} current={pv} level={pv>0?"project":(parseFloat(clientRates[p.client||"Unassigned"])||0)>0?"client":"default"}/>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Task rates */}
+          {rateTab==="task"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:360,overflowY:"auto"}}>
+              <div style={{fontSize:12,color:C.t3,marginBottom:4}}>Note: Task rates are session-only — for permanent task rates, add a custom field or use project rates.</div>
+              {billableTasks.map(t=>{
+                const proj=projects.find(p=>p.id===t.project_id);
+                const tv=parseFloat(taskRates[t.id])||0;
+                return(
+                  <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",border:`1px solid ${C.border}`,borderRadius:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{color:C.t1,fontSize:12,fontWeight:600}}>{t.title}</div>
+                      <div style={{color:C.t3,fontSize:11}}>{proj?.client||"—"} · {proj?.name||"—"}</div>
+                    </div>
+                    <RateCell type="task" keyVal={t.id} current={tv} level={tv>0?"task":"default"}/>
+                  </div>
+                );
+              })}
+              {billableTasks.length===0&&<div style={{color:C.t3,fontSize:13,textAlign:"center",padding:20}}>No completed tasks in selected month</div>}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Summary stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:14,marginBottom:28}}>
+      {/* Stat cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:14,marginBottom:24}}>
         {[
           {label:"Total Billed Tons",value:fmtTons(totalTons),color:C.blue,icon:"⚖️"},
           {label:"Total Revenue",value:fmtMoney(totalAmt),color:C.green,icon:"💵"},
@@ -9976,148 +10156,108 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           {label:"Tasks Completed",value:billableTasks.length,color:C.teal,icon:"✅"},
           {label:"Pending Pipeline",value:fmtTons(pendingTons),color:C.purple,icon:"🔄"},
         ].map(s=>(
-          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`}}>
-            <div style={{fontSize:20,marginBottom:6}}>{s.icon}</div>
-            <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
-            <div style={{fontSize:26,fontWeight:800,color:C.t1,margin:"6px 0 2px"}}>{s.value}</div>
+          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"16px 18px"}}>
+            <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
+            <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
+            <div style={{fontSize:24,fontWeight:800,color:C.t1,margin:"4px 0 0"}}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Default rate config */}
-      <div style={{...card,marginBottom:24,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-        <span style={{fontSize:14,fontWeight:700,color:C.t1}}>⚙️ Default Rate per Ton:</span>
-        {editingRate==="default"?(
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <span style={{color:C.t2,fontSize:14}}>$</span>
-            <input autoFocus type="number" value={editRateVal} onChange={e=>setEditRateVal(e.target.value)}
-              style={{width:100,background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,padding:"5px 8px",color:C.t1,fontSize:14,outline:"none"}}
-              onKeyDown={e=>{if(e.key==="Enter")saveRate("default");if(e.key==="Escape")setEditingRate(null);}}
-            />
-            <button onClick={()=>saveRate("default")} disabled={savingRate} style={{...SBtn,padding:"5px 14px",fontSize:12}}>Save</button>
-            <button onClick={()=>setEditingRate(null)} style={{...GBtn,padding:"5px 14px",fontSize:12}}>Cancel</button>
-          </div>
-        ):(
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:18,fontWeight:800,color:C.green}}>{defaultRate?`$${defaultRate}/T`:"Not set"}</span>
-            <button onClick={()=>{setEditingRate("default");setEditRateVal(defaultRate);}} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
-          </div>
-        )}
-        <span style={{color:C.t3,fontSize:12,marginLeft:"auto"}}>Set per-client overrides in the table below</span>
-      </div>
-
-      {/* Client billing table */}
+      {/* Billing table */}
       {clientNames.length===0?(
-        <div style={{...card,textAlign:"center",padding:48,color:C.t3}}>
-          No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}
-        </div>
+        <div style={{...card,textAlign:"center",padding:48,color:C.t3}}>No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}</div>
       ):(
         <div style={{...card,padding:0,overflow:"hidden"}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead>
-              <tr style={{background:C.surface}}>
-                <th style={{...th,width:28}}></th>
-                <th style={th}>Client</th>
-                <th style={{...th,textAlign:"right"}}>Tasks</th>
-                <th style={{...th,textAlign:"right"}}>Total Tons</th>
-                <th style={{...th,textAlign:"right"}}>Rate / Ton</th>
-                <th style={{...th,textAlign:"right"}}>Amount</th>
-                <th style={{...th,textAlign:"center"}}>Status</th>
+              <tr>
+                <th style={{...th2,width:32}}></th>
+                <th style={th2}>Client / Project / Task</th>
+                <th style={{...th2,textAlign:"right"}}>Tons</th>
+                <th style={{...th2,textAlign:"right"}}>Rate</th>
+                <th style={{...th2,textAlign:"right"}}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {clientNames.map(cl=>{
-                const {tasks:ct,totalTons:tons}=clientMap[cl];
-                const rate=getRate(cl);
-                const amt=tons*rate;
-                const hasCustomRate=clientRates[cl]&&parseFloat(clientRates[cl])>0;
-                const isExp=expanded[cl];
+                const{projMap,totalTons:cTons,totalAmt:cAmt}=clientMap[cl];
+                const isExpCl=expanded["cl_"+cl];
+                const allCTasks=Object.values(projMap).flatMap(p=>p.tasks);
                 return(
-                  <>
-                    <tr key={cl} style={{cursor:"pointer",background:isExp?C.surface:"transparent",transition:"background .15s"}}
-                      onClick={()=>setExpanded(p=>({...p,[cl]:!p[cl]}))}>
-                      <td style={{...td2,textAlign:"center",fontSize:12,color:C.t3}}>{isExp?"▼":"▶"}</td>
-                      <td style={td2}>
-                        <div style={{fontWeight:700,color:C.t1}}>{cl}</div>
-                        <div style={{fontSize:11,color:C.t3}}>{ct.length} task{ct.length!==1?"s":""}</div>
-                      </td>
-                      <td style={{...td2,textAlign:"right",fontWeight:700}}>{ct.length}</td>
-                      <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtTons(tons)}</td>
-                      <td style={{...td2,textAlign:"right"}} onClick={e=>e.stopPropagation()}>
-                        {editingRate===cl?(
-                          <div style={{display:"flex",gap:6,justifyContent:"flex-end",alignItems:"center"}}>
-                            <span style={{color:C.t3,fontSize:12}}>$</span>
-                            <input autoFocus type="number" value={editRateVal} onChange={e=>setEditRateVal(e.target.value)}
-                              style={{width:80,background:C.surface,border:`1px solid ${C.accent}`,borderRadius:6,padding:"3px 6px",color:C.t1,fontSize:13,outline:"none",textAlign:"right"}}
-                              onKeyDown={e=>{if(e.key==="Enter")saveRate(cl);if(e.key==="Escape")setEditingRate(null);}}
-                            />
-                            <button onClick={()=>saveRate(cl)} style={{...SBtn,padding:"3px 10px",fontSize:11}}>✓</button>
-                          </div>
-                        ):(
-                          <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end"}}>
-                            <span style={{fontWeight:700,color:hasCustomRate?C.accent:C.t2}}>{rate>0?`$${rate}/T`:"—"}</span>
-                            {hasCustomRate&&<span style={{fontSize:9,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"1px 5px"}}>custom</span>}
-                            <button onClick={()=>{setEditingRate(cl);setEditRateVal(hasCustomRate?clientRates[cl]:defaultRate);}}
-                              style={{background:"none",border:"none",cursor:"pointer",color:C.t3,fontSize:12,padding:"2px 4px"}}>✏️</button>
-                          </div>
-                        )}
-                      </td>
-                      <td style={{...td2,textAlign:"right",fontWeight:800,color:rate>0?C.green:C.t3,fontSize:15}}>
-                        {rate>0?fmtMoney(amt):"—"}
-                      </td>
-                      <td style={{...td2,textAlign:"center"}}>
-                        {rate>0
-                          ?<span style={{background:C.green+"22",color:C.green,border:`1px solid ${C.green}44`,borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700}}>✅ Ready</span>
-                          :<span style={{background:C.yellow+"22",color:C.yellow,border:`1px solid ${C.yellow}44`,borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700}}>⚠ No Rate</span>
-                        }
-                      </td>
+                  <React.Fragment key={cl}>
+                    {/* Client row */}
+                    <tr style={{cursor:"pointer",background:isExpCl?C.surface:C.card}} onClick={()=>setExpanded(p=>({...p,["cl_"+cl]:!p["cl_"+cl]}))}>
+                      <td style={{...td2,textAlign:"center",fontSize:12,color:C.t3,fontWeight:700}}>{isExpCl?"▼":"▶"}</td>
+                      <td style={td2}><span style={{fontWeight:800,fontSize:14,color:C.t1}}>🏢 {cl}</span><span style={{color:C.t3,fontSize:11,marginLeft:8}}>{allCTasks.length} tasks</span></td>
+                      <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtTons(cTons)}</td>
+                      <td style={{...td2,textAlign:"right",color:C.t3,fontSize:12}}>mixed</td>
+                      <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cAmt>0?fmtMoney(cAmt):"—"}</td>
                     </tr>
-                    {isExp&&ct.map(t=>(
-                      <tr key={t.id} style={{background:C.bg}}>
-                        <td style={{...td2,padding:"7px 14px"}}></td>
-                        <td colSpan={2} style={{...td2,padding:"7px 14px",fontSize:12}}>
-                          <span style={{color:C.t2,marginRight:8}}>↳</span>
-                          <span style={{fontWeight:600,color:C.t1}}>{t.title}</span>
-                          <span style={{color:C.t3,marginLeft:8,fontSize:11}}>{t._proj?.name||"—"}</span>
-                        </td>
-                        <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px"}}>{t.det_weight?fmtTons(parseFloat(t.det_weight)):"—"}</td>
-                        <td style={{...td2,padding:"7px 14px"}}></td>
-                        <td style={{...td2,textAlign:"right",fontSize:12,padding:"7px 14px",color:rate>0?C.t1:C.t3}}>
-                          {rate>0&&t.det_weight?fmtMoney(parseFloat(t.det_weight)*rate):"—"}
-                        </td>
-                        <td style={{...td2,textAlign:"center",padding:"7px 14px",fontSize:11,color:C.t3}}>{t.assignee||"—"}</td>
-                      </tr>
-                    ))}
-                  </>
+                    {isExpCl&&Object.entries(projMap).map(([pName,pg])=>{
+                      const isExpP=expanded["pr_"+pName+"_"+cl];
+                      const pv=parseFloat(projRates[pg.proj?.id])||0;
+                      const cv=parseFloat(clientRates[cl])||0;
+                      const dr=parseFloat(defaultRate)||0;
+                      const projEffRate=pv||cv||dr;
+                      return(
+                        <React.Fragment key={pName}>
+                          {/* Project row */}
+                          <tr style={{cursor:"pointer",background:isExpP?C.bg:C.surface}} onClick={()=>setExpanded(p=>({...p,["pr_"+pName+"_"+cl]:!p["pr_"+pName+"_"+cl]}))}>
+                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,paddingLeft:28,fontSize:11,color:C.t3}}>{isExpP?"▼":"▶"}</td>
+                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,paddingLeft:20}}><span style={{fontWeight:700,color:C.t1}}>📁 {pName}</span><span style={{color:C.t3,fontSize:11,marginLeft:8}}>{pg.tasks.length} tasks</span></td>
+                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,textAlign:"right",color:C.blue}}>{fmtTons(pg.totalTons)}</td>
+                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,textAlign:"right",fontSize:12,color:C.t2}}>{projEffRate>0?`$${projEffRate}/T`:"—"}</td>
+                            <td style={{...td2,borderBottom:`1px solid ${C.border}22`,textAlign:"right",fontWeight:700,color:C.green}}>{pg.totalAmt>0?fmtMoney(pg.totalAmt):"—"}</td>
+                          </tr>
+                          {/* Task rows */}
+                          {isExpP&&pg.tasks.map(t=>(
+                            <tr key={t.id} style={{background:C.bg}}>
+                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,padding:"7px 14px 7px 40px",fontSize:11,color:C.t3}}>✅</td>
+                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,padding:"7px 14px",fontSize:12}}>
+                                <span style={{color:C.t1}}>{t.title}</span>
+                                {t.assignee&&<span style={{color:C.t3,marginLeft:8,fontSize:11}}>· {t.assignee}</span>}
+                              </td>
+                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px"}}>{t._wt>0?fmtTons(t._wt):"—"}</td>
+                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",padding:"7px 14px"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>
+                                  <span style={{fontSize:9,background:levelBadge[t._rate>0?(taskRates[t.id]?"task":projRates[t._proj?.id]?"project":clientRates[cl]?"client":"default"):"default"]?.bg,color:levelBadge[t._rate>0?(taskRates[t.id]?"task":projRates[t._proj?.id]?"project":clientRates[cl]?"client":"default"):"default"]?.color,borderRadius:4,padding:"1px 4px",fontWeight:700,fontSize:9}}>{levelBadge[t._rate>0?(taskRates[t.id]?"task":projRates[t._proj?.id]?"project":clientRates[cl]?"client":"default"):"default"]?.label}</span>
+                                  <span style={{fontSize:12,color:t._rate>0?C.t2:C.t3}}>{t._rate>0?`$${t._rate}/T`:"—"}</span>
+                                </div>
+                              </td>
+                              <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px"}}>{t._amt>0?fmtMoney(t._amt):"—"}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
-              {/* Total row */}
               <tr style={{background:C.surface,borderTop:`2px solid ${C.border}`}}>
                 <td style={{...td2,borderBottom:"none"}}></td>
                 <td style={{...td2,fontWeight:800,fontSize:14,color:C.t1,borderBottom:"none"}}>TOTAL</td>
-                <td style={{...td2,textAlign:"right",fontWeight:800,borderBottom:"none"}}>{billableTasks.length}</td>
                 <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtTons(totalTons)}</td>
                 <td style={{...td2,borderBottom:"none"}}></td>
                 <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtMoney(totalAmt):"—"}</td>
-                <td style={{...td2,borderBottom:"none"}}></td>
               </tr>
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Pipeline section */}
+      {/* Pending pipeline */}
       {pendingTasks.length>0&&(
-        <div style={{...card,marginTop:24}}>
-          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:4}}>🔄 Pending Pipeline (not yet billed)</div>
-          <div style={{color:C.t3,fontSize:12,marginBottom:12}}>Tasks in progress with weight entered — not completed this month</div>
+        <div style={{...card,marginTop:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline — not yet billed</div>
+          <div style={{color:C.t3,fontSize:12,marginBottom:12}}>In-progress tasks with weight entered</div>
           <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
             <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
-              <div style={{fontSize:22,fontWeight:800,color:C.purple}}>{fmtTons(pendingTons)}</div>
+              <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{fmtTons(pendingTons)}</div>
               <div style={{fontSize:11,color:C.t3,marginTop:2}}>Pending Tons</div>
             </div>
             <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
-              <div style={{fontSize:22,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
+              <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
               <div style={{fontSize:11,color:C.t3,marginTop:2}}>Active Tasks</div>
             </div>
           </div>
