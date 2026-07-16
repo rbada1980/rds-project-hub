@@ -33,7 +33,7 @@ async function postJson(url, payload) {
   return res.status;
 }
 
-const PORTAL = "https://hub-rdsprojects.com/?view=list";
+const PORTAL = "https://hub-rdsprojects.com/submissions";
 const aStyle = "text-decoration:none;color:inherit;display:block;";
 
 function statusBadge(s) {
@@ -81,8 +81,10 @@ function buildEmail(name, tasks, pm, dateLabel) {
     </td>
     <td style="width:1px;padding:0 16px;"><div style="width:1px;height:36px;background:rgba(255,255,255,0.2);"></div></td>
     <td>
-      <div style="font-size:18px;font-weight:700;color:#ffffff;">Daily Submission List</div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:3px;">${dateLabel}</div>
+      <a href="${PORTAL}" style="text-decoration:none;display:block;">
+        <div style="font-size:18px;font-weight:700;color:#ffffff;">Daily Submission List</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:3px;">${dateLabel}</div>
+      </a>
     </td>
     <td align="right" style="white-space:nowrap;padding-left:12px;">
       <a href="${PORTAL}" style="text-decoration:none;background:rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:#ffffff;border:1px solid rgba(255,255,255,0.3);">&#128236; Today's Report</a>
@@ -99,8 +101,10 @@ function buildEmail(name, tasks, pm, dateLabel) {
 
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;">
 <tr><td style="padding:26px 28px;">
-  <p style="font-size:14px;color:#374151;margin:0 0 6px;">Dear ${name},</p>
-  <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Please find below the list of <a href="${PORTAL}" style="color:#1a3a6b;font-weight:700;text-decoration:none;">${total} submission(s)</a> planned for today based on <em>Client Submission Date</em> and <em>Due Date</em>. Kindly ensure all deliverables are on track.</p>
+  <a href="${PORTAL}" style="text-decoration:none;display:block;">
+    <p style="font-size:14px;color:#374151;margin:0 0 6px;">Dear ${name},</p>
+    <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Please find below the list of <span style="color:#1a3a6b;font-weight:700;">${total} submission(s)</span> planned for today based on <em>Client Submission Date</em> and <em>Due Date</em>. Kindly ensure all deliverables are on track.</p>
+  </a>
 
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin-bottom:22px;border-left:4px solid #1a3a6b;"><tr>
     <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#1a3a6b;">${total}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Total</div></a></td>
@@ -122,18 +126,18 @@ function buildEmail(name, tasks, pm, dateLabel) {
   <tbody>${tableRows(tasks, pm)}</tbody>
   </table>
 
-  <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f3f4f6;">
+  <a href="${PORTAL}" style="text-decoration:none;display:block;margin-top:24px;padding-top:20px;border-top:1px solid #f3f4f6;">
     <p style="font-size:13px;color:#374151;margin:0 0 8px;line-height:1.7;">Please review the above and ensure all tasks marked <em>Not Started</em> are actioned immediately. For any clarification, contact the respective project lead.</p>
     <p style="font-size:13px;color:#374151;margin:0;">Thank you for your continued efforts.</p>
     <p style="font-size:13px;color:#1a3a6b;margin:14px 0 0;font-weight:700;">RDS TechServ Team</p>
-    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal - <a href="${PORTAL}" style="color:#1a3a6b;text-decoration:none;font-weight:600;">hub-rdsprojects.com</a></p>
-  </div>
+    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal - <span style="color:#1a3a6b;font-weight:600;">hub-rdsprojects.com/submissions</span></p>
+  </a>
 </td></tr></table>
 
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:0 0 10px 10px;">
 <tr>
-  <td style="padding:14px 28px;font-size:11px;color:rgba(255,255,255,0.5);">&copy; ${new Date().getFullYear()} RDS TechServ. Automated email - do not reply.</td>
-  <td style="padding:14px 28px;font-size:11px;text-align:right;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.6);text-decoration:none;">hub-rdsprojects.com</a></td>
+  <td style="padding:14px 28px;font-size:11px;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.5);text-decoration:none;">&copy; ${new Date().getFullYear()} RDS TechServ. Automated email - do not reply.</a></td>
+  <td style="padding:14px 28px;font-size:11px;text-align:right;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.6);text-decoration:none;">hub-rdsprojects.com/submissions</a></td>
 </tr>
 </table>
 
@@ -260,11 +264,4 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 1200));
     }
 
-    console.log(`Daily digest sent to ${results.length} recipients, ${allTasks.length} tasks.`);
-    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
-
-  } catch (err) {
-    console.error("Daily cron error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}
+    console.log(`Daily digest sent to ${results.length} recipients, ${allTasks.length} ta
