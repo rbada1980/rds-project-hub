@@ -127,7 +127,7 @@ function DonutChart({data,size=130,onSliceClick}){
         );
       })}
       <text x={cx} y={cy-4} textAnchor="middle" fontSize={20} fontWeight="800" fill="#f1f5f9">{total}</text>
-      <text x={cx} y={cy+13} textAnchor="middle" fontSize={9} fill={hov!==null&&slices[hov]?slices[hov].color:"#8899aa"} style={{transition:"fill .15s"}}>
+      <text x={cx} y={cy+13} textAnchor="middle" fontSize={9} fill={hov!==null&&slices[hov]?slices[hov].color:C.t3} style={{transition:"fill .15s"}}>
         {hov!==null&&slices[hov]?slices[hov].label:"total"}
       </text>
     </svg>
@@ -4926,7 +4926,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const projHealth=[
     {label:"Active",value:activeProj,color:"#3b82f6",projects:activeProjList,tasks:tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))},
     {label:"Completed",value:compProj,color:"#22c55e",projects:compProjList,tasks:tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))},
-    {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:"#64748b",projects:notStartedProj,tasks:[]},
+    {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:C.t3,projects:notStartedProj,tasks:[]},
   ].filter(d=>d.value>0);
 
   // Team performance
@@ -6762,7 +6762,7 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
               {isThisTask?(activeTimer?.isPaused?"⏸ Timer Paused":"▶ Timer Running"):"⏱ Task Timer"}
             </div>
             {isThisTask&&<div style={{fontFamily:"monospace",fontSize:24,fontWeight:800,color:activeTimer?.isPaused?"#f59e0b":"#7c3aed",letterSpacing:"0.04em"}}>{fmtSec(lEl)}</div>}
-            {!isThisTask&&<div style={{fontSize:12,color:"#64748b"}}>Track time spent on this task</div>}
+            {!isThisTask&&<div style={{fontSize:12,color:C.t3}}>Track time spent on this task</div>}
           </div>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
             {!isThisTask&&(
@@ -7652,7 +7652,7 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
     {label:"This Week",min:stats.thisWeekMin||0,color:"#a855f7",icon:"🗓",from:monStr,to:todayStr},
     {label:"Last Week",min:stats.lastWeekMin||0,color:"#06b6d4",icon:"🗓",from:lMonStr,to:lSunStr},
     {label:"This Month",min:stats.thisMonthMin||0,color:"#f59e0b",icon:"📅",from:mthStr,to:todayStr},
-    {label:"Last Month",min:stats.lastMonthMin||0,color:"#94a3b8",icon:"📆",from:lMthStart,to:lMthEnd},
+    {label:"Last Month",min:stats.lastMonthMin||0,color:C.t2,icon:"📆",from:lMthStart,to:lMthEnd},
   ];
   async function openModal(item){
     setModal(item);setModalRows([]);setModalLoading(true);
@@ -9768,7 +9768,7 @@ function LiveTimerBar({timer,onPause,onStop}){
       <div style={{width:9,height:9,borderRadius:"50%",background:accentClr,flexShrink:0,opacity:isPaused?0.5:1}}/>
       {/* Info */}
       <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:10,color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>{isLong?"⚠️ TIMER >4 HRS":isPaused?"PAUSED":"TIMING NOW"}</div>
+        <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>{isLong?"⚠️ TIMER >4 HRS":isPaused?"PAUSED":"TIMING NOW"}</div>
         <div style={{fontSize:isMobile?12:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{timer.taskTitle}</div>
       </div>
       {/* Clock */}
@@ -12310,7 +12310,7 @@ export default function App(){
                           onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
                           onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
                           <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
-                          <p style={{margin:"8px 0 4px",color:"#fff",fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
+                          <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
                           <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
                           {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
                           <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
@@ -12702,7 +12702,7 @@ export default function App(){
                       <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
                         {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
                           style={{marginTop:2,width:18,height:18,borderRadius:4,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
-                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:"#ffffff",lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
+                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                         {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
