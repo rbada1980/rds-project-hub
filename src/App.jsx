@@ -4478,89 +4478,168 @@ function EscalationAlertCard(){
 
 function SyncReportCard(){
   const [report,setReport]=useState(null);
-  const [clients,setClients]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [syncing,setSyncing]=useState(false);
   const [expanded,setExpanded]=useState(false);
+  const [lastRefresh,setLastRefresh]=useState(null);
+  const [syncMsg,setSyncMsg]=useState(null);
+
+  async function loadReport(){
+    try{
+      if(IS_LOCAL){
+        const r=await fetch(LOCAL_BASE+"/api/sync-report");
+        const d=await r.json();
+        setReport(d?.status==="no_sync_yet"?null:d);
+      }else{
+        const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.last_sync_report&select=value",{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+        const d=await r.json();
+        if(Array.isArray(d)&&d[0]?.value){try{setReport(JSON.parse(d[0].value));}catch{}}
+      }
+    }catch(e){}
+    setLastRefresh(new Date());
+    setLoading(false);
+  }
+
   useEffect(()=>{
-    (async()=>{
-      const [settRes,taskRes]=await Promise.all([
-        fetch(SUPA_URL+"/rest/v1/settings?key=eq.last_sync_report&select=value",{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}),
-        supabase.from("tasks").select("client"),
-      ]);
-      const settData=await settRes.json();
-      if(Array.isArray(settData)&&settData[0]?.value){try{setReport(JSON.parse(settData[0].value));}catch(e){}}
-      const counts={};
-      (taskRes.data||[]).forEach(t=>{if(t.client){counts[t.client]=(counts[t.client]||0)+1;}});
-      setClients(Object.entries(counts).sort((a,b)=>b[1]-a[1]));
-      setLoading(false);
-    })();
+    loadReport();
+    const iv=setInterval(loadReport,30000);
+    return()=>clearInterval(iv);
   },[]);
-  if(loading)return null;
-  if(!report)return(
-    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:20}}>🔄</span>
-        <div><div style={{fontSize:15,fontWeight:800,color:C.t1}}>Sync Report</div>
-        <div style={{fontSize:11,color:C.t3,marginTop:2}}>No report yet — run a sync first (node sync.cjs)</div></div>
-      </div>
+
+  async function triggerSync(){
+    if(!IS_LOCAL||syncing)return;
+    setSyncing(true);setSyncMsg(null);
+    try{
+      const r=await fetch(LOCAL_BASE+"/api/sync-now",{method:"POST"});
+      const d=await r.json();
+      if(d.ok){setSyncMsg({ok:true,text:"Sync complete ✓"});await loadReport();}
+      else setSyncMsg({ok:false,text:"Sync failed: "+(d.error||"unknown error")});
+    }catch(e){setSyncMsg({ok:false,text:"Error: "+e.message});}
+    setSyncing(false);
+    setTimeout(()=>setSyncMsg(null),5000);
+  }
+
+  const TABLE_ICON={users:"👤",clients:"🏢",projects:"📁",tasks:"✅",attendance:"🕐",breaks:"☕",time_logs:"⏱",audit_logs:"🔎",workflows:"⚙️",settings:"⚙️",notifications:"🔔",announcements:"📢",war_room_messages:"💬",war_room_reads:"📖",war_room_pins:"📌",war_room_reactions:"❤️",war_room_scheduled:"🗓",task_comments:"💬",task_files:"📎"};
+
+  if(loading)return(
+    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20,display:"flex",alignItems:"center",gap:12}}>
+      <span style={{fontSize:20,animation:"spin 1s linear infinite"}}>🔄</span>
+      <span style={{fontSize:13,color:C.t3}}>Loading sync report…</span>
     </div>
   );
-  const sColor=report.status==="success"?C.green:report.status==="partial"?"#f59e0b":C.red;
-  const sIcon=report.status==="success"?"✅":report.status==="partial"?"⚠️":"❌";
-  const keyTables=(report.tables||[]).filter(t=>(t.total||0)>0||(t.failed||0)>0||(t.pulled||0)>0);
-  const totalTasks=clients.reduce((s,[,c])=>s+c,0)||1;
+
+  const sColor=!report?"#64748b":report.status==="success"?C.green:report.status==="partial"?"#f59e0b":C.red;
+  const sIcon=!report?"—":report.status==="success"?"✅":report.status==="partial"?"⚠️":"❌";
+  const statusLabel=!report?"No sync yet":report.status==="success"?"Success":report.status==="partial"?"Partial":"Failed";
+  const keyTables=(report?.tables||[]).filter(t=>(t.total||0)>0||(t.failed||0)>0||(t.pulled||0)>0);
+  const hasFails=(report?.total_failed||0)>0;
+
+  function fmtAge(ts){
+    if(!ts)return null;
+    const sec=Math.floor((new Date()-new Date(ts))/1000);
+    if(sec<60)return"just now";
+    if(sec<3600)return Math.floor(sec/60)+"m ago";
+    if(sec<86400)return Math.floor(sec/3600)+"h ago";
+    return Math.floor(sec/86400)+"d ago";
+  }
+
   return(
-    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-        <span style={{fontSize:20}}>🔄</span>
-        <div style={{flex:1}}>
-          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Last Sync Report</div>
-          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{report.ist_time} · {report.duration_sec}s duration</div>
+    <div style={{background:C.card,border:`2px solid ${hasFails?C.red+"55":sColor+"33"}`,borderRadius:14,padding:20}}>
+      {/* ── Header ── */}
+      <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:16}}>
+        <div style={{width:40,height:40,borderRadius:10,background:sColor+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>
+          {syncing?"⏳":"🔄"}
         </div>
-        <span style={{fontSize:11,fontWeight:700,color:sColor,background:sColor+"22",borderRadius:20,padding:"3px 10px"}}>{sIcon} {report.status.charAt(0).toUpperCase()+report.status.slice(1)}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Supabase ↔ Local Sync</div>
+          {report
+            ?<div style={{fontSize:11,color:C.t3,marginTop:2}}>{report.ist_time} · {report.duration_sec}s · auto-refresh 30s</div>
+            :<div style={{fontSize:11,color:C.t3,marginTop:2}}>No sync report found</div>
+          }
+          {lastRefresh&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>Last checked: {fmtAge(lastRefresh)}</div>}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+          <span style={{fontSize:11,fontWeight:700,color:sColor,background:sColor+"22",borderRadius:20,padding:"3px 12px",whiteSpace:"nowrap"}}>{sIcon} {statusLabel}</span>
+          {IS_LOCAL&&(
+            <button onClick={triggerSync} disabled={syncing}
+              style={{...GBtn,fontSize:11,padding:"5px 12px",color:syncing?C.t3:C.accent,borderColor:syncing?C.border:C.accent,opacity:syncing?0.6:1,whiteSpace:"nowrap"}}>
+              {syncing?"⏳ Syncing…":"⚡ Sync Now"}
+            </button>
+          )}
+        </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
-        {[["↓ Pulled",report.total_pulled,"#3b82f6"],["↑ Pushed",report.total_pushed,"#10b981"],["⚠ Failed",report.total_failed,report.total_failed>0?C.red:C.t3]].map(([label,val,color])=>(
-          <div key={label} style={{background:C.surface,borderRadius:10,padding:"10px 12px",textAlign:"center"}}>
-            <div style={{fontSize:20,fontWeight:800,color}}>{val}</div>
-            <div style={{fontSize:10,color:C.t3,marginTop:2}}>{label}</div>
-          </div>
-        ))}
-      </div>
-      <button onClick={()=>setExpanded(v=>!v)} style={{...GBtn,fontSize:11,padding:"4px 10px",marginBottom:expanded?10:0}}>{expanded?"▲ Hide table details":"▼ Show table details"}</button>
-      {expanded&&(
-        <div style={{background:C.surface,borderRadius:10,overflow:"hidden",marginTop:10,marginBottom:14}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-            <thead><tr style={{background:C.border+"55"}}>
-              {["Table","Pulled","Pushed","Failed"].map(h=><th key={h} style={{padding:"7px 10px",textAlign:h==="Table"?"left":"right",color:C.t3,fontWeight:700,fontSize:10}}>{h}</th>)}
-            </tr></thead>
-            <tbody>
-              {keyTables.map((t,i)=>(
-                <tr key={t.table} style={{borderTop:`1px solid ${C.border}`,background:i%2===0?"transparent":C.border+"11"}}>
-                  <td style={{padding:"6px 10px",color:C.t1,fontWeight:600}}>{t.table}</td>
-                  <td style={{padding:"6px 10px",textAlign:"right",color:C.t2}}>{t.pulled||0}</td>
-                  <td style={{padding:"6px 10px",textAlign:"right",color:C.t2}}>{t.synced||0}</td>
-                  <td style={{padding:"6px 10px",textAlign:"right",color:(t.failed||0)>0?C.red:C.t3}}>{t.failed||0}{(t.failed||0)>0?" ⚠":""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      {/* ── Sync result message ── */}
+      {syncMsg&&(
+        <div style={{background:syncMsg.ok?C.green+"18":C.red+"18",border:`1px solid ${syncMsg.ok?C.green:C.red}44`,borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:syncMsg.ok?C.green:C.red,fontWeight:600}}>
+          {syncMsg.text}
         </div>
       )}
-      {clients.length>0&&(
-        <div style={{marginTop:expanded?0:14}}>
-          <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.07em"}}>Tasks by Client</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {clients.map(([name,count])=>(
-              <div key={name} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{fontSize:11,color:C.t2,width:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{name}</div>
-                <div style={{flex:1,height:6,background:C.border,borderRadius:3,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:Math.round(count/totalTasks*100)+"%",background:C.accent,borderRadius:3}}/>
-                </div>
-                <div style={{fontSize:11,fontWeight:700,color:C.t2,width:28,textAlign:"right",flexShrink:0}}>{count}</div>
+
+      {/* ── Stat tiles ── */}
+      {report&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>
+          {[
+            ["↓ Pulled",report.total_pulled,"#3b82f6"],
+            ["↑ Pushed",report.total_pushed,"#10b981"],
+            ["📦 Total",report.total_synced,"#8b5cf6"],
+            ["⚠ Failed",report.total_failed,hasFails?C.red:C.t3],
+          ].map(([label,val,color])=>(
+            <div key={label} style={{background:C.surface,borderRadius:10,padding:"10px 8px",textAlign:"center",border:label==="⚠ Failed"&&hasFails?`1px solid ${C.red}55`:"none"}}>
+              <div style={{fontSize:22,fontWeight:800,color,lineHeight:1}}>{val}</div>
+              <div style={{fontSize:10,color:C.t3,marginTop:3}}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Table breakdown toggle ── */}
+      {report&&keyTables.length>0&&(
+        <>
+          <button onClick={()=>setExpanded(v=>!v)}
+            style={{...GBtn,fontSize:11,padding:"5px 12px",marginBottom:expanded?12:0,width:"100%",justifyContent:"center",display:"flex",gap:6}}>
+            {expanded?"▲ Hide table details":"▼ Show table details"} ({keyTables.length} tables)
+          </button>
+          {expanded&&(
+            <div style={{background:C.surface,borderRadius:10,overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px",padding:"6px 10px",background:C.border+"55"}}>
+                {["Table","Pulled","Pushed","Failed"].map(h=>(
+                  <div key={h} style={{fontSize:10,fontWeight:700,color:C.t3,textAlign:h==="Table"?"left":"right"}}>{h}</div>
+                ))}
               </div>
-            ))}
-          </div>
+              {keyTables.map((t,i)=>{
+                const fail=(t.failed||0)>0;
+                return(
+                  <div key={t.table} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px",padding:"7px 10px",borderTop:`1px solid ${C.border}`,background:fail?C.red+"0a":i%2===0?"transparent":C.border+"0a",alignItems:"center"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:13}}>{TABLE_ICON[t.table]||"📋"}</span>
+                      <span style={{fontSize:11,fontWeight:600,color:fail?C.red:C.t1}}>{t.table}</span>
+                      {t.note&&<span style={{fontSize:9,color:C.t3,background:C.border,borderRadius:3,padding:"1px 4px"}}>{t.note}</span>}
+                    </div>
+                    <div style={{fontSize:11,color:"#3b82f6",textAlign:"right",fontWeight:600}}>{t.pulled||0}</div>
+                    <div style={{fontSize:11,color:"#10b981",textAlign:"right",fontWeight:600}}>{t.synced||0}</div>
+                    <div style={{fontSize:11,color:fail?C.red:C.t3,textAlign:"right",fontWeight:fail?700:400}}>{t.failed||0}{fail?" ⚠":""}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── No report state ── */}
+      {!report&&(
+        <div style={{textAlign:"center",padding:"12px 0",color:C.t3,fontSize:13}}>
+          {IS_LOCAL
+            ?"No sync has run yet. Click ⚡ Sync Now to run your first sync."
+            :"Sync data not available. Run sync from the server first."}
+        </div>
+      )}
+
+      {/* ── Online-only notice ── */}
+      {!IS_LOCAL&&report&&(
+        <div style={{marginTop:12,fontSize:11,color:C.t3,display:"flex",alignItems:"center",gap:6}}>
+          <span>ℹ️</span><span>Viewing cached report. Live sync controls available on the LAN server.</span>
         </div>
       )}
     </div>
@@ -12851,121 +12930,4 @@ export default function App(){
         // Employee+Project → Tasks
         const {proj,empName}=lastDrill.item;
         title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
-      }
-
-      return(
-        <div onClick={closeDSM} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:540,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${color}33,0 24px 60px #00000080`}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 20px",borderBottom:`1px solid ${C.border}`}}>
-              {drill.length>0&&<button onClick={goBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:13,cursor:"pointer",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontWeight:600}}>← Back</button>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:1}}>{items.length} item{items.length!==1?"s":""}{canDrill?" · click to drill down":""}</div>
-              </div>
-              <button onClick={closeDSM} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            {/* Breadcrumb */}
-            {drill.length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 20px",borderBottom:`1px solid ${C.border}22`,flexWrap:"wrap"}}>
-                <span onClick={()=>setDDrill([])} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:600}}>Home</span>
-                {drill.map((d,i)=>(
-                  <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontSize:11,color:C.t3}}>›</span>
-                    <span onClick={()=>setDDrill(drill.slice(0,i+1))} style={{fontSize:11,color:i===drill.length-1?C.t1:C.accent,cursor:i<drill.length-1?"pointer":"default",fontWeight:600}}>{d.item.name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* List */}
-            <div style={{overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {items.length===0
-                ?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>
-                :items.map((item,i)=>(
-                <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
-                  onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}$
