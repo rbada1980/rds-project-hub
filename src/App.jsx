@@ -10185,7 +10185,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
                 const isExpCl=expanded["cl_"+cl];
                 const allCTasks=Object.values(projMap).flatMap(p=>p.tasks);
                 return(
-                  <React.Fragment key={cl}>
+                  <Fragment key={cl}>
                     {/* Client row */}
                     <tr style={{cursor:"pointer",background:isExpCl?C.surface:C.card}} onClick={()=>setExpanded(p=>({...p,["cl_"+cl]:!p["cl_"+cl]}))}>
                       <td style={{...td2,textAlign:"center",fontSize:12,color:C.t3,fontWeight:700}}>{isExpCl?"▼":"▶"}</td>
@@ -10201,7 +10201,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
                       const dr=parseFloat(defaultRate)||0;
                       const projEffRate=pv||cv||dr;
                       return(
-                        <React.Fragment key={pName}>
+                        <Fragment key={pName}>
                           {/* Project row */}
                           <tr style={{cursor:"pointer",background:isExpP?C.bg:C.surface}} onClick={()=>setExpanded(p=>({...p,["pr_"+pName+"_"+cl]:!p["pr_"+pName+"_"+cl]}))}>
                             <td style={{...td2,borderBottom:`1px solid ${C.border}22`,paddingLeft:28,fontSize:11,color:C.t3}}>{isExpP?"▼":"▶"}</td>
@@ -10228,10 +10228,10 @@ function BillingSummaryPage({tasks,projects,clients,me}){
                               <td style={{...td2,borderBottom:`1px solid ${C.border}11`,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px"}}>{t._amt>0?fmtMoney(t._amt):"—"}</td>
                             </tr>
                           ))}
-                        </React.Fragment>
+                        </Fragment>
                       );
                     })}
-                  </React.Fragment>
+                  </Fragment>
                 );
               })}
               <tr style={{background:C.surface,borderTop:`2px solid ${C.border}`}}>
