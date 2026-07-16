@@ -4866,7 +4866,8 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const openTasksList=tasks.filter(t=>!isDone(t.status));
   const openTasks=openTasksList.length;
   const compTasks=tasks.filter(t=>isDone(t.status)).length;
-  const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const ds=v=>v?String(v).slice(0,10):null;
+  const overdue=tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length;
   const inProg=tasks.filter(t=>t.status==="In Progress").length;
   const compRate=tasks.length?Math.round(compTasks/tasks.length*100):0;
 
@@ -4903,7 +4904,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const priData=["Critical","High","Medium","Low"].map(p=>({label:p,value:tasks.filter(t=>t.priority===p).length,color:priColors[p],tasks:tasks.filter(t=>t.priority===p)})).filter(d=>d.value>0);
 
   // Overdue by assignee
-  const overdueByA=members.map(name=>({name,count:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status)).length,tasks:tasks.filter(t=>t.assignee===name&&t.due_date&&t.due_date<today&&!isDone(t.status))})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
+  const overdueByA=members.map(name=>({name,count:tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return t.assignee===name&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length,tasks:tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return t.assignee===name&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);})})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
 
   // ── Sub-components ──────────────────────────────────────────────────────────
   const ACard=({icon,label,value,sub,color,onClick,taskList,projList,clientList,memberList})=>{
@@ -13109,7 +13110,6 @@ export default function App(){
       {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
         {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
