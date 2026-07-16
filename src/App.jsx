@@ -7538,8 +7538,13 @@ function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClo
     const id=setInterval(()=>setTick(t=>t+1),1000);
     return()=>clearInterval(id);
   },[attRec]);
-  // Not clocked in yet today — show Login button
+  // Not clocked in yet today — show Login button (offline only)
   if(!attRec){
+    if(!IS_LOCAL)return(
+      <span style={{fontSize:12,color:"#f59e0b",background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:8,padding:"5px 12px",fontWeight:600,whiteSpace:"nowrap"}}>
+        ⚠ Attendance not counted online
+      </span>
+    );
     return(
       <button onClick={onClockIn}
         style={{background:"#22c55e22",color:"#22c55e",border:"1px solid #22c55e55",borderRadius:8,padding:"6px 16px",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
