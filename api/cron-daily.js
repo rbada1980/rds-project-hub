@@ -264,4 +264,11 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 1200));
     }
 
-    console.log(`Daily digest sent to ${results.length} recipients, ${allTasks.length} ta
+    console.log(`Daily digest sent to ${results.length} recipients, ${allTasks.length} tasks.`);
+    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
+
+  } catch (err) {
+    console.error("Daily cron error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
