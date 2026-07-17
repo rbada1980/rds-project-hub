@@ -1,0 +1,9 @@
+(node:8728) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+=== GET /api/settings ===
+Status: 200
+Body (first 500): {"data":[{"id":54562,"key":"capacity_leaves","value":"{}"},{"id":97765,"key":"billing_rt__1670614f-6706-44c3-9bef-dbf73947dc7a","value":"{\"rate\":20,\"note\":\"\",\"label\":\"\"}"},{"id":92132,"key":"billing_rate_default","value":"{\"rate\":10,\"note\":\"\",\"label\":\"\"}"},{"id":98083,"key":"billing_rp__96ac63f3-2294-48f9-b71b-7073cd058e84","value":"{\"rate\":20,\"note\":\"\",\"label\":\"\"}"},{"id":1,"key":"daily_digest_enabled","value":"true"},{"id":97725,"key":"billing_rt__d8481ce3-3e65-49
+
+=== POST /api/settings/upsert ===
+Status: 200
+Body: {"data":{"id":101188,"key":"test_billing_save","value":"\"ok\""},"error":null}
