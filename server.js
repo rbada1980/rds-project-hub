@@ -19,6 +19,7 @@ const multer   = require("multer");
 const fs       = require("fs");
 const { v4: uuidv4 } = require("uuid");
 const cron     = require("node-cron");
+const PDFDocument = require("pdfkit");
 const { runSync } = require("./sync.cjs");
 
 // ── Web Push (VAPID) ─────────────────────────────────────────
@@ -1287,6 +1288,156 @@ app.get("/api/audit-logs", async (req, res) => {
 
 
 // ═════════════════════════════════════════════════════════════
+// INVOICE PDF GENERATOR — POST /api/invoice-pdf
+// Accepts structured billing data, returns a real .pdf file
+// ═════════════════════════════════════════════════════════════
+app.post("/api/invoice-pdf", express.json({ limit: "2mb" }), (req, res) => {
+  try {
+    const { title, subtitle, note, period, date, rows, totTons, totAmt, filename, hideProject } = req.body;
+
+    const doc = new PDFDocument({ margin: 50, size: "A4", autoFirstPage: true });
+    const safeName = (filename || "RDS_Invoice").replace(/[^a-z0-9_\-]/gi, "_");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.pdf"`);
+    doc.pipe(res);
+
+    // ── HEADER ──────────────────────────────────────────────
+    const logoPath = path.join(__dirname, "public", "logo.png");
+    let logoW = 0;
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 50, 38, { width: 75 });
+      logoW = 85;
+    }
+    doc.font("Helvetica-Bold").fontSize(15).fillColor("#1e3a8a")
+       .text("RDS Techserv Pvt Ltd", 50 + logoW, 42);
+    doc.font("Helvetica").fontSize(9.5).fillColor("#64748b")
+       .text("Billing & Invoice Management", 50 + logoW, 60);
+
+    // Invoice meta — right side
+    doc.font("Helvetica-Bold").fontSize(17).fillColor("#1e3a8a")
+       .text("BILLING SUMMARY", 300, 42, { width: 245, align: "right" });
+    doc.font("Helvetica").fontSize(10).fillColor("#64748b")
+       .text(period || "", 300, 65, { width: 245, align: "right" });
+    doc.font("Helvetica").fontSize(9).fillColor("#94a3b8")
+       .text(date || "", 300, 79, { width: 245, align: "right" });
+
+    // Divider
+    doc.moveTo(50, 108).lineTo(545, 108).lineWidth(2).strokeColor("#1e3a8a").stroke();
+
+    // ── TITLE STRIP ─────────────────────────────────────────
+    doc.rect(50, 116, 495, 36).fillColor("#1e3a8a").fill();
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#ffffff")
+       .text(title || "", 62, 123, { width: 470 });
+    if (subtitle) {
+      doc.font("Helvetica").fontSize(9).fillColor("#bfdbfe")
+         .text(subtitle, 62, 137, { width: 470 });
+    }
+
+    // Note box
+    let y = 162;
+    if (note) {
+      doc.rect(50, y, 495, 24).fillColor("#f0f9ff").fill();
+      doc.moveTo(50, y).lineTo(50, y + 24).lineWidth(3).strokeColor("#0ea5e9").stroke();
+      doc.font("Helvetica").fontSize(9).fillColor("#0c4a6e")
+         .text("Note: " + note, 58, y + 7, { width: 480 });
+      y += 32;
+    }
+
+    // ── TABLE ───────────────────────────────────────────────
+    const colDefs = hideProject
+      ? [
+          { label: "Task",      x: 50,  w: 160, align: "left"  },
+          { label: "Assignee",  x: 210, w: 90,  align: "left"  },
+          { label: "Sub Date",  x: 300, w: 75,  align: "left"  },
+          { label: "Tons",      x: 375, w: 55,  align: "right" },
+          { label: "Rate",      x: 430, w: 50,  align: "right" },
+          { label: "Amount",    x: 480, w: 65,  align: "right" },
+        ]
+      : [
+          { label: "Project",   x: 50,  w: 100, align: "left"  },
+          { label: "Task",      x: 150, w: 120, align: "left"  },
+          { label: "Assignee",  x: 270, w: 75,  align: "left"  },
+          { label: "Sub Date",  x: 345, w: 65,  align: "left"  },
+          { label: "Tons",      x: 410, w: 45,  align: "right" },
+          { label: "Rate",      x: 455, w: 40,  align: "right" },
+          { label: "Amount",    x: 495, w: 50,  align: "right" },
+        ];
+
+    // Table header row
+    doc.rect(50, y, 495, 20).fillColor("#1d4ed8").fill();
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#ffffff");
+    colDefs.forEach(c => {
+      doc.text(c.label.toUpperCase(), c.x + (c.align === "right" ? 0 : 2), y + 6,
+               { width: c.w, align: c.align });
+    });
+    y += 20;
+
+    // Table body
+    (rows || []).forEach((r, i) => {
+      const rowH = 20;
+      if (y + rowH > doc.page.height - 80) { doc.addPage(); y = 50; }
+      if (i % 2 === 0) doc.rect(50, y, 495, rowH).fillColor("#f8faff").fill();
+      doc.moveTo(50, y + rowH).lineTo(545, y + rowH).lineWidth(0.4).strokeColor("#e2e8f0").stroke();
+
+      const vals = hideProject
+        ? [r.task, r.assignee, r.subDate, r.tons, r.rate, r.amount]
+        : [r.project, r.task, r.assignee, r.subDate, r.tons, r.rate, r.amount];
+
+      doc.font("Helvetica").fontSize(8.5).fillColor("#1e293b");
+      colDefs.forEach((c, ci) => {
+        doc.text(String(vals[ci] || "—"), c.x + (c.align === "right" ? 0 : 2), y + 6,
+                 { width: c.w, align: c.align, ellipsis: true });
+      });
+      y += rowH;
+    });
+
+    // Total row
+    doc.rect(50, y, 495, 24).fillColor("#0f172a").fill();
+    doc.font("Helvetica-Bold").fontSize(10).fillColor("#ffffff")
+       .text("TOTAL", 52, y + 7, { width: 350, align: "left" });
+    const lastCol = colDefs[colDefs.length - 1];
+    const tonsCol = colDefs[colDefs.length - 3];
+    doc.fillColor("#e2e8f0").text(totTons || "", tonsCol.x, y + 7, { width: tonsCol.w, align: "right" });
+    doc.fillColor("#4ade80").text(totAmt || "", lastCol.x, y + 7, { width: lastCol.w, align: "right" });
+    y += 24;
+
+    // ── SUMMARY BOX ─────────────────────────────────────────
+    y += 16;
+    const boxX = 350, boxW = 195, boxH = 72;
+    doc.rect(boxX, y, boxW, boxH).fillColor("#f8faff").fill();
+    doc.rect(boxX, y, boxW, boxH).lineWidth(1).strokeColor("#dbeafe").stroke();
+    doc.font("Helvetica").fontSize(10).fillColor("#475569")
+       .text("Total Tasks:", boxX + 10, y + 10);
+    doc.font("Helvetica-Bold").fillColor("#1e293b")
+       .text(String((rows || []).length), boxX + 10, y + 10, { width: boxW - 20, align: "right" });
+    doc.font("Helvetica").fillColor("#475569")
+       .text("Total Tonnage:", boxX + 10, y + 28);
+    doc.font("Helvetica-Bold").fillColor("#1e293b")
+       .text(totTons || "", boxX + 10, y + 28, { width: boxW - 20, align: "right" });
+    doc.moveTo(boxX + 10, y + 46).lineTo(boxX + boxW - 10, y + 46).lineWidth(1).strokeColor("#1e3a8a").stroke();
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e3a8a")
+       .text("Grand Total:", boxX + 10, y + 52);
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#15803d")
+       .text(totAmt || "", boxX + 10, y + 49, { width: boxW - 20, align: "right" });
+
+    // ── FOOTER ──────────────────────────────────────────────
+    const footY = doc.page.height - 55;
+    doc.moveTo(50, footY).lineTo(545, footY).lineWidth(1).strokeColor("#e2e8f0").stroke();
+    doc.font("Helvetica-Bold").fontSize(10).fillColor("#1e3a8a")
+       .text("RDS Techserv Pvt Ltd", 50, footY + 8);
+    doc.font("Helvetica").fontSize(8).fillColor("#4b5563")
+       .text("CONFIDENTIAL — FOR INTERNAL USE", 50, footY + 22);
+    doc.font("Helvetica").fontSize(9).fillColor("#374151")
+       .text(date || "", 300, footY + 12, { width: 245, align: "right" });
+
+    doc.end();
+  } catch(e) {
+    console.error("[invoice-pdf]", e.message);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════
 // DAILY SUBMISSION EMAIL — /api/cron-daily
 // Single path for ALL sends (scheduled + manual "Send Now")
 // ══════════════════════════════════════════════════════════════
@@ -1354,194 +1505,4 @@ function buildDigestHtml(recipientName, tasks, projMap, dateLabel) {
     // Stats strip
     "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f8fafc;border-radius:8px;margin-bottom:20px;border-left:4px solid #1a3a6b;'><tr>" +
     "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#1a3a6b;'>" + total + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>TOTAL</div></td>" +
-    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#059669;'>" + done + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>COMPLETED</div></td>" +
-    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#d97706;'>" + inProg + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>IN PROGRESS</div></td>" +
-    "<td width='25%' style='padding:14px 0;text-align:center;'><div style='font-size:22px;font-weight:700;color:#ef4444;'>" + ns + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>NOT STARTED</div></td>" +
-    "</tr></table>" +
-
-    // Task table
-    "<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #e5e7eb;'>" +
-    "<thead><tr style='background:#1a3a6b;'>" +
-    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>CLIENT</th>" +
-    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>PROJECT</th>" +
-    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>TASK</th>" +
-    "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>STATUS</th>" +
-    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>ASSIGNEE</th>" +
-    "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>SUB DATE</th>" +
-    "</tr></thead><tbody>" + rows + "</tbody></table>" +
-
-    "<div style='margin-top:22px;padding-top:18px;border-top:1px solid #f3f4f6;font-size:13px;color:#1a3a6b;font-weight:700;'>RDS TechServ Team</div>" +
-    "</td></tr></table>" +
-
-    // FOOTER
-    "<table width='100%' cellpadding='0' cellspacing='0' style='background:#1a3a6b;border-radius:0 0 10px 10px;'>" +
-    "<tr><td style='padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);'>&copy; " + year + " RDS TechServ &mdash; Automated digest, do not reply.</td></tr>" +
-    "</table>" +
-
-    "</td></tr></table></body></html>";
-}
-
-app.get("/api/cron-daily", async (req, res) => {
-  try {
-    const force = req.query.force === "true";
-
-    // ── In-memory lock: block concurrent sends ──────────────────
-    if (_digestSending) {
-      return res.json({ message: "Send already in progress — skipped" });
-    }
-    _digestSending = true;
-
-    // ── Date guard: check BOTH local PG and Supabase ────────────
-    const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
-    if (!force) {
-      try {
-        // Check local PG
-        const rows = await pool.query("SELECT value FROM settings WHERE key='last_digest_date' LIMIT 1");
-        if (rows.rows.length && rows.rows[0].value === today) {
-          _digestSending = false;
-          return res.json({ message: "Already sent today (local DB)" });
-        }
-      } catch(_) {}
-      try {
-        // Check Supabase (catches sends triggered from App.jsx frontend)
-        const sbRows = await supaGet("/rest/v1/settings?key=eq.last_digest_date&select=value&limit=1");
-        if (Array.isArray(sbRows) && sbRows.length && sbRows[0].value === today) {
-          _digestSending = false;
-          return res.json({ message: "Already sent today (Supabase)" });
-        }
-      } catch(_) {}
-    }
-
-    const today     = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
-    const dateLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
-
-    // Get today's tasks
-    const tasks = await supaGet(
-      "/rest/v1/tasks?or=(client_sub_date.eq." + today + ",due_date.eq." + today + ")&select=id,title,client,status,assignee,client_sub_date,due_date,project_id&order=client_sub_date.asc"
-    );
-    const projects = await supaGet("/rest/v1/projects?select=id,name,client");
-    const projMap  = {};
-    for (const p of (projects || [])) projMap[p.id] = p;
-
-    // Recipients: Admin, Manager, Team Leader with email
-    const users = await supaGet("/rest/v1/users?select=name,email,role&role=in.(Admin,Manager,Team Leader)");
-    const recipients = (users || []).filter(u => u.email && u.email.includes("@"));
-
-    if (!recipients.length) {
-      return res.json({ error: "No recipients found — add email addresses to Admin/Manager/Team Leader accounts" });
-    }
-
-    let sent = 0;
-    for (const u of recipients) {
-      const html = buildDigestHtml(u.name || u.email, tasks || [], projMap, dateLabel);
-      const payload = {
-        type: "submission_digest",
-        data: {
-          taskName:       "Daily Submission List — " + today,
-          projectName:    (tasks || []).length + " submission(s) planned for today",
-          completedBy:    "RDS TechServ Automated Digest",
-          completedAt:    dateLabel,
-          recipientEmail: u.email,
-          subject:        "📬 RDS Daily Submission List — " + dateLabel,
-          htmlBody:       html
-        }
-      };
-      try {
-        await fetch(SUPA_URL + "/functions/v1/notify", {
-          method: "POST",
-          headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        sent++;
-      } catch(e) { console.warn("[cron-daily] Email failed for", u.email, e.message); }
-    }
-
-    // ── Save guard to BOTH stores so either path sees it ────────
-    try {
-      await pool.query(
-        "INSERT INTO settings(key,value) VALUES('last_digest_date',$1) ON CONFLICT(key) DO UPDATE SET value=$1",
-        [today]
-      );
-    } catch(_) {}
-    try {
-      await fetch(SUPA_URL + "/rest/v1/settings?key=eq.last_digest_date", {
-        method: "PATCH",
-        headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-        body: JSON.stringify({ value: today })
-      });
-      // If row doesn't exist yet, insert it
-      await fetch(SUPA_URL + "/rest/v1/settings", {
-        method: "POST",
-        headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({ key: "last_digest_date", value: today })
-      });
-    } catch(_) {}
-
-    _digestSending = false;
-    console.log("[cron-daily] Sent digest to", sent, "recipients |", (tasks||[]).length, "tasks for", today);
-    res.json({ sent, tasks: (tasks || []).length, date: today });
-  } catch(e) {
-    _digestSending = false;
-    console.error("[cron-daily] Error:", e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ═════════════════════════════════════════════════════════════
-// SPA FALLBACK — serve React app for all other routes
-// ══════════════════════════════════════════════════════════════
-
-app.get(/.*/, (req, res) => {
-  const index = path.join(DIST, "index.html");
-  if (fs.existsSync(index)) {
-    res.sendFile(index);
-  } else {
-    res.json({ message: "RDS Local API running. React build not found — run npm run build first." });
-  }
-});
-
-// ══════════════════════════════════════════════════════════════
-// START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
-// ══════════════════════════════════════════════════════════════
-
-const HTTPS_PORT = 8443;
-const certPath   = path.join(__dirname, "certs", "cert.pem");
-const keyPath    = path.join(__dirname, "certs",  "key.pem");
-
-if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-  try {
-    require("https").createServer({
-      key:  fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-    }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
-      console.log(`\n🔒 RDS Local Server running at:`);
-      console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
-      console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
-      console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-
-      let _syncBusy = false;
-      async function doSync(label) {
-        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
-        _syncBusy = true;
-        try { await runSync(); }
-        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
-        finally { _syncBusy = false; }
-      }
-      setInterval(() => doSync("10s"), 10000);
-      cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
-      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
-      setTimeout(() => doSync("startup"), 30000);
-    });
-  } catch (e) {
-    console.error("HTTPS failed:", e.message);
-    process.exit(1);
-  }
-} else {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
-    console.log(`   http://192.168.0.159:${PORT}`);
-    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
-    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
-    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-  });
-}
+    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style=

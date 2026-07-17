@@ -10044,36 +10044,57 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     <script>window.onload=()=>window.print()<\/script>
     </body></html>`;
   }
-    function openPdf(html,filename="RDS_Invoice"){
-    // Direct download — never blocked by popup blocker
-    const blob=new Blob([html],{type:"text/html;charset=utf-8"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=filename+".html";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  // ── Real PDF via server (pdfkit) — downloads as .pdf directly ──
+  async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false}){
+    const rows=taskList.map(t=>({
+      project:t._proj?.name||"—",
+      task:t.title,
+      assignee:t.assignee||"—",
+      subDate:t.client_sub_date||"—",
+      tons:fmtT(t._wt),
+      rate:`$${t._rate}/T`,
+      amount:fmtM(t._amt),
+    }));
+    const totT=taskList.reduce((s,t)=>s+(t._wt||0),0);
+    const totA=taskList.reduce((s,t)=>s+(t._amt||0),0);
+    try{
+      const res=await fetch("/api/invoice-pdf",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({title,subtitle,note,period:periodLabel,
+          date:new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}),
+          rows,totTons:fmtT(totT),totAmt:fmtM(totA),filename,hideProject}),
+      });
+      if(!res.ok){const e=await res.json().catch(()=>({}));alert("PDF Error: "+(e.error||res.status));return;}
+      const blob=await res.blob();
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url; a.download=(filename||"RDS_Invoice")+".pdf";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+    }catch(e){alert("PDF Error: "+e.message);}
   }
 
   function pdfAll(){
     const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
-    openPdf(buildPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",label:"",taskList}),`RDS_Billing_All_${year}_${month}`);
+    downloadPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",taskList,filename:`RDS_Billing_All_${year}_${month}`});
   }
   function pdfClient(cl){
     const taskList=Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks);
-    const note=getNote("client",cl);const label=getLabel("client",cl)||cl;
+    const note=getNote("client",cl);
     const fname="RDS_Billing_"+cl.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
-    openPdf(buildPdf({title:"Client: "+cl,subtitle:`${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,label,taskList}),fname);
+    downloadPdf({title:"Client: "+cl,subtitle:`${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,taskList,filename:fname});
   }
   function pdfProject(cl,pName,pg){
     const taskList=pg?.tasks||[];
-    const note=getNote("project",pg.proj?.id);const label=getLabel("project",pg.proj?.id)||pName;
+    const note=getNote("project",pg.proj?.id);
     const fname="RDS_Billing_"+pName.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
-    openPdf(buildPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,label,taskList,hideProject:true}),fname);
+    downloadPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,taskList,filename:fname,hideProject:true});
   }
   function pdfTask(t,cl){
-    const note=getNote("task",t.id);const label=getLabel("task",t.id)||t.title;
+    const note=getNote("task",t.id);
     const fname="RDS_Billing_Task_"+t.id+"_"+year+"_"+month;
-    openPdf(buildPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,label,taskList:[t],hideProject:true}),fname);
+    downloadPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,taskList:[t],filename:fname,hideProject:true});
   }
 
   // Excel export
@@ -13811,3 +13832,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
