@@ -10214,10 +10214,10 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(opts.dueDate){doc.text(`Due Date:  ${fmtDate(opts.dueDate)}`,PW-M,metaY,{align:"right"});}
 
       // Divider (fixed — header is now compact)
-      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,75,PW-M,75);
+      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,92,PW-M,92);
 
       // ── BILL FROM (left) | BILL TO (right) ──────────────────
-      let y=88;
+      let y=105;
       const billFromX=M;
       const billToX=330;
       // BILL FROM
@@ -10250,7 +10250,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       // Divider below bill-from/bill-to
       const afterBill=Math.max(bfY,btY)+8;
       // Vertical separator between BILL FROM and BILL TO
-      doc.setDrawColor("#cbd5e1").setLineWidth(0.5).line(divX,76,divX,afterBill-2);
+      doc.setDrawColor("#cbd5e1").setLineWidth(0.5).line(divX,93,divX,afterBill-2);
       doc.setDrawColor("#e2e8f0").setLineWidth(0.8).line(M,afterBill,PW-M,afterBill);
 
       // ── INVOICE TITLE STRIP ──────────────────────────────────
