@@ -9756,7 +9756,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const [projCustom,setProjCustom]=useState({});       // {projId:{rate,note,label}}
   const [taskCustom,setTaskCustom]=useState({});       // {taskId:{rate,note,label}}
   const [editEntity,setEditEntity]=useState(null);     // {type,key,name} currently open
-  const [editVal,setEditVal]=useState({rate:"",note:"",label:"",email:"",address:""});
+  const [editVal,setEditVal]=useState({rate:"",note:"",label:"",email:"",phone:"",contactName:"",address:"",city:"",state:"",zip:"",country:"United States"});
   const [expanded,setExpanded]=useState({});
   const [showRates,setShowRates]=useState(false);
   const [rateTab,setRateTab]=useState("client");
@@ -9770,6 +9770,11 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const [invoiceModal,setInvoiceModal]=useState(null);
   const [invoiceOpts,setInvoiceOpts]=useState({invoiceNo:"",issueDate:"",dueDate:"",description:""});
   const [generatingPdf,setGeneratingPdf]=useState(false);
+  // Billing page tabs + invoice history
+  const [billingView,setBillingView]=useState("overview"); // "overview"|"invoices"|"settings"
+  const [invoices,setInvoices]=useState([]);
+  const [invoiceFilter,setInvoiceFilter]=useState("all");
+  const [invoiceDetail,setInvoiceDetail]=useState(null);
   const CURRENCY="$";
   const RATE_DEFAULT="billing_rate_default";
   const rkClient=n=>"billing_rc__"+n.replace(/\s+/g,"_").toLowerCase();
@@ -9779,7 +9784,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   // Load all saved settings from DB
   useEffect(()=>{
     const allClients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-    const keys=[RATE_DEFAULT,"billing_company",...allClients.map(rkClient),...projects.map(p=>rkProj(p.id)),...tasks.map(t=>rkTask(t.id))];
+    const keys=[RATE_DEFAULT,"billing_company","billing_invoices",...allClients.map(rkClient),...projects.map(p=>rkProj(p.id)),...tasks.map(t=>rkTask(t.id))];
     fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.map(encodeURIComponent).join(",")+")",{
       headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
     }).then(r=>r.ok?r.json():[]).then(rows=>{
@@ -9789,6 +9794,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           const v=JSON.parse(r.value);
           if(r.key===RATE_DEFAULT)setDefaultRate(v.rate||v||"");
           else if(r.key==="billing_company")setCompanyInfo(v||{});
+          else if(r.key==="billing_invoices")setInvoices(Array.isArray(v)?v:[]);
           else if(r.key.startsWith("billing_rc__")){const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;cc[cl]=v;}
           else if(r.key.startsWith("billing_rp__")){const pid=r.key.replace("billing_rp__","");pc[pid]=v;}
           else if(r.key.startsWith("billing_rt__")){const tid=r.key.replace("billing_rt__","");tc[tid]=v;}
@@ -9823,29 +9829,56 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     setSavingCompany(false);
   }
 
+  async function saveInvoiceRecord(record){
+    const updated=[record,...invoices];
+    setInvoices(updated);
+    await upsertSetting("billing_invoices",updated);
+  }
+
+  async function updateInvoiceStatus(id,status){
+    const now=new Date().toISOString();
+    const updated=invoices.map(inv=>{
+      if(inv.id!==id)return inv;
+      const patch={status};
+      if(status==="sent"&&!inv.sentAt)patch.sentAt=now;
+      if(status==="viewed"&&!inv.viewedAt)patch.viewedAt=now;
+      if(status==="paid"&&!inv.paidAt)patch.paidAt=now;
+      return{...inv,...patch};
+    });
+    setInvoices(updated);
+    await upsertSetting("billing_invoices",updated);
+  }
+
+  async function deleteInvoice(id){
+    const updated=invoices.filter(inv=>inv.id!==id);
+    setInvoices(updated);
+    await upsertSetting("billing_invoices",updated);
+  }
+
   async function saveCustom(){
     if(!editEntity)return;
     setSaving(true);
     const {type,key}=editEntity;
     const payload={rate:parseFloat(editVal.rate)||0,note:editVal.note||"",label:editVal.label||""};
-    if(type==="client"){Object.assign(payload,{email:editVal.email||"",address:editVal.address||""});}
+    if(type==="client"){Object.assign(payload,{email:editVal.email||"",phone:editVal.phone||"",contactName:editVal.contactName||"",address:editVal.address||"",city:editVal.city||"",state:editVal.state||"",zip:editVal.zip||"",country:editVal.country||"United States"});}
     if(type==="default"){await upsertSetting(RATE_DEFAULT,payload);setDefaultRate(String(payload.rate));}
     else if(type==="client"){await upsertSetting(rkClient(key),payload);setClientCustom(p=>({...p,[key]:payload}));}
     else if(type==="project"){await upsertSetting(rkProj(key),payload);setProjCustom(p=>({...p,[key]:payload}));}
     else if(type==="task"){await upsertSetting(rkTask(key),payload);setTaskCustom(p=>({...p,[key]:payload}));}
-    setEditEntity(null);setEditVal({rate:"",note:"",label:""});
+    setEditEntity(null);setEditVal({rate:"",note:"",label:"",email:"",phone:"",contactName:"",address:"",city:"",state:"",zip:"",country:"United States"});
     setMsg("Saved ✓");setTimeout(()=>setMsg(null),2500);
     setSaving(false);
   }
 
   function openEdit(type,key,name){
-    let cur={rate:"",note:"",label:"",email:"",address:""};
-    if(type==="default")cur={rate:defaultRate,note:"",label:"",email:"",address:""};
-    else if(type==="client")cur={...{rate:"",note:"",label:"",email:"",address:""},...(clientCustom[key]||{})};
-    else if(type==="project")cur={...{rate:"",note:"",label:"",email:"",address:""},...(projCustom[key]||{})};
-    else if(type==="task")cur={...{rate:"",note:"",label:"",email:"",address:""},...(taskCustom[key]||{})};
+    const blankClient={rate:"",note:"",label:"",email:"",phone:"",contactName:"",address:"",city:"",state:"",zip:"",country:"United States"};
+    let cur=blankClient;
+    if(type==="default")cur={...blankClient,rate:defaultRate};
+    else if(type==="client")cur={...blankClient,...(clientCustom[key]||{})};
+    else if(type==="project")cur={...blankClient,...(projCustom[key]||{})};
+    else if(type==="task")cur={...blankClient,...(taskCustom[key]||{})};
     setEditEntity({type,key,name});
-    setEditVal({rate:cur.rate||"",note:cur.note||"",label:cur.label||"",email:cur.email||"",address:cur.address||""});
+    setEditVal({rate:cur.rate||"",note:cur.note||"",label:cur.label||"",email:cur.email||"",phone:cur.phone||"",contactName:cur.contactName||"",address:cur.address||"",city:cur.city||"",state:cur.state||"",zip:cur.zip||"",country:cur.country||"United States"});
   }
 
   // Rate: task custom > project custom > client custom > default
@@ -10140,8 +10173,13 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(clientLabel) doc.text(clientLabel,billToX,y);
       doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#475569");
       let btY=y+11;
+      if(clInfo.contactName){doc.text(clInfo.contactName,billToX,btY);btY+=10;}
       if(clInfo.email){doc.text(clInfo.email,billToX,btY);btY+=10;}
-      if(clInfo.address){const lines=doc.splitTextToSize(clInfo.address,240);doc.text(lines,billToX,btY);btY+=lines.length*10;}
+      if(clInfo.phone){doc.text(clInfo.phone,billToX,btY);btY+=10;}
+      if(clInfo.address){doc.text(clInfo.address,billToX,btY);btY+=10;}
+      const cityLine=[clInfo.city,clInfo.state,clInfo.zip].filter(Boolean).join(", ");
+      if(cityLine){doc.text(cityLine,billToX,btY);btY+=10;}
+      if(clInfo.country&&clInfo.country!=="United States"){doc.text(clInfo.country,billToX,btY);btY+=10;}
 
       // Divider below bill-to
       const afterBill=Math.max(btY,y+20)+8;
@@ -10237,7 +10275,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         if(ci.bankBranch)pRows.push(["Bank Address",ci.bankBranch]);
         if(ci.accountName)pRows.push(["Account Name",ci.accountName]);
         if(ci.accountNumber)pRows.push(["Account Number",ci.accountNumber]);
-        if(ci.routingNumber)pRows.push(["Routing / IFSC / SWIFT",ci.routingNumber]);
+        if(ci.routingNumber)pRows.push(["ABA Routing Number",ci.routingNumber]);
         const col1=M+2,col2=M+160;
         pRows.forEach((pr,i)=>{
           if(i%2===0) doc.setFillColor("#f8faff").rect(M,y,CW,16,"F");
@@ -10255,6 +10293,9 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       doc.setFont("helvetica","italic").setFontSize(8).setTextColor("#64748b").text("We value your trust and look forward to serving you again.",PW-M,FY+15,{align:"right"});
 
       doc.save((filename||"RDS_Invoice")+".pdf");
+      // Save invoice record to history
+      const invRecord={id:Date.now().toString(),invoiceNo:opts.invoiceNo||"",clientKey:clientKey||"",clientName:clientKey||title||"",amount:totA,tons:totT,period:periodLabel,issueDate:opts.issueDate||"",dueDate:opts.dueDate||"",description:opts.description||subtitle||"",status:"draft",createdAt:new Date().toISOString(),sentAt:null,viewedAt:null,paidAt:null,filename:(filename||"RDS_Invoice")+".pdf"};
+      saveInvoiceRecord(invRecord);
     }catch(e){alert("PDF Error: "+e.message);}
     setGeneratingPdf(false);
   }
@@ -10320,17 +10361,47 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         </div>
 
         {editEntity.type==="client"&&(<>
-          <div style={{marginBottom:14}}>
-            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Client Email</label>
-            <input type="email" value={editVal.email} onChange={e=>setEditVal(v=>({...v,email:e.target.value}))}
-              placeholder="client@example.com"
-              style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none"}}/>
-          </div>
-          <div style={{marginBottom:22}}>
-            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Client Address</label>
-            <textarea value={editVal.address} onChange={e=>setEditVal(v=>({...v,address:e.target.value}))}
-              placeholder="Street, City, State, ZIP" rows={2}
-              style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+          <div style={{borderTop:`1px solid ${C.border}`,margin:"8px 0 14px",paddingTop:14}}>
+            <div style={{fontWeight:700,color:C.t2,fontSize:12,marginBottom:12,textTransform:"uppercase",letterSpacing:".05em"}}>📋 Client Contact Details</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>Contact Name</label>
+                <input value={editVal.contactName} onChange={e=>setEditVal(v=>({...v,contactName:e.target.value}))}
+                  placeholder="Jane Smith" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>Phone</label>
+                <input value={editVal.phone} onChange={e=>setEditVal(v=>({...v,phone:e.target.value}))}
+                  placeholder="+1 (555) 000-0000" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>Email</label>
+                <input type="email" value={editVal.email} onChange={e=>setEditVal(v=>({...v,email:e.target.value}))}
+                  placeholder="billing@clientco.com" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>Street Address</label>
+                <input value={editVal.address} onChange={e=>setEditVal(v=>({...v,address:e.target.value}))}
+                  placeholder="123 Main St, Suite 400" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>City</label>
+                <input value={editVal.city} onChange={e=>setEditVal(v=>({...v,city:e.target.value}))}
+                  placeholder="New York" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div>
+                  <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>State</label>
+                  <input value={editVal.state} onChange={e=>setEditVal(v=>({...v,state:e.target.value}))}
+                    placeholder="NY" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+                </div>
+                <div>
+                  <label style={{display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"}}>ZIP</label>
+                  <input value={editVal.zip} onChange={e=>setEditVal(v=>({...v,zip:e.target.value}))}
+                    placeholder="10001" style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}/>
+                </div>
+              </div>
+            </div>
           </div>
         </>)}
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
@@ -10366,7 +10437,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           <div>
             <label style={fldLbl}>Payment Method</label>
             <select value={companyInfo.paymentMethod||"Wire Transfer"} onChange={e=>setCompanyInfo(p=>({...p,paymentMethod:e.target.value}))} style={inp3}>
-              {["Wire Transfer","Bank Transfer","Cheque","Online Transfer","NEFT/RTGS","SWIFT"].map(m=><option key={m}>{m}</option>)}
+              {["Wire Transfer","ACH Transfer","Check","Zelle","PayPal","SWIFT"].map(m=><option key={m}>{m}</option>)}
             </select>
           </div>
         </div>
@@ -10384,71 +10455,363 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     </div>
   );
 
+  // Invoice status helpers
+  const INV_STATUS={
+    draft:  {label:"Draft",   bg:C.t3+"22",   color:C.t3,     next:[{s:"sent",  label:"Mark Sent"}]},
+    sent:   {label:"Sent",    bg:C.blue+"22", color:C.blue,   next:[{s:"viewed",label:"Mark Viewed"},{s:"paid",label:"Mark Paid"}]},
+    viewed: {label:"Viewed",  bg:C.purple+"22",color:C.purple,next:[{s:"paid",  label:"Mark Paid"}]},
+    paid:   {label:"Paid",    bg:C.green+"22",color:C.green,  next:[]},
+    overdue:{label:"Overdue", bg:C.red+"22",  color:C.red,    next:[{s:"paid",  label:"Mark Paid"}]},
+  };
+  const fmtShortDate=s=>{if(!s)return"—";try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return s;}};
+  const filteredInvoices=(invoiceFilter==="all"?invoices:invoices.filter(i=>i.status===invoiceFilter));
+  const totalInvoiced=invoices.reduce((s,i)=>s+(i.amount||0),0);
+  const totalPaid=invoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(i.amount||0),0);
+  const totalOutstanding=invoices.filter(i=>["draft","sent","viewed","overdue"].includes(i.status)).reduce((s,i)=>s+(i.amount||0),0);
+
   return(
     <div style={{maxWidth:1100,margin:"0 auto"}}>
       {EditModal}
       {InvoiceModal}
+      {/* Invoice Detail Modal */}
+      {invoiceDetail&&(
+        <div style={{position:"fixed",inset:0,background:"#00000080",zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setInvoiceDetail(null);}}>
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:28,width:"min(560px,96vw)",boxShadow:"0 24px 64px #00000080",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:17,color:C.t1}}>Invoice {invoiceDetail.invoiceNo||"#—"}</div>
+                <div style={{color:C.t3,fontSize:12,marginTop:2}}>{invoiceDetail.clientName} · {invoiceDetail.period}</div>
+              </div>
+              <span style={{background:INV_STATUS[invoiceDetail.status]?.bg||C.t3+"22",color:INV_STATUS[invoiceDetail.status]?.color||C.t3,borderRadius:8,padding:"4px 12px",fontWeight:700,fontSize:13}}>{INV_STATUS[invoiceDetail.status]?.label||invoiceDetail.status}</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              {[["Amount",fmtM(invoiceDetail.amount||0)],["Tons",fmtT(invoiceDetail.tons||0)],["Issue Date",fmtShortDate(invoiceDetail.issueDate)],["Due Date",fmtShortDate(invoiceDetail.dueDate)],["File",invoiceDetail.filename||"—"]].map(([l,v])=>(
+                <div key={l} style={{background:C.surface,borderRadius:8,padding:"10px 14px"}}>
+                  <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{l}</div>
+                  <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {invoiceDetail.description&&<div style={{background:C.surface,borderRadius:8,padding:"10px 14px",marginBottom:16}}>
+              <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>Description</div>
+              <div style={{color:C.t2,fontSize:13}}>{invoiceDetail.description}</div>
+            </div>}
+            {/* Timeline */}
+            <div style={{background:C.surface,borderRadius:8,padding:"12px 14px",marginBottom:16}}>
+              <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Activity Timeline</div>
+              {[["📝 Created",invoiceDetail.createdAt],["📤 Sent to Client",invoiceDetail.sentAt],["👁 Client Viewed",invoiceDetail.viewedAt],["✅ Payment Received",invoiceDetail.paidAt]].map(([lbl,ts])=>(
+                <div key={lbl} style={{display:"flex",gap:10,alignItems:"center",marginBottom:6}}>
+                  <span style={{fontSize:12,color:ts?C.t1:C.t3+"66",minWidth:140}}>{lbl}</span>
+                  <span style={{fontSize:12,color:ts?C.green:C.t3}}>{ts?fmtShortDate(ts):"—"}</span>
+                </div>
+              ))}
+            </div>
+            {/* Status actions */}
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+              <button onClick={()=>setInvoiceDetail(null)} style={{...GBtn,padding:"8px 18px"}}>Close</button>
+              {(INV_STATUS[invoiceDetail.status]?.next||[]).map(n=>(
+                <button key={n.s} onClick={()=>{updateInvoiceStatus(invoiceDetail.id,n.s);const now=new Date().toISOString();setInvoiceDetail(p=>{const nw={...p,status:n.s};if(n.s==="sent"&&!nw.sentAt)nw.sentAt=now;if(n.s==="viewed"&&!nw.viewedAt)nw.viewedAt=now;if(n.s==="paid"&&!nw.paidAt)nw.paidAt=now;return nw;});}} style={{...SBtn,padding:"8px 18px"}}>{n.label}</button>
+              ))}
+              {invoiceDetail.status==="sent"&&<button onClick={()=>{updateInvoiceStatus(invoiceDetail.id,"overdue");setInvoiceDetail(p=>({...p,status:"overdue"}));}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>Mark Overdue</button>}
+              <button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(invoiceDetail.id);setInvoiceDetail(null);}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>🗑 Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
       {msg&&<div style={{position:"fixed",top:20,right:20,zIndex:9998,background:C.green,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:700,boxShadow:"0 4px 16px #00000040"}}>{msg}</div>}
 
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
+      {/* ── Header ── */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>💰 Billing Summary</h2>
-          <p style={{margin:"4px 0 0",color:C.t3,fontSize:13}}>Tonnage-based · Completed tasks only · Priority: Task → Project → Client → Default</p>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>💰 Billing</h2>
+          <p style={{margin:"4px 0 0",color:C.t3,fontSize:12}}>Tonnage-based · Priority: Task → Project → Client → Default</p>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          <select value={month} onChange={e=>setMonth(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
-            {months.map((m,i)=><option key={m} value={m}>{monthNames[i]}</option>)}
-          </select>
-          <select value={year} onChange={e=>setYear(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
-            {years.map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-          <button onClick={()=>setShowRates(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>⚙️ Rate Settings</button>
-          <button onClick={()=>setShowCompanySetup(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:5,background:showCompanySetup?C.accent+"22":"transparent",borderColor:showCompanySetup?C.accent:C.border}}>🏦 Company Setup</button>
-          <button onClick={pdfAll} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>🖨️ Full PDF</button>
-          <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:5}}>⬇ Excel</button>
+          {billingView==="overview"&&<>
+            <select value={month} onChange={e=>setMonth(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
+              {months.map((m,i)=><option key={m} value={m}>{monthNames[i]}</option>)}
+            </select>
+            <select value={year} onChange={e=>setYear(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none"}}>
+              {years.map(y=><option key={y} value={y}>{y}</option>)}
+            </select>
+            <button onClick={pdfAll} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>🖨️ Full PDF</button>
+            <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:5}}>⬇ Excel</button>
+          </>}
         </div>
       </div>
 
-      {noWeightTasks.length>0&&<div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
-        <span>⚠️</span><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks missing weight</span><span style={{color:C.t2,fontSize:12}}>— excluded from billing</span>
-      </div>}
+      {/* ── Tab Bar ── */}
+      <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:`1px solid ${C.border}`}}>
+        {[["overview","📊 Overview"],["invoices","🧾 Invoices"+(invoices.length>0?` (${invoices.length})`:"")],["settings","⚙️ Settings"]].map(([k,lbl])=>(
+          <button key={k} onClick={()=>setBillingView(k)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",color:billingView===k?C.accent:C.t3,fontWeight:billingView===k?700:500,borderBottom:billingView===k?`2px solid ${C.accent}`:"2px solid transparent",fontFamily:"inherit",fontSize:13,transition:"color .15s",whiteSpace:"nowrap"}}>{lbl}</button>
+        ))}
+      </div>
 
-      {/* Rate Settings Panel */}
-      {showRates&&(
+      {/* ════════════════════════════ OVERVIEW TAB ════════════════════════════ */}
+      {billingView==="overview"&&(<>
+        {noWeightTasks.length>0&&<div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
+          <span>⚠️</span><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks missing weight</span><span style={{color:C.t2,fontSize:12}}>— excluded from billing</span>
+        </div>}
+
+        {/* Stat cards */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(165px,1fr))",gap:14,marginBottom:24}}>
+          {[{label:"Total Billed Tons",value:fmtT(totalTons),color:C.blue,icon:"⚖️"},{label:"Total Revenue",value:fmtM(totalAmt),color:C.green,icon:"💵"},{label:"Clients Billed",value:clientNames.length,color:C.accent,icon:"🏢"},{label:"Tasks Completed",value:billableTasks.length,color:C.teal,icon:"✅"},{label:"Pending Pipeline",value:fmtT(pendingTons),color:C.purple,icon:"🔄"}].map(s=>(
+            <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"14px 16px"}}>
+              <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
+              <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
+              <div style={{fontSize:22,fontWeight:800,color:C.t1,margin:"4px 0 0"}}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Billing table */}
+        {clientNames.length===0
+          ?<div style={{...card,textAlign:"center",padding:48,color:C.t3}}>No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}</div>
+          :<div style={{...card,padding:0,overflow:"hidden"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>
+                <th style={{...th2,width:32}}></th>
+                <th style={th2}>Client / Project / Task</th>
+                <th style={{...th2,textAlign:"right"}}>Tons</th>
+                <th style={{...th2,textAlign:"right"}}>Rate</th>
+                <th style={{...th2,textAlign:"right"}}>Amount</th>
+                <th style={{...th2,textAlign:"center",width:110}}>Actions</th>
+              </tr></thead>
+              <tbody>
+                {clientNames.map(cl=>{
+                  const{projMap,totalTons:cT,totalAmt:cA}=clientMap[cl];
+                  const isEC=expanded["c_"+cl];
+                  const allT=Object.values(projMap).flatMap(p=>p.tasks);
+                  return(
+                    <Fragment key={cl}>
+                      <tr style={{cursor:"pointer",background:isEC?C.surface:C.card}} onClick={()=>setExpanded(p=>({...p,["c_"+cl]:!p["c_"+cl]}))}>
+                        <td style={{...td2,textAlign:"center",color:C.t3,fontWeight:700}}>{isEC?"▼":"▶"}</td>
+                        <td style={td2}>
+                          <span style={{fontWeight:800,fontSize:14,color:C.t1}}>🏢 {cl}</span>
+                          <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{allT.length} tasks</span>
+                          {getLabel("client",cl)&&<span style={{marginLeft:8,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("client",cl)}</span>}
+                          {getNote("client",cl)&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {getNote("client",cl)}</div>}
+                        </td>
+                        <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtT(cT)}</td>
+                        <td style={{...td2,textAlign:"right",color:C.t3,fontSize:12}}>mixed</td>
+                        <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cA>0?fmtM(cA):"—"}</td>
+                        <td style={{...td2,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+                          <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                            <button onClick={()=>openEdit("client",cl,cl)} title="Edit client details" style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
+                            <button onClick={()=>pdfClient(cl)} title="Generate invoice PDF" style={{...GBtn,padding:"3px 8px",fontSize:11}}>📄</button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isEC&&Object.entries(projMap).map(([pName,pg])=>{
+                        const isEP=expanded["p_"+pName+"_"+cl];
+                        return(
+                          <Fragment key={pName}>
+                            <tr style={{cursor:"pointer",background:isEP?C.bg:C.surface}} onClick={()=>setExpanded(p=>({...p,["p_"+pName+"_"+cl]:!p["p_"+pName+"_"+cl]}))}>
+                              <td style={{...td2,paddingLeft:28,fontSize:11,color:C.t3,borderBottom:`1px solid ${C.border}22`}}>{isEP?"▼":"▶"}</td>
+                              <td style={{...td2,paddingLeft:20,borderBottom:`1px solid ${C.border}22`}}>
+                                <span style={{fontWeight:700,color:C.t1}}>📁 {pName}</span>
+                                <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{pg.tasks.length} tasks</span>
+                                {getLabel("project",pg.proj?.id)&&<span style={{marginLeft:8,fontSize:10,background:C.blue+"22",color:C.blue,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("project",pg.proj?.id)}</span>}
+                              </td>
+                              <td style={{...td2,textAlign:"right",color:C.blue,borderBottom:`1px solid ${C.border}22`}}>{fmtT(pg.totalTons)}</td>
+                              <td style={{...td2,textAlign:"right",fontSize:12,color:C.t2,borderBottom:`1px solid ${C.border}22`}}>{pg.tasks[0]?`$${pg.tasks[0]._rate}/T`:"—"}</td>
+                              <td style={{...td2,textAlign:"right",fontWeight:700,color:C.green,borderBottom:`1px solid ${C.border}22`}}>{pg.totalAmt>0?fmtM(pg.totalAmt):"—"}</td>
+                              <td style={{...td2,textAlign:"center",borderBottom:`1px solid ${C.border}22`}} onClick={e=>e.stopPropagation()}>
+                                <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                                  <button onClick={()=>openEdit("project",pg.proj?.id,pName)} style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
+                                  <button onClick={()=>pdfProject(cl,pName,pg)} style={{...GBtn,padding:"3px 8px",fontSize:11}}>📄</button>
+                                </div>
+                              </td>
+                            </tr>
+                            {isEP&&pg.tasks.map(t=>(
+                              <tr key={t.id} style={{background:C.bg}}>
+                                <td style={{...td2,padding:"7px 14px 7px 42px",fontSize:11,color:C.t3,borderBottom:`1px solid ${C.border}11`}}>✅</td>
+                                <td style={{...td2,padding:"7px 14px",fontSize:12,borderBottom:`1px solid ${C.border}11`}}>
+                                  <span style={{color:C.t1}}>{t.title}</span>
+                                  {t.assignee&&<span style={{color:C.t3,marginLeft:8,fontSize:11}}>· {t.assignee}</span>}
+                                </td>
+                                <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._wt>0?fmtT(t._wt):"—"}</td>
+                                <td style={{...td2,textAlign:"right",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>
+                                    <span style={{fontSize:9,background:lvlBadge[t._level]?.bg,color:lvlBadge[t._level]?.color,borderRadius:4,padding:"1px 4px",fontWeight:700}}>{t._level}</span>
+                                    <span style={{fontSize:12,color:t._rate>0?C.t2:C.t3}}>{t._rate>0?`$${t._rate}/T`:"—"}</span>
+                                  </div>
+                                </td>
+                                <td style={{...td2,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._amt>0?fmtM(t._amt):"—"}</td>
+                                <td style={{...td2,textAlign:"center",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}} onClick={e=>e.stopPropagation()}>
+                                  <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                                    <button onClick={()=>openEdit("task",t.id,t.title)} style={{...GBtn,padding:"3px 6px",fontSize:10}}>✏️</button>
+                                    <button onClick={()=>pdfTask(t,cl)} style={{...GBtn,padding:"3px 6px",fontSize:10}}>📄</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </Fragment>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
+                <tr style={{background:C.surface,borderTop:`2px solid ${C.border}`}}>
+                  <td style={{...td2,borderBottom:"none"}}></td>
+                  <td style={{...td2,fontWeight:800,fontSize:14,color:C.t1,borderBottom:"none"}}>TOTAL</td>
+                  <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtT(totalTons)}</td>
+                  <td style={{...td2,borderBottom:"none"}}></td>
+                  <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtM(totalAmt):"—"}</td>
+                  <td style={{...td2,borderBottom:"none"}}></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        }
+
+        {pendingTasks.length>0&&<div style={{...card,marginTop:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline — not yet billed</div>
+          <div style={{color:C.t3,fontSize:12,marginBottom:10}}>In-progress tasks with weight entered</div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+            <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
+              <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{fmtT(pendingTons)}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:2}}>Pending Tons</div>
+            </div>
+            <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
+              <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:2}}>Active Tasks</div>
+            </div>
+          </div>
+        </div>}
+      </>)}
+
+      {/* ════════════════════════════ INVOICES TAB ════════════════════════════ */}
+      {billingView==="invoices"&&(<>
+        {/* Invoice summary stats */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:22}}>
+          {[{label:"Total Invoiced",value:fmtM(totalInvoiced),color:C.blue,icon:"🧾"},{label:"Total Paid",value:fmtM(totalPaid),color:C.green,icon:"✅"},{label:"Outstanding",value:fmtM(totalOutstanding),color:C.yellow,icon:"⏳"},{label:"Total Invoices",value:invoices.length,color:C.accent,icon:"📄"}].map(s=>(
+            <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"14px 16px"}}>
+              <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
+              <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
+              <div style={{fontSize:22,fontWeight:800,color:C.t1,margin:"4px 0 0"}}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Status pipeline guide */}
+        <div style={{...card,marginBottom:16,padding:"12px 18px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <span style={{fontSize:12,color:C.t3,fontWeight:600,marginRight:4}}>Invoice Flow:</span>
+            {[["Draft","gray"],["→",""],["Sent","blue"],["→",""],["Viewed","purple"],["→",""],["Paid","green"]].map(([l,c],i)=>(
+              c?<span key={i} style={{background:INV_STATUS[l.toLowerCase()]?.bg,color:INV_STATUS[l.toLowerCase()]?.color,padding:"2px 10px",borderRadius:6,fontSize:12,fontWeight:700}}>{l}</span>
+               :<span key={i} style={{color:C.t3,fontSize:12}}>→</span>
+            ))}
+            <span style={{color:C.t3,fontSize:12,marginLeft:8}}>or</span>
+            <span style={{background:INV_STATUS.overdue.bg,color:INV_STATUS.overdue.color,padding:"2px 10px",borderRadius:6,fontSize:12,fontWeight:700}}>Overdue</span>
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+          {[["all","All"+(invoices.length>0?` (${invoices.length})`:"")] ,["draft","Draft"],["sent","Sent"],["viewed","Viewed"],["paid","Paid"],["overdue","Overdue"]].map(([k,lbl])=>(
+            <button key={k} onClick={()=>setInvoiceFilter(k)} style={{...GBtn,padding:"5px 14px",fontSize:12,background:invoiceFilter===k?C.accent:"transparent",color:invoiceFilter===k?"#fff":C.t2,border:invoiceFilter===k?"none":`1px solid ${C.border}`}}>{lbl}</button>
+          ))}
+        </div>
+
+        {/* Invoice list */}
+        {filteredInvoices.length===0
+          ?<div style={{...card,textAlign:"center",padding:48,color:C.t3}}>
+            <div style={{fontSize:32,marginBottom:12}}>🧾</div>
+            <div style={{fontWeight:700,marginBottom:6}}>{invoices.length===0?"No invoices yet":"No invoices match this filter"}</div>
+            <div style={{fontSize:13}}>{invoices.length===0?"Generate a PDF invoice from the Overview tab — it will appear here.":""}</div>
+          </div>
+          :<div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {filteredInvoices.map(inv=>{
+              const st=INV_STATUS[inv.status]||INV_STATUS.draft;
+              const isOverdue=inv.dueDate&&inv.status!=="paid"&&new Date(inv.dueDate)<new Date();
+              return(
+                <div key={inv.id} style={{...card,padding:"16px 20px",cursor:"pointer",borderLeft:`4px solid ${isOverdue?C.red:st.color}`}} onClick={()=>setInvoiceDetail(inv)}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5,flexWrap:"wrap"}}>
+                        <span style={{fontWeight:800,fontSize:15,color:C.t1}}>{inv.invoiceNo||"No #"}</span>
+                        <span style={{background:isOverdue?INV_STATUS.overdue.bg:st.bg,color:isOverdue?INV_STATUS.overdue.color:st.color,padding:"2px 10px",borderRadius:6,fontSize:11,fontWeight:700}}>{isOverdue&&inv.status!=="paid"?"Overdue":st.label}</span>
+                        <span style={{color:C.t3,fontSize:12}}>{inv.period||""}</span>
+                      </div>
+                      <div style={{fontWeight:700,color:C.t1,fontSize:13,marginBottom:3}}>🏢 {inv.clientName}</div>
+                      {inv.description&&<div style={{color:C.t3,fontSize:12,marginBottom:4}}>{inv.description}</div>}
+                      <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                        <span style={{fontSize:12,color:C.t3}}>📅 Issue: {fmtShortDate(inv.issueDate)}</span>
+                        <span style={{fontSize:12,color:isOverdue?C.red:C.t3}}>⏰ Due: {fmtShortDate(inv.dueDate)}</span>
+                        <span style={{fontSize:12,color:C.t3}}>⚖️ {fmtT(inv.tons||0)}</span>
+                      </div>
+                      {/* Activity dots */}
+                      <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                        {[["📝 Created",inv.createdAt],["📤 Sent",inv.sentAt],["👁 Viewed",inv.viewedAt],["✅ Paid",inv.paidAt]].map(([lbl,ts])=>(
+                          <span key={lbl} style={{fontSize:10,color:ts?C.green:C.t3+"66",display:"flex",alignItems:"center",gap:3}}>
+                            <span style={{width:6,height:6,borderRadius:"50%",background:ts?C.green:C.border,display:"inline-block"}}/>
+                            {lbl}{ts?": "+fmtShortDate(ts):""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right",minWidth:90}}>
+                      <div style={{fontSize:20,fontWeight:800,color:inv.status==="paid"?C.green:C.t1}}>{fmtM(inv.amount||0)}</div>
+                      <div style={{fontSize:11,color:C.t3,marginTop:2}}>{inv.tons>0?fmtT(inv.tons):""}</div>
+                    </div>
+                  </div>
+                  {/* Quick actions */}
+                  <div style={{display:"flex",gap:6,marginTop:12,flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
+                    {st.next.map(n=>(
+                      <button key={n.s} onClick={()=>updateInvoiceStatus(inv.id,n.s)} style={{...SBtn,padding:"4px 12px",fontSize:11}}>{n.label}</button>
+                    ))}
+                    {inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
+                    <button onClick={()=>setInvoiceDetail(inv)} style={{...GBtn,padding:"4px 12px",fontSize:11}}>View Details</button>
+                    <button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(inv.id);}} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red}}>🗑</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        }
+      </>)}
+
+      {/* ════════════════════════════ SETTINGS TAB ════════════════════════════ */}
+      {billingView==="settings"&&(<>
+        {/* Rate Settings */}
         <div style={{...card,marginBottom:20}}>
           <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:4}}>⚙️ Rate Settings</div>
-          <p style={{margin:"0 0 14px",color:C.t3,fontSize:12}}>Priority: Task rate &gt; Project rate &gt; Client rate &gt; Default rate. Click ✏️ to edit rate + note + label for any entity.</p>
-          {/* Default */}
+          <p style={{margin:"0 0 14px",color:C.t3,fontSize:12}}>Priority: Task rate &gt; Project rate &gt; Client rate &gt; Default rate.</p>
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.surface,borderRadius:8,marginBottom:14}}>
             <span style={{flex:1,fontWeight:700,color:C.t1,fontSize:13}}>🌐 Default Rate</span>
             <span style={{color:defaultRate>0?C.green:C.t3,fontWeight:700}}>{defaultRate>0?`$${defaultRate}/T`:"Not set"}</span>
             <button onClick={()=>openEdit("default","default","Default Rate")} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
           </div>
-          {/* Tabs */}
           <div style={{display:"flex",gap:4,marginBottom:12}}>
             {[["client","🏢 By Client"],["project","📁 By Project"],["task","✅ By Task"]].map(([k,lbl])=>(
               <button key={k} onClick={()=>setRateTab(k)} style={{...GBtn,padding:"6px 16px",fontSize:12,background:rateTab===k?C.accent:"transparent",color:rateTab===k?"#fff":C.t2,border:rateTab===k?"none":`1px solid ${C.border}`}}>{lbl}</button>
             ))}
           </div>
           {rateTab==="client"&&(
-            <div style={{maxHeight:320,overflowY:"auto"}}>
+            <div style={{maxHeight:400,overflowY:"auto"}}>
               {[...new Set(projects.map(p=>p.client||"Unassigned"))].sort().map(cl=>{
                 const cv=clientCustom[cl];
-                return <div key={cl} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
+                return <div key={cl} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"11px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
                   <div style={{flex:1}}>
-                    <div style={{fontWeight:600,color:C.t1,fontSize:13}}>{cl}</div>
+                    <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{cl}</div>
+                    {cv?.contactName&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>👤 {cv.contactName}</div>}
+                    {cv?.email&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>✉️ {cv.email}</div>}
+                    {cv?.phone&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>📞 {cv.phone}</div>}
+                    {(cv?.address||cv?.city)&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>📍 {[cv.address,cv.city,cv.state,cv.zip].filter(Boolean).join(", ")}</div>}
+                    {cv?.label&&<span style={{display:"inline-block",marginTop:3,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"1px 6px",fontWeight:700}}>🏷 {cv.label}</span>}
                     {cv?.note&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {cv.note}</div>}
-                    {cv?.label&&<div style={{fontSize:10,color:C.accent,marginTop:1}}>🏷 {cv.label}</div>}
                   </div>
-                  <span style={{color:cv?.rate>0?C.green:C.t3,fontWeight:700,fontSize:13}}>{cv?.rate>0?`$${cv.rate}/T`:"Using default"}</span>
-                  <button onClick={()=>openEdit("client",cl,cl)} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit</button>
+                  <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                    <span style={{color:cv?.rate>0?C.green:C.t3,fontWeight:700,fontSize:13}}>{cv?.rate>0?`$${cv.rate}/T`:"Default"}</span>
+                    <button onClick={()=>openEdit("client",cl,cl)} style={{...GBtn,padding:"4px 12px",fontSize:12}}>✏️ Edit Details</button>
+                  </div>
                 </div>;
               })}
             </div>
           )}
           {rateTab==="project"&&(
-            <div style={{maxHeight:320,overflowY:"auto"}}>
+            <div style={{maxHeight:400,overflowY:"auto"}}>
               {projects.sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(p=>{
                 const pv=projCustom[p.id];
                 return <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
@@ -10464,7 +10827,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
             </div>
           )}
           {rateTab==="task"&&(
-            <div style={{maxHeight:320,overflowY:"auto"}}>
+            <div style={{maxHeight:400,overflowY:"auto"}}>
               {billableTasks.length===0&&<div style={{color:C.t3,fontSize:13,textAlign:"center",padding:20}}>No completed tasks in selected month</div>}
               {billableTasks.map(t=>{
                 const tv=taskCustom[t.id];const proj=projects.find(p=>p.id===t.project_id);
@@ -10481,31 +10844,27 @@ function BillingSummaryPage({tasks,projects,clients,me}){
             </div>
           )}
         </div>
-      )}
 
-      {/* Company & Bank Setup Panel */}
-      {showCompanySetup&&(
+        {/* Company & Bank Setup */}
         <div style={{...card,marginBottom:20}}>
-          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🏦 Company & Bank Details <span style={{fontWeight:400,color:C.t3,fontSize:12}}>— one-time setup, appears on every invoice PDF</span></div>
-          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>This info prints on the invoice: company contact, client billing address, and bank payment details.</p>
-
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🏦 Company & Bank Details</div>
+          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>One-time setup — printed on every invoice PDF.</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
               <label style={fldLbl}>Company Email</label>
               <input value={companyInfo.email||""} onChange={e=>setCompanyInfo(p=>({...p,email:e.target.value}))} placeholder="billing@rdstechserv.com" style={inp3}/>
             </div>
             <div>
-              <label style={fldLbl}>Company Phone / Contact</label>
-              <input value={companyInfo.phone||""} onChange={e=>setCompanyInfo(p=>({...p,phone:e.target.value}))} placeholder="+91 98765 43210" style={inp3}/>
+              <label style={fldLbl}>Company Phone</label>
+              <input value={companyInfo.phone||""} onChange={e=>setCompanyInfo(p=>({...p,phone:e.target.value}))} placeholder="+1 (555) 000-0000" style={inp3}/>
             </div>
           </div>
-
           <div style={{borderTop:`1px solid ${C.border}`,margin:"4px 0 14px",paddingTop:14}}>
-            <div style={{fontWeight:700,color:C.t2,fontSize:13,marginBottom:12}}>🏛 Bank Details (for Wire Transfer)</div>
+            <div style={{fontWeight:700,color:C.t2,fontSize:13,marginBottom:12}}>🏛 Bank Details (Wire Transfer / ACH)</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
               <div>
                 <label style={fldLbl}>Bank Name</label>
-                <input value={companyInfo.bankName||""} onChange={e=>setCompanyInfo(p=>({...p,bankName:e.target.value}))} placeholder="State Bank of India" style={inp3}/>
+                <input value={companyInfo.bankName||""} onChange={e=>setCompanyInfo(p=>({...p,bankName:e.target.value}))} placeholder="e.g. Chase, Wells Fargo" style={inp3}/>
               </div>
               <div>
                 <label style={fldLbl}>Account Name</label>
@@ -10513,156 +10872,23 @@ function BillingSummaryPage({tasks,projects,clients,me}){
               </div>
               <div>
                 <label style={fldLbl}>Account Number</label>
-                <input value={companyInfo.accountNumber||""} onChange={e=>setCompanyInfo(p=>({...p,accountNumber:e.target.value}))} placeholder="00112233445566" style={inp3}/>
+                <input value={companyInfo.accountNumber||""} onChange={e=>setCompanyInfo(p=>({...p,accountNumber:e.target.value}))} placeholder="e.g. 1234567890" style={inp3}/>
               </div>
               <div>
-                <label style={fldLbl}>Routing / IFSC / SWIFT</label>
-                <input value={companyInfo.routingNumber||""} onChange={e=>setCompanyInfo(p=>({...p,routingNumber:e.target.value}))} placeholder="SBIN0001234" style={inp3}/>
+                <label style={fldLbl}>ABA Routing Number</label>
+                <input value={companyInfo.routingNumber||""} onChange={e=>setCompanyInfo(p=>({...p,routingNumber:e.target.value}))} placeholder="9-digit ABA routing number" style={inp3}/>
               </div>
               <div style={{gridColumn:"1/-1"}}>
                 <label style={fldLbl}>Bank Branch Address</label>
-                <input value={companyInfo.bankBranch||""} onChange={e=>setCompanyInfo(p=>({...p,bankBranch:e.target.value}))} placeholder="Main Branch, MG Road, Chennai – 600001" style={inp3}/>
+                <input value={companyInfo.bankBranch||""} onChange={e=>setCompanyInfo(p=>({...p,bankBranch:e.target.value}))} placeholder="e.g. 100 Main St, New York, NY 10001" style={inp3}/>
               </div>
             </div>
           </div>
-
           <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
-            <button onClick={()=>setShowCompanySetup(false)} style={{...GBtn,padding:"8px 18px"}}>Close</button>
             <button onClick={saveCompanyInfo} disabled={savingCompany} style={{...SBtn,padding:"8px 24px",opacity:savingCompany?.6:1}}>{savingCompany?"Saving…":"💾 Save Company Info"}</button>
           </div>
         </div>
-      )}
-
-      {/* Stat cards */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:14,marginBottom:24}}>
-        {[{label:"Total Billed Tons",value:fmtT(totalTons),color:C.blue,icon:"⚖️"},{label:"Total Revenue",value:fmtM(totalAmt),color:C.green,icon:"💵"},{label:"Clients Billed",value:clientNames.length,color:C.accent,icon:"🏢"},{label:"Tasks Completed",value:billableTasks.length,color:C.teal,icon:"✅"},{label:"Pending Pipeline",value:fmtT(pendingTons),color:C.purple,icon:"🔄"}].map(s=>(
-          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"14px 16px"}}>
-            <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
-            <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>{s.label}</div>
-            <div style={{fontSize:22,fontWeight:800,color:C.t1,margin:"4px 0 0"}}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Billing table */}
-      {clientNames.length===0
-        ?<div style={{...card,textAlign:"center",padding:48,color:C.t3}}>No completed tasks with weight in {monthNames[parseInt(month)-1]} {year}</div>
-        :<div style={{...card,padding:0,overflow:"hidden"}}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead><tr>
-              <th style={{...th2,width:32}}></th>
-              <th style={th2}>Client / Project / Task</th>
-              <th style={{...th2,textAlign:"right"}}>Tons</th>
-              <th style={{...th2,textAlign:"right"}}>Rate</th>
-              <th style={{...th2,textAlign:"right"}}>Amount</th>
-              <th style={{...th2,textAlign:"center",width:110}}>Actions</th>
-            </tr></thead>
-            <tbody>
-              {clientNames.map(cl=>{
-                const{projMap,totalTons:cT,totalAmt:cA}=clientMap[cl];
-                const isEC=expanded["c_"+cl];
-                const allT=Object.values(projMap).flatMap(p=>p.tasks);
-                return(
-                  <Fragment key={cl}>
-                    {/* Client row */}
-                    <tr style={{cursor:"pointer",background:isEC?C.surface:C.card}} onClick={()=>setExpanded(p=>({...p,["c_"+cl]:!p["c_"+cl]}))}>
-                      <td style={{...td2,textAlign:"center",color:C.t3,fontWeight:700}}>{isEC?"▼":"▶"}</td>
-                      <td style={td2}>
-                        <span style={{fontWeight:800,fontSize:14,color:C.t1}}>🏢 {cl}</span>
-                        <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{allT.length} tasks</span>
-                        {getLabel("client",cl)&&<span style={{marginLeft:8,fontSize:10,background:C.accent+"22",color:C.accent,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("client",cl)}</span>}
-                        {getNote("client",cl)&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {getNote("client",cl)}</div>}
-                      </td>
-                      <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtT(cT)}</td>
-                      <td style={{...td2,textAlign:"right",color:C.t3,fontSize:12}}>mixed</td>
-                      <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cA>0?fmtM(cA):"—"}</td>
-                      <td style={{...td2,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
-                        <div style={{display:"flex",gap:4,justifyContent:"center"}}>
-                          <button onClick={()=>openEdit("client",cl,cl)} title="Edit rate/note/label" style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
-                          <button onClick={()=>pdfClient(cl)} title="Download PDF for this client" style={{...GBtn,padding:"3px 8px",fontSize:11}}>📄</button>
-                        </div>
-                      </td>
-                    </tr>
-                    {isEC&&Object.entries(projMap).map(([pName,pg])=>{
-                      const isEP=expanded["p_"+pName+"_"+cl];
-                      return(
-                        <Fragment key={pName}>
-                          {/* Project row */}
-                          <tr style={{cursor:"pointer",background:isEP?C.bg:C.surface}} onClick={()=>setExpanded(p=>({...p,["p_"+pName+"_"+cl]:!p["p_"+pName+"_"+cl]}))}>
-                            <td style={{...td2,paddingLeft:28,fontSize:11,color:C.t3,borderBottom:`1px solid ${C.border}22`}}>{isEP?"▼":"▶"}</td>
-                            <td style={{...td2,paddingLeft:20,borderBottom:`1px solid ${C.border}22`}}>
-                              <span style={{fontWeight:700,color:C.t1}}>📁 {pName}</span>
-                              <span style={{color:C.t3,fontSize:11,marginLeft:8}}>{pg.tasks.length} tasks</span>
-                              {getLabel("project",pg.proj?.id)&&<span style={{marginLeft:8,fontSize:10,background:C.blue+"22",color:C.blue,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("project",pg.proj?.id)}</span>}
-                              {getNote("project",pg.proj?.id)&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {getNote("project",pg.proj?.id)}</div>}
-                            </td>
-                            <td style={{...td2,textAlign:"right",color:C.blue,borderBottom:`1px solid ${C.border}22`}}>{fmtT(pg.totalTons)}</td>
-                            <td style={{...td2,textAlign:"right",fontSize:12,color:C.t2,borderBottom:`1px solid ${C.border}22`}}>{pg.tasks[0]?`$${pg.tasks[0]._rate}/T`:"—"}</td>
-                            <td style={{...td2,textAlign:"right",fontWeight:700,color:C.green,borderBottom:`1px solid ${C.border}22`}}>{pg.totalAmt>0?fmtM(pg.totalAmt):"—"}</td>
-                            <td style={{...td2,textAlign:"center",borderBottom:`1px solid ${C.border}22`}} onClick={e=>e.stopPropagation()}>
-                              <div style={{display:"flex",gap:4,justifyContent:"center"}}>
-                                <button onClick={()=>openEdit("project",pg.proj?.id,pName)} title="Edit rate/note/label" style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
-                                <button onClick={()=>pdfProject(cl,pName,pg)} title="Download PDF for this project" style={{...GBtn,padding:"3px 8px",fontSize:11}}>📄</button>
-                              </div>
-                            </td>
-                          </tr>
-                          {isEP&&pg.tasks.map(t=>(
-                            <tr key={t.id} style={{background:C.bg}}>
-                              <td style={{...td2,padding:"7px 14px 7px 42px",fontSize:11,color:C.t3,borderBottom:`1px solid ${C.border}11`}}>✅</td>
-                              <td style={{...td2,padding:"7px 14px",fontSize:12,borderBottom:`1px solid ${C.border}11`}}>
-                                <span style={{color:C.t1}}>{t.title}</span>
-                                {t.assignee&&<span style={{color:C.t3,marginLeft:8,fontSize:11}}>· {t.assignee}</span>}
-                                {getNote("task",t.id)&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>📝 {getNote("task",t.id)}</div>}
-                              </td>
-                              <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._wt>0?fmtT(t._wt):"—"}</td>
-                              <td style={{...td2,textAlign:"right",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>
-                                <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>
-                                  <span style={{fontSize:9,background:lvlBadge[t._level]?.bg,color:lvlBadge[t._level]?.color,borderRadius:4,padding:"1px 4px",fontWeight:700}}>{t._level}</span>
-                                  <span style={{fontSize:12,color:t._rate>0?C.t2:C.t3}}>{t._rate>0?`$${t._rate}/T`:"—"}</span>
-                                </div>
-                              </td>
-                              <td style={{...td2,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._amt>0?fmtM(t._amt):"—"}</td>
-                              <td style={{...td2,textAlign:"center",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}} onClick={e=>e.stopPropagation()}>
-                                <div style={{display:"flex",gap:4,justifyContent:"center"}}>
-                                  <button onClick={()=>openEdit("task",t.id,t.title)} title="Edit rate/note/label" style={{...GBtn,padding:"3px 6px",fontSize:10}}>✏️</button>
-                                  <button onClick={()=>pdfTask(t,cl)} title="Download PDF for this task" style={{...GBtn,padding:"3px 6px",fontSize:10}}>📄</button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </Fragment>
-                      );
-                    })}
-                  </Fragment>
-                );
-              })}
-              <tr style={{background:C.surface,borderTop:`2px solid ${C.border}`}}>
-                <td style={{...td2,borderBottom:"none"}}></td>
-                <td style={{...td2,fontWeight:800,fontSize:14,color:C.t1,borderBottom:"none"}}>TOTAL</td>
-                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtT(totalTons)}</td>
-                <td style={{...td2,borderBottom:"none"}}></td>
-                <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtM(totalAmt):"—"}</td>
-                <td style={{...td2,borderBottom:"none"}}></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      }
-
-      {pendingTasks.length>0&&<div style={{...card,marginTop:20}}>
-        <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline — not yet billed</div>
-        <div style={{color:C.t3,fontSize:12,marginBottom:10}}>In-progress tasks with weight entered</div>
-        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-          <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
-            <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{fmtT(pendingTons)}</div>
-            <div style={{fontSize:11,color:C.t3,marginTop:2}}>Pending Tons</div>
-          </div>
-          <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
-            <div style={{fontSize:20,fontWeight:800,color:C.purple}}>{pendingTasks.length}</div>
-            <div style={{fontSize:11,color:C.t3,marginTop:2}}>Active Tasks</div>
-          </div>
-        </div>
-      </div>}
+      </>)}
     </div>
   );
 }
@@ -13902,204 +14128,4 @@ export default function App(){
         else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
       }} onClose={()=>setCmdOpen(false)}/>}
       {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const drill=dashDrill;
-      const lastDrill=drill[drill.length-1];
-      function closeDSM(){setDSM(null);setDDrill([]);}
-      function goBack(){setDDrill(d=>d.slice(0,-1));}
-      function drillInto(type,item){setDDrill(d=>[...d,{type,item}]);}
-
-      // ── Determine current view ──
-      let title="",color=C.accent,items=[],canDrill=false,drillType="",isTaskList=false;
-
-      if(!lastDrill){
-        // Root level
-        if(DSM==="users"){
-          title="👥 All Employees";color=C.accent;canDrill=true;drillType="employee";
-          items=users.filter(u=>u.role!=="Client").map(u=>{
-            const ut=tasks.filter(t=>t.assignee===u.name||t.detailer===u.name||t.checker===u.name);
-            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
-          });
-        } else if(DSM==="clients"){
-          title="🏢 All Clients";color=C.teal;canDrill=true;drillType="client";
-          items=clients.map(cl=>{
-            const cProjs=accessibleProjects.filter(p=>(p.client||"")===(cl.name||""));
-            return{label:cl.name,sub:`${cl.email||cl.phone||""} · ${cProjs.length} projects`,dot:C.teal,raw:cl};
-          });
-        } else if(DSM==="projects"){
-          title="📁 All Projects";color=C.blue;canDrill=true;drillType="project";
-          items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-        } else if(DSM==="completed"){
-          title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
-        } else if(DSM==="inprogress"){
-          title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
-        } else if(DSM==="team"){
-          title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
-          const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-          items=teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue,raw:{name}}));
-        }
-      } else if(lastDrill.type==="client"){
-        // Client → Projects
-        const cl=lastDrill.item;
-        title=`📁 ${cl.name} — Projects`;color=C.blue;canDrill=true;drillType="project";
-        items=accessibleProjects.filter(p=>(p.client||"")===(cl.name||"")).map(p=>({label:p.name,sub:`${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-      } else if(lastDrill.type==="project"){
-        // Project → Tasks
-        const proj=lastDrill.item;
-        title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
-      } else if(lastDrill.type==="employee"){
-        // Employee → Projects they work in
-        const emp=lastDrill.item;
-        const empName=emp.name||emp.username;
-        const empProjIds=new Set(tasks.filter(t=>t.assignee===empName||t.detailer===empName||t.checker===empName).map(t=>t.project_id));
-        title=`📁 ${empName} — Projects`;color=C.blue;canDrill=true;drillType="emp-project";
-        items=accessibleProjects.filter(p=>empProjIds.has(p.id)).map(p=>{
-          const empProjTasks=tasks.filter(t=>t.project_id===p.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName));
-          return{label:p.name,sub:`${p.client||"No client"} · ${empProjTasks.filter(t=>isDone(t.status)).length} done · ${empProjTasks.filter(t=>t.status==="In Progress").length} in progress`,dot:p.color||C.blue,raw:{proj:p,empName}};
-        });
-      } else if(lastDrill.type==="emp-project"){
-        // Employee+Project → Tasks
-        const {proj,empName}=lastDrill.item;
-        title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
-      }
-
-      return(
-        <div onClick={closeDSM} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:540,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${color}33,0 24px 60px #00000080`}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 20px",borderBottom:`1px solid ${C.border}`}}>
-              {drill.length>0&&<button onClick={goBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:13,cursor:"pointer",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontWeight:600}}>← Back</button>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:1}}>{items.length} item{items.length!==1?"s":""}{canDrill?" · click to drill down":""}</div>
-              </div>
-              <button onClick={closeDSM} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            {/* Breadcrumb */}
-            {drill.length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 20px",borderBottom:`1px solid ${C.border}22`,flexWrap:"wrap"}}>
-                <span onClick={()=>setDDrill([])} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:600}}>Home</span>
-                {drill.map((d,i)=>(
-                  <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontSize:11,color:C.t3}}>›</span>
-                    <span onClick={()=>setDDrill(drill.slice(0,i+1))} style={{fontSize:11,color:i===drill.length-1?C.t1:C.accent,cursor:i<drill.length-1?"pointer":"default",fontWeight:600}}>{d.item.name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* List */}
-            <div style={{overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {items.length===0
-                ?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>
-                :items.map((item,i)=>(
-                <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
-                  onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+      {clientModal&&<ClientsModal 
