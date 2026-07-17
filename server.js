@@ -1502,4 +1502,46 @@ app.get(/.*/, (req, res) => {
 
 // ══════════════════════════════════════════════════════════════
 // START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
-// ════════════════════════════════════════════�
+// ══════════════════════════════════════════════════════════════
+
+const HTTPS_PORT = 8443;
+const certPath   = path.join(__dirname, "certs", "cert.pem");
+const keyPath    = path.join(__dirname, "certs",  "key.pem");
+
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  try {
+    require("https").createServer({
+      key:  fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
+      console.log(`\n🔒 RDS Local Server running at:`);
+      console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
+      console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
+      console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+
+      let _syncBusy = false;
+      async function doSync(label) {
+        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
+        _syncBusy = true;
+        try { await runSync(); }
+        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
+        finally { _syncBusy = false; }
+      }
+      setInterval(() => doSync("10s"), 10000);
+      cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
+      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
+      setTimeout(() => doSync("startup"), 30000);
+    });
+  } catch (e) {
+    console.error("HTTPS failed:", e.message);
+    process.exit(1);
+  }
+} else {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
+    console.log(`   http://192.168.0.159:${PORT}`);
+    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
+    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
+    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+  });
+}
