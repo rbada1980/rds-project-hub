@@ -10423,7 +10423,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         <div style={{marginBottom:22}}>
           <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Note / Description (optional)</label>
           <textarea value={editVal.note} onChange={e=>setEditVal(v=>({...v,note:e.target.value}))}
-            placeholder="e.g. Includes revision cycle charges. Net 30 days."
+            placeholder="e.g. Includes revision cycle charges. Net 15 days."
             rows={3}
             style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
           <div style={{color:C.t3,fontSize:11,marginTop:3}}>Appears as a highlighted note block on the PDF invoice</div>
@@ -10513,7 +10513,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         <div style={{marginBottom:20}}>
           <label style={fldLbl}>Description / Notes (optional)</label>
           <textarea value={invoiceOpts.description} onChange={e=>setInvoiceOpts(p=>({...p,description:e.target.value}))} rows={2}
-            placeholder="e.g. Detailing services for July 2026 — Net 30 days"
+            placeholder="e.g. Detailing services for July 2026 — Net 15 days"
             style={{...inp3,resize:"vertical"}}/>
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
