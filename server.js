@@ -1505,4 +1505,194 @@ function buildDigestHtml(recipientName, tasks, projMap, dateLabel) {
     // Stats strip
     "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f8fafc;border-radius:8px;margin-bottom:20px;border-left:4px solid #1a3a6b;'><tr>" +
     "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#1a3a6b;'>" + total + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>TOTAL</div></td>" +
-    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style=
+    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#059669;'>" + done + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>COMPLETED</div></td>" +
+    "<td width='25%' style='padding:14px 0;text-align:center;border-right:1px solid #e5e7eb;'><div style='font-size:22px;font-weight:700;color:#d97706;'>" + inProg + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>IN PROGRESS</div></td>" +
+    "<td width='25%' style='padding:14px 0;text-align:center;'><div style='font-size:22px;font-weight:700;color:#ef4444;'>" + ns + "</div><div style='font-size:11px;color:#6b7280;margin-top:2px;'>NOT STARTED</div></td>" +
+    "</tr></table>" +
+
+    // Task table
+    "<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #e5e7eb;'>" +
+    "<thead><tr style='background:#1a3a6b;'>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>CLIENT</th>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>PROJECT</th>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>TASK</th>" +
+    "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>STATUS</th>" +
+    "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>ASSIGNEE</th>" +
+    "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>SUB DATE</th>" +
+    "</tr></thead><tbody>" + rows + "</tbody></table>" +
+
+    "<div style='margin-top:22px;padding-top:18px;border-top:1px solid #f3f4f6;font-size:13px;color:#1a3a6b;font-weight:700;'>RDS TechServ Team</div>" +
+    "</td></tr></table>" +
+
+    // FOOTER
+    "<table width='100%' cellpadding='0' cellspacing='0' style='background:#1a3a6b;border-radius:0 0 10px 10px;'>" +
+    "<tr><td style='padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);'>&copy; " + year + " RDS TechServ &mdash; Automated digest, do not reply.</td></tr>" +
+    "</table>" +
+
+    "</td></tr></table></body></html>";
+}
+
+app.get("/api/cron-daily", async (req, res) => {
+  try {
+    const force = req.query.force === "true";
+
+    // ── In-memory lock: block concurrent sends ──────────────────
+    if (_digestSending) {
+      return res.json({ message: "Send already in progress — skipped" });
+    }
+    _digestSending = true;
+
+    // ── Date guard: check BOTH local PG and Supabase ────────────
+    const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
+    if (!force) {
+      try {
+        // Check local PG
+        const rows = await pool.query("SELECT value FROM settings WHERE key='last_digest_date' LIMIT 1");
+        if (rows.rows.length && rows.rows[0].value === today) {
+          _digestSending = false;
+          return res.json({ message: "Already sent today (local DB)" });
+        }
+      } catch(_) {}
+      try {
+        // Check Supabase (catches sends triggered from App.jsx frontend)
+        const sbRows = await supaGet("/rest/v1/settings?key=eq.last_digest_date&select=value&limit=1");
+        if (Array.isArray(sbRows) && sbRows.length && sbRows[0].value === today) {
+          _digestSending = false;
+          return res.json({ message: "Already sent today (Supabase)" });
+        }
+      } catch(_) {}
+    }
+
+    const today     = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
+    const dateLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+
+    // Get today's tasks
+    const tasks = await supaGet(
+      "/rest/v1/tasks?or=(client_sub_date.eq." + today + ",due_date.eq." + today + ")&select=id,title,client,status,assignee,client_sub_date,due_date,project_id&order=client_sub_date.asc"
+    );
+    const projects = await supaGet("/rest/v1/projects?select=id,name,client");
+    const projMap  = {};
+    for (const p of (projects || [])) projMap[p.id] = p;
+
+    // Recipients: Admin, Manager, Team Leader with email
+    const users = await supaGet("/rest/v1/users?select=name,email,role&role=in.(Admin,Manager,Team Leader)");
+    const recipients = (users || []).filter(u => u.email && u.email.includes("@"));
+
+    if (!recipients.length) {
+      return res.json({ error: "No recipients found — add email addresses to Admin/Manager/Team Leader accounts" });
+    }
+
+    let sent = 0;
+    for (const u of recipients) {
+      const html = buildDigestHtml(u.name || u.email, tasks || [], projMap, dateLabel);
+      const payload = {
+        type: "submission_digest",
+        data: {
+          taskName:       "Daily Submission List — " + today,
+          projectName:    (tasks || []).length + " submission(s) planned for today",
+          completedBy:    "RDS TechServ Automated Digest",
+          completedAt:    dateLabel,
+          recipientEmail: u.email,
+          subject:        "📬 RDS Daily Submission List — " + dateLabel,
+          htmlBody:       html
+        }
+      };
+      try {
+        await fetch(SUPA_URL + "/functions/v1/notify", {
+          method: "POST",
+          headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        sent++;
+      } catch(e) { console.warn("[cron-daily] Email failed for", u.email, e.message); }
+    }
+
+    // ── Save guard to BOTH stores so either path sees it ────────
+    try {
+      await pool.query(
+        "INSERT INTO settings(key,value) VALUES('last_digest_date',$1) ON CONFLICT(key) DO UPDATE SET value=$1",
+        [today]
+      );
+    } catch(_) {}
+    try {
+      await fetch(SUPA_URL + "/rest/v1/settings?key=eq.last_digest_date", {
+        method: "PATCH",
+        headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+        body: JSON.stringify({ value: today })
+      });
+      // If row doesn't exist yet, insert it
+      await fetch(SUPA_URL + "/rest/v1/settings", {
+        method: "POST",
+        headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ key: "last_digest_date", value: today })
+      });
+    } catch(_) {}
+
+    _digestSending = false;
+    console.log("[cron-daily] Sent digest to", sent, "recipients |", (tasks||[]).length, "tasks for", today);
+    res.json({ sent, tasks: (tasks || []).length, date: today });
+  } catch(e) {
+    _digestSending = false;
+    console.error("[cron-daily] Error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════
+// SPA FALLBACK — serve React app for all other routes
+// ══════════════════════════════════════════════════════════════
+
+app.get(/.*/, (req, res) => {
+  const index = path.join(DIST, "index.html");
+  if (fs.existsSync(index)) {
+    res.sendFile(index);
+  } else {
+    res.json({ message: "RDS Local API running. React build not found — run npm run build first." });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
+// ══════════════════════════════════════════════════════════════
+
+const HTTPS_PORT = 8443;
+const certPath   = path.join(__dirname, "certs", "cert.pem");
+const keyPath    = path.join(__dirname, "certs",  "key.pem");
+
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  try {
+    require("https").createServer({
+      key:  fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
+      console.log(`\n🔒 RDS Local Server running at:`);
+      console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
+      console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
+      console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+
+      let _syncBusy = false;
+      async function doSync(label) {
+        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
+        _syncBusy = true;
+        try { await runSync(); }
+        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
+        finally { _syncBusy = false; }
+      }
+      setInterval(() => doSync("10s"), 10000);
+      cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
+      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
+      setTimeout(() => doSync("startup"), 30000);
+    });
+  } catch (e) {
+    console.error("HTTPS failed:", e.message);
+    process.exit(1);
+  }
+} else {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
+    console.log(`   http://192.168.0.159:${PORT}`);
+    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
+    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
+    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
+  });
+}
