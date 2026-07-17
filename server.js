@@ -1563,7 +1563,6 @@ app.get("/api/cron-daily", async (req, res) => {
       } catch(_) {}
     }
 
-    const today     = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
     const dateLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 
     // Get today's tasks
