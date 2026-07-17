@@ -1,0 +1,35 @@
+
+> rds-project-hub@0.0.0 build
+> vite build
+
+[36mvite v8.0.14 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 239 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.55 kB │ gzip:   0.33 kB
+dist/assets/index-CGk5keqa.css            2.01 kB │ gzip:   0.90 kB
+dist/assets/typeof-B5XbjTb1.js            0.27 kB │ gzip:   0.16 kB
+dist/assets/purify-CrFKS5tv.js           20.78 kB │ gzip:   8.66 kB
+dist/assets/index.es-CI9N4A0J.js        151.41 kB │ gzip:  48.89 kB
+dist/assets/html2canvas-CApD7hkY.js     199.56 kB │ gzip:  46.78 kB
+dist/assets/jspdf.es.min-_IoZ6Fm_.js    341.22 kB │ gzip: 111.96 kB
+dist/assets/index-TQgPV8xh.js         1,442.31 kB │ gzip: 366.42 kB
+
+[32m✓ built in 670ms[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [rds-hub](ids: [ 0 ])
+[PM2] [rds-hub](0) ✓
+┌────┬────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name       │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 4676     │ 0s     │ 175  │ online    │ 0%       │ 85.9mb   │ HP       │ disabled │
+└────┴────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+host metrics | cpu: 15.1% | ram usage: 87.6% | disk: ⇓ 0mb/s ⇑ 0mb/s |
+Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+To https://github.com/rbada1980/rds-project-hub.git
+   91c7163..35d89ee  main -> main
