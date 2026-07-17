@@ -10245,12 +10245,12 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(cityLine){doc.text(cityLine,billToX,btY);btY+=10;}
       if(clInfo.country&&clInfo.country!=="United States"){doc.text(clInfo.country,billToX,btY);btY+=10;}
 
-      // Vertical divider between BILL FROM and BILL TO
-      const midX=PW/2;
+      // Vertical divider between BILL FROM and BILL TO — centered in gap between columns
+      const divX=Math.round((billFromX+220+billToX)/2); // ~300, midpoint between left col end and right col start
       // Divider below bill-from/bill-to
       const afterBill=Math.max(bfY,btY)+8;
       // Vertical separator between BILL FROM and BILL TO
-      doc.setDrawColor("#cbd5e1").setLineWidth(0.5).line(midX,82,midX,afterBill-2);
+      doc.setDrawColor("#cbd5e1").setLineWidth(0.5).line(divX,76,divX,afterBill-2);
       doc.setDrawColor("#e2e8f0").setLineWidth(0.8).line(M,afterBill,PW-M,afterBill);
 
       // ── INVOICE TITLE STRIP ──────────────────────────────────
