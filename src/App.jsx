@@ -10154,7 +10154,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   // ── Show invoice options modal before PDF ──────────────────
   function triggerPdf(args){
     const today=new Date();
-    const due=new Date(today); due.setDate(due.getDate()+30);
+    const due=new Date(today); due.setDate(due.getDate()+15);
     const fmt=d=>d.toISOString().slice(0,10);
     const autoNo="INV-"+String(today.getFullYear()).slice(-2)+String(today.getMonth()+1).padStart(2,"0")+"-"+String(Math.floor(Math.random()*900)+100);
     setInvoiceOpts({invoiceNo:autoNo,issueDate:fmt(today),dueDate:fmt(due),description:""});
@@ -10228,7 +10228,6 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(ci.address){doc.text(ci.address,billFromX,bfY);bfY+=10;}
       const fromAddrLine=[ci.city,ci.state,ci.zip].filter(Boolean).join(", ");
       if(fromAddrLine){doc.text(fromAddrLine,billFromX,bfY);bfY+=10;}
-      bfY+=4; // blank gap before contact info
       if(ci.email){doc.text(ci.email,billFromX,bfY);bfY+=10;}
       if(ci.phone){doc.text(ci.phone,billFromX,bfY);bfY+=10;}
       // BILL TO
