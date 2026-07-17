@@ -9752,16 +9752,24 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const [projRates,setProjRates]=useState({});
   const [taskRates,setTaskRates]=useState({});
   // Custom per-entity fields: {key: {rate,note,label}}
-  const [clientCustom,setClientCustom]=useState({});  // {clientName:{rate,note,label}}
+  const [clientCustom,setClientCustom]=useState({});  // {clientName:{rate,note,label,email,address}}
   const [projCustom,setProjCustom]=useState({});       // {projId:{rate,note,label}}
   const [taskCustom,setTaskCustom]=useState({});       // {taskId:{rate,note,label}}
   const [editEntity,setEditEntity]=useState(null);     // {type,key,name} currently open
-  const [editVal,setEditVal]=useState({rate:"",note:"",label:""});
+  const [editVal,setEditVal]=useState({rate:"",note:"",label:"",email:"",address:""});
   const [expanded,setExpanded]=useState({});
   const [showRates,setShowRates]=useState(false);
   const [rateTab,setRateTab]=useState("client");
   const [saving,setSaving]=useState(false);
   const [msg,setMsg]=useState(null);
+  // Company / bank setup
+  const [companyInfo,setCompanyInfo]=useState({email:"",phone:"",paymentMethod:"Wire Transfer",bankName:"",bankBranch:"",accountName:"",accountNumber:"",routingNumber:""});
+  const [showCompanySetup,setShowCompanySetup]=useState(false);
+  const [savingCompany,setSavingCompany]=useState(false);
+  // Invoice options modal (shown before PDF generation)
+  const [invoiceModal,setInvoiceModal]=useState(null);
+  const [invoiceOpts,setInvoiceOpts]=useState({invoiceNo:"",issueDate:"",dueDate:"",description:""});
+  const [generatingPdf,setGeneratingPdf]=useState(false);
   const CURRENCY="$";
   const RATE_DEFAULT="billing_rate_default";
   const rkClient=n=>"billing_rc__"+n.replace(/\s+/g,"_").toLowerCase();
@@ -9771,7 +9779,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   // Load all saved settings from DB
   useEffect(()=>{
     const allClients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-    const keys=[RATE_DEFAULT,...allClients.map(rkClient),...projects.map(p=>rkProj(p.id)),...tasks.map(t=>rkTask(t.id))];
+    const keys=[RATE_DEFAULT,"billing_company",...allClients.map(rkClient),...projects.map(p=>rkProj(p.id)),...tasks.map(t=>rkTask(t.id))];
     fetch(SUPA_URL+"/rest/v1/settings?key=in.("+keys.map(encodeURIComponent).join(",")+")",{
       headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
     }).then(r=>r.ok?r.json():[]).then(rows=>{
@@ -9780,6 +9788,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         try{
           const v=JSON.parse(r.value);
           if(r.key===RATE_DEFAULT)setDefaultRate(v.rate||v||"");
+          else if(r.key==="billing_company")setCompanyInfo(v||{});
           else if(r.key.startsWith("billing_rc__")){const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;cc[cl]=v;}
           else if(r.key.startsWith("billing_rp__")){const pid=r.key.replace("billing_rp__","");pc[pid]=v;}
           else if(r.key.startsWith("billing_rt__")){const tid=r.key.replace("billing_rt__","");tc[tid]=v;}
@@ -9807,11 +9816,19 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     }
   }
 
+  async function saveCompanyInfo(){
+    setSavingCompany(true);
+    await upsertSetting("billing_company",companyInfo);
+    setMsg("Company info saved ✓");setTimeout(()=>setMsg(null),2500);
+    setSavingCompany(false);
+  }
+
   async function saveCustom(){
     if(!editEntity)return;
     setSaving(true);
     const {type,key}=editEntity;
     const payload={rate:parseFloat(editVal.rate)||0,note:editVal.note||"",label:editVal.label||""};
+    if(type==="client"){Object.assign(payload,{email:editVal.email||"",address:editVal.address||""});}
     if(type==="default"){await upsertSetting(RATE_DEFAULT,payload);setDefaultRate(String(payload.rate));}
     else if(type==="client"){await upsertSetting(rkClient(key),payload);setClientCustom(p=>({...p,[key]:payload}));}
     else if(type==="project"){await upsertSetting(rkProj(key),payload);setProjCustom(p=>({...p,[key]:payload}));}
@@ -9822,13 +9839,13 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   }
 
   function openEdit(type,key,name){
-    let cur={rate:"",note:"",label:""};
-    if(type==="default")cur={rate:defaultRate,note:"",label:""};
-    else if(type==="client")cur=clientCustom[key]||{rate:"",note:"",label:""};
-    else if(type==="project")cur=projCustom[key]||{rate:"",note:"",label:""};
-    else if(type==="task")cur=taskCustom[key]||{rate:"",note:"",label:""};
+    let cur={rate:"",note:"",label:"",email:"",address:""};
+    if(type==="default")cur={rate:defaultRate,note:"",label:"",email:"",address:""};
+    else if(type==="client")cur={...{rate:"",note:"",label:"",email:"",address:""},...(clientCustom[key]||{})};
+    else if(type==="project")cur={...{rate:"",note:"",label:"",email:"",address:""},...(projCustom[key]||{})};
+    else if(type==="task")cur={...{rate:"",note:"",label:"",email:"",address:""},...(taskCustom[key]||{})};
     setEditEntity({type,key,name});
-    setEditVal({rate:cur.rate||"",note:cur.note||"",label:cur.label||""});
+    setEditVal({rate:cur.rate||"",note:cur.note||"",label:cur.label||"",email:cur.email||"",address:cur.address||""});
   }
 
   // Rate: task custom > project custom > client custom > default
@@ -10044,79 +10061,137 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     <script>window.onload=()=>window.print()<\/script>
     </body></html>`;
   }
+  // ── Show invoice options modal before PDF ──────────────────
+  function triggerPdf(args){
+    const today=new Date();
+    const due=new Date(today); due.setDate(due.getDate()+30);
+    const fmt=d=>d.toISOString().slice(0,10);
+    const autoNo="INV-"+String(today.getFullYear()).slice(-2)+String(today.getMonth()+1).padStart(2,"0")+"-"+String(Math.floor(Math.random()*900)+100);
+    setInvoiceOpts({invoiceNo:autoNo,issueDate:fmt(today),dueDate:fmt(due),description:""});
+    setInvoiceModal(args);
+  }
+  function pdfAll(){
+    const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
+    triggerPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",taskList,filename:`RDS_Billing_All_${year}_${month}`,clientKey:null});
+  }
+  function pdfClient(cl){
+    const taskList=Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks);
+    const note=getNote("client",cl);
+    const fname="RDS_Billing_"+cl.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
+    triggerPdf({title:cl,subtitle:`${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,taskList,filename:fname,clientKey:cl});
+  }
+  function pdfProject(cl,pName,pg){
+    const taskList=pg?.tasks||[];
+    const note=getNote("project",pg.proj?.id);
+    const fname="RDS_Billing_"+pName.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
+    triggerPdf({title:pName,subtitle:`Client: ${cl} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,taskList,filename:fname,hideProject:true,clientKey:cl});
+  }
+  function pdfTask(t,cl){
+    const note=getNote("task",t.id);
+    const fname="RDS_Billing_Task_"+t.id+"_"+year+"_"+month;
+    triggerPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,taskList:[t],filename:fname,hideProject:true,clientKey:cl});
+  }
+
   // ── Client-side PDF via jsPDF — works online & offline ──────
-  async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false}){
+  async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false,clientKey,opts={}}){
+    setGeneratingPdf(true);
     try{
       const {jsPDF}=await import("jspdf");
       const doc=new jsPDF({orientation:"p",unit:"pt",format:"a4"});
       const PW=595.28,M=50,CW=PW-M*2;
-      const todayDate=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
       const totT=taskList.reduce((s,t)=>s+(t._wt||0),0);
       const totA=taskList.reduce((s,t)=>s+(t._amt||0),0);
+      const ci=companyInfo||{};
+      const clInfo=clientKey?clientCustom[clientKey]||{}:{};
+      const fmtDate=s=>{if(!s)return"";try{return new Date(s).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});}catch{return s;}};
 
-      // Logo (fetch from server, works both online & offline)
+      // Logo
       let logoData=null;
-      try{
-        const r=await fetch("/logo.png");
-        if(r.ok){
-          const ab=await r.arrayBuffer();
-          const b64=btoa(String.fromCharCode(...new Uint8Array(ab)));
-          logoData="data:image/png;base64,"+b64;
-        }
-      }catch(_){}
+      try{const r=await fetch("/logo.png");if(r.ok){const ab=await r.arrayBuffer();logoData="data:image/png;base64,"+btoa(String.fromCharCode(...new Uint8Array(ab)));}}catch(_){}
 
-      // ── HEADER ──
-      if(logoData) doc.addImage(logoData,"PNG",M,35,72,42);
-      const tx=logoData?M+80:M;
-      doc.setFont("helvetica","bold").setFontSize(14).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",tx,52);
-      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#64748b").text("Billing & Invoice Management",tx,66);
-      doc.setFont("helvetica","bold").setFontSize(16).setTextColor("#1e3a8a").text("BILLING SUMMARY",PW-M,50,{align:"right"});
-      doc.setFontSize(9).setTextColor("#94a3b8").text(todayDate,PW-M,66,{align:"right"});
-      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,100,PW-M,100);
+      // ── HEADER ──────────────────────────────────────────────
+      if(logoData) doc.addImage(logoData,"PNG",M,30,68,40);
+      const tx=logoData?M+76:M;
+      doc.setFont("helvetica","bold").setFontSize(14).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",tx,45);
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#64748b");
+      let fromY=57;
+      if(ci.email){doc.text(ci.email,tx,fromY);fromY+=11;}
+      if(ci.phone){doc.text(ci.phone,tx,fromY);fromY+=11;}
 
-      // ── TITLE STRIP ──
-      doc.setFillColor("#1e3a8a").rect(M,108,CW,34,"F");
-      doc.setFont("helvetica","bold").setFontSize(13).setTextColor("#ffffff").text(title||"",M+10,124,{maxWidth:CW-20});
-      if(subtitle) doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#bfdbfe").text(subtitle,M+10,137,{maxWidth:CW-20});
+      // Right: INVOICE meta
+      doc.setFont("helvetica","bold").setFontSize(22).setTextColor("#1e3a8a").text("INVOICE",PW-M,42,{align:"right"});
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#475569");
+      let metaY=58;
+      if(opts.invoiceNo){doc.setFont("helvetica","bold").setTextColor("#1e293b").text(`#${opts.invoiceNo}`,PW-M,metaY,{align:"right"});metaY+=12;}
+      if(opts.issueDate){doc.setFont("helvetica","normal").setTextColor("#64748b").text(`Issue Date: ${fmtDate(opts.issueDate)}`,PW-M,metaY,{align:"right"});metaY+=11;}
+      if(opts.dueDate){doc.text(`Due Date:  ${fmtDate(opts.dueDate)}`,PW-M,metaY,{align:"right"});}
 
-      let y=153;
+      // Divider
+      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,82,PW-M,82);
+
+      // ── BILL TO / BILL FROM ──────────────────────────────────
+      let y=92;
+      const billFromX=M, billToX=300;
+      doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor("#94a3b8");
+      doc.text("BILL TO",billToX,y);
+      y+=12;
+      doc.setFont("helvetica","bold").setFontSize(11).setTextColor("#1e293b");
+      const clientLabel=clInfo.label||clientKey||title||"";
+      if(clientLabel) doc.text(clientLabel,billToX,y);
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#475569");
+      let btY=y+11;
+      if(clInfo.email){doc.text(clInfo.email,billToX,btY);btY+=10;}
+      if(clInfo.address){const lines=doc.splitTextToSize(clInfo.address,240);doc.text(lines,billToX,btY);btY+=lines.length*10;}
+
+      // Divider below bill-to
+      const afterBill=Math.max(btY,y+20)+8;
+      doc.setDrawColor("#e2e8f0").setLineWidth(0.8).line(M,afterBill,PW-M,afterBill);
+
+      // ── INVOICE TITLE STRIP ──────────────────────────────────
+      y=afterBill+8;
+      doc.setFillColor("#1e3a8a").rect(M,y,CW,32,"F");
+      doc.setFont("helvetica","bold").setFontSize(12).setTextColor("#ffffff").text(title||"",M+10,y+13,{maxWidth:CW-20});
+      if(opts.description||subtitle){
+        doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#bfdbfe")
+           .text(opts.description||subtitle,M+10,y+25,{maxWidth:CW-20});
+      }
+      y+=32;
 
       // Note
       if(note){
-        doc.setFillColor("#f0f9ff").rect(M,y,CW,22,"F");
-        doc.setDrawColor("#0ea5e9").setLineWidth(3).line(M,y,M,y+22);
-        doc.setLineWidth(1);
-        doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#0c4a6e").text("Note: "+note,M+8,y+14,{maxWidth:CW-16});
-        y+=30;
+        y+=4;
+        doc.setFillColor("#f0f9ff").rect(M,y,CW,20,"F");
+        doc.setDrawColor("#0ea5e9").setLineWidth(3).line(M,y,M,y+20);doc.setLineWidth(1);
+        doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#0c4a6e").text("Note: "+note,M+7,y+13,{maxWidth:CW-14});
+        y+=26;
       }
 
-      // ── TABLE COLUMNS ──
+      // ── TABLE ───────────────────────────────────────────────
       const cols=hideProject?[
-        {l:"Task",      x:M,      w:155, a:"left"},
-        {l:"Assignee",  x:M+155,  w:85,  a:"left"},
-        {l:"Client Sub Date",x:M+240,w:75,  a:"left"},
-        {l:"Tons",      x:M+315,  w:55,  a:"right"},
-        {l:"Rate",      x:M+370,  w:55,  a:"right"},
-        {l:"Amount",    x:M+425,  w:70,  a:"right"},
+        {l:"Description", x:M,     w:160,a:"left"},
+        {l:"Assignee",    x:M+160, w:80, a:"left"},
+        {l:"Client Sub Date",x:M+240,w:75,a:"left"},
+        {l:"Qty (T)",     x:M+315, w:50, a:"right"},
+        {l:"Unit Price",  x:M+365, w:60, a:"right"},
+        {l:"Amount",      x:M+425, w:70, a:"right"},
       ]:[
-        {l:"Project",   x:M,      w:100, a:"left"},
-        {l:"Task",      x:M+100,  w:115, a:"left"},
-        {l:"Assignee",  x:M+215,  w:75,  a:"left"},
-        {l:"Client Sub Date",x:M+290,w:65,  a:"left"},
-        {l:"Tons",      x:M+355,  w:45,  a:"right"},
-        {l:"Rate",      x:M+400,  w:40,  a:"right"},
-        {l:"Amount",    x:M+440,  w:55,  a:"right"},
+        {l:"Project",     x:M,     w:90, a:"left"},
+        {l:"Description", x:M+90,  w:120,a:"left"},
+        {l:"Assignee",    x:M+210, w:70, a:"left"},
+        {l:"Client Sub Date",x:M+280,w:65,a:"left"},
+        {l:"Qty (T)",     x:M+345, w:45, a:"right"},
+        {l:"Unit Price",  x:M+390, w:50, a:"right"},
+        {l:"Amount",      x:M+440, w:55, a:"right"},
       ];
 
-      // Table header
+      y+=4;
       doc.setFillColor("#1d4ed8").rect(M,y,CW,20,"F");
       doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor("#ffffff");
       cols.forEach(c=>doc.text(c.l.toUpperCase(),c.a==="right"?c.x+c.w:c.x+2,y+13,{align:c.a}));
       y+=20;
 
-      // Table rows
       taskList.forEach((t,i)=>{
-        if(y>760){doc.addPage();y=50;}
+        if(y>740){doc.addPage();y=50;}
         if(i%2===0) doc.setFillColor("#f8faff").rect(M,y,CW,18,"F");
         doc.setDrawColor("#e2e8f0").setLineWidth(0.4).line(M,y+18,PW-M,y+18);
         const vals=hideProject
@@ -10127,28 +10202,53 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         y+=18;
       });
 
-      // Total row
+      // Total
       doc.setFillColor("#0f172a").rect(M,y,CW,22,"F");
       doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#ffffff").text("TOTAL",M+4,y+14);
-      const lc=cols[cols.length-1],tc=cols[cols.length-3];
-      doc.setTextColor("#e2e8f0").text(fmtT(totT),tc.x+tc.w,y+14,{align:"right"});
+      const lc=cols[cols.length-1],qc=cols[cols.length-3];
+      doc.setTextColor("#e2e8f0").text(fmtT(totT),qc.x+qc.w,y+14,{align:"right"});
       doc.setTextColor("#4ade80").setFontSize(11).text(fmtM(totA),lc.x+lc.w,y+14,{align:"right"});
       y+=22;
 
-      // ── SUMMARY BOX ──
+      // ── SUMMARY + PAYMENT SIDE BY SIDE ─────────────────────
       y+=14;
-      doc.setFillColor("#f8faff").setDrawColor("#dbeafe").setLineWidth(1).rect(350,y,195,68,"FD");
-      doc.setFont("helvetica","normal").setFontSize(10).setTextColor("#475569");
-      doc.text("Total Tasks:",360,y+16); doc.text("Total Tonnage:",360,y+34);
+      // Summary box (right)
+      doc.setFillColor("#f8faff").setDrawColor("#dbeafe").setLineWidth(1).rect(360,y,180,68,"FD");
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#475569");
+      doc.text("Total Tasks:",368,y+14);doc.text("Total Tonnage:",368,y+28);
       doc.setFont("helvetica","bold").setTextColor("#1e293b");
-      doc.text(String(taskList.length),543,y+16,{align:"right"});
-      doc.text(fmtT(totT),543,y+34,{align:"right"});
-      doc.setDrawColor("#1e3a8a").line(360,y+44,543,y+44);
-      doc.setFont("helvetica","bold").setFontSize(11).setTextColor("#1e3a8a").text("Grand Total:",360,y+58);
-      doc.setFontSize(13).setTextColor("#15803d").text(fmtM(totA),543,y+56,{align:"right"});
+      doc.text(String(taskList.length),538,y+14,{align:"right"});doc.text(fmtT(totT),538,y+28,{align:"right"});
+      doc.setDrawColor("#1e3a8a").line(368,y+38,538,y+38);
+      doc.setFont("helvetica","bold").setFontSize(11).setTextColor("#1e3a8a").text("Grand Total:",368,y+52);
+      doc.setFontSize(13).setTextColor("#15803d").text(fmtM(totA),538,y+50,{align:"right"});
+      y+=82;
 
-      // ── FOOTER ──
-      const FY=841.89-50;
+      // ── PAYMENT DETAILS ─────────────────────────────────────
+      if(ci.bankName||ci.accountNumber||ci.paymentMethod){
+        y+=4;
+        doc.setDrawColor("#e2e8f0").setLineWidth(0.8).line(M,y,PW-M,y);
+        y+=10;
+        doc.setFillColor("#f1f5f9").rect(M,y,CW,14,"F");
+        doc.setFont("helvetica","bold").setFontSize(9).setTextColor("#1e3a8a").text("PAYMENT DETAILS",M+6,y+10);
+        y+=18;
+        const pRows=[];
+        if(ci.paymentMethod)pRows.push(["Payment Method",ci.paymentMethod]);
+        if(ci.bankName)pRows.push(["Bank Name",ci.bankName]);
+        if(ci.bankBranch)pRows.push(["Bank Address",ci.bankBranch]);
+        if(ci.accountName)pRows.push(["Account Name",ci.accountName]);
+        if(ci.accountNumber)pRows.push(["Account Number",ci.accountNumber]);
+        if(ci.routingNumber)pRows.push(["Routing / IFSC / SWIFT",ci.routingNumber]);
+        const col1=M+2,col2=M+160;
+        pRows.forEach((pr,i)=>{
+          if(i%2===0) doc.setFillColor("#f8faff").rect(M,y,CW,16,"F");
+          doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor("#64748b").text(pr[0]+":",col1,y+11);
+          doc.setFont("helvetica","normal").setTextColor("#1e293b").text(pr[1],col2,y+11);
+          y+=16;
+        });
+      }
+
+      // ── FOOTER ──────────────────────────────────────────────
+      const FY=841.89-45;
       doc.setDrawColor("#e2e8f0").setLineWidth(1).line(M,FY-10,PW-M,FY-10);
       doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",M,FY+3);
       doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#4b5563").text("Thank you for your business — your satisfaction is our commitment.",M,FY+15);
@@ -10156,28 +10256,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
 
       doc.save((filename||"RDS_Invoice")+".pdf");
     }catch(e){alert("PDF Error: "+e.message);}
-  }
-
-  function pdfAll(){
-    const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
-    downloadPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",taskList,filename:`RDS_Billing_All_${year}_${month}`});
-  }
-  function pdfClient(cl){
-    const taskList=Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks);
-    const note=getNote("client",cl);
-    const fname="RDS_Billing_"+cl.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
-    downloadPdf({title:"Client: "+cl,subtitle:`${taskList.length} tasks · ${fmtT(clientMap[cl]?.totalTons||0)} · ${fmtM(clientMap[cl]?.totalAmt||0)}`,note,taskList,filename:fname});
-  }
-  function pdfProject(cl,pName,pg){
-    const taskList=pg?.tasks||[];
-    const note=getNote("project",pg.proj?.id);
-    const fname="RDS_Billing_"+pName.replace(/[^a-z0-9]/gi,"_")+"_"+year+"_"+month;
-    downloadPdf({title:"Project: "+pName,subtitle:`Client: ${cl} · ${taskList.length} tasks · ${fmtT(pg?.totalTons||0)} · ${fmtM(pg?.totalAmt||0)}`,note,taskList,filename:fname,hideProject:true});
-  }
-  function pdfTask(t,cl){
-    const note=getNote("task",t.id);
-    const fname="RDS_Billing_Task_"+t.id+"_"+year+"_"+month;
-    downloadPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,taskList:[t],filename:fname,hideProject:true});
+    setGeneratingPdf(false);
   }
 
   // Excel export
@@ -10240,6 +10319,20 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           <div style={{color:C.t3,fontSize:11,marginTop:3}}>Appears as a highlighted note block on the PDF invoice</div>
         </div>
 
+        {editEntity.type==="client"&&(<>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Client Email</label>
+            <input type="email" value={editVal.email} onChange={e=>setEditVal(v=>({...v,email:e.target.value}))}
+              placeholder="client@example.com"
+              style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none"}}/>
+          </div>
+          <div style={{marginBottom:22}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t3,marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Client Address</label>
+            <textarea value={editVal.address} onChange={e=>setEditVal(v=>({...v,address:e.target.value}))}
+              placeholder="Street, City, State, ZIP" rows={2}
+              style={{width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+          </div>
+        </>)}
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setEditEntity(null)} style={{...GBtn,padding:"8px 20px"}}>Cancel</button>
           <button onClick={saveCustom} disabled={saving} style={{...SBtn,padding:"8px 24px"}}>{saving?"Saving…":"Save"}</button>
@@ -10248,9 +10341,53 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     </div>
   );
 
+  const inp3={width:"100%",boxSizing:"border-box",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit"};
+  const fldLbl={display:"block",fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".05em"};
+
+  // Invoice Options Modal
+  const InvoiceModal=invoiceModal&&(
+    <div style={{position:"fixed",inset:0,background:"#00000070",zIndex:10000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:28,width:"min(540px,96vw)",boxShadow:"0 24px 64px #00000080",maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:4}}>📄 Generate Invoice</div>
+        <div style={{color:C.t3,fontSize:12,marginBottom:20}}>{invoiceModal.title}</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <label style={fldLbl}>Invoice Number</label>
+            <input value={invoiceOpts.invoiceNo} onChange={e=>setInvoiceOpts(p=>({...p,invoiceNo:e.target.value}))} style={inp3} placeholder="INV-2026-001"/>
+          </div>
+          <div>
+            <label style={fldLbl}>Issue Date</label>
+            <input type="date" value={invoiceOpts.issueDate} onChange={e=>setInvoiceOpts(p=>({...p,issueDate:e.target.value}))} style={inp3}/>
+          </div>
+          <div>
+            <label style={fldLbl}>Due Date</label>
+            <input type="date" value={invoiceOpts.dueDate} onChange={e=>setInvoiceOpts(p=>({...p,dueDate:e.target.value}))} style={inp3}/>
+          </div>
+          <div>
+            <label style={fldLbl}>Payment Method</label>
+            <select value={companyInfo.paymentMethod||"Wire Transfer"} onChange={e=>setCompanyInfo(p=>({...p,paymentMethod:e.target.value}))} style={inp3}>
+              {["Wire Transfer","Bank Transfer","Cheque","Online Transfer","NEFT/RTGS","SWIFT"].map(m=><option key={m}>{m}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{marginBottom:20}}>
+          <label style={fldLbl}>Description / Notes (optional)</label>
+          <textarea value={invoiceOpts.description} onChange={e=>setInvoiceOpts(p=>({...p,description:e.target.value}))} rows={2}
+            placeholder="e.g. Detailing services for July 2026 — Net 30 days"
+            style={{...inp3,resize:"vertical"}}/>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <button onClick={()=>setInvoiceModal(null)} style={{...GBtn,padding:"8px 20px"}}>Cancel</button>
+          <button disabled={generatingPdf} onClick={()=>{const args={...invoiceModal,opts:invoiceOpts};setInvoiceModal(null);downloadPdf(args);}} style={{...SBtn,padding:"8px 24px",opacity:generatingPdf?.6:1}}>{generatingPdf?"Generating…":"Download PDF"}</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return(
     <div style={{maxWidth:1100,margin:"0 auto"}}>
       {EditModal}
+      {InvoiceModal}
       {msg&&<div style={{position:"fixed",top:20,right:20,zIndex:9998,background:C.green,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:700,boxShadow:"0 4px 16px #00000040"}}>{msg}</div>}
 
       {/* Header */}
@@ -10267,6 +10404,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
             {years.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
           <button onClick={()=>setShowRates(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>⚙️ Rate Settings</button>
+          <button onClick={()=>setShowCompanySetup(v=>!v)} style={{...GBtn,display:"flex",alignItems:"center",gap:5,background:showCompanySetup?C.accent+"22":"transparent",borderColor:showCompanySetup?C.accent:C.border}}>🏦 Company Setup</button>
           <button onClick={pdfAll} style={{...GBtn,display:"flex",alignItems:"center",gap:5}}>🖨️ Full PDF</button>
           <button onClick={exportExcel} style={{...SBtn,background:C.green,display:"flex",alignItems:"center",gap:5}}>⬇ Excel</button>
         </div>
@@ -10342,6 +10480,56 @@ function BillingSummaryPage({tasks,projects,clients,me}){
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Company & Bank Setup Panel */}
+      {showCompanySetup&&(
+        <div style={{...card,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🏦 Company & Bank Details <span style={{fontWeight:400,color:C.t3,fontSize:12}}>— one-time setup, appears on every invoice PDF</span></div>
+          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>This info prints on the invoice: company contact, client billing address, and bank payment details.</p>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div>
+              <label style={fldLbl}>Company Email</label>
+              <input value={companyInfo.email||""} onChange={e=>setCompanyInfo(p=>({...p,email:e.target.value}))} placeholder="billing@rdstechserv.com" style={inp3}/>
+            </div>
+            <div>
+              <label style={fldLbl}>Company Phone / Contact</label>
+              <input value={companyInfo.phone||""} onChange={e=>setCompanyInfo(p=>({...p,phone:e.target.value}))} placeholder="+91 98765 43210" style={inp3}/>
+            </div>
+          </div>
+
+          <div style={{borderTop:`1px solid ${C.border}`,margin:"4px 0 14px",paddingTop:14}}>
+            <div style={{fontWeight:700,color:C.t2,fontSize:13,marginBottom:12}}>🏛 Bank Details (for Wire Transfer)</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <label style={fldLbl}>Bank Name</label>
+                <input value={companyInfo.bankName||""} onChange={e=>setCompanyInfo(p=>({...p,bankName:e.target.value}))} placeholder="State Bank of India" style={inp3}/>
+              </div>
+              <div>
+                <label style={fldLbl}>Account Name</label>
+                <input value={companyInfo.accountName||""} onChange={e=>setCompanyInfo(p=>({...p,accountName:e.target.value}))} placeholder="RDS Techserv Pvt Ltd" style={inp3}/>
+              </div>
+              <div>
+                <label style={fldLbl}>Account Number</label>
+                <input value={companyInfo.accountNumber||""} onChange={e=>setCompanyInfo(p=>({...p,accountNumber:e.target.value}))} placeholder="00112233445566" style={inp3}/>
+              </div>
+              <div>
+                <label style={fldLbl}>Routing / IFSC / SWIFT</label>
+                <input value={companyInfo.routingNumber||""} onChange={e=>setCompanyInfo(p=>({...p,routingNumber:e.target.value}))} placeholder="SBIN0001234" style={inp3}/>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={fldLbl}>Bank Branch Address</label>
+                <input value={companyInfo.bankBranch||""} onChange={e=>setCompanyInfo(p=>({...p,bankBranch:e.target.value}))} placeholder="Main Branch, MG Road, Chennai – 600001" style={inp3}/>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+            <button onClick={()=>setShowCompanySetup(false)} style={{...GBtn,padding:"8px 18px"}}>Close</button>
+            <button onClick={saveCompanyInfo} disabled={savingCompany} style={{...SBtn,padding:"8px 24px",opacity:savingCompany?.6:1}}>{savingCompany?"Saving…":"💾 Save Company Info"}</button>
+          </div>
         </div>
       )}
 
@@ -13876,42 +14064,4 @@ export default function App(){
               style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
               <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
               <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+              {badge>0&&<span style={
