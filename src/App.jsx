@@ -9783,16 +9783,17 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const rkProj=id=>"billing_rp__"+id;
   const rkTask=id=>"billing_rt__"+id;
 
-  // Load all billing settings from server (local PostgreSQL via /api/settings)
-  // Re-runs when projects/tasks change OR when the billing page is opened (page!==null means billing is active)
+  // Load all billing settings from Supabase (works from cloud & local deployments)
   const loadBillingSettings=useCallback(()=>{
     const allClients=[...new Set(projects.map(p=>p.client||"Unassigned"))];
-    fetch("/api/settings")
+    fetch(SUPA_URL+"/rest/v1/settings?select=*",{
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+    })
       .then(r=>r.json())
-      .then(res=>{
-        if(res.error||!Array.isArray(res.data))return;
+      .then(rows=>{
+        if(!Array.isArray(rows))return;
         const cc={},pc={},tc={};
-        res.data.forEach(r=>{
+        rows.forEach(r=>{
           try{
             const v=JSON.parse(r.value);
             if(r.key===RATE_DEFAULT)setDefaultRate(v.rate||v||"");
@@ -9807,43 +9808,29 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         });
         setClientCustom(cc);setProjCustom(pc);setTaskCustom(tc);
         settingsReadyRef.current=true;
-      }).catch(()=>{
-        // Server temporarily unavailable — retry once after 3s
-        setTimeout(()=>{
-          fetch("/api/settings").then(r=>r.json()).then(res=>{
-            if(res.error||!Array.isArray(res.data))return;
-            const cc={},pc={},tc={};
-            res.data.forEach(r=>{
-              try{
-                const v=JSON.parse(r.value);
-                if(r.key===RATE_DEFAULT)setDefaultRate(v.rate||v||"");
-                else if(r.key==="billing_company")setCompanyInfo(p=>({...p,...(v||{})}));
-                else if(r.key==="billing_invoices")setInvoices(Array.isArray(v)?v:[]);
-                else if(r.key.startsWith("billing_rc__")){const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;cc[cl]=v;}
-                else if(r.key.startsWith("billing_rp__")){const pid=r.key.replace("billing_rp__","");pc[pid]=v;}
-                else if(r.key.startsWith("billing_rt__")){const tid=r.key.replace("billing_rt__","");tc[tid]=v;}
-              }catch{}
-            });
-            setClientCustom(cc);setProjCustom(pc);setTaskCustom(tc);
-            settingsReadyRef.current=true;
-          }).catch(()=>{});
-        },3000);
-      });
+      }).catch(()=>{});
   },[projects.length,tasks.length]);
   useEffect(()=>{loadBillingSettings();},[loadBillingSettings]);
 
   // Re-fetch invoices whenever user opens the Invoices tab
   useEffect(()=>{if(billingView==="invoices")loadInvoices();},[billingView]);
 
-  // upsertSetting — uses server endpoint (local PostgreSQL, proven ON CONFLICT upsert)
+  // upsertSetting — uses Supabase directly (works from cloud & local deployments)
   async function upsertSetting(key,value){
-    const r=await fetch("/api/settings/upsert",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({key,value:JSON.stringify(value)})
+    const val=JSON.stringify(value);
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
+      method:"PATCH",
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
+      body:JSON.stringify({value:val})
     });
     const d=await r.json();
-    if(d.error)throw new Error(d.error.message||"Save failed");
+    if(!Array.isArray(d)||d.length===0){
+      await fetch(SUPA_URL+"/rest/v1/settings",{
+        method:"POST",
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({key,value:val})
+      });
+    }
   }
 
   // handleCompanyChange: called on every field change — auto-saves after 800ms idle
@@ -9875,11 +9862,13 @@ function BillingSummaryPage({tasks,projects,clients,me}){
 
   async function loadInvoices(){
     try{
-      const r=await fetch("/api/settings");
-      const d=await r.json();
-      if(d.error||!Array.isArray(d.data))return;
-      const row=d.data.find(s=>s.key==="billing_invoices");
-      if(row){const v=JSON.parse(row.value);setInvoices(Array.isArray(v)?v:[]);}
+      const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+      });
+      const rows=await r.json();
+      if(Array.isArray(rows)&&rows.length>0){
+        const v=JSON.parse(rows[0].value);setInvoices(Array.isArray(v)?v:[]);
+      }
     }catch(_){}
   }
 
