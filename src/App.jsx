@@ -10199,18 +10199,11 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       let logoData=null;
       try{const r=await fetch("/logo.png");if(r.ok){const ab=await r.arrayBuffer();logoData="data:image/png;base64,"+btoa(String.fromCharCode(...new Uint8Array(ab)));}}catch(_){}
 
-      // ── HEADER ──────────────────────────────────────────────
+      // ── HEADER: logo + company name + tagline | INVOICE + meta ──
       if(logoData) doc.addImage(logoData,"PNG",M,30,68,40);
       const tx=logoData?M+76:M;
       doc.setFont("helvetica","bold").setFontSize(14).setTextColor("#1e3a8a").text("RDS Techserv Inc",tx,45);
-      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#64748b");
-      let fromY=57;
-      if(ci.tagline){doc.text(ci.tagline,tx,fromY);fromY+=11;}
-      if(ci.address){doc.text(ci.address,tx,fromY);fromY+=11;}
-      const addrLine=[ci.city,ci.state,ci.zip].filter(Boolean).join(", ");
-      if(addrLine){doc.text(addrLine,tx,fromY);fromY+=11;}
-      if(ci.phone){doc.text(ci.phone,tx,fromY);fromY+=11;}
-      if(ci.email){doc.text(ci.email,tx,fromY);fromY+=11;}
+      if(ci.tagline){doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#64748b").text(ci.tagline,tx,57);}
 
       // Right: INVOICE meta
       doc.setFont("helvetica","bold").setFontSize(22).setTextColor("#1e3a8a").text("INVOICE",PW-M,42,{align:"right"});
@@ -10220,21 +10213,30 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(opts.issueDate){doc.setFont("helvetica","normal").setTextColor("#64748b").text(`Issue Date: ${fmtDate(opts.issueDate)}`,PW-M,metaY,{align:"right"});metaY+=11;}
       if(opts.dueDate){doc.text(`Due Date:  ${fmtDate(opts.dueDate)}`,PW-M,metaY,{align:"right"});}
 
-      // Divider
-      const divY=Math.max(88,fromY+8);
-      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,divY,PW-M,divY);
+      // Divider (fixed — header is now compact)
+      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,75,PW-M,75);
 
-      // ── BILL TO (right side) ─────────────────────────────────
-      let y=divY+10;
-      const billToX=M+300;
-      doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor("#94a3b8");
-      doc.text("BILL TO",billToX,y);
-      y+=12;
-      doc.setFont("helvetica","bold").setFontSize(11).setTextColor("#1e293b");
+      // ── BILL FROM (left) | BILL TO (right) ──────────────────
+      let y=88;
+      const billFromX=M;
+      const billToX=M+250;
+      // BILL FROM
+      doc.setFont("helvetica","bold").setFontSize(8).setTextColor("#94a3b8").text("BILL FROM",billFromX,y);
+      let bfY=y+11;
+      doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#1e293b").text("RDS Techserv Inc",billFromX,bfY);bfY+=11;
+      doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#475569");
+      if(ci.address){doc.text(ci.address,billFromX,bfY);bfY+=10;}
+      const fromAddrLine=[ci.city,ci.state,ci.zip].filter(Boolean).join(", ");
+      if(fromAddrLine){doc.text(fromAddrLine,billFromX,bfY);bfY+=10;}
+      if(ci.phone){doc.text(ci.phone,billFromX,bfY);bfY+=10;}
+      if(ci.email){doc.text(ci.email,billFromX,bfY);bfY+=10;}
+      // BILL TO
       const clientLabel=clInfo.label||clientKey||title||"";
-      if(clientLabel) doc.text(clientLabel,billToX,y);
-      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#475569");
+      doc.setFont("helvetica","bold").setFontSize(8).setTextColor("#94a3b8").text("BILL TO",billToX,y);
       let btY=y+11;
+      doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#1e293b");
+      if(clientLabel){doc.text(clientLabel,billToX,btY);}btY+=11;
+      doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#475569");
       if(clInfo.contactName&&clInfo.contactName.trim().toLowerCase()!==clientLabel.trim().toLowerCase()){doc.text(clInfo.contactName,billToX,btY);btY+=10;}
       if(clInfo.email){doc.text(clInfo.email,billToX,btY);btY+=10;}
       if(clInfo.phone){doc.text(clInfo.phone,billToX,btY);btY+=10;}
@@ -10243,8 +10245,8 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(cityLine){doc.text(cityLine,billToX,btY);btY+=10;}
       if(clInfo.country&&clInfo.country!=="United States"){doc.text(clInfo.country,billToX,btY);btY+=10;}
 
-      // Divider below bill-to
-      const afterBill=Math.max(btY,y+20)+8;
+      // Divider below bill-from/bill-to
+      const afterBill=Math.max(bfY,btY)+8;
       doc.setDrawColor("#e2e8f0").setLineWidth(0.8).line(M,afterBill,PW-M,afterBill);
 
       // ── INVOICE TITLE STRIP ──────────────────────────────────
