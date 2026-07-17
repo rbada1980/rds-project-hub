@@ -10226,7 +10226,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
 
       // ── BILL TO (right side) ─────────────────────────────────
       let y=divY+10;
-      const billToX=M+265;
+      const billToX=M+300;
       doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor("#94a3b8");
       doc.text("BILL TO",billToX,y);
       y+=12;
@@ -10235,7 +10235,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(clientLabel) doc.text(clientLabel,billToX,y);
       doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#475569");
       let btY=y+11;
-      if(clInfo.contactName){doc.text(clInfo.contactName,billToX,btY);btY+=10;}
+      if(clInfo.contactName&&clInfo.contactName.trim().toLowerCase()!==clientLabel.trim().toLowerCase()){doc.text(clInfo.contactName,billToX,btY);btY+=10;}
       if(clInfo.email){doc.text(clInfo.email,billToX,btY);btY+=10;}
       if(clInfo.phone){doc.text(clInfo.phone,billToX,btY);btY+=10;}
       if(clInfo.address){doc.text(clInfo.address,billToX,btY);btY+=10;}
