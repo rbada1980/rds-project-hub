@@ -10071,8 +10071,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       doc.setFont("helvetica","bold").setFontSize(14).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",tx,52);
       doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#64748b").text("Billing & Invoice Management",tx,66);
       doc.setFont("helvetica","bold").setFontSize(16).setTextColor("#1e3a8a").text("BILLING SUMMARY",PW-M,50,{align:"right"});
-      doc.setFont("helvetica","normal").setFontSize(10).setTextColor("#64748b").text(periodLabel,PW-M,65,{align:"right"});
-      doc.setFontSize(9).setTextColor("#94a3b8").text(todayDate,PW-M,78,{align:"right"});
+      doc.setFontSize(9).setTextColor("#94a3b8").text(todayDate,PW-M,66,{align:"right"});
       doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,100,PW-M,100);
 
       // ── TITLE STRIP ──
@@ -10095,7 +10094,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       const cols=hideProject?[
         {l:"Task",      x:M,      w:155, a:"left"},
         {l:"Assignee",  x:M+155,  w:85,  a:"left"},
-        {l:"Sub Date",  x:M+240,  w:75,  a:"left"},
+        {l:"Client Sub Date",x:M+240,w:75,  a:"left"},
         {l:"Tons",      x:M+315,  w:55,  a:"right"},
         {l:"Rate",      x:M+370,  w:55,  a:"right"},
         {l:"Amount",    x:M+425,  w:70,  a:"right"},
@@ -10103,7 +10102,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         {l:"Project",   x:M,      w:100, a:"left"},
         {l:"Task",      x:M+100,  w:115, a:"left"},
         {l:"Assignee",  x:M+215,  w:75,  a:"left"},
-        {l:"Sub Date",  x:M+290,  w:65,  a:"left"},
+        {l:"Client Sub Date",x:M+290,w:65,  a:"left"},
         {l:"Tons",      x:M+355,  w:45,  a:"right"},
         {l:"Rate",      x:M+400,  w:40,  a:"right"},
         {l:"Amount",    x:M+440,  w:55,  a:"right"},
@@ -10152,8 +10151,8 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       const FY=841.89-50;
       doc.setDrawColor("#e2e8f0").setLineWidth(1).line(M,FY-10,PW-M,FY-10);
       doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",M,FY+3);
-      doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#4b5563").text("CONFIDENTIAL — FOR INTERNAL USE",M,FY+15);
-      doc.setFontSize(9).setTextColor("#374151").text(todayDate,PW-M,FY+7,{align:"right"});
+      doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#4b5563").text("Thank you for your business — your satisfaction is our commitment.",M,FY+15);
+      doc.setFont("helvetica","italic").setFontSize(8).setTextColor("#64748b").text("We value your trust and look forward to serving you again.",PW-M,FY+15,{align:"right"});
 
       doc.save((filename||"RDS_Invoice")+".pdf");
     }catch(e){alert("PDF Error: "+e.message);}
@@ -13911,8 +13910,4 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+    {/* ── Live Timer floa
