@@ -13910,4 +13910,8 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
-    {/* ── Live Timer floa
+    {/* ── Live Timer floating bar ── */}
+    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
+    </MobileCtx.Provider>
+  );
+}
