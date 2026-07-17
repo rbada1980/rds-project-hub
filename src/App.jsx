@@ -10183,7 +10183,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   }
 
   // ── Client-side PDF via jsPDF — works online & offline ──────
-  async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false,clientKey,opts={}}){
+  async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false,clientKey,opts={},skipRecord=false}){
     setGeneratingPdf(true);
     try{
       const {jsPDF}=await import("jspdf");
@@ -10353,9 +10353,11 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       doc.setFont("helvetica","italic").setFontSize(8).setTextColor("#64748b").text("We value your trust and look forward to serving you again.",PW-M,FY+15,{align:"right"});
 
       doc.save((filename||"RDS_Invoice")+".pdf");
-      // Save invoice record to history
-      const invRecord={id:Date.now().toString(),invoiceNo:opts.invoiceNo||"",clientKey:clientKey||"",clientName:clientKey||title||"",amount:totA,tons:totT,period:periodLabel,issueDate:opts.issueDate||"",dueDate:opts.dueDate||"",description:opts.description||subtitle||"",status:"draft",createdAt:new Date().toISOString(),sentAt:null,viewedAt:null,paidAt:null,filename:(filename||"RDS_Invoice")+".pdf"};
-      saveInvoiceRecord(invRecord);
+      // Save invoice record to history (skip if re-downloading existing invoice)
+      if(!skipRecord){
+        const invRecord={id:Date.now().toString(),invoiceNo:opts.invoiceNo||"",clientKey:clientKey||"",clientName:clientKey||title||"",amount:totA,tons:totT,period:periodLabel,issueDate:opts.issueDate||"",dueDate:opts.dueDate||"",description:opts.description||subtitle||"",status:"draft",createdAt:new Date().toISOString(),sentAt:null,viewedAt:null,paidAt:null,filename:(filename||"RDS_Invoice")+".pdf"};
+        saveInvoiceRecord(invRecord);
+      }
     }catch(e){alert("PDF Error: "+e.message);}
     setGeneratingPdf(false);
   }
@@ -10854,7 +10856,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
                     ))}
                     {inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
                     {inv.status==="draft"&&<button onClick={()=>setEditInvModal(inv)} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
-                    {inv.status==="draft"&&<button onClick={()=>{const cl=inv.clientKey;const tl=cl?Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks):[];setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.clientName||cl||"Invoice",subtitle:inv.period||"",note:"",taskList:tl,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:cl});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
+                    {inv.status==="draft"&&<button onClick={()=>{const cl=inv.clientKey;const tl=cl?Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks):[];setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.clientName||cl||"Invoice",subtitle:inv.period||"",note:"",taskList:tl,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:cl,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
                     <button onClick={()=>setInvoiceDetail(inv)} style={{...GBtn,padding:"4px 12px",fontSize:11}}>View Details</button>
                     <button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(inv.id);}} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red}}>🗑</button>
                   </div>
