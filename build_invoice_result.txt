@@ -9,13 +9,13 @@ computing gzip size...
 dist/index.html                           0.55 kB │ gzip:   0.33 kB
 dist/assets/index-CGk5keqa.css            2.01 kB │ gzip:   0.90 kB
 dist/assets/typeof-B5XbjTb1.js            0.27 kB │ gzip:   0.16 kB
-dist/assets/purify-DxVB6qNA.js           20.78 kB │ gzip:   8.66 kB
-dist/assets/index.es-B4_Z7inE.js        151.41 kB │ gzip:  48.89 kB
-dist/assets/html2canvas-B8fHoMFj.js     199.56 kB │ gzip:  46.78 kB
-dist/assets/jspdf.es.min-dnrxFkjo.js    341.22 kB │ gzip: 111.96 kB
-dist/assets/index-CMuBXS7-.js         1,445.45 kB │ gzip: 367.08 kB
+dist/assets/purify-DLBu_hM-.js           20.78 kB │ gzip:   8.66 kB
+dist/assets/index.es-BvnOcIjs.js        151.41 kB │ gzip:  48.89 kB
+dist/assets/html2canvas-pntJJ068.js     199.56 kB │ gzip:  46.78 kB
+dist/assets/jspdf.es.min-BcnEfqAD.js    341.22 kB │ gzip: 111.96 kB
+dist/assets/index-BRhR1rgh.js         1,445.86 kB │ gzip: 367.14 kB
 
-[32m✓ built in 571ms[39m
+[32m✓ built in 690ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -27,9 +27,8 @@ Use --update-env to update environment variables
 ┌────┬────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name       │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 ├────┼────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 18212    │ 0s     │ 179  │ online    │ 18.8%    │ 93.8mb   │ HP       │ disabled │
+│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 10088    │ 0s     │ 181  │ online    │ 0%       │ 93.4mb   │ HP       │ disabled │
 └────┴────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 6.5% | ram usage: 82.6% | disk: ⇓ 0mb/s ⇑ 0mb/s |
-Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+host metrics | cpu: 20.6% | ram usage: 92.5% | disk: ⇓ 0mb/s ⇑ 0mb/s |
 To https://github.com/rbada1980/rds-project-hub.git
-   dd53a4b..7f25878  main -> main
+   298cad3..727e3c0  main -> main
