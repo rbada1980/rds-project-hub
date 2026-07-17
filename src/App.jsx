@@ -9775,6 +9775,8 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   const [invoices,setInvoices]=useState([]);
   const [invoiceFilter,setInvoiceFilter]=useState("all");
   const [invoiceDetail,setInvoiceDetail]=useState(null);
+  const settingsReadyRef=useRef(false);  // true after first settings load completes
+  const companyAutoSaveTm=useRef(null);  // debounce timer for company auto-save
   const CURRENCY="$";
   const RATE_DEFAULT="billing_rate_default";
   const rkClient=n=>"billing_rc__"+n.replace(/\s+/g,"_").toLowerCase();
@@ -9803,6 +9805,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
         }
       });
       setClientCustom(cc);setProjCustom(pc);setTaskCustom(tc);
+      settingsReadyRef.current=true;
     }).catch(()=>{});
   },[projects.length,tasks.length]);
 
@@ -9810,25 +9813,39 @@ function BillingSummaryPage({tasks,projects,clients,me}){
   useEffect(()=>{if(billingView==="invoices")loadInvoices();},[billingView]);
 
   async function upsertSetting(key,value){
-    const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
-      method:"PATCH",
-      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"},
-      body:JSON.stringify({value:JSON.stringify(value)})
+    // Single-request upsert: INSERT ... ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value
+    const r=await fetch(SUPA_URL+"/rest/v1/settings?on_conflict=key",{
+      method:"POST",
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify({key,value:JSON.stringify(value)})
     });
-    const d=await r.json();
-    if(!Array.isArray(d)||d.length===0){
-      await fetch(SUPA_URL+"/rest/v1/settings",{
-        method:"POST",
-        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
-        body:JSON.stringify({key,value:JSON.stringify(value)})
-      });
-    }
+    if(!r.ok){const t=await r.text().catch(()=>"");throw new Error("Save error "+r.status+": "+t.slice(0,120));}
+  }
+
+  // handleCompanyChange: called on every field change — auto-saves after 800ms idle
+  function handleCompanyChange(field,val){
+    const updated={...companyInfo,[field]:val};
+    setCompanyInfo(updated);
+    if(!settingsReadyRef.current)return;
+    clearTimeout(companyAutoSaveTm.current);
+    companyAutoSaveTm.current=setTimeout(async()=>{
+      try{
+        await upsertSetting("billing_company",updated);
+        setMsg("Company info saved ✓");setTimeout(()=>setMsg(null),1800);
+      }catch(e){
+        setMsg("⚠️ Save failed: "+e.message);setTimeout(()=>setMsg(null),4000);
+      }
+    },800);
   }
 
   async function saveCompanyInfo(){
     setSavingCompany(true);
-    await upsertSetting("billing_company",companyInfo);
-    setMsg("Company info saved ✓");setTimeout(()=>setMsg(null),2500);
+    try{
+      await upsertSetting("billing_company",companyInfo);
+      setMsg("Company info saved ✓");setTimeout(()=>setMsg(null),2500);
+    }catch(e){
+      setMsg("⚠️ Save failed: "+e.message);setTimeout(()=>setMsg(null),4000);
+    }
     setSavingCompany(false);
   }
 
@@ -9881,12 +9898,16 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     const {type,key}=editEntity;
     const payload={rate:parseFloat(editVal.rate)||0,note:editVal.note||"",label:editVal.label||""};
     if(type==="client"){Object.assign(payload,{email:editVal.email||"",phone:editVal.phone||"",contactName:editVal.contactName||"",address:editVal.address||"",city:editVal.city||"",state:editVal.state||"",zip:editVal.zip||"",country:editVal.country||"United States"});}
-    if(type==="default"){await upsertSetting(RATE_DEFAULT,payload);setDefaultRate(String(payload.rate));}
-    else if(type==="client"){await upsertSetting(rkClient(key),payload);setClientCustom(p=>({...p,[key]:payload}));}
-    else if(type==="project"){await upsertSetting(rkProj(key),payload);setProjCustom(p=>({...p,[key]:payload}));}
-    else if(type==="task"){await upsertSetting(rkTask(key),payload);setTaskCustom(p=>({...p,[key]:payload}));}
-    setEditEntity(null);setEditVal({rate:"",note:"",label:"",email:"",phone:"",contactName:"",address:"",city:"",state:"",zip:"",country:"United States"});
-    setMsg("Saved ✓");setTimeout(()=>setMsg(null),2500);
+    try{
+      if(type==="default"){await upsertSetting(RATE_DEFAULT,payload);setDefaultRate(String(payload.rate));}
+      else if(type==="client"){await upsertSetting(rkClient(key),payload);setClientCustom(p=>({...p,[key]:payload}));}
+      else if(type==="project"){await upsertSetting(rkProj(key),payload);setProjCustom(p=>({...p,[key]:payload}));}
+      else if(type==="task"){await upsertSetting(rkTask(key),payload);setTaskCustom(p=>({...p,[key]:payload}));}
+      setEditEntity(null);setEditVal({rate:"",note:"",label:"",email:"",phone:"",contactName:"",address:"",city:"",state:"",zip:"",country:"United States"});
+      setMsg("Saved ✓");setTimeout(()=>setMsg(null),2500);
+    }catch(e){
+      setMsg("⚠️ Save failed: "+e.message);setTimeout(()=>setMsg(null),5000);
+    }
     setSaving(false);
   }
 
@@ -10456,7 +10477,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
           </div>
           <div>
             <label style={fldLbl}>Payment Method</label>
-            <select value={companyInfo.paymentMethod||"Wire Transfer"} onChange={e=>setCompanyInfo(p=>({...p,paymentMethod:e.target.value}))} style={inp3}>
+            <select value={companyInfo.paymentMethod||"Wire Transfer"} onChange={e=>handleCompanyChange("paymentMethod",e.target.value)} style={inp3}>
               {["Wire Transfer","ACH Transfer","Check","Zelle","PayPal","SWIFT"].map(m=><option key={m}>{m}</option>)}
             </select>
           </div>
@@ -10870,16 +10891,19 @@ function BillingSummaryPage({tasks,projects,clients,me}){
 
         {/* Company & Bank Setup */}
         <div style={{...card,marginBottom:20}}>
-          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🏦 Company & Bank Details</div>
-          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>One-time setup — printed on every invoice PDF.</p>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:2}}>
+            <div style={{fontWeight:700,color:C.t1,fontSize:14}}>🏦 Company & Bank Details</div>
+            <span style={{fontSize:11,color:C.green,background:C.green+"18",borderRadius:6,padding:"2px 8px",fontWeight:600}}>Auto-saves as you type</span>
+          </div>
+          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>One-time setup — printed on every invoice PDF. Fields save automatically.</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
               <label style={fldLbl}>Company Email</label>
-              <input value={companyInfo.email||""} onChange={e=>setCompanyInfo(p=>({...p,email:e.target.value}))} placeholder="billing@rdstechserv.com" style={inp3}/>
+              <input value={companyInfo.email||""} onChange={e=>handleCompanyChange("email",e.target.value)} placeholder="billing@rdstechserv.com" style={inp3}/>
             </div>
             <div>
               <label style={fldLbl}>Company Phone</label>
-              <input value={companyInfo.phone||""} onChange={e=>setCompanyInfo(p=>({...p,phone:e.target.value}))} placeholder="+1 (555) 000-0000" style={inp3}/>
+              <input value={companyInfo.phone||""} onChange={e=>handleCompanyChange("phone",e.target.value)} placeholder="+1 (555) 000-0000" style={inp3}/>
             </div>
           </div>
           <div style={{borderTop:`1px solid ${C.border}`,margin:"4px 0 14px",paddingTop:14}}>
@@ -10887,28 +10911,25 @@ function BillingSummaryPage({tasks,projects,clients,me}){
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
               <div>
                 <label style={fldLbl}>Bank Name</label>
-                <input value={companyInfo.bankName||""} onChange={e=>setCompanyInfo(p=>({...p,bankName:e.target.value}))} placeholder="e.g. Chase, Wells Fargo" style={inp3}/>
+                <input value={companyInfo.bankName||""} onChange={e=>handleCompanyChange("bankName",e.target.value)} placeholder="e.g. Chase, Wells Fargo" style={inp3}/>
               </div>
               <div>
                 <label style={fldLbl}>Account Name</label>
-                <input value={companyInfo.accountName||""} onChange={e=>setCompanyInfo(p=>({...p,accountName:e.target.value}))} placeholder="RDS Techserv Pvt Ltd" style={inp3}/>
+                <input value={companyInfo.accountName||""} onChange={e=>handleCompanyChange("accountName",e.target.value)} placeholder="RDS Techserv Pvt Ltd" style={inp3}/>
               </div>
               <div>
                 <label style={fldLbl}>Account Number</label>
-                <input value={companyInfo.accountNumber||""} onChange={e=>setCompanyInfo(p=>({...p,accountNumber:e.target.value}))} placeholder="e.g. 1234567890" style={inp3}/>
+                <input value={companyInfo.accountNumber||""} onChange={e=>handleCompanyChange("accountNumber",e.target.value)} placeholder="e.g. 1234567890" style={inp3}/>
               </div>
               <div>
                 <label style={fldLbl}>ABA Routing Number</label>
-                <input value={companyInfo.routingNumber||""} onChange={e=>setCompanyInfo(p=>({...p,routingNumber:e.target.value}))} placeholder="9-digit ABA routing number" style={inp3}/>
+                <input value={companyInfo.routingNumber||""} onChange={e=>handleCompanyChange("routingNumber",e.target.value)} placeholder="9-digit ABA routing number" style={inp3}/>
               </div>
               <div style={{gridColumn:"1/-1"}}>
                 <label style={fldLbl}>Bank Branch Address</label>
-                <input value={companyInfo.bankBranch||""} onChange={e=>setCompanyInfo(p=>({...p,bankBranch:e.target.value}))} placeholder="e.g. 100 Main St, New York, NY 10001" style={inp3}/>
+                <input value={companyInfo.bankBranch||""} onChange={e=>handleCompanyChange("bankBranch",e.target.value)} placeholder="e.g. 100 Main St, New York, NY 10001" style={inp3}/>
               </div>
             </div>
-          </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
-            <button onClick={saveCompanyInfo} disabled={savingCompany} style={{...SBtn,padding:"8px 24px",opacity:savingCompany?.6:1}}>{savingCompany?"Saving…":"💾 Save Company Info"}</button>
           </div>
         </div>
       </>)}
@@ -14134,221 +14155,4 @@ export default function App(){
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
                   </div>
                 </th>}
-                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>)}</tbody>
-            </table>
-          </div>
-          )}
-          {activePid&&!isClient&&<ProjectActivityFeed projectId={activePid} tasks={tasks} isAdmin={isAdmin} isManager={isManager}/>}
-          </div>
-        )}
-      </main>
-      {cmdOpen&&<CommandPalette projects={accessibleProjects} tasks={tasks} users={users} clients={clients} pinnedTasks={pinnedTasks} starredTasks={starredTasks} onNav={(type,data)=>{
-        if(type==="project")navTo("list",data.id);
-        else if(type==="task")navTo("list",data.project_id);
-        else if(type==="user"){sfa(data.name);sv("list");sap(null);}
-        else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
-      }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
-      {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
-      {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
-
-      {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users}/>}
-        </Modal>
-      )}
-      {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
-      {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
-      {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
-    </div>
-    {/* ── Mobile ME bottom sheet ── */}
-    {dashStatModal&&(()=>{
-      const DSM=dashStatModal;
-      const drill=dashDrill;
-      const lastDrill=drill[drill.length-1];
-      function closeDSM(){setDSM(null);setDDrill([]);}
-      function goBack(){setDDrill(d=>d.slice(0,-1));}
-      function drillInto(type,item){setDDrill(d=>[...d,{type,item}]);}
-
-      // ── Determine current view ──
-      let title="",color=C.accent,items=[],canDrill=false,drillType="",isTaskList=false;
-
-      if(!lastDrill){
-        // Root level
-        if(DSM==="users"){
-          title="👥 All Employees";color=C.accent;canDrill=true;drillType="employee";
-          items=users.filter(u=>u.role!=="Client").map(u=>{
-            const ut=tasks.filter(t=>t.assignee===u.name||t.detailer===u.name||t.checker===u.name);
-            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
-          });
-        } else if(DSM==="clients"){
-          title="🏢 All Clients";color=C.teal;canDrill=true;drillType="client";
-          items=clients.map(cl=>{
-            const cProjs=accessibleProjects.filter(p=>(p.client||"")===(cl.name||""));
-            return{label:cl.name,sub:`${cl.email||cl.phone||""} · ${cProjs.length} projects`,dot:C.teal,raw:cl};
-          });
-        } else if(DSM==="projects"){
-          title="📁 All Projects";color=C.blue;canDrill=true;drillType="project";
-          items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-        } else if(DSM==="completed"){
-          title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
-        } else if(DSM==="inprogress"){
-          title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
-        } else if(DSM==="team"){
-          title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
-          const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-          items=teamMembers.map(name=>({label:name,sub:`${tasks.filter(t=>t.assignee===name&&t.status==="In Progress").length} in progress · ${tasks.filter(t=>t.assignee===name&&isDone(t.status)).length} done`,dot:C.blue,raw:{name}}));
-        }
-      } else if(lastDrill.type==="client"){
-        // Client → Projects
-        const cl=lastDrill.item;
-        title=`📁 ${cl.name} — Projects`;color=C.blue;canDrill=true;drillType="project";
-        items=accessibleProjects.filter(p=>(p.client||"")===(cl.name||"")).map(p=>({label:p.name,sub:`${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
-      } else if(lastDrill.type==="project"){
-        // Project → Tasks
-        const proj=lastDrill.item;
-        title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
-      } else if(lastDrill.type==="employee"){
-        // Employee → Projects they work in
-        const emp=lastDrill.item;
-        const empName=emp.name||emp.username;
-        const empProjIds=new Set(tasks.filter(t=>t.assignee===empName||t.detailer===empName||t.checker===empName).map(t=>t.project_id));
-        title=`📁 ${empName} — Projects`;color=C.blue;canDrill=true;drillType="emp-project";
-        items=accessibleProjects.filter(p=>empProjIds.has(p.id)).map(p=>{
-          const empProjTasks=tasks.filter(t=>t.project_id===p.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName));
-          return{label:p.name,sub:`${p.client||"No client"} · ${empProjTasks.filter(t=>isDone(t.status)).length} done · ${empProjTasks.filter(t=>t.status==="In Progress").length} in progress`,dot:p.color||C.blue,raw:{proj:p,empName}};
-        });
-      } else if(lastDrill.type==="emp-project"){
-        // Employee+Project → Tasks
-        const {proj,empName}=lastDrill.item;
-        title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
-        items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
-      }
-
-      return(
-        <div onClick={closeDSM} style={{position:"fixed",inset:0,background:"#00000080",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:540,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:`0 0 0 1px ${color}33,0 24px 60px #00000080`}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 20px",borderBottom:`1px solid ${C.border}`}}>
-              {drill.length>0&&<button onClick={goBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.t2,fontSize:13,cursor:"pointer",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontWeight:600}}>← Back</button>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-                <div style={{fontSize:11,color:C.t3,marginTop:1}}>{items.length} item{items.length!==1?"s":""}{canDrill?" · click to drill down":""}</div>
-              </div>
-              <button onClick={closeDSM} style={{background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
-            </div>
-            {/* Breadcrumb */}
-            {drill.length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 20px",borderBottom:`1px solid ${C.border}22`,flexWrap:"wrap"}}>
-                <span onClick={()=>setDDrill([])} style={{fontSize:11,color:C.accent,cursor:"pointer",fontWeight:600}}>Home</span>
-                {drill.map((d,i)=>(
-                  <span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={{fontSize:11,color:C.t3}}>›</span>
-                    <span onClick={()=>setDDrill(drill.slice(0,i+1))} style={{fontSize:11,color:i===drill.length-1?C.t1:C.accent,cursor:i<drill.length-1?"pointer":"default",fontWeight:600}}>{d.item.name}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* List */}
-            <div style={{overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {items.length===0
-                ?<div style={{textAlign:"center",padding:32,color:C.t3,fontSize:14}}>No items found</div>
-                :items.map((item,i)=>(
-                <div key={i} onClick={canDrill?()=>drillInto(drillType,item.raw):isTaskList?()=>{set(item.raw);stm(true);closeDSM();}:undefined}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,borderLeft:`3px solid ${item.dot}`,cursor:(canDrill||isTaskList)?"pointer":"default",transition:"background .12s"}}
-                  onMouseEnter={e=>{if(canDrill||isTaskList)e.currentTarget.style.background=item.dot+"18";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background=C.surface;}}>
-                  <div style={{width:34,height:34,borderRadius:8,background:item.dot+"22",border:`1px solid ${item.dot}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:item.dot,flexShrink:0}}>{(item.label[0]||"?").toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
-                    {item.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.sub}</div>}
-                  </div>
-                  {canDrill&&<span style={{fontSize:14,color:C.t3,flexShrink:0}}>›</span>}
-                  {isTaskList&&<span style={{fontSize:12,color:C.t3,flexShrink:0}}>✏️</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    })()}
-{isMobile&&uMenu&&(
-      <div onClick={()=>sMenu(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:350}}>
-        <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:64,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,borderRadius:"18px 18px 0 0",padding:"20px 16px 16px"}}>
-          <div style={{width:36,height:4,background:C.border,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-            <Av name={me.name} size={44}/>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{me.name}{me.username===SUPER_ADMIN&&<span style={{color:C.accent,fontSize:10,marginLeft:6}}>★</span>}</div>
-              <div style={{fontSize:12,color:C.t3}}>@{me.username} · {me.role}</div>
-            </div>
-          </div>
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:"flex",flexDirection:"column",gap:4}}>
-            {isAdmin&&<button onClick={()=>{sum(true);scm(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>👥 Manage Employees</button>}
-            {isAdmin&&<button onClick={()=>{scm(true);sum(false);spwm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🏢 View Clients</button>}
-            <button onClick={()=>{spwm(true);sum(false);scm(false);sMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.t1,fontSize:14,fontFamily:"inherit",fontWeight:600,borderRadius:8}}>🔐 Change Password</button>
-            <button onClick={()=>{localStorage.removeItem("rds_user");window.location.href="/";}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"11px 8px",color:C.red,fontSize:14,fontFamily:"inherit",fontWeight:700,borderRadius:8}}>🚪 Sign Out</button>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* ── Mobile bottom nav ── */}
-    {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
-      <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-              <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
-              <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
-            </button>
-          );})}
-          <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
-            <Av name={me.name} size={24}/>
-            <span style={{fontSize:10,fontWeight:uMenu?700:500,whiteSpace:"nowrap"}}>Me</span>
-          </button>
-        </div>
-      </div>
-    </div>}
-    <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-          {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-          <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
-          <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
-        </button>
-      );})}
-      {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {showMore&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <span style={{fontSize:21,lineHeight:1}}>···</span>
-        <span style={{fontSize:9,fontWeight:showMore?700:500,letterSpacing:".03em"}}>More</span>
-      </button>}
-      {navs.length<=4&&<button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
-        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:uMenu?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
-        {uMenu&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
-        <Av name={me.name} size={22}/>
-        <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
-      </button>}
-    </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.tea
