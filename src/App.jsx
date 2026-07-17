@@ -10156,7 +10156,11 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     const today=new Date();
     const due=new Date(today); due.setDate(due.getDate()+15);
     const fmt=d=>d.toISOString().slice(0,10);
-    const autoNo="INV-"+String(today.getFullYear()).slice(-2)+String(today.getMonth()+1).padStart(2,"0")+"-"+String(Math.floor(Math.random()*900)+100);
+    const yyMM=String(today.getFullYear()).slice(-2)+String(today.getMonth()+1).padStart(2,"0");
+    const prefix="INV-"+yyMM+"-";
+    const existing=invoices.filter(inv=>(inv.invoiceNo||"").startsWith(prefix));
+    const maxSeq=existing.reduce((mx,inv)=>{const n=parseInt((inv.invoiceNo||"").replace(prefix,""),10);return isNaN(n)?mx:Math.max(mx,n);},0);
+    const autoNo=prefix+String(maxSeq+1).padStart(4,"0");
     setInvoiceOpts({invoiceNo:autoNo,issueDate:fmt(today),dueDate:fmt(due),description:""});
     setInvoiceModal(args);
   }
