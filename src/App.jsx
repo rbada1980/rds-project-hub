@@ -4423,66 +4423,15 @@ function EmailDigestCard(){
   }
   async function toggle(val){setEnabled(val);await upsertSetting("daily_digest_enabled",val?"true":"false");setMsg("Digest "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
   async function triggerNow(){
+    // Delegate entirely to server — single sender, single guard across PG + Supabase
     setTriggering(true);setMsg(null);
     try{
-      const today=new Date(new Date().getTime()+5.5*60*60*1000).toISOString().slice(0,10);
-      // Block duplicate sends on same day
-      const {data:lastSent}=await supabase.from('settings').select('value').eq('key','last_digest_date').single().catch(()=>({data:null}));
-      if(lastSent&&lastSent.value===today){setMsg("Already sent today ("+today+"). Cannot send twice in one day.");setTriggering(false);setTimeout(()=>setMsg(null),6000);return;}
-      const dateLabel=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-      const [{data:tasks},{data:projects},{data:recips}]=await Promise.all([
-        supabase.from("tasks").select("id,title,client,status,assignee,client_sub_date,due_date,project_id").or(`client_sub_date.eq.${today},due_date.eq.${today}`).order("client_sub_date"),
-        supabase.from("projects").select("id,name,client"),
-        supabase.from("users").select("name,email,role").in("role",["Admin","Manager","Team Leader"]),
-      ]);
-      const projMap={};(projects||[]).forEach(p=>{projMap[p.id]=p;});
-      const recipients=(recips||[]).filter(u=>u.email&&u.email.includes("@"));
-      if(!recipients.length){setMsg("Error: No recipients — add email to Admin/Manager/Team Leader accounts");setTriggering(false);return;}
-      const tlist=tasks||[];
-      let sent=0;
-      for(const u of recipients){
-        const rows=tlist.map(t=>{
-          const p=projMap[t.project_id]||{};
-          const badge=s=>s==="Completed"?`<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">Done</span>`:s==="In Progress"?`<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">In Progress</span>`:`<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">${s||"Not Started"}</span>`;
-          return `<tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${t.client||p.client||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${p.name||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:600;">${t.title}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${badge(t.status)}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;">${t.assignee||"—"}</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;text-align:center;">${t.client_sub_date||"—"}</td></tr>`;
-        }).join("");
-        const noRows=`<tr><td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;font-style:italic;">No submissions today.</td></tr>`;
-        const html=[
-          "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>",
-          "<body style='margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,sans-serif;'>",
-          "<table width='100%' cellpadding='0' cellspacing='0' style='max-width:680px;margin:0 auto;'><tr><td>",
-          "<table width='100%' style='background:#1a3a6b;border-radius:10px 10px 0 0;'><tr><td style='padding:20px 28px;'>",
-          "<div style='font-size:18px;font-weight:700;color:#fff;'>Daily Submission List</div>",
-          `<div style='font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;'>${dateLabel}</div>`,
-          "</td></tr></table>",
-          "<table width='100%' style='background:#fff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;'><tr><td style='padding:26px 28px;'>",
-          `<p style='font-size:14px;color:#374151;margin:0 0 16px;'>Dear ${u.name||u.email},</p>`,
-          `<p style='font-size:14px;color:#374151;margin:0 0 20px;'>${tlist.length} submission(s) due today.</p>`,
-          "<table width='100%' style='border-collapse:collapse;border:1px solid #e5e7eb;'>",
-          "<thead><tr style='background:#1a3a6b;'>",
-          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>CLIENT</th>",
-          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>PROJECT</th>",
-          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>TASK</th>",
-          "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>STATUS</th>",
-          "<th style='padding:10px 12px;text-align:left;color:#fff;font-size:11px;'>ASSIGNEE</th>",
-          "<th style='padding:10px 12px;text-align:center;color:#fff;font-size:11px;'>SUB DATE</th>",
-          "</tr></thead>",
-          `<tbody>${rows||noRows}</tbody></table>`,
-          "<div style='margin-top:22px;font-size:13px;color:#1a3a6b;font-weight:700;'>RDS TechServ Team</div>",
-          "</td></tr></table>",
-          "<table width='100%' style='background:#1a3a6b;border-radius:0 0 10px 10px;'>",
-          "<tr><td style='padding:14px 28px;font-size:11px;color:rgba(255,255,255,.5);'>Automated digest — do not reply.</td></tr>",
-          "</table></td></tr></table></body></html>",
-        ].join("");
-        try{
-          await fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},body:JSON.stringify({type:"submission_digest",data:{taskName:"Daily Submission List — "+today,projectName:tlist.length+" task(s) due today",completedBy:"RDS TechServ Automated Digest",completedAt:dateLabel,recipientEmail:u.email,subject:"RDS Daily Submission List — "+dateLabel,htmlBody:html}})});
-          sent++;
-        }catch(e2){console.warn("Email failed",u.email,e2.message);}
-      }
-      try{await supabase.from('settings').upsert({key:'last_digest_date',value:today},{onConflict:'key'});}catch(e){}
-      setMsg("Sent to "+sent+" recipient(s) — "+tlist.length+" task(s) for today");
-    }
-    catch(e){setMsg("Error: "+e.message);}
+      const res=await fetch("/api/cron-daily",{method:"GET"});
+      const d=await res.json();
+      if(d.message){setMsg(d.message);}
+      else if(d.error){setMsg("Error: "+d.error);}
+      else{setMsg("Sent to "+d.sent+" recipient(s) — "+d.tasks+" task(s) for today");}
+    }catch(e){setMsg("Error: "+e.message);}
     setTriggering(false);setTimeout(()=>setMsg(null),6000);
   }
   async function saveEdit(){
@@ -13854,3 +13803,4 @@ export default function App(){
     </MobileCtx.Provider>
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      

@@ -1288,8 +1288,12 @@ app.get("/api/audit-logs", async (req, res) => {
 
 // ═════════════════════════════════════════════════════════════
 // DAILY SUBMISSION EMAIL — /api/cron-daily
-// Called by "Send Now" button in admin dashboard
+// Single path for ALL sends (scheduled + manual "Send Now")
 // ══════════════════════════════════════════════════════════════
+
+// In-memory lock — prevents concurrent double-sends even if two
+// requests arrive at the exact same millisecond (e.g. laptop wake)
+let _digestSending = false;
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
@@ -1381,13 +1385,29 @@ app.get("/api/cron-daily", async (req, res) => {
   try {
     const force = req.query.force === "true";
 
-    // Check if already sent today (skip if forced)
+    // ── In-memory lock: block concurrent sends ──────────────────
+    if (_digestSending) {
+      return res.json({ message: "Send already in progress — skipped" });
+    }
+    _digestSending = true;
+
+    // ── Date guard: check BOTH local PG and Supabase ────────────
+    const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
     if (!force) {
       try {
+        // Check local PG
         const rows = await pool.query("SELECT value FROM settings WHERE key='last_digest_date' LIMIT 1");
-        const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
         if (rows.rows.length && rows.rows[0].value === today) {
-          return res.json({ message: "Already sent today" });
+          _digestSending = false;
+          return res.json({ message: "Already sent today (local DB)" });
+        }
+      } catch(_) {}
+      try {
+        // Check Supabase (catches sends triggered from App.jsx frontend)
+        const sbRows = await supaGet("/rest/v1/settings?key=eq.last_digest_date&select=value&limit=1");
+        if (Array.isArray(sbRows) && sbRows.length && sbRows[0].value === today) {
+          _digestSending = false;
+          return res.json({ message: "Already sent today (Supabase)" });
         }
       } catch(_) {}
     }
@@ -1436,17 +1456,32 @@ app.get("/api/cron-daily", async (req, res) => {
       } catch(e) { console.warn("[cron-daily] Email failed for", u.email, e.message); }
     }
 
-    // Record send date in local PG
+    // ── Save guard to BOTH stores so either path sees it ────────
     try {
       await pool.query(
         "INSERT INTO settings(key,value) VALUES('last_digest_date',$1) ON CONFLICT(key) DO UPDATE SET value=$1",
         [today]
       );
     } catch(_) {}
+    try {
+      await fetch(SUPA_URL + "/rest/v1/settings?key=eq.last_digest_date", {
+        method: "PATCH",
+        headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+        body: JSON.stringify({ value: today })
+      });
+      // If row doesn't exist yet, insert it
+      await fetch(SUPA_URL + "/rest/v1/settings", {
+        method: "POST",
+        headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ key: "last_digest_date", value: today })
+      });
+    } catch(_) {}
 
+    _digestSending = false;
     console.log("[cron-daily] Sent digest to", sent, "recipients |", (tasks||[]).length, "tasks for", today);
     res.json({ sent, tasks: (tasks || []).length, date: today });
   } catch(e) {
+    _digestSending = false;
     console.error("[cron-daily] Error:", e.message);
     res.status(500).json({ error: e.message });
   }
@@ -1467,46 +1502,4 @@ app.get(/.*/, (req, res) => {
 
 // ══════════════════════════════════════════════════════════════
 // START — HTTPS on 8443 (primary); HTTP fallback on 3000 if no cert
-// ══════════════════════════════════════════════════════════════
-
-const HTTPS_PORT = 8443;
-const certPath   = path.join(__dirname, "certs", "cert.pem");
-const keyPath    = path.join(__dirname, "certs",  "key.pem");
-
-if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-  try {
-    require("https").createServer({
-      key:  fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-    }, app).listen(HTTPS_PORT, "0.0.0.0", () => {
-      console.log(`\n🔒 RDS Local Server running at:`);
-      console.log(`   https://192.168.0.159:${HTTPS_PORT}  ← Office LAN`);
-      console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
-      console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-
-      let _syncBusy = false;
-      async function doSync(label) {
-        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
-        _syncBusy = true;
-        try { await runSync(); }
-        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
-        finally { _syncBusy = false; }
-      }
-      setInterval(() => doSync("10s"), 10000);
-      cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
-      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
-      setTimeout(() => doSync("startup"), 30000);
-    });
-  } catch (e) {
-    console.error("HTTPS failed:", e.message);
-    process.exit(1);
-  }
-} else {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n⚠️  No SSL cert — running HTTP fallback at:`);
-    console.log(`   http://192.168.0.159:${PORT}`);
-    console.log(`\nRun 'node generate-cert.cjs' to enable HTTPS on :${HTTPS_PORT}`);
-    console.log(`📦 Database: rds_local (PostgreSQL 16)`);
-    console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
-  });
-}
+// ════════════════════════════════════════════�
