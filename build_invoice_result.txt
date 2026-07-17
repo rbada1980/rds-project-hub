@@ -9,13 +9,13 @@ computing gzip size...
 dist/index.html                           0.55 kB │ gzip:   0.33 kB
 dist/assets/index-CGk5keqa.css            2.01 kB │ gzip:   0.90 kB
 dist/assets/typeof-B5XbjTb1.js            0.27 kB │ gzip:   0.16 kB
-dist/assets/purify-DLBu_hM-.js           20.78 kB │ gzip:   8.66 kB
-dist/assets/index.es-BvnOcIjs.js        151.41 kB │ gzip:  48.89 kB
-dist/assets/html2canvas-pntJJ068.js     199.56 kB │ gzip:  46.78 kB
-dist/assets/jspdf.es.min-BcnEfqAD.js    341.22 kB │ gzip: 111.96 kB
-dist/assets/index-BRhR1rgh.js         1,445.86 kB │ gzip: 367.14 kB
+dist/assets/purify-BRgSExcr.js           20.78 kB │ gzip:   8.66 kB
+dist/assets/index.es-q7Eyusfn.js        151.41 kB │ gzip:  48.89 kB
+dist/assets/html2canvas-B_3O7UXv.js     199.56 kB │ gzip:  46.78 kB
+dist/assets/jspdf.es.min-BnYf_hRM.js    341.22 kB │ gzip: 111.96 kB
+dist/assets/index-C7Pc9GHx.js         1,445.92 kB │ gzip: 367.17 kB
 
-[32m✓ built in 690ms[39m
+[32m✓ built in 777ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -27,8 +27,6 @@ Use --update-env to update environment variables
 ┌────┬────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name       │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 ├────┼────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 10088    │ 0s     │ 181  │ online    │ 0%       │ 93.4mb   │ HP       │ disabled │
+│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 6368     │ 0s     │ 182  │ online    │ 31.2%    │ 91.4mb   │ HP       │ disabled │
 └────┴────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 20.6% | ram usage: 92.5% | disk: ⇓ 0mb/s ⇑ 0mb/s |
-To https://github.com/rbada1980/rds-project-hub.git
-   298cad3..727e3c0  main -> main
+host metrics | cpu: 17.6% | ram usage: 92% | disk: ⇓ 0mb/s ⇑ 0mb/s |
