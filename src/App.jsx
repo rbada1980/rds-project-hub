@@ -10044,34 +10044,118 @@ function BillingSummaryPage({tasks,projects,clients,me}){
     <script>window.onload=()=>window.print()<\/script>
     </body></html>`;
   }
-  // ── Real PDF via server (pdfkit) — downloads as .pdf directly ──
+  // ── Client-side PDF via jsPDF — works online & offline ──────
   async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false}){
-    const rows=taskList.map(t=>({
-      project:t._proj?.name||"—",
-      task:t.title,
-      assignee:t.assignee||"—",
-      subDate:t.client_sub_date||"—",
-      tons:fmtT(t._wt),
-      rate:`$${t._rate}/T`,
-      amount:fmtM(t._amt),
-    }));
-    const totT=taskList.reduce((s,t)=>s+(t._wt||0),0);
-    const totA=taskList.reduce((s,t)=>s+(t._amt||0),0);
     try{
-      const res=await fetch("/api/invoice-pdf",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({title,subtitle,note,period:periodLabel,
-          date:new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}),
-          rows,totTons:fmtT(totT),totAmt:fmtM(totA),filename,hideProject}),
+      const {jsPDF}=await import("jspdf");
+      const doc=new jsPDF({orientation:"p",unit:"pt",format:"a4"});
+      const PW=595.28,M=50,CW=PW-M*2;
+      const todayDate=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+      const totT=taskList.reduce((s,t)=>s+(t._wt||0),0);
+      const totA=taskList.reduce((s,t)=>s+(t._amt||0),0);
+
+      // Logo (fetch from server, works both online & offline)
+      let logoData=null;
+      try{
+        const r=await fetch("/logo.png");
+        if(r.ok){
+          const ab=await r.arrayBuffer();
+          const b64=btoa(String.fromCharCode(...new Uint8Array(ab)));
+          logoData="data:image/png;base64,"+b64;
+        }
+      }catch(_){}
+
+      // ── HEADER ──
+      if(logoData) doc.addImage(logoData,"PNG",M,35,72,42);
+      const tx=logoData?M+80:M;
+      doc.setFont("helvetica","bold").setFontSize(14).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",tx,52);
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#64748b").text("Billing & Invoice Management",tx,66);
+      doc.setFont("helvetica","bold").setFontSize(16).setTextColor("#1e3a8a").text("BILLING SUMMARY",PW-M,50,{align:"right"});
+      doc.setFont("helvetica","normal").setFontSize(10).setTextColor("#64748b").text(periodLabel,PW-M,65,{align:"right"});
+      doc.setFontSize(9).setTextColor("#94a3b8").text(todayDate,PW-M,78,{align:"right"});
+      doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,100,PW-M,100);
+
+      // ── TITLE STRIP ──
+      doc.setFillColor("#1e3a8a").rect(M,108,CW,34,"F");
+      doc.setFont("helvetica","bold").setFontSize(13).setTextColor("#ffffff").text(title||"",M+10,124,{maxWidth:CW-20});
+      if(subtitle) doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#bfdbfe").text(subtitle,M+10,137,{maxWidth:CW-20});
+
+      let y=153;
+
+      // Note
+      if(note){
+        doc.setFillColor("#f0f9ff").rect(M,y,CW,22,"F");
+        doc.setDrawColor("#0ea5e9").setLineWidth(3).line(M,y,M,y+22);
+        doc.setLineWidth(1);
+        doc.setFont("helvetica","normal").setFontSize(9).setTextColor("#0c4a6e").text("Note: "+note,M+8,y+14,{maxWidth:CW-16});
+        y+=30;
+      }
+
+      // ── TABLE COLUMNS ──
+      const cols=hideProject?[
+        {l:"Task",      x:M,      w:155, a:"left"},
+        {l:"Assignee",  x:M+155,  w:85,  a:"left"},
+        {l:"Sub Date",  x:M+240,  w:75,  a:"left"},
+        {l:"Tons",      x:M+315,  w:55,  a:"right"},
+        {l:"Rate",      x:M+370,  w:55,  a:"right"},
+        {l:"Amount",    x:M+425,  w:70,  a:"right"},
+      ]:[
+        {l:"Project",   x:M,      w:100, a:"left"},
+        {l:"Task",      x:M+100,  w:115, a:"left"},
+        {l:"Assignee",  x:M+215,  w:75,  a:"left"},
+        {l:"Sub Date",  x:M+290,  w:65,  a:"left"},
+        {l:"Tons",      x:M+355,  w:45,  a:"right"},
+        {l:"Rate",      x:M+400,  w:40,  a:"right"},
+        {l:"Amount",    x:M+440,  w:55,  a:"right"},
+      ];
+
+      // Table header
+      doc.setFillColor("#1d4ed8").rect(M,y,CW,20,"F");
+      doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor("#ffffff");
+      cols.forEach(c=>doc.text(c.l.toUpperCase(),c.a==="right"?c.x+c.w:c.x+2,y+13,{align:c.a}));
+      y+=20;
+
+      // Table rows
+      taskList.forEach((t,i)=>{
+        if(y>760){doc.addPage();y=50;}
+        if(i%2===0) doc.setFillColor("#f8faff").rect(M,y,CW,18,"F");
+        doc.setDrawColor("#e2e8f0").setLineWidth(0.4).line(M,y+18,PW-M,y+18);
+        const vals=hideProject
+          ?[t.title,t.assignee||"—",t.client_sub_date||"—",fmtT(t._wt),`$${t._rate}/T`,fmtM(t._amt)]
+          :[t._proj?.name||"—",t.title,t.assignee||"—",t.client_sub_date||"—",fmtT(t._wt),`$${t._rate}/T`,fmtM(t._amt)];
+        doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#1e293b");
+        cols.forEach((c,ci)=>doc.text(String(vals[ci]||"—"),c.a==="right"?c.x+c.w:c.x+2,y+12,{align:c.a,maxWidth:c.w}));
+        y+=18;
       });
-      if(!res.ok){const e=await res.json().catch(()=>({}));alert("PDF Error: "+(e.error||res.status));return;}
-      const blob=await res.blob();
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");
-      a.href=url; a.download=(filename||"RDS_Invoice")+".pdf";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url),5000);
+
+      // Total row
+      doc.setFillColor("#0f172a").rect(M,y,CW,22,"F");
+      doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#ffffff").text("TOTAL",M+4,y+14);
+      const lc=cols[cols.length-1],tc=cols[cols.length-3];
+      doc.setTextColor("#e2e8f0").text(fmtT(totT),tc.x+tc.w,y+14,{align:"right"});
+      doc.setTextColor("#4ade80").setFontSize(11).text(fmtM(totA),lc.x+lc.w,y+14,{align:"right"});
+      y+=22;
+
+      // ── SUMMARY BOX ──
+      y+=14;
+      doc.setFillColor("#f8faff").setDrawColor("#dbeafe").setLineWidth(1).rect(350,y,195,68,"FD");
+      doc.setFont("helvetica","normal").setFontSize(10).setTextColor("#475569");
+      doc.text("Total Tasks:",360,y+16); doc.text("Total Tonnage:",360,y+34);
+      doc.setFont("helvetica","bold").setTextColor("#1e293b");
+      doc.text(String(taskList.length),543,y+16,{align:"right"});
+      doc.text(fmtT(totT),543,y+34,{align:"right"});
+      doc.setDrawColor("#1e3a8a").line(360,y+44,543,y+44);
+      doc.setFont("helvetica","bold").setFontSize(11).setTextColor("#1e3a8a").text("Grand Total:",360,y+58);
+      doc.setFontSize(13).setTextColor("#15803d").text(fmtM(totA),543,y+56,{align:"right"});
+
+      // ── FOOTER ──
+      const FY=841.89-50;
+      doc.setDrawColor("#e2e8f0").setLineWidth(1).line(M,FY-10,PW-M,FY-10);
+      doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#1e3a8a").text("RDS Techserv Pvt Ltd",M,FY+3);
+      doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#4b5563").text("CONFIDENTIAL — FOR INTERNAL USE",M,FY+15);
+      doc.setFontSize(9).setTextColor("#374151").text(todayDate,PW-M,FY+7,{align:"right"});
+
+      doc.save((filename||"RDS_Invoice")+".pdf");
     }catch(e){alert("PDF Error: "+e.message);}
   }
 
@@ -13827,8 +13911,4 @@ export default function App(){
         <span style={{fontSize:9,fontWeight:uMenu?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>Me</span>
       </button>}
     </nav>
-    {/* ── Live Timer floating bar ── */}
-    <LiveTimerBar timer={activeTimer} onPause={timerPause} onStop={timerStop}/>
-    </MobileCtx.Provider>
-  );
-}
+    {/* ── Live Timer floa
