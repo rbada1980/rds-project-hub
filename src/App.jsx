@@ -10228,8 +10228,9 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(ci.address){doc.text(ci.address,billFromX,bfY);bfY+=10;}
       const fromAddrLine=[ci.city,ci.state,ci.zip].filter(Boolean).join(", ");
       if(fromAddrLine){doc.text(fromAddrLine,billFromX,bfY);bfY+=10;}
-      if(ci.phone){doc.text(ci.phone,billFromX,bfY);bfY+=10;}
+      bfY+=4; // blank gap before contact info
       if(ci.email){doc.text(ci.email,billFromX,bfY);bfY+=10;}
+      if(ci.phone){doc.text(ci.phone,billFromX,bfY);bfY+=10;}
       // BILL TO
       const clientLabel=clInfo.label||clientKey||title||"";
       doc.setFont("helvetica","bold").setFontSize(8).setTextColor("#94a3b8").text("BILL TO",billToX,y);
@@ -10238,11 +10239,11 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(clientLabel){doc.text(clientLabel,billToX,btY);}btY+=11;
       doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#475569");
       if(clInfo.contactName&&clInfo.contactName.trim().toLowerCase()!==clientLabel.trim().toLowerCase()){doc.text(clInfo.contactName,billToX,btY);btY+=10;}
-      if(clInfo.email){doc.text(clInfo.email,billToX,btY);btY+=10;}
-      if(clInfo.phone){doc.text(clInfo.phone,billToX,btY);btY+=10;}
       if(clInfo.address){doc.text(clInfo.address,billToX,btY);btY+=10;}
       const cityLine=[clInfo.city,clInfo.state,clInfo.zip].filter(Boolean).join(", ");
       if(cityLine){doc.text(cityLine,billToX,btY);btY+=10;}
+      if(clInfo.email){doc.text(clInfo.email,billToX,btY);btY+=10;}
+      if(clInfo.phone){doc.text(clInfo.phone,billToX,btY);btY+=10;}
       if(clInfo.country&&clInfo.country!=="United States"){doc.text(clInfo.country,billToX,btY);btY+=10;}
 
       // Vertical divider between BILL FROM and BILL TO — centered in gap between columns
