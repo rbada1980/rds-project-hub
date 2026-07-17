@@ -10219,7 +10219,7 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       // ── BILL FROM (left) | BILL TO (right) ──────────────────
       let y=88;
       const billFromX=M;
-      const billToX=M+250;
+      const billToX=330;
       // BILL FROM
       doc.setFont("helvetica","bold").setFontSize(8).setTextColor("#94a3b8").text("BILL FROM",billFromX,y);
       let bfY=y+11;
@@ -10245,8 +10245,12 @@ function BillingSummaryPage({tasks,projects,clients,me}){
       if(cityLine){doc.text(cityLine,billToX,btY);btY+=10;}
       if(clInfo.country&&clInfo.country!=="United States"){doc.text(clInfo.country,billToX,btY);btY+=10;}
 
+      // Vertical divider between BILL FROM and BILL TO
+      const midX=PW/2;
       // Divider below bill-from/bill-to
       const afterBill=Math.max(bfY,btY)+8;
+      // Vertical separator between BILL FROM and BILL TO
+      doc.setDrawColor("#cbd5e1").setLineWidth(0.5).line(midX,82,midX,afterBill-2);
       doc.setDrawColor("#e2e8f0").setLineWidth(0.8).line(M,afterBill,PW-M,afterBill);
 
       // ── INVOICE TITLE STRIP ──────────────────────────────────
