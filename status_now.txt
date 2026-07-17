@@ -1,0 +1,21 @@
+┌────┬────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name       │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 15236    │ 3m     │ 169  │ online    │ 0%       │ 154.6mb  │ HP       │ disabled │
+└────┴────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+host metrics | cpu: 9.2% | ram usage: 90.7% | disk: ⇓ 0mb/s ⇑ 0mb/s |
+[TAILING] Tailing last 5 lines for [rds-hub] process (change the value with --lines option)
+C:\Users\HP\.pm2\logs\rds-hub-error.log last 5 lines:
+0|rds-hub  |     at Object.<anonymous> (C:\Users\HP\AppData\Roaming\npm\node_modules\pm2\lib\ProcessContainerFork.js:32:23)
+0|rds-hub  |     at Module._compile (node:internal/modules/cjs/loader:1854:14)
+0|rds-hub  |     at Object..js (node:internal/modules/cjs/loader:1985:10)
+0|rds-hub  |     at Module.load (node:internal/modules/cjs/loader:1577:32)
+0|rds-hub  |     at Module._load (node:internal/modules/cjs/loader:1379:12)
+
+C:\Users\HP\.pm2\logs\rds-hub-out.log last 5 lines:
+0|rds-hub  | ────────────────────────────────────────────────────
+0|rds-hub  | 
+0|rds-hub  | 📄  Report saved → last-sync-report.json
+0|rds-hub  | ☁️   Report saved → Supabase settings
+0|rds-hub  | 
+
