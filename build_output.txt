@@ -9,13 +9,13 @@ computing gzip size...
 dist/index.html                           0.55 kB │ gzip:   0.33 kB
 dist/assets/index-CGk5keqa.css            2.01 kB │ gzip:   0.90 kB
 dist/assets/typeof-B5XbjTb1.js            0.27 kB │ gzip:   0.16 kB
-dist/assets/purify-BM7-bpUE.js           20.78 kB │ gzip:   8.66 kB
-dist/assets/index.es-BkCC01s0.js        151.41 kB │ gzip:  48.89 kB
-dist/assets/html2canvas-CYaoh5tK.js     199.56 kB │ gzip:  46.78 kB
-dist/assets/jspdf.es.min-D-eqGuVA.js    341.22 kB │ gzip: 111.96 kB
-dist/assets/index-BO4wJ7IF.js         1,439.79 kB │ gzip: 366.15 kB
+dist/assets/purify-DoGpN8s2.js           20.78 kB │ gzip:   8.66 kB
+dist/assets/index.es-DJmCy2GE.js        151.41 kB │ gzip:  48.89 kB
+dist/assets/html2canvas-BTvy4sTY.js     199.56 kB │ gzip:  46.78 kB
+dist/assets/jspdf.es.min-B4cCeyA3.js    341.22 kB │ gzip: 111.96 kB
+dist/assets/index-LkkiGwsW.js         1,441.14 kB │ gzip: 366.25 kB
 
-[32m✓ built in 631ms[39m
+[32m✓ built in 734ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -27,6 +27,6 @@ Use --update-env to update environment variables
 ┌────┬────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
 │ id │ name       │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
 ├────┼────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 3520     │ 0s     │ 171  │ online    │ 0%       │ 92.3mb   │ HP       │ disabled │
+│ 0  │ rds-hub    │ default     │ 0.0.0   │ fork    │ 10760    │ 0s     │ 174  │ online    │ 43.7%    │ 95.4mb   │ HP       │ disabled │
 └────┴────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-host metrics | cpu: 12.1% | ram usage: 89.8% | disk: ⇓ 0mb/s ⇑ 0mb/s |
+host metrics | cpu: 9.5% | ram usage: 88.4% | disk: ⇓ 0mb/s ⇑ 0mb/s |
