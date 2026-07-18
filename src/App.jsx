@@ -9367,9 +9367,9 @@ function TimingsCharts({timeLogs,projects,month,isClient}){
 }
 
 // ─── TimingsPage ─────────────────────────────────────────────────────────────
-function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isClient}){
+function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isClient,isFinance=false}){
   const [group,setGroup]=useState("timings"); // "timings" | "analytics"
-  const [tab,setTab]=useState(isClient?"projects":(isAdmin||isManager)?"employees":"myatt");
+  const [tab,setTab]=useState(isClient?"projects":(isAdmin||isManager||isFinance)?"employees":"myatt");
   const [timeLogs,setTimeLogs]=useState([]);
   const [attendance,setAttendance]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -14013,7 +14013,7 @@ export default function App(){
           </>
         )}
         {view==="timings"&&(
-          <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient}/>
+          <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient} isFinance={isFinance}/>
         )}
         {view==="clientfeedback"&&(isAdmin||isManager||isTeamLeader)&&(
           <ClientFeedbackPage tasks={tasks} projects={accessibleProjects} users={users} onEditTask={t=>{set(t);stm(true);}}/>
