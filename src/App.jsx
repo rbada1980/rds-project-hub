@@ -9741,6 +9741,169 @@ function LiveTimerBar({timer,onPause,onStop}){
 // BACKUP, DISASTER RECOVERY & BUSINESS CONTINUITY CENTER
 // ══════════════════════════════════════════════════════════
 // ── Audit Log Page (Phase 3) ─────────────────────────────────
+
+// ─── HR & Finance Dashboard ────────────────────────────────────────────────────
+function HRFinanceDashboard({me,users,tasks,projects,clients}){
+  const isMobile=useMobile();
+  const C=useTheme();
+  const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px"};
+  const [invoices,setInvoices]=useState([]);
+  const [attendance,setAttendance]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const today=new Date().toISOString().slice(0,10);
+  const monthStr=today.slice(0,7);
+
+  useEffect(()=>{
+    async function load(){
+      setLoading(true);
+      try{
+        const [invRes,attRes]=await Promise.all([
+          IS_LOCAL
+            ?fetch("/api/rpc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"select",table:"invoices",params:{}})}).then(r=>r.json())
+            :supabase.from("invoices").select("*").order("created_at",{ascending:false}).limit(500),
+          IS_LOCAL
+            ?fetch("/api/rpc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"select",table:"attendance",params:{date:today}})}).then(r=>r.json())
+            :supabase.from("attendance").select("*").eq("date",today),
+        ]);
+        setInvoices(invRes?.data||invRes||[]);
+        setAttendance(attRes?.data||attRes||[]);
+      }catch(e){}
+      setLoading(false);
+    }
+    load();
+  },[]);
+
+  // ── Finance stats ──
+  const monthInvoices=invoices.filter(i=>(i.created_at||"").startsWith(monthStr));
+  const allInvoices=invoices;
+  const pending=allInvoices.filter(i=>i.status==="draft"||i.status==="sent").length;
+  const paid=allInvoices.filter(i=>i.status==="paid").length;
+  const totalRevenue=allInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(Number(i.total_amount)||0),0);
+  const monthRevenue=monthInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(Number(i.total_amount)||0),0);
+  const overdue=allInvoices.filter(i=>i.status==="overdue").length;
+
+  // ── HR / Attendance stats ──
+  const totalEmp=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin").length;
+  const presentToday=attendance.filter(a=>!a.logout_at).length;
+  const loggedOut=attendance.filter(a=>a.logout_at).length;
+  const totalPresent=attendance.length;
+  const absent=Math.max(0,totalEmp-totalPresent);
+
+  // ── Billing tasks ──
+  const completedWithWeight=tasks.filter(t=>(t.status==="Completed"||t.status==="completed")&&t.det_weight>0);
+  const pendingWeight=tasks.filter(t=>t.status!=="Completed"&&t.status!=="completed"&&t.det_weight>0);
+
+  function fmtMoney(n){if(n>=1000000)return"$"+(n/1000000).toFixed(1)+"M";if(n>=1000)return"$"+(n/1000).toFixed(1)+"K";return"$"+n.toFixed(0);}
+
+  return(
+    <div style={{padding:isMobile?"12px 4px":"0 0 32px"}}>
+      {/* Banner */}
+      <div style={{background:`linear-gradient(135deg,${C.card} 0%,#f59e0b11 100%)`,border:`1px solid #f59e0b44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:"4px solid #f59e0b"}}>
+        <div style={{width:52,height:52,borderRadius:14,background:"#f59e0b22",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>💼</div>
+        <div style={{flex:1}}>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>HR & Finance Dashboard</h2>
+          <p style={{margin:"3px 0 0",fontSize:13,color:C.t2}}>Welcome back, {me.name} · Attendance management & billing overview</p>
+        </div>
+        <div style={{fontSize:12,color:C.t3,textAlign:"right"}}>{new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+      </div>
+
+      {/* ── FINANCE SECTION ── */}
+      <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>💰 Finance Overview</div>
+      <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?"140px":"170px"},1fr))`,gap:14,marginBottom:24}}>
+        {[
+          {label:"Total Revenue",value:fmtMoney(totalRevenue),sub:"all paid invoices",color:"#22c55e",icon:"💵"},
+          {label:"This Month",value:fmtMoney(monthRevenue),sub:new Date().toLocaleString("default",{month:"long"}),color:"#3b82f6",icon:"📅"},
+          {label:"Pending Invoices",value:pending,sub:"draft + sent",color:"#f59e0b",icon:"📄"},
+          {label:"Paid Invoices",value:paid,sub:"completed",color:"#10b981",icon:"✅"},
+          {label:"Overdue",value:overdue,sub:"needs attention",color:overdue>0?"#ef4444":C.t3,icon:"⚠️"},
+          {label:"Total Clients",value:clients.length,sub:"active clients",color:"#8b5cf6",icon:"🏢"},
+        ].map(s=>(
+          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"14px 16px"}}>
+            <div style={{fontSize:20,marginBottom:4}}>{s.icon}</div>
+            <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>{s.label}</div>
+            <div style={{fontSize:22,fontWeight:800,color:s.color}}>{loading?"…":s.value}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Billing tasks quick stats */}
+      <div style={{...card,marginBottom:24,display:"flex",gap:24,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t1}}>📊 Task Billing Summary</div>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+          <span style={{fontSize:13,color:C.t2}}>Completed with weight: <b style={{color:"#22c55e"}}>{completedWithWeight.length} tasks</b></span>
+          <span style={{fontSize:13,color:C.t2}}>Pending pipeline: <b style={{color:"#f59e0b"}}>{pendingWeight.length} tasks</b></span>
+          <span style={{fontSize:13,color:C.t2}}>Total projects: <b style={{color:C.accent}}>{projects.length}</b></span>
+        </div>
+      </div>
+
+      {/* ── HR SECTION ── */}
+      <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>👥 HR — Today's Attendance</div>
+      <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?"140px":"170px"},1fr))`,gap:14,marginBottom:24}}>
+        {[
+          {label:"Total Employees",value:totalEmp,color:"#3b82f6",icon:"👥",sub:"excl. admin & clients"},
+          {label:"Present Today",value:totalPresent,color:"#22c55e",icon:"✅",sub:"clocked in"},
+          {label:"Currently Active",value:presentToday,color:"#10b981",icon:"🟢",sub:"not logged out"},
+          {label:"Logged Out",value:loggedOut,color:C.t2,icon:"🔴",sub:"completed day"},
+          {label:"Absent Today",value:absent,color:absent>0?"#ef4444":C.t3,icon:"❌",sub:"no attendance"},
+        ].map(s=>(
+          <div key={s.label} style={{...card,borderTop:`3px solid ${s.color}`,padding:"14px 16px"}}>
+            <div style={{fontSize:20,marginBottom:4}}>{s.icon}</div>
+            <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>{s.label}</div>
+            <div style={{fontSize:22,fontWeight:800,color:s.color}}>{loading?"…":s.value}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Employee attendance list */}
+      {!loading&&attendance.length>0&&(
+        <div style={{...card}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>📋 Employee Status Today</div>
+          <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?"100%":"220px"},1fr))`,gap:10}}>
+            {attendance.map(a=>{
+              const user=users.find(u=>(u.id===a.user_id)||(u.name||"").toLowerCase()===(a.employee_name||"").toLowerCase());
+              const name=user?.name||a.employee_name||"Unknown";
+              const isActive=!a.logout_at;
+              const loginTime=a.login_at?new Date(a.login_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true}):"—";
+              const logoutTime=a.logout_at?new Date(a.logout_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true}):"Active";
+              const hrs=a.total_work_minutes?Math.floor(a.total_work_minutes/60)+"h "+String(a.total_work_minutes%60).padStart(2,"0")+"m":"—";
+              return(
+                <div key={a.id} style={{background:C.bg,border:`1px solid ${isActive?"#22c55e44":C.border}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:34,height:34,borderRadius:10,background:isActive?"#22c55e22":"#ef444422",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:isActive?"#22c55e":"#ef4444",flexShrink:0}}>{(name[0]||"?").toUpperCase()}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:13,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
+                    <div style={{fontSize:11,color:C.t3}}>{loginTime} → {logoutTime}</div>
+                    {a.total_work_minutes>0&&<div style={{fontSize:11,color:"#22c55e",fontWeight:600}}>{hrs}</div>}
+                  </div>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:isActive?"#22c55e":"#94a3b8",flexShrink:0}}/>
+                </div>
+              );
+            })}
+          </div>
+          {(()=>{
+            const presentIds=new Set(attendance.map(a=>a.user_id));
+            const absentList=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin"&&u.id&&!presentIds.has(u.id));
+            return absentList.length>0?(
+              <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#ef4444",marginBottom:8}}>❌ Absent ({absentList.length})</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {absentList.map(u=>(
+                    <span key={u.id} style={{background:"#ef444411",border:"1px solid #ef444433",borderRadius:6,padding:"3px 10px",fontSize:12,color:"#ef4444",fontWeight:600}}>{u.name}</span>
+                  ))}
+                </div>
+              </div>
+            ):null;
+          })()}
+        </div>
+      )}
+      {!loading&&attendance.length===0&&(
+        <div style={{...card,textAlign:"center",color:C.t3,fontSize:13,padding:32}}>No attendance records for today yet.</div>
+      )}
+    </div>
+  );
+}
+
 // ─── 💰 Billing Summary Page ──────────────────────────────────────────────────
 function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=false}){
   const isMobile=useMobile();
@@ -13455,7 +13618,10 @@ export default function App(){
             onOpenTaskModal={(title,tl)=>ssm({title,tasks:tl})}
           />
         )}
-        {view==="dashboard"&&!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&(
+        {view==="dashboard"&&isFinance&&(
+          <HRFinanceDashboard me={me} users={users} tasks={tasks} projects={accessibleProjects} clients={clients}/>
+        )}
+        {view==="dashboard"&&!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&!isFinance&&(
           <UserDashboard
             me={me} tasks={tasks} projects={accessibleProjects} clients={clients} today={today}
             onEditTask={()=>{}}
