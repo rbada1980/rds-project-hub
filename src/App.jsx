@@ -12776,11 +12776,11 @@ export default function App(){
   // Compute accessible projects (must be before useEffect that depends on it)
   // Team Leader: parse comma-separated client_name to restrict their view
   const tlClients=isTeamLeader&&me?.client_name?me.client_name.split(",").map(c=>c.trim().toLowerCase()).filter(Boolean):[];
-  const accessibleProjects=useMemo(()=>isAdmin||isManager?projects
+  const accessibleProjects=useMemo(()=>isAdmin||isManager||isFinance?projects
     :isTeamLeader?(tlClients.length>0?projects.filter(p=>tlClients.includes((p.client||"").toLowerCase())):projects)
     :isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me?.client_name||"").toLowerCase())
     :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))))
-  ,[projects,tasks,isAdmin,isManager,isTeamLeader,isClient,tlClients,me]);
+  ,[projects,tasks,isAdmin,isManager,isTeamLeader,isClient,isFinance,tlClients,me]);
   // O(1) lookup maps — rebuilt only when source arrays change
   const projectById=useMemo(()=>new Map(projects.map(p=>[p.id,p])),[projects]);
   const accessibleProjIds=useMemo(()=>new Set(accessibleProjects.map(p=>p.id)),[accessibleProjects]);
