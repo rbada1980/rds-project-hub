@@ -2626,8 +2626,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   },[]);
   async function markViewed(inv){
     if(inv.status!=="sent")return;
-    // update in Supabase settings
     try{
+      // 1. Fetch current invoice list
       const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
         headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
       });
@@ -2636,6 +2636,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
       const all=JSON.parse(rows[0].value||"[]");
       const now=new Date().toISOString();
       const updated=all.map(i=>i.id===inv.id?{...i,status:"viewed",viewedAt:now}:i);
+      // 2. Patch Supabase
       await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
         method:"PATCH",
         headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
@@ -2643,6 +2644,91 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
       });
       setMyInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"viewed",viewedAt:now}:i));
       setInvDetail(p=>p&&p.id===inv.id?{...p,status:"viewed",viewedAt:now}:p);
+      // 3. Send notification to admin + HR
+      try{
+        const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{
+          headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+        });
+        const ncRows=await ncRow.json();
+        if(Array.isArray(ncRows)&&ncRows[0]){
+          const nc=JSON.parse(ncRows[0].value||"{}");
+          const notifyTo=[nc.adminEmail,nc.hrEmail].filter(Boolean);
+          if(notifyTo.length){
+            const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
+<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
+  <div style="background:#7c3aed;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">👁 Invoice Viewed</div></div>
+  <div style="padding:28px 32px;">
+    <p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has viewed Invoice <strong>${inv.invoiceNo||""}</strong>.</p>
+    <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#1d4ed8;font-size:15px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Viewed At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
+    </div>
+    <p style="color:#64748b;font-size:13px;margin:0;">Log in to RDS Projects portal to follow up or mark as paid.</p>
+  </div>
+  <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification</div>
+</div></body></html>`;
+            fetch("/api/send-email",{
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({to:notifyTo,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,html,fromName:nc.fromName||"RDS Projects",fromEmail:nc.fromEmail||""})
+            }).catch(()=>{});
+          }
+        }
+      }catch(_){}
+    }catch(_){}
+  }
+  async function markPaid(inv){
+    if(!window.confirm(`Mark Invoice ${inv.invoiceNo||""} as PAID?`))return;
+    try{
+      const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+      });
+      const rows=await r.json();
+      if(!Array.isArray(rows)||!rows[0])return;
+      const all=JSON.parse(rows[0].value||"[]");
+      const now=new Date().toISOString();
+      const updated=all.map(i=>i.id===inv.id?{...i,status:"paid",paidAt:now}:i);
+      await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+        method:"PATCH",
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({value:JSON.stringify(updated)})
+      });
+      setMyInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"paid",paidAt:now}:i));
+      // Notify admin + HR
+      try{
+        const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{
+          headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+        });
+        const ncRows=await ncRow.json();
+        if(Array.isArray(ncRows)&&ncRows[0]){
+          const nc=JSON.parse(ncRows[0].value||"{}");
+          const notifyTo=[nc.adminEmail,nc.hrEmail].filter(Boolean);
+          if(notifyTo.length){
+            const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
+<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
+  <div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">✅ Payment Received</div></div>
+  <div style="padding:28px 32px;">
+    <p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has marked Invoice <strong>${inv.invoiceNo||""}</strong> as <strong>PAID</strong>.</p>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Paid At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
+    </div>
+    <p style="color:#64748b;font-size:13px;margin:0;">Log in to RDS Projects to confirm and update records.</p>
+  </div>
+  <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification</div>
+</div></body></html>`;
+            fetch("/api/send-email",{
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({to:notifyTo,subject:`✅ Payment Received — ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,html,fromName:nc.fromName||"RDS Projects",fromEmail:nc.fromEmail||""})
+            }).catch(()=>{});
+          }
+        }
+      }catch(_){}
     }catch(_){}
   }
   const INV_S={sent:{label:"Sent",color:"#3b82f6"},viewed:{label:"Viewed",color:"#8b5cf6"},paid:{label:"Paid",color:"#22c55e"},overdue:{label:"Overdue",color:"#ef4444"}};
@@ -3049,6 +3135,12 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
                         </div>
                         <div style={{display:"flex",gap:10,alignItems:"center"}}>
                           <span style={{fontWeight:800,fontSize:17,color:C.accent}}>{fmtAmt(inv.amount)}</span>
+                          {["sent","viewed"].includes(inv.status)&&(
+                            <button onClick={e=>{e.stopPropagation();markPaid(inv);}}
+                              style={{background:"#16a34a",color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                              ✅ Mark as Paid
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -10455,6 +10547,9 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   const rkClient=n=>"billing_rc__"+n.replace(/\s+/g,"_").toLowerCase();
   const rkProj=id=>"billing_rp__"+id;
   const rkTask=id=>"billing_rt__"+id;
+  // ── Notification email config ──
+  const [notifyConfig,setNotifyConfig]=useState({adminEmail:"",hrEmail:"",fromName:"RDS Projects",fromEmail:"noreply@hub-rdsprojects.com"});
+  const [savingNotify,setSavingNotify]=useState(false);
 
   // Load all billing settings from Supabase (works from cloud & local deployments)
   const loadBillingSettings=useCallback(()=>{
@@ -10472,6 +10567,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
             if(r.key===RATE_DEFAULT)setDefaultRate(v.rate||v||"");
             else if(r.key==="billing_company")setCompanyInfo(p=>({...p,...(v||{})}));
             else if(r.key==="billing_invoices")setInvoices(Array.isArray(v)?v:[]);
+            else if(r.key==="billing_notify_config")setNotifyConfig(p=>({...p,...(v||{})}));
             else if(r.key.startsWith("billing_rc__")){const cl=allClients.find(n=>rkClient(n)===r.key)||r.key;cc[cl]=v;}
             else if(r.key.startsWith("billing_rp__")){const pid=r.key.replace("billing_rp__","");pc[pid]=v;}
             else if(r.key.startsWith("billing_rt__")){const tid=r.key.replace("billing_rt__","");tc[tid]=v;}
@@ -10529,6 +10625,72 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     }
   }
 
+  // ── Resend email helper ───────────────────────────────────────
+  async function sendMail(to,subject,html){
+    try{
+      const toArr=Array.isArray(to)?to.filter(Boolean):[to].filter(Boolean);
+      if(!toArr.length)return;
+      await fetch("/api/send-email",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({to:toArr,subject,html,fromName:notifyConfig.fromName||"RDS Projects",fromEmail:notifyConfig.fromEmail||"noreply@hub-rdsprojects.com"})
+      });
+    }catch(_){}
+  }
+  // Invoice email template — sent to client when admin clicks "Mark Sent"
+  function buildClientInvoiceEmail(inv,company){
+    const taskSnap=inv.taskSnapshot||[];
+    const byProj={};
+    taskSnap.forEach(t=>{const k=t.project||"Tasks";if(!byProj[k])byProj[k]=[];byProj[k].push(t);});
+    const taskRows=Object.entries(byProj).map(([proj,tasks])=>`
+      <tr><td colspan="3" style="background:#f0f4ff;padding:8px 14px;font-weight:700;color:#1e3a8a;font-size:13px;border-top:2px solid #dbeafe;">📁 ${proj}</td></tr>
+      ${tasks.map(t=>`<tr><td style="padding:7px 14px;color:#374151;font-size:13px;border-bottom:1px solid #f3f4f6;">${t.title||t.name||""}</td><td style="padding:7px 14px;color:#6b7280;font-size:12px;">${t.assignee||"—"}</td><td style="padding:7px 14px;color:#6b7280;font-size:12px;">${t.status||""}</td></tr>`).join("")}
+    `).join("");
+    return`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
+<div style="max-width:620px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
+  <div style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);padding:32px 36px;">
+    <div style="color:#fff;font-size:22px;font-weight:800;margin-bottom:4px;">${company?.accountName||"RDS Projects"}</div>
+    <div style="color:#bfdbfe;font-size:13px;">Invoice Notification</div>
+  </div>
+  <div style="padding:28px 36px;">
+    <p style="color:#374151;font-size:15px;margin:0 0 20px;">Dear <strong>${inv.clientName}</strong>,</p>
+    <p style="color:#374151;font-size:14px;margin:0 0 24px;">Please find below your invoice details. Kindly review and process the payment by the due date.</p>
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Invoice No</td><td style="color:#1e293b;font-size:14px;font-weight:700;padding:5px 0;">${inv.invoiceNo||"—"}</td></tr>
+        ${inv.invoiceTitle?`<tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Description</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.invoiceTitle}</td></tr>`:""}
+        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Issue Date</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.issueDate||"—"}</td></tr>
+        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Due Date</td><td style="color:#ef4444;font-size:14px;font-weight:700;padding:5px 0;">${inv.dueDate||"—"}</td></tr>
+        ${inv.period?`<tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Period</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.period}</td></tr>`:""}
+        ${inv.tons?`<tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Quantity</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.tons} tons</td></tr>`:""}
+        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Amount Due</td><td style="color:#1d4ed8;font-size:20px;font-weight:800;padding:5px 0;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</td></tr>
+      </table>
+    </div>
+    ${taskSnap.length>0?`<div style="margin-bottom:24px;"><div style="font-weight:700;color:#1e293b;font-size:14px;margin-bottom:12px;">📋 Work Details</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;"><thead><tr style="background:#f8fafc;"><th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;">Task</th><th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;">Assigned To</th><th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;">Status</th></tr></thead><tbody>${taskRows}</tbody></table></div>`:""}
+    ${company?.paymentMethod?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:16px 20px;margin-bottom:24px;"><div style="font-weight:700;color:#92400e;font-size:13px;margin-bottom:8px;">💳 Payment Information</div><div style="color:#78350f;font-size:13px;">${company.paymentMethod}${company.bankName?` — ${company.bankName}`:""}</div>${company.accountNumber?`<div style="color:#78350f;font-size:13px;margin-top:4px;">Account: ${company.accountNumber}</div>`:""}</div>`:""}
+    <p style="color:#64748b;font-size:13px;margin:0;">For any queries, contact us at ${company?.email||notifyConfig.fromEmail||""}.</p>
+  </div>
+  <div style="background:#f8fafc;padding:16px 36px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">${company?.accountName||"RDS Projects"} · Invoice generated on ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+</div></body></html>`;
+  }
+  // Notification template — sent to admin+HR
+  function buildNotifyEmail(subject,body,inv){
+    return`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
+<div style="max-width:560px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
+  <div style="background:#1e293b;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">RDS Projects — Billing Alert</div></div>
+  <div style="padding:28px 32px;">
+    <h2 style="color:#1e293b;font-size:16px;margin:0 0 16px;">${subject}</h2>
+    <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">${body}</p>
+    ${inv?`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;font-size:12px;">Amount</span><strong style="color:#1d4ed8;font-size:15px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
+    </div>`:""}
+  </div>
+  <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+</div></body></html>`;
+  }
+
   // handleCompanyChange: called on every field change — auto-saves after 800ms idle
   function handleCompanyChange(field,val){
     const updated={...companyInfo,[field]:val};
@@ -10580,16 +10742,39 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
   async function updateInvoiceStatus(id,status){
     const now=new Date().toISOString();
+    let targetInv=null;
     const updated=invoices.map(inv=>{
       if(inv.id!==id)return inv;
       const patch={status};
       if(status==="sent"&&!inv.sentAt)patch.sentAt=now;
       if(status==="viewed"&&!inv.viewedAt)patch.viewedAt=now;
       if(status==="paid"&&!inv.paidAt)patch.paidAt=now;
-      return{...inv,...patch};
+      targetInv={...inv,...patch};
+      return targetInv;
     });
     setInvoices(updated);
     await upsertSetting("billing_invoices",updated);
+    // ── Email triggers ────────────────────────────────────────
+    if(targetInv){
+      if(status==="sent"){
+        // Send invoice email to client
+        const clientEmail=clientCustom[targetInv.clientName]?.email||clientCustom[targetInv.clientKey]?.email||"";
+        if(clientEmail){
+          const html=buildClientInvoiceEmail(targetInv,companyInfo);
+          sendMail(clientEmail,`Invoice ${targetInv.invoiceNo||""} from RDS Projects — $${Number(targetInv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}`,html);
+        }
+      }
+      if(status==="paid"){
+        // Admin + HR paid notification
+        const notifyTo=[notifyConfig.adminEmail,notifyConfig.hrEmail].filter(Boolean);
+        const html=buildNotifyEmail(
+          `✅ Client has paid Invoice ${targetInv.invoiceNo}`,
+          `<strong>${targetInv.clientName}</strong> has marked Invoice <strong>${targetInv.invoiceNo}</strong> as <strong>PAID</strong> on ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}.`,
+          targetInv
+        );
+        sendMail(notifyTo,`✅ Payment Received — ${targetInv.clientName} paid Invoice ${targetInv.invoiceNo}`,html);
+      }
+    }
   }
 
   async function deleteInvoice(id){
@@ -11707,6 +11892,44 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Notification Email Config */}
+        <div style={{...card,marginBottom:20}}>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:4}}>📧 Email Notifications (Resend)</div>
+          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>Set the admin and HR emails that receive invoice alerts. Requires RESEND_API_KEY in server environment.</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div>
+              <label style={fldLbl}>Admin Email</label>
+              <input value={notifyConfig.adminEmail||""} onChange={e=>setNotifyConfig(p=>({...p,adminEmail:e.target.value}))} placeholder="admin@rdstechserv.com" style={inp3}/>
+            </div>
+            <div>
+              <label style={fldLbl}>HR Email</label>
+              <input value={notifyConfig.hrEmail||""} onChange={e=>setNotifyConfig(p=>({...p,hrEmail:e.target.value}))} placeholder="hr@rdstechserv.com" style={inp3}/>
+            </div>
+            <div>
+              <label style={fldLbl}>From Name</label>
+              <input value={notifyConfig.fromName||""} onChange={e=>setNotifyConfig(p=>({...p,fromName:e.target.value}))} placeholder="RDS Projects" style={inp3}/>
+            </div>
+            <div>
+              <label style={fldLbl}>From Email (verified in Resend)</label>
+              <input value={notifyConfig.fromEmail||""} onChange={e=>setNotifyConfig(p=>({...p,fromEmail:e.target.value}))} placeholder="noreply@hub-rdsprojects.com" style={inp3}/>
+            </div>
+          </div>
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.t3,marginBottom:14}}>
+            <strong style={{color:C.t2}}>Triggers:</strong>
+            {" "}① Admin/HR clicks <em>Mark Sent</em> → invoice email sent to client &nbsp;|&nbsp;
+            ② Client opens invoice → admin+HR notified &nbsp;|&nbsp;
+            ③ Client marks Paid → admin+HR notified
+          </div>
+          <button onClick={async()=>{
+            setSavingNotify(true);
+            try{await upsertSetting("billing_notify_config",notifyConfig);setMsg("Notification settings saved ✓");}
+            catch(e){setMsg("⚠️ Save failed: "+e.message);}
+            setSavingNotify(false);setTimeout(()=>setMsg(null),2500);
+          }} style={{...SBtn,padding:"8px 20px"}} disabled={savingNotify}>
+            {savingNotify?"Saving…":"💾 Save Notification Settings"}
+          </button>
         </div>
       </>)}
     </div>

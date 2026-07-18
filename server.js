@@ -989,6 +989,29 @@ app.post("/api/hr-migrate", async (req, res) => {
 // SETTINGS
 // ═════════════════════════════════════════════════════════════
 
+// ── Email via Resend ──────────────────────────────────────────
+app.post("/api/send-email", async (req, res) => {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY) return res.status(500).json({ error: "RESEND_API_KEY not configured in environment" });
+  const { to, subject, html, fromName, fromEmail } = req.body;
+  if (!to || !subject || !html) return res.status(400).json({ error: "Missing to/subject/html" });
+  const from = `${fromName || "RDS Projects"} <${fromEmail || "noreply@hub-rdsprojects.com"}>`;
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + RESEND_KEY },
+      body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html })
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json({ error: data.message || "Resend error", data });
+    res.json({ ok: true, id: data.id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════
+
 app.post("/api/settings/upsert", async (req, res) => {
   try {
     const { key, value } = req.body;
