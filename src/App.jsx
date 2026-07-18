@@ -10601,8 +10601,15 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         });
         const rows=await r.json();
         if(Array.isArray(rows)&&rows.length>0){
-          const fresh=JSON.parse(rows[0].value||"[]");
+          let fresh=JSON.parse(rows[0].value||"[]");
+          // Auto-overdue check on every poll
+          const now=new Date();let changed=false;
+          fresh=fresh.map(i=>{
+            if(["sent","viewed"].includes(i.status)&&i.dueDate&&new Date(i.dueDate)<now){changed=true;return{...i,status:"overdue"};}
+            return i;
+          });
           setInvoices(fresh);
+          if(changed)upsertSetting("billing_invoices",fresh).catch(()=>{});
           // Sync open detail panel if it exists
           setInvoiceDetail(prev=>{
             if(!prev)return prev;
@@ -10788,7 +10795,20 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       });
       const rows=await r.json();
       if(Array.isArray(rows)&&rows.length>0){
-        const v=JSON.parse(rows[0].value);setInvoices(Array.isArray(v)?v:[]);
+        let v=JSON.parse(rows[0].value);
+        if(!Array.isArray(v))v=[];
+        // Auto-overdue: any sent/viewed invoice whose due date has passed → overdue
+        const now=new Date();
+        let changed=false;
+        v=v.map(i=>{
+          if(["sent","viewed"].includes(i.status)&&i.dueDate&&new Date(i.dueDate)<now){
+            changed=true;
+            return{...i,status:"overdue"};
+          }
+          return i;
+        });
+        setInvoices(v);
+        if(changed)upsertSetting("billing_invoices",v).catch(()=>{});
       }
     }catch(_){}
   }
@@ -11543,11 +11563,11 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
   // Invoice status helpers
   const INV_STATUS={
-    draft:  {label:"Draft",   bg:C.t3+"22",   color:C.t3,     next:[{s:"sent",  label:"Mark Sent"}]},
-    sent:   {label:"Sent",    bg:C.blue+"22", color:C.blue,   next:[{s:"viewed",label:"Mark Viewed"},{s:"paid",label:"Mark Paid"}]},
-    viewed: {label:"Viewed",  bg:C.purple+"22",color:C.purple,next:[{s:"paid",  label:"Mark Paid"}]},
-    paid:   {label:"Paid",    bg:C.green+"22",color:C.green,  next:[]},
-    overdue:{label:"Overdue", bg:C.red+"22",  color:C.red,    next:[{s:"paid",  label:"Mark Paid"}]},
+    draft:  {label:"Draft",   bg:C.t3+"22",    color:C.t3,     next:[{s:"sent",label:"Mark Sent"}]},
+    sent:   {label:"Sent",    bg:C.blue+"22",  color:C.blue,   next:[]},  // auto → Viewed when client opens
+    viewed: {label:"Viewed",  bg:C.purple+"22",color:C.purple, next:[]},  // auto → Paid when client pays
+    paid:   {label:"Paid",    bg:C.green+"22", color:C.green,  next:[]},
+    overdue:{label:"Overdue", bg:C.red+"22",   color:C.red,    next:[]},  // auto → when due date passes
   };
   const fmtShortDate=s=>{if(!s)return"—";try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return s;}};
   const clientInvoices=isClient?invoices.filter(i=>(i.clientKey||"").toLowerCase()===(me?.client_name||"").toLowerCase()):invoices;
@@ -11640,6 +11660,15 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                 </div>
               ))}
             </div>
+            {/* Auto-flow info note for sent/viewed/overdue */}
+            {!isClient&&["sent","viewed","overdue"].includes(invoiceDetail.status)&&(
+              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:C.t3,lineHeight:1.6}}>
+                <div style={{fontWeight:700,color:C.t2,marginBottom:4}}>ℹ️ Automatic Status Flow</div>
+                <div>📤 <strong>Sent</strong> → client opens invoice → <strong>Viewed</strong> (auto)</div>
+                <div>💸 <strong>Viewed</strong> → client clicks "Payment Sent" → <strong>Paid</strong> (auto)</div>
+                <div>⏰ <strong>Sent / Viewed</strong> → due date passes → <strong>Overdue</strong> (auto)</div>
+              </div>
+            )}
             {/* Status actions */}
             <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
               <button onClick={()=>setInvoiceDetail(null)} style={{...GBtn,padding:"8px 18px"}}>Close</button>
@@ -11649,7 +11678,6 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
               {!isClient&&(INV_STATUS[invoiceDetail.status]?.next||[]).map(n=>(
                 <button key={n.s} onClick={()=>{if(n.s==="sent"&&!window.confirm(`Mark Invoice ${invoiceDetail.invoiceNo||""} as Sent?\n\n✅ Invoice will appear in ${invoiceDetail.clientName}'s dashboard\n📧 Invoice email will be sent to client\n\nProceed?`))return;updateInvoiceStatus(invoiceDetail.id,n.s);const now=new Date().toISOString();setInvoiceDetail(p=>{const nw={...p,status:n.s};if(n.s==="sent"&&!nw.sentAt)nw.sentAt=now;if(n.s==="viewed"&&!nw.viewedAt)nw.viewedAt=now;if(n.s==="paid"&&!nw.paidAt)nw.paidAt=now;return nw;});}} style={{...SBtn,padding:"8px 18px"}}>{n.label}</button>
               ))}
-              {!isClient&&invoiceDetail.status==="sent"&&<button onClick={()=>{updateInvoiceStatus(invoiceDetail.id,"overdue");setInvoiceDetail(p=>({...p,status:"overdue"}));}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>Mark Overdue</button>}
               {!isClient&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(invoiceDetail.id);setInvoiceDetail(null);}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>🗑 Delete</button>}
             </div>
           </div>
@@ -11990,7 +12018,6 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                     {st.next.map(n=>(
                       <button key={n.s} onClick={()=>{if(n.s==="sent"&&!window.confirm(`Mark Invoice ${inv.invoiceNo||""} as Sent?\n\n✅ Invoice will appear in ${inv.clientName}'s dashboard\n📧 Invoice email will be sent to client\n\nProceed?`))return;updateInvoiceStatus(inv.id,n.s);}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>{n.label}</button>
                     ))}
-                    {inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
                     {inv.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setEditInvModal(inv);}} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
                     {inv.status==="draft"&&<button onClick={()=>{const tl=inv.taskSnapshot?.length?inv.taskSnapshot:(inv.invoiceTitle&&clientMap[inv.clientKey]?.projMap[inv.invoiceTitle])?clientMap[inv.clientKey].projMap[inv.invoiceTitle].tasks:Object.values(clientMap[inv.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.invoiceTitle||inv.clientName||inv.clientKey||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
                     <button onClick={()=>setInvoiceDetail(inv)} style={{...GBtn,padding:"4px 12px",fontSize:11}}>View Details</button>
