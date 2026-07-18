@@ -1,2 +1,1 @@
-To https://github.com/rbada1980/rds-project-hub.git
-   2f58202..bb5a71f  main -> main
+Everything up-to-date
