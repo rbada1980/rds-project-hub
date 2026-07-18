@@ -46,7 +46,8 @@ tr2.Enabled = True
 
 Dim a2
 Set a2 = t2.Actions.Create(0)
-a2.Path = "C:\Users\HP\rds-project-hub\sync-scheduled.bat"
+a2.Path = "wscript.exe"
+a2.Arguments = """C:\Users\HP\rds-project-hub\sync-silent.vbs"""
 
 t2.Settings.Enabled = True
 t2.Principal.RunLevel = 0
@@ -68,7 +69,8 @@ tr3.Enabled = True
 
 Dim a3
 Set a3 = t3.Actions.Create(0)
-a3.Path = "C:\Users\HP\rds-project-hub\sync-scheduled.bat"
+a3.Path = "wscript.exe"
+a3.Arguments = """C:\Users\HP\rds-project-hub\sync-silent.vbs"""
 
 t3.Settings.Enabled = True
 t3.Settings.StartWhenAvailable = True

@@ -1129,10 +1129,27 @@ app.get("/api/cron-daily", async function(req, res) {
     const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
 
     if (!force) {
+      // Check SUPABASE (shared with Vercel cloud cron) — prevents duplicate sends
+      // even when sync rewrites local PG with a stale last_digest_date
       try {
-        const r = await pool.query("SELECT value FROM settings WHERE key=$1 LIMIT 1", ["last_digest_date"]);
-        if (r.rows.length && r.rows[0].value === today) return res.json({ message: "Already sent today" });
-      } catch(e) {}
+        const sr = await fetch(_SUPA_URL + "/rest/v1/settings?key=eq.last_digest_date&select=value", {
+          headers: { "apikey": _SUPA_KEY, "Authorization": "Bearer " + _SUPA_KEY }
+        });
+        const sd = await sr.json();
+        if (Array.isArray(sd) && sd.length && sd[0].value === today) {
+          console.log("[cron-daily] Already sent today (Supabase guard) — blocked.");
+          return res.json({ message: "Already sent today" });
+        }
+      } catch(e) {
+        // Supabase check failed — fall back to local PG guard
+        try {
+          const r = await pool.query("SELECT value FROM settings WHERE key=$1 LIMIT 1", ["last_digest_date"]);
+          if (r.rows.length && r.rows[0].value === today) {
+            console.log("[cron-daily] Already sent today (local PG guard) — blocked.");
+            return res.json({ message: "Already sent today" });
+          }
+        } catch(e2) {}
+      }
     }
 
     const dateLabel = new Date().toLocaleDateString("en-GB", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
@@ -1144,6 +1161,19 @@ app.get("/api/cron-daily", async function(req, res) {
     const users      = await _supaGet("/rest/v1/users?select=name,email,role&role=in.(Admin,Manager,Team Leader)");
     const recipients = (users || []).filter(function(u) { return u.email && u.email.includes("@"); });
     if (!recipients.length) return res.json({ error: "No recipients - add email to Admin/Manager/Team Leader accounts" });
+
+    // Stamp SUPABASE first (shared guard — blocks Vercel duplicate too)
+    try {
+      await fetch(_SUPA_URL + "/rest/v1/settings?key=eq.last_digest_date", {
+        method: "PATCH",
+        headers: { "apikey": _SUPA_KEY, "Authorization": "Bearer " + _SUPA_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: today })
+      });
+    } catch(e) {}
+    // Also stamp local PG
+    try {
+      await pool.query("INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=$2", ["last_digest_date", today]);
+    } catch(e) {}
 
     let sent = 0;
     for (let i = 0; i < recipients.length; i++) {
@@ -1168,10 +1198,6 @@ app.get("/api/cron-daily", async function(req, res) {
         sent++;
       } catch(e) { console.warn("[cron-daily] failed for", u.email, e.message); }
     }
-
-    try {
-      await pool.query("INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=$2", ["last_digest_date", today]);
-    } catch(e) {}
 
     console.log("[cron-daily] Sent to", sent, "recipients,", (tasks||[]).length, "tasks for", today);
     res.json({ sent: sent, tasks: (tasks || []).length, date: today });
