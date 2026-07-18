@@ -9748,9 +9748,18 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px"};
   const [invoices,setInvoices]=useState([]);
   const [attendance,setAttendance]=useState([]);
+  const [holidays,setHolidays]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [setupBusy,setSetupBusy]=useState(false);
+  const [setupMsg,setSetupMsg]=useState("");
   const today=new Date().toISOString().slice(0,10);
   const monthStr=today.slice(0,7);
+  const currentYear=new Date().getFullYear();
+  const currentMonth=new Date().getMonth()+1;
+
+  async function fetchHolidays(){
+    try{const{data,error}=await supabase.from("holidays").select("*").eq("year",currentYear).order("date");if(!error)setHolidays(data||[]);}catch(e){}
+  }
 
   useEffect(()=>{
     async function load(){
@@ -9767,10 +9776,47 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
         setInvoices(Array.isArray(invRes?.data)?invRes.data:Array.isArray(invRes)?invRes:[]);
         setAttendance(Array.isArray(attRes?.data)?attRes.data:Array.isArray(attRes)?attRes:[]);
       }catch(e){}
+      await fetchHolidays();
       setLoading(false);
     }
     load();
   },[]);
+
+  async function runHRSetup(){
+    setSetupBusy(true);
+    setSetupMsg("Creating holiday calendar…");
+    try{
+      const yr=currentYear;
+      const defaultHols=[
+        {name:"New Year's Day",date:`${yr}-01-01`,type:"national",year:yr},
+        {name:"Makar Sankranti",date:`${yr}-01-14`,type:"festival",year:yr},
+        {name:"Republic Day",date:`${yr}-01-26`,type:"national",year:yr},
+        {name:"Maha Shivaratri",date:`${yr}-02-26`,type:"festival",year:yr},
+        {name:"Holi",date:`${yr}-03-29`,type:"festival",year:yr},
+        {name:"Good Friday",date:`${yr}-04-03`,type:"public",year:yr},
+        {name:"Dr. Ambedkar Jayanti",date:`${yr}-04-14`,type:"national",year:yr},
+        {name:"Labour Day",date:`${yr}-05-01`,type:"national",year:yr},
+        {name:"Eid al-Adha",date:`${yr}-06-07`,type:"festival",year:yr},
+        {name:"Independence Day",date:`${yr}-08-15`,type:"national",year:yr},
+        {name:"Ganesh Chaturthi",date:`${yr}-08-25`,type:"festival",year:yr},
+        {name:"Gandhi Jayanti",date:`${yr}-10-02`,type:"national",year:yr},
+        {name:"Dussehra",date:`${yr}-10-20`,type:"festival",year:yr},
+        {name:"Diwali",date:`${yr}-11-09`,type:"festival",year:yr},
+        {name:"Guru Nanak Jayanti",date:`${yr}-11-23`,type:"festival",year:yr},
+        {name:"Christmas",date:`${yr}-12-25`,type:"public",year:yr},
+      ];
+      const{error:hErr}=await supabase.from("holidays").insert(defaultHols);
+      if(hErr)throw new Error("Holidays: "+hErr.message);
+      setSetupMsg("Setting leave balances…");
+      const emps=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin"&&!u.leave_balance);
+      for(const emp of emps){
+        await supabase.from("users").update({leave_balance:{annual:15,sick:6,casual:6,annual_used:0,sick_used:0,casual_used:0}}).eq("id",emp.id);
+      }
+      await fetchHolidays();
+      setSetupMsg("✅ Setup complete! "+defaultHols.length+" holidays added, leave balances set for "+emps.length+" employees.");
+    }catch(e){setSetupMsg("❌ Error: "+e.message);}
+    setSetupBusy(false);
+  }
 
   // ── Finance stats ──
   const monthInvoices=invoices.filter(i=>(i.created_at||"").startsWith(monthStr));
@@ -9782,23 +9828,48 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const overdue=allInvoices.filter(i=>i.status==="overdue").length;
 
   // ── HR / Attendance stats ──
-  const totalEmp=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin").length;
+  const employees=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin");
+  const totalEmp=employees.length;
   const todayAttendance=attendance.filter(a=>a.date===today);
   const presentToday=todayAttendance.filter(a=>!a.logout_at).length;
   const loggedOut=todayAttendance.filter(a=>a.logout_at).length;
   const totalPresent=todayAttendance.length;
   const absent=Math.max(0,totalEmp-totalPresent);
-  // Monthly stats
   const uniqueDays=[...new Set(attendance.map(a=>a.date))].length;
   const monthTotalRecords=attendance.length;
   const avgPresence=uniqueDays>0?(monthTotalRecords/uniqueDays).toFixed(1):"0";
-  const monthAbsentDays=uniqueDays>0?Math.max(0,Math.round((totalEmp-monthTotalRecords/uniqueDays)*uniqueDays)):0;
 
   // ── Billing tasks ──
   const completedWithWeight=tasks.filter(t=>(t.status==="Completed"||t.status==="completed")&&t.det_weight>0);
   const pendingWeight=tasks.filter(t=>t.status!=="Completed"&&t.status!=="completed"&&t.det_weight>0);
 
-  function fmtMoney(n){if(n>=1000000)return"$"+(n/1000000).toFixed(1)+"M";if(n>=1000)return"$"+(n/1000).toFixed(1)+"K";return"$"+n.toFixed(0);}
+  // ── Birthdays ──
+  const thisMonthBirthdays=employees.filter(u=>{
+    if(!u.date_of_birth)return false;
+    const m=parseInt((u.date_of_birth||"").split("-")[1],10);
+    return m===currentMonth;
+  }).sort((a,b)=>parseInt((a.date_of_birth||"").split("-")[2],10)-parseInt((b.date_of_birth||"").split("-")[2],10));
+
+  // ── Holiday calendar ──
+  const thisMonthHolidays=holidays.filter(h=>(h.date||"").startsWith(monthStr));
+  const upcomingHolidays=holidays.filter(h=>h.date>today).slice(0,5);
+  const needsSetup=!loading&&holidays.length===0;
+  const typeColor={national:"#3b82f6",festival:"#f59e0b",public:"#22c55e",company:"#8b5cf6"};
+
+  // ── Helpers ──
+  function fmtMoney(n){if(n>=1000000)return"₹"+(n/1000000).toFixed(1)+"M";if(n>=1000)return"₹"+(n/1000).toFixed(1)+"K";return"₹"+n.toFixed(0);}
+  function fmtDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt.getTime())?"—":dt.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}
+  function yearsAt(d){if(!d)return null;const y=Math.floor((Date.now()-new Date(d))/(365.25*24*3600*1000));return y>=0?y:null;}
+  function LeaveBar({used,total}){
+    if(total==null)return<span style={{color:C.t3,fontSize:11}}>—</span>;
+    const pct=total>0?Math.min(100,Math.round((used||0)/total*100)):0;
+    const col=pct>80?"#ef4444":pct>50?"#f59e0b":"#22c55e";
+    return(<div>
+      <span style={{fontSize:11,fontWeight:700,color:col}}>{(used||0)}/{total}</span>
+      <div style={{marginTop:3,height:4,background:C.border,borderRadius:2}}><div style={{width:pct+"%",height:"100%",background:col,borderRadius:2}}/></div>
+      <span style={{fontSize:10,color:C.t3}}>{total-(used||0)} remaining</span>
+    </div>);
+  }
 
   return(
     <div style={{padding:isMobile?"12px 4px":"0 0 32px"}}>
@@ -9811,6 +9882,81 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
         </div>
         <div style={{fontSize:12,color:C.t3,textAlign:"right"}}>{new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
       </div>
+
+      {/* ── ONE-TIME SETUP ── */}
+      {needsSetup&&(
+        <div style={{background:"#f59e0b0d",border:"2px dashed #f59e0b88",borderRadius:12,padding:"20px 24px",marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:14}}>
+            <span style={{fontSize:28,lineHeight:1}}>⚙️</span>
+            <div>
+              <div style={{fontWeight:800,fontSize:15,color:C.t1,marginBottom:4}}>First-Time HR Setup — {currentYear}</div>
+              <div style={{fontSize:13,color:C.t2}}>No holiday calendar found for {currentYear}. Click Setup to automatically add Indian national holidays and set default leave balances (Annual 15, Sick 6, Casual 6) for all employees.</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:4}}>Festival dates are approximate — you can edit them after setup. Run <b>hr_migration.sql</b> in Supabase first if you haven't already.</div>
+            </div>
+          </div>
+          <button onClick={runHRSetup} disabled={setupBusy} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"10px 22px",fontWeight:700,fontSize:13,cursor:setupBusy?"wait":"pointer",opacity:setupBusy?0.7:1}}>
+            {setupBusy?"⏳ Setting up...":"🚀 Run HR Setup for "+currentYear}
+          </button>
+          {setupMsg&&<div style={{marginTop:12,fontSize:13,fontWeight:600,color:setupMsg.startsWith("✅")?C.accent:setupMsg.startsWith("❌")?"#ef4444":C.t2}}>{setupMsg}</div>}
+        </div>
+      )}
+
+      {/* ── BIRTHDAYS ── */}
+      {thisMonthBirthdays.length>0&&(
+        <div style={{...card,marginBottom:24,borderTop:"3px solid #ec4899"}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>🎂 Birthdays This Month — {new Date().toLocaleString("default",{month:"long"})}</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {thisMonthBirthdays.map(u=>{
+              const dobParts=(u.date_of_birth||"").split("-");
+              const day=parseInt(dobParts[2],10);
+              const todayMD=today.slice(5);
+              const isToday=(u.date_of_birth||"").slice(5)===todayMD;
+              const isBirthdayPast=parseInt(dobParts[2],10)<new Date().getDate();
+              return(
+                <div key={u.id} style={{background:isToday?"#ec489918":C.bg,border:`1px solid ${isToday?"#ec489966":"#ec489933"}`,borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,minWidth:200}}>
+                  <div style={{width:38,height:38,borderRadius:"50%",background:isToday?"#ec489922":"#f9a8d422",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{isToday?"🎉":"🎂"}</div>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:13,color:C.t1}}>{u.name}</div>
+                    <div style={{fontSize:11,color:C.t3}}>{u.role}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:isToday?"#ec4899":"#f472b6",marginTop:2}}>
+                      {isToday?"🎉 Today!":new Date(u.date_of_birth).toLocaleDateString("en-IN",{day:"numeric",month:"long"})}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── HOLIDAY CALENDAR ── */}
+      {holidays.length>0&&(
+        <div style={{...card,marginBottom:24}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>🗓️ Holiday Calendar — {new Date().toLocaleString("default",{month:"long",year:"numeric"})}</div>
+          {thisMonthHolidays.length>0?(
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:upcomingHolidays.length>0?14:0}}>
+              {thisMonthHolidays.map(h=>(
+                <div key={h.id} style={{background:C.bg,border:`1px solid ${typeColor[h.type]||C.border}44`,borderRadius:8,padding:"8px 14px",borderLeft:`3px solid ${typeColor[h.type]||C.border}`}}>
+                  <div style={{fontWeight:700,fontSize:13,color:C.t1}}>{h.name}</div>
+                  <div style={{fontSize:11,color:C.t3,marginTop:2}}>{fmtDate(h.date)} · <span style={{color:typeColor[h.type]||C.t3,fontWeight:600,textTransform:"capitalize"}}>{h.type}</span></div>
+                </div>
+              ))}
+            </div>
+          ):(
+            <div style={{fontSize:13,color:C.t3,marginBottom:upcomingHolidays.length>0?14:0}}>No holidays this month.</div>
+          )}
+          {upcomingHolidays.length>0&&(
+            <div style={{paddingTop:14,borderTop:`1px solid ${C.border}`}}>
+              <div style={{fontWeight:600,fontSize:12,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:0.5}}>📅 Upcoming</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {upcomingHolidays.map(h=>(
+                  <span key={h.id} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 12px",fontSize:12,color:C.t2}}><b>{h.name}</b> — {fmtDate(h.date)}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── FINANCE SECTION ── */}
       <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>💰 Finance Overview</div>
@@ -9861,7 +10007,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
         ))}
       </div>
 
-      {/* ── Monthly HR summary ── */}
+      {/* Monthly HR summary */}
       {!loading&&uniqueDays>0&&(
         <div style={{...card,marginBottom:24}}>
           <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>📅 This Month's Attendance Summary</div>
@@ -9875,7 +10021,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
       {/* Employee attendance list */}
       {!loading&&todayAttendance.length>0&&(
-        <div style={{...card}}>
+        <div style={{...card,marginBottom:24}}>
           <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>📋 Employee Status Today</div>
           <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?"100%":"220px"},1fr))`,gap:10}}>
             {todayAttendance.map(a=>{
@@ -9915,7 +10061,49 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
         </div>
       )}
       {!loading&&todayAttendance.length===0&&(
-        <div style={{...card,textAlign:"center",color:C.t3,fontSize:13,padding:32}}>No attendance records for today yet.</div>
+        <div style={{...card,textAlign:"center",color:C.t3,fontSize:13,padding:32,marginBottom:24}}>No attendance records for today yet.</div>
+      )}
+
+      {/* ── EMPLOYEE DIRECTORY ── */}
+      {employees.length>0&&(
+        <div style={{...card}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>👤 Employee Directory</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:700}}>
+              <thead>
+                <tr style={{borderBottom:`2px solid ${C.border}`,background:C.bg}}>
+                  {["Emp ID","Name","Role","Date of Joining","Experience","Date of Birth","Annual Leave","Sick Leave","Casual Leave"].map(h=>(
+                    <th key={h} style={{padding:"9px 12px",textAlign:"left",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:0.4,whiteSpace:"nowrap"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((u,i)=>{
+                  const lb=u.leave_balance||{};
+                  const exp=yearsAt(u.date_of_joining);
+                  return(
+                    <tr key={u.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?"transparent":C.bg}}>
+                      <td style={{padding:"9px 12px",color:C.accent,fontWeight:800,whiteSpace:"nowrap"}}>{u.employee_id||<span style={{color:C.t3,fontWeight:400}}>—</span>}</td>
+                      <td style={{padding:"9px 12px",fontWeight:700,color:C.t1,whiteSpace:"nowrap"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:28,height:28,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:C.accent,flexShrink:0}}>{(u.name||"?")[0].toUpperCase()}</div>
+                          {u.name}
+                        </div>
+                      </td>
+                      <td style={{padding:"9px 12px",color:C.t2,whiteSpace:"nowrap"}}>{u.role}</td>
+                      <td style={{padding:"9px 12px",color:C.t3,whiteSpace:"nowrap"}}>{fmtDate(u.date_of_joining)}</td>
+                      <td style={{padding:"9px 12px",color:C.t2,whiteSpace:"nowrap",fontWeight:600}}>{exp!=null?exp+" yr"+(exp===1?"":"s"):<span style={{color:C.t3,fontWeight:400}}>—</span>}</td>
+                      <td style={{padding:"9px 12px",color:C.t3,whiteSpace:"nowrap"}}>{fmtDate(u.date_of_birth)}</td>
+                      <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.annual_used} total={lb.annual}/></td>
+                      <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.sick_used} total={lb.sick}/></td>
+                      <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.casual_used} total={lb.casual}/></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
