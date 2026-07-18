@@ -10667,7 +10667,10 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     const taskRows=Object.entries(byProj).map(([proj,tasks])=>`
       <tr><td colspan="3" style="background:#eef2ff;padding:8px 14px;font-weight:700;color:#1e3a8a;font-size:12px;border-top:2px solid #c7d2fe;">📁 ${proj}</td></tr>
       ${tasks.map((t,i)=>`<tr style="background:${i%2===0?"#fff":"#f9fafb"};">
-        <td style="padding:8px 14px;color:#374151;font-size:13px;border-bottom:1px solid #f1f5f9;">${t.title||t.name||""}</td>
+        <td style="padding:8px 14px;border-bottom:1px solid #f1f5f9;">
+          ${t._proj?.name?`<div style="color:#1e3a8a;font-size:11px;font-weight:700;margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em;">${t._proj.name}</div>`:""}
+          <div style="color:#374151;font-size:13px;">${t.title||t.name||""}</div>
+        </td>
         <td style="padding:8px 14px;color:#1e293b;font-size:12px;font-weight:600;text-align:center;border-bottom:1px solid #f1f5f9;">${fmtT(t._wt)}</td>
         <td style="padding:8px 14px;color:#1d4ed8;font-size:12px;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${fmtR(t._rate)}</td>
       </tr>`).join("")}
@@ -11891,6 +11894,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                             <span style={{fontSize:12,color:C.t3}}>📅 Issued: {fmtShortDate(inv.issueDate||inv.createdAt)}</span>
                             {inv.dueDate&&<span style={{fontSize:12,color:isOverdue&&inv.status!=="paid"?C.red:C.t3}}>⏰ Due: {fmtShortDate(inv.dueDate)}</span>}
                             {inv.tons>0&&<span style={{fontSize:12,color:C.t3}}>⚖️ {inv.tons} T</span>}
+                            {inv.tons>0&&inv.amount>0&&<span style={{fontSize:12,color:C.t3}}>💲 ${(inv.amount/inv.tons).toFixed(2)}/T</span>}
                           </div>
                         </div>
                         <div style={{textAlign:"right",flexShrink:0}}>
