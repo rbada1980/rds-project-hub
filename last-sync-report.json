@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-07-17T11:31:07.590Z",
-  "ist_time": "2026-07-17 17:01:07 IST",
-  "duration_sec": 4.5,
+  "timestamp": "2026-07-18T04:56:24.790Z",
+  "ist_time": "2026-07-18 10:26:24 IST",
+  "duration_sec": 6,
   "total_synced": 2202,
   "total_pushed": 952,
   "total_pulled": 1250,
-  "total_failed": 62,
+  "total_failed": 67,
   "status": "partial",
   "tables": [
     {
@@ -124,8 +124,8 @@
     {
       "table": "attendance",
       "synced": 0,
-      "failed": 62,
-      "total": 62,
+      "failed": 67,
+      "total": 67,
       "pulled": 0
     },
     {

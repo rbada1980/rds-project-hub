@@ -13080,7 +13080,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Review","Completed"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -13437,7 +13437,7 @@ export default function App(){
             </span>
           </div>
         )}
-        {view==="billing"&&(isAdmin||isManager)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me}/>
+        {view==="billing"&&isAdmin&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me}/>
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
