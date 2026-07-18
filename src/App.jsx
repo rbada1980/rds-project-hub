@@ -10650,35 +10650,86 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     const taskSnap=inv.taskSnapshot||[];
     const byProj={};
     taskSnap.forEach(t=>{const k=t.project||"Tasks";if(!byProj[k])byProj[k]=[];byProj[k].push(t);});
+    // Compute per-task unit price if possible (amount / total tasks, or from rate)
+    const totalTasks=taskSnap.length||1;
+    const unitPrice=inv.tons&&inv.amount?Number(inv.amount/inv.tons).toFixed(2):null;
     const taskRows=Object.entries(byProj).map(([proj,tasks])=>`
-      <tr><td colspan="3" style="background:#f0f4ff;padding:8px 14px;font-weight:700;color:#1e3a8a;font-size:13px;border-top:2px solid #dbeafe;">📁 ${proj}</td></tr>
-      ${tasks.map(t=>`<tr><td style="padding:7px 14px;color:#374151;font-size:13px;border-bottom:1px solid #f3f4f6;">${t.title||t.name||""}</td><td style="padding:7px 14px;color:#6b7280;font-size:12px;">${t.assignee||"—"}</td><td style="padding:7px 14px;color:#6b7280;font-size:12px;">${t.status||""}</td></tr>`).join("")}
+      <tr><td colspan="3" style="background:#eef2ff;padding:8px 14px;font-weight:700;color:#1e3a8a;font-size:12px;border-top:2px solid #c7d2fe;">📁 ${proj}</td></tr>
+      ${tasks.map((t,i)=>`<tr style="background:${i%2===0?"#fff":"#f9fafb"};">
+        <td style="padding:8px 14px;color:#374151;font-size:13px;border-bottom:1px solid #f1f5f9;">${t.title||t.name||""}</td>
+        <td style="padding:8px 14px;color:#64748b;font-size:12px;text-align:center;border-bottom:1px solid #f1f5f9;">—</td>
+        <td style="padding:8px 14px;color:#64748b;font-size:12px;text-align:right;border-bottom:1px solid #f1f5f9;">${unitPrice?"$"+unitPrice+"/T":"—"}</td>
+      </tr>`).join("")}
     `).join("");
-    return`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
-<div style="max-width:620px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
-  <div style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);padding:32px 36px;">
-    <div style="color:#fff;font-size:22px;font-weight:800;margin-bottom:4px;">${company?.accountName||"RDS Projects"}</div>
-    <div style="color:#bfdbfe;font-size:13px;">Invoice Notification</div>
+    return`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+<div style="max-width:640px;margin:32px auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 32px #0000001f;">
+
+  <!-- HEADER -->
+  <div style="background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#3b82f6 100%);padding:28px 36px;text-align:center;">
+    <img src="https://hub-rdsprojects.com/logo.png" alt="RDS Projects" style="height:56px;width:auto;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;" onerror="this.style.display='none'"/>
+    <div style="color:#bfdbfe;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;">Invoice Notification</div>
   </div>
-  <div style="padding:28px 36px;">
-    <p style="color:#374151;font-size:15px;margin:0 0 20px;">Dear <strong>${inv.clientName}</strong>,</p>
-    <p style="color:#374151;font-size:14px;margin:0 0 24px;">Please find below your invoice details. Kindly review and process the payment by the due date.</p>
+
+  <!-- BODY -->
+  <div style="padding:32px 36px;">
+    <p style="color:#1e293b;font-size:15px;margin:0 0 8px;">Dear <strong>${inv.clientName}</strong>,</p>
+    <p style="color:#475569;font-size:13px;line-height:1.7;margin:0 0 24px;">Please find below your invoice summary. Kindly review and process the payment by the due date. For complete details, task breakdown, and to confirm payment — please log in to your client portal at <a href="https://hub-rdsprojects.com" style="color:#2563eb;font-weight:600;">hub-rdsprojects.com</a>.</p>
+
+    <!-- Invoice summary box -->
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px;">
       <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Invoice No</td><td style="color:#1e293b;font-size:14px;font-weight:700;padding:5px 0;">${inv.invoiceNo||"—"}</td></tr>
-        ${inv.invoiceTitle?`<tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Description</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.invoiceTitle}</td></tr>`:""}
-        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Issue Date</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.issueDate||"—"}</td></tr>
-        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Due Date</td><td style="color:#ef4444;font-size:14px;font-weight:700;padding:5px 0;">${inv.dueDate||"—"}</td></tr>
-        ${inv.period?`<tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Period</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.period}</td></tr>`:""}
-        ${inv.tons?`<tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Quantity</td><td style="color:#1e293b;font-size:14px;padding:5px 0;">${inv.tons} tons</td></tr>`:""}
-        <tr><td style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 0;">Amount Due</td><td style="color:#1d4ed8;font-size:20px;font-weight:800;padding:5px 0;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</td></tr>
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;width:140px;">Invoice No</td><td style="color:#1e293b;font-size:14px;font-weight:700;padding:5px 0;">${inv.invoiceNo||"—"}</td></tr>
+        ${inv.invoiceTitle?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Description</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.invoiceTitle}</td></tr>`:""}
+        ${inv.period?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Period</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.period}</td></tr>`:""}
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Issue Date</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.issueDate||"—"}</td></tr>
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Due Date</td><td style="color:#ef4444;font-size:13px;font-weight:700;padding:5px 0;">${inv.dueDate||"—"}</td></tr>
+        ${inv.tons?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Total QTY</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.tons} T</td></tr>`:""}
+        ${unitPrice?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Unit Price</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">$${unitPrice}/T</td></tr>`:""}
+        <tr><td style="padding:10px 0 5px;" colspan="2"><div style="border-top:1px solid #bae6fd;"></div></td></tr>
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Amount Due</td><td style="color:#1d4ed8;font-size:22px;font-weight:800;padding:5px 0;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</td></tr>
       </table>
     </div>
-    ${taskSnap.length>0?`<div style="margin-bottom:24px;"><div style="font-weight:700;color:#1e293b;font-size:14px;margin-bottom:12px;">📋 Work Details</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;"><thead><tr style="background:#f8fafc;"><th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;">Task</th><th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;">Assigned To</th><th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;">Status</th></tr></thead><tbody>${taskRows}</tbody></table></div>`:""}
-    ${company?.paymentMethod?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:16px 20px;margin-bottom:24px;"><div style="font-weight:700;color:#92400e;font-size:13px;margin-bottom:8px;">💳 Payment Information</div><div style="color:#78350f;font-size:13px;">${company.paymentMethod}${company.bankName?` — ${company.bankName}`:""}</div>${company.accountNumber?`<div style="color:#78350f;font-size:13px;margin-top:4px;">Account: ${company.accountNumber}</div>`:""}</div>`:""}
-    <p style="color:#64748b;font-size:13px;margin:0;">For any queries, contact us at ${company?.email||notifyConfig.fromEmail||""}.</p>
+
+    <!-- Work details table -->
+    ${taskSnap.length>0?`
+    <div style="margin-bottom:24px;">
+      <div style="font-weight:700;color:#1e293b;font-size:13px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">📋 Work Details</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;font-size:13px;">
+        <thead>
+          <tr style="background:#f1f5f9;">
+            <th style="text-align:left;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;border-bottom:1px solid #e2e8f0;">Task Description</th>
+            <th style="text-align:center;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;border-bottom:1px solid #e2e8f0;white-space:nowrap;">QTY (T)</th>
+            <th style="text-align:right;padding:10px 14px;font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Unit Price</th>
+          </tr>
+        </thead>
+        <tbody>${taskRows}</tbody>
+      </table>
+    </div>`:""}
+
+    <!-- Payment info -->
+    ${company?.paymentMethod?`
+    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+      <div style="font-weight:700;color:#92400e;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">💳 Payment Information</div>
+      <div style="color:#78350f;font-size:13px;">${company.paymentMethod}${company.bankName?` — <strong>${company.bankName}</strong>`:""}</div>
+      ${company.accountNumber?`<div style="color:#78350f;font-size:13px;margin-top:4px;">Account No: <strong>${company.accountNumber}</strong></div>`:""}
+      ${company.routingNumber?`<div style="color:#78350f;font-size:13px;margin-top:2px;">Routing: <strong>${company.routingNumber}</strong></div>`:""}
+    </div>`:""}
+
+    <!-- Login note -->
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-bottom:20px;text-align:center;">
+      <p style="margin:0;color:#166534;font-size:13px;">🔐 <strong>View full invoice &amp; confirm payment:</strong> Log in at <a href="https://hub-rdsprojects.com" style="color:#15803d;font-weight:700;">hub-rdsprojects.com</a></p>
+    </div>
+
+    <p style="color:#94a3b8;font-size:12px;margin:0;">For queries, reply to this email or contact us at ${company?.email||""}.</p>
   </div>
-  <div style="background:#f8fafc;padding:16px 36px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">${company?.accountName||"RDS Projects"} · Invoice generated on ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+
+  <!-- FOOTER -->
+  <div style="background:#1e293b;padding:18px 36px;text-align:center;">
+    <img src="https://hub-rdsprojects.com/logo.png" alt="RDS" style="height:28px;width:auto;margin-bottom:8px;opacity:0.7;" onerror="this.style.display='none'"/>
+    <div style="color:#94a3b8;font-size:11px;">${company?.accountName||"RDS Projects"} · Invoice ${inv.invoiceNo||""} · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+  </div>
+
 </div></body></html>`;
   }
   // Notification template — sent to admin+HR
@@ -11593,7 +11644,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
       {/* ── Tab Bar ── */}
       <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:`1px solid ${C.border}`}}>
-        {(isClient?[["invoices","🧾 Invoices"+(clientInvoices.length>0?` (${clientInvoices.length})`:"")]]:[
+        {(isClient?[["invoices","🧾 Invoices"+(clientInvoices.filter(i=>["sent","viewed","paid","overdue"].includes(i.status)).length>0?` (${clientInvoices.filter(i=>["sent","viewed","paid","overdue"].includes(i.status)).length})`:"")]]:[
           ["overview","📊 Overview"],["invoices","🧾 Invoices"+(invoices.length>0?` (${invoices.length})`:"")],["settings","⚙️ Settings"]]).map(([k,lbl])=>(
           <button key={k} onClick={()=>setBillingView(k)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",color:billingView===k?C.accent:C.t3,fontWeight:billingView===k?700:500,borderBottom:billingView===k?`2px solid ${C.accent}`:"2px solid transparent",fontFamily:"inherit",fontSize:13,transition:"color .15s",whiteSpace:"nowrap"}}>{lbl}</button>
         ))}
@@ -11740,9 +11791,9 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           <div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:24}}>
               {[
-                {label:"Total Invoiced",v:`$${Number(clientInvoices.reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.blue},
-                {label:"Paid",v:`$${Number(clientInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.green},
-                {label:"Outstanding",v:`$${Number(clientInvoices.filter(i=>["sent","viewed","overdue"].includes(i.status)).reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.yellow},
+                {label:"Total Invoiced",v:`$${Number(visibleInvs.reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.blue},
+                {label:"Paid",v:`$${Number(visibleInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.green},
+                {label:"Outstanding",v:`$${Number(visibleInvs.filter(i=>["sent","viewed","overdue"].includes(i.status)).reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.yellow},
                 {label:"Invoices",v:visibleInvs.length,color:C.accent}
               ].map(s=>(
                 <div key={s.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",borderTop:`3px solid ${s.color}`}}>
