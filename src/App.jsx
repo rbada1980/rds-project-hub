@@ -2669,11 +2669,13 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   </div>
   <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification</div>
 </div></body></html>`;
-            fetch("/api/send-email",{
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({to:notifyTo,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,html,fromName:nc.fromName||"RDS Projects",fromEmail:nc.fromEmail||""})
-            }).catch(()=>{});
+            notifyTo.forEach(email=>{
+              fetch(SUPA_URL+"/functions/v1/notify",{
+                method:"POST",
+                headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,htmlBody:html}})
+              }).catch(()=>{});
+            });
           }
         }
       }catch(_){}
@@ -2721,11 +2723,13 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   </div>
   <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification</div>
 </div></body></html>`;
-            fetch("/api/send-email",{
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({to:notifyTo,subject:`✅ Payment Received — ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,html,fromName:nc.fromName||"RDS Projects",fromEmail:nc.fromEmail||""})
-            }).catch(()=>{});
+            notifyTo.forEach(email=>{
+              fetch(SUPA_URL+"/functions/v1/notify",{
+                method:"POST",
+                headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`✅ Payment Received — ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
+              }).catch(()=>{});
+            });
           }
         }
       }catch(_){}
@@ -10625,15 +10629,18 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     }
   }
 
-  // ── Resend email helper ───────────────────────────────────────
+  // ── Resend email helper — routes through Supabase notify Edge Function ──
   async function sendMail(to,subject,html){
     try{
       const toArr=Array.isArray(to)?to.filter(Boolean):[to].filter(Boolean);
       if(!toArr.length)return;
-      await fetch("/api/send-email",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({to:toArr,subject,html,fromName:notifyConfig.fromName||"RDS Projects",fromEmail:notifyConfig.fromEmail||"noreply@hub-rdsprojects.com"})
+      // Send one call per recipient (Edge Function accepts single email at a time)
+      toArr.forEach(email=>{
+        fetch(SUPA_URL+"/functions/v1/notify",{
+          method:"POST",
+          headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+          body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject,htmlBody:html}})
+        }).catch(()=>{});
       });
     }catch(_){}
   }
@@ -11897,30 +11904,22 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         {/* Notification Email Config */}
         <div style={{...card,marginBottom:20}}>
           <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:4}}>📧 Email Notifications (Resend)</div>
-          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>Set the admin and HR emails that receive invoice alerts. Requires RESEND_API_KEY in server environment.</p>
+          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>Emails are sent via the Supabase <code>notify</code> Edge Function using your verified Resend domain. Enter the recipient emails for billing alerts.</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
-              <label style={fldLbl}>Admin Email</label>
-              <input value={notifyConfig.adminEmail||""} onChange={e=>setNotifyConfig(p=>({...p,adminEmail:e.target.value}))} placeholder="admin@rdstechserv.com" style={inp3}/>
+              <label style={fldLbl}>Admin Email (receives billing alerts)</label>
+              <input value={notifyConfig.adminEmail||""} onChange={e=>setNotifyConfig(p=>({...p,adminEmail:e.target.value}))} placeholder="ramesh@ecovon.in" style={inp3}/>
             </div>
             <div>
-              <label style={fldLbl}>HR Email</label>
-              <input value={notifyConfig.hrEmail||""} onChange={e=>setNotifyConfig(p=>({...p,hrEmail:e.target.value}))} placeholder="hr@rdstechserv.com" style={inp3}/>
-            </div>
-            <div>
-              <label style={fldLbl}>From Name</label>
-              <input value={notifyConfig.fromName||""} onChange={e=>setNotifyConfig(p=>({...p,fromName:e.target.value}))} placeholder="RDS Projects" style={inp3}/>
-            </div>
-            <div>
-              <label style={fldLbl}>From Email (verified in Resend)</label>
-              <input value={notifyConfig.fromEmail||""} onChange={e=>setNotifyConfig(p=>({...p,fromEmail:e.target.value}))} placeholder="noreply@hub-rdsprojects.com" style={inp3}/>
+              <label style={fldLbl}>HR Email (receives billing alerts)</label>
+              <input value={notifyConfig.hrEmail||""} onChange={e=>setNotifyConfig(p=>({...p,hrEmail:e.target.value}))} placeholder="hr@ecovon.in" style={inp3}/>
             </div>
           </div>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.t3,marginBottom:14}}>
             <strong style={{color:C.t2}}>Triggers:</strong>
-            {" "}① Admin/HR clicks <em>Mark Sent</em> → invoice email sent to client &nbsp;|&nbsp;
-            ② Client opens invoice → admin+HR notified &nbsp;|&nbsp;
-            ③ Client marks Paid → admin+HR notified
+            {" "}① Admin/HR clicks <em>Mark Sent</em> → invoice email sent to client's email (from Client settings) &nbsp;|&nbsp;
+            ② Client opens invoice → admin + HR notified &nbsp;|&nbsp;
+            ③ Client clicks <em>Mark as Paid</em> → admin + HR notified
           </div>
           <button onClick={async()=>{
             setSavingNotify(true);
