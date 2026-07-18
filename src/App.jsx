@@ -11551,17 +11551,23 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   };
   const fmtShortDate=s=>{if(!s)return"—";try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return s;}};
   const clientInvoices=isClient?invoices.filter(i=>(i.clientKey||"").toLowerCase()===(me?.client_name||"").toLowerCase()):invoices;
-  // ── Advanced cascading filter options ────────────────────────────────────────
-  const invOptClients=[...new Set(clientInvoices.map(i=>i.clientName||i.clientKey||"").filter(Boolean))].sort();
+  // ── Advanced cascading filter options — sourced from system projects+tasks so dropdowns are always populated ──
+  // Clients: all unique clients across all projects
+  const invOptClients=[...new Set(projects.map(p=>p.client||"").filter(Boolean))].sort();
+  // Projects: all projects, or only selected client's projects
   const invOptProjects=[...new Set(
-    (invFClient==="all"?clientInvoices:clientInvoices.filter(i=>(i.clientName||i.clientKey)===invFClient))
-      .flatMap(i=>(i.taskSnapshot||[]).map(t=>t._proj?.name).filter(Boolean))
+    (invFClient==="all"?projects:projects.filter(p=>p.client===invFClient))
+      .map(p=>p.name).filter(Boolean)
   )].sort();
+  // Tasks: all tasks (scoped by client/project selection)
   const invOptTasks=[...new Set(
-    clientInvoices
-      .filter(i=>invFClient==="all"||(i.clientName||i.clientKey)===invFClient)
-      .filter(i=>invFProject==="all"||(i.taskSnapshot||[]).some(t=>t._proj?.name===invFProject))
-      .flatMap(i=>(i.taskSnapshot||[]).filter(t=>invFProject==="all"||t._proj?.name===invFProject).map(t=>t.title||t.name).filter(Boolean))
+    tasks.filter(t=>{
+      const proj=projects.find(p=>p.id===t.project_id);
+      if(!proj)return false;
+      if(invFClient!=="all"&&proj.client!==invFClient)return false;
+      if(invFProject!=="all"&&proj.name!==invFProject)return false;
+      return true;
+    }).map(t=>t.title).filter(Boolean)
   )].sort();
   const filteredInvoices=clientInvoices.filter(inv=>{
     if(invFClient!=="all"&&(inv.clientName||inv.clientKey)!==invFClient)return false;
