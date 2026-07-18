@@ -9761,8 +9761,8 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
             ?fetch("/api/rpc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"select",table:"invoices",params:{}})}).then(r=>r.json())
             :supabase.from("invoices").select("*").order("created_at",{ascending:false}).limit(500),
           IS_LOCAL
-            ?fetch("/api/rpc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"select",table:"attendance",params:{date:today}})}).then(r=>r.json())
-            :supabase.from("attendance").select("*").eq("date",today),
+            ?fetch("/api/rpc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"select",table:"attendance",params:{}})}).then(r=>r.json())
+            :supabase.from("attendance").select("*").gte("date",monthStr+"-01").order("date",{ascending:false}).limit(2000),
         ]);
         setInvoices(Array.isArray(invRes?.data)?invRes.data:Array.isArray(invRes)?invRes:[]);
         setAttendance(Array.isArray(attRes?.data)?attRes.data:Array.isArray(attRes)?attRes:[]);
@@ -9783,10 +9783,16 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
   // ── HR / Attendance stats ──
   const totalEmp=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin").length;
-  const presentToday=attendance.filter(a=>!a.logout_at).length;
-  const loggedOut=attendance.filter(a=>a.logout_at).length;
-  const totalPresent=attendance.length;
+  const todayAttendance=attendance.filter(a=>a.date===today);
+  const presentToday=todayAttendance.filter(a=>!a.logout_at).length;
+  const loggedOut=todayAttendance.filter(a=>a.logout_at).length;
+  const totalPresent=todayAttendance.length;
   const absent=Math.max(0,totalEmp-totalPresent);
+  // Monthly stats
+  const uniqueDays=[...new Set(attendance.map(a=>a.date))].length;
+  const monthTotalRecords=attendance.length;
+  const avgPresence=uniqueDays>0?(monthTotalRecords/uniqueDays).toFixed(1):"0";
+  const monthAbsentDays=uniqueDays>0?Math.max(0,Math.round((totalEmp-monthTotalRecords/uniqueDays)*uniqueDays)):0;
 
   // ── Billing tasks ──
   const completedWithWeight=tasks.filter(t=>(t.status==="Completed"||t.status==="completed")&&t.det_weight>0);
@@ -9855,12 +9861,24 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
         ))}
       </div>
 
+      {/* ── Monthly HR summary ── */}
+      {!loading&&uniqueDays>0&&(
+        <div style={{...card,marginBottom:24}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>📅 This Month's Attendance Summary</div>
+          <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
+            <span style={{fontSize:13,color:C.t2}}>Working days so far: <b style={{color:C.accent}}>{uniqueDays}</b></span>
+            <span style={{fontSize:13,color:C.t2}}>Total check-ins: <b style={{color:"#22c55e"}}>{monthTotalRecords}</b></span>
+            <span style={{fontSize:13,color:C.t2}}>Avg present/day: <b style={{color:"#3b82f6"}}>{avgPresence}</b></span>
+          </div>
+        </div>
+      )}
+
       {/* Employee attendance list */}
-      {!loading&&attendance.length>0&&(
+      {!loading&&todayAttendance.length>0&&(
         <div style={{...card}}>
           <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>📋 Employee Status Today</div>
           <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?"100%":"220px"},1fr))`,gap:10}}>
-            {attendance.map(a=>{
+            {todayAttendance.map(a=>{
               const user=users.find(u=>(u.id===a.user_id)||(u.name||"").toLowerCase()===(a.employee_name||"").toLowerCase());
               const name=user?.name||a.employee_name||"Unknown";
               const isActive=!a.logout_at;
@@ -9881,7 +9899,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
             })}
           </div>
           {(()=>{
-            const presentIds=new Set(attendance.map(a=>a.user_id));
+            const presentIds=new Set(todayAttendance.map(a=>a.user_id));
             const absentList=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin"&&u.id&&!presentIds.has(u.id));
             return absentList.length>0?(
               <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
@@ -9896,7 +9914,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
           })()}
         </div>
       )}
-      {!loading&&attendance.length===0&&(
+      {!loading&&todayAttendance.length===0&&(
         <div style={{...card,textAlign:"center",color:C.t3,fontSize:13,padding:32}}>No attendance records for today yet.</div>
       )}
     </div>
