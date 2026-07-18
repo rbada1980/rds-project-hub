@@ -9745,7 +9745,6 @@ function LiveTimerBar({timer,onPause,onStop}){
 // ─── HR & Finance Dashboard ────────────────────────────────────────────────────
 function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const isMobile=useMobile();
-  const C=useTheme();
   const card={background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 20px"};
   const [invoices,setInvoices]=useState([]);
   const [attendance,setAttendance]=useState([]);
