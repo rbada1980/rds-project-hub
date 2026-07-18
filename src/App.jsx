@@ -10487,6 +10487,29 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
   // Re-fetch invoices whenever user opens the Invoices tab
   useEffect(()=>{if(billingView==="invoices")loadInvoices();},[billingView]);
+  // Auto-poll every 20s when Invoices tab is open — picks up client "viewed" updates in near-realtime
+  useEffect(()=>{
+    if(billingView!=="invoices")return;
+    const t=setInterval(async()=>{
+      try{
+        const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+          headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+        });
+        const rows=await r.json();
+        if(Array.isArray(rows)&&rows.length>0){
+          const fresh=JSON.parse(rows[0].value||"[]");
+          setInvoices(fresh);
+          // Sync open detail panel if it exists
+          setInvoiceDetail(prev=>{
+            if(!prev)return prev;
+            const updated=fresh.find(i=>i.id===prev.id);
+            return updated||prev;
+          });
+        }
+      }catch(_){}
+    },20000);
+    return()=>clearInterval(t);
+  },[billingView]);
 
   // upsertSetting — uses Supabase directly (works from cloud & local deployments)
   async function upsertSetting(key,value){
