@@ -10541,7 +10541,10 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   // Billing page tabs + invoice history
   const [billingView,setBillingView]=useState(isClient?"invoices":"overview"); // "overview"|"invoices"|"settings"
   const [invoices,setInvoices]=useState([]);
-  const [invoiceFilter,setInvoiceFilter]=useState("all");
+  const [invFClient,setInvFClient]=useState("all");
+  const [invFProject,setInvFProject]=useState("all");
+  const [invFTask,setInvFTask]=useState("all");
+  const [invFStatus,setInvFStatus]=useState("all");
   const [invoiceDetail,setInvoiceDetail]=useState(null);
   const [editInvModal,setEditInvModal]=useState(null);
   const [editInvDraft,setEditInvDraft]=useState({invoiceNo:"",issueDate:"",dueDate:"",description:""});
@@ -10586,8 +10589,8 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   },[projects.length,tasks.length]);
   useEffect(()=>{loadBillingSettings();},[loadBillingSettings]);
 
-  // Re-fetch invoices whenever user opens the Invoices tab; reset filter so new drafts are always visible
-  useEffect(()=>{if(billingView==="invoices"){loadInvoices();setInvoiceFilter("all");}},[billingView]);
+  // Re-fetch invoices whenever user opens the Invoices tab; reset filters so new drafts are always visible
+  useEffect(()=>{if(billingView==="invoices"){loadInvoices();setInvFClient("all");setInvFProject("all");setInvFTask("all");setInvFStatus("all");}},[billingView]);
   // Auto-poll every 20s when Invoices tab is open — picks up client "viewed" updates in near-realtime
   useEffect(()=>{
     if(billingView!=="invoices")return;
@@ -11547,7 +11550,26 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     overdue:{label:"Overdue", bg:C.red+"22",  color:C.red,    next:[{s:"paid",  label:"Mark Paid"}]},
   };
   const fmtShortDate=s=>{if(!s)return"—";try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return s;}};
-  const clientInvoices=isClient?invoices.filter(i=>(i.clientKey||"").toLowerCase()===(me?.client_name||"").toLowerCase()):invoices;const filteredInvoices=(invoiceFilter==="all"?clientInvoices:clientInvoices.filter(i=>i.status===invoiceFilter));
+  const clientInvoices=isClient?invoices.filter(i=>(i.clientKey||"").toLowerCase()===(me?.client_name||"").toLowerCase()):invoices;
+  // ── Advanced cascading filter options ────────────────────────────────────────
+  const invOptClients=[...new Set(clientInvoices.map(i=>i.clientName||i.clientKey||"").filter(Boolean))].sort();
+  const invOptProjects=[...new Set(
+    (invFClient==="all"?clientInvoices:clientInvoices.filter(i=>(i.clientName||i.clientKey)===invFClient))
+      .flatMap(i=>(i.taskSnapshot||[]).map(t=>t._proj?.name).filter(Boolean))
+  )].sort();
+  const invOptTasks=[...new Set(
+    clientInvoices
+      .filter(i=>invFClient==="all"||(i.clientName||i.clientKey)===invFClient)
+      .filter(i=>invFProject==="all"||(i.taskSnapshot||[]).some(t=>t._proj?.name===invFProject))
+      .flatMap(i=>(i.taskSnapshot||[]).filter(t=>invFProject==="all"||t._proj?.name===invFProject).map(t=>t.title||t.name).filter(Boolean))
+  )].sort();
+  const filteredInvoices=clientInvoices.filter(inv=>{
+    if(invFClient!=="all"&&(inv.clientName||inv.clientKey)!==invFClient)return false;
+    if(invFProject!=="all"&&!(inv.taskSnapshot||[]).some(t=>t._proj?.name===invFProject))return false;
+    if(invFTask!=="all"&&!(inv.taskSnapshot||[]).some(t=>(t.title||t.name)===invFTask))return false;
+    if(invFStatus!=="all"&&inv.status!==invFStatus)return false;
+    return true;
+  });
   const totalInvoiced=invoices.reduce((s,i)=>s+(i.amount||0),0);
   const totalPaid=invoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(i.amount||0),0);
   const totalOutstanding=invoices.filter(i=>["draft","sent","viewed","overdue"].includes(i.status)).reduce((s,i)=>s+(i.amount||0),0);
@@ -11880,25 +11902,40 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           ))}
         </div>
 
-        {/* Status pipeline guide */}
-        <div style={{...card,marginBottom:16,padding:"12px 18px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:12,color:C.t3,fontWeight:600,marginRight:4}}>Invoice Flow:</span>
-            {[["Draft","gray"],["→",""],["Sent","blue"],["→",""],["Viewed","purple"],["→",""],["Paid","green"]].map(([l,c],i)=>(
-              c?<span key={i} style={{background:INV_STATUS[l.toLowerCase()]?.bg,color:INV_STATUS[l.toLowerCase()]?.color,padding:"2px 10px",borderRadius:6,fontSize:12,fontWeight:700}}>{l}</span>
-               :<span key={i} style={{color:C.t3,fontSize:12}}>→</span>
-            ))}
-            <span style={{color:C.t3,fontSize:12,marginLeft:8}}>or</span>
-            <span style={{background:INV_STATUS.overdue.bg,color:INV_STATUS.overdue.color,padding:"2px 10px",borderRadius:6,fontSize:12,fontWeight:700}}>Overdue</span>
-          </div>
-        </div>
-
-        {/* Filter bar */}
-        <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-          {[["all","All"+(invoices.length>0?` (${invoices.length})`:"")] ,["draft","Draft"],["sent","Sent"],["viewed","Viewed"],["paid","Paid"],["overdue","Overdue"]].map(([k,lbl])=>(
-            <button key={k} onClick={()=>setInvoiceFilter(k)} style={{...GBtn,padding:"5px 14px",fontSize:12,background:invoiceFilter===k?C.accent:"transparent",color:invoiceFilter===k?"#fff":C.t2,border:invoiceFilter===k?"none":`1px solid ${C.border}`}}>{lbl}</button>
-          ))}
-        </div>
+        {/* Advanced search filters — cascading */}
+        {(()=>{
+          const selSt={background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",minWidth:140,flex:1};
+          const hasFilter=invFClient!=="all"||invFProject!=="all"||invFTask!=="all"||invFStatus!=="all";
+          return(
+            <div style={{...card,marginBottom:16,padding:"14px 18px"}}>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+                {/* Client */}
+                <select value={invFClient} onChange={e=>{setInvFClient(e.target.value);setInvFProject("all");setInvFTask("all");}} style={selSt}>
+                  <option value="all">All Clients</option>
+                  {invOptClients.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+                {/* Project — cascades from client */}
+                <select value={invFProject} onChange={e=>{setInvFProject(e.target.value);setInvFTask("all");}} style={{...selSt,opacity:invOptProjects.length===0?.5:1}} disabled={invOptProjects.length===0}>
+                  <option value="all">All Projects</option>
+                  {invOptProjects.map(p=><option key={p} value={p}>{p}</option>)}
+                </select>
+                {/* Task — cascades from project */}
+                <select value={invFTask} onChange={e=>setInvFTask(e.target.value)} style={{...selSt,opacity:invOptTasks.length===0?.5:1}} disabled={invOptTasks.length===0}>
+                  <option value="all">All Tasks</option>
+                  {invOptTasks.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+                {/* Status */}
+                <select value={invFStatus} onChange={e=>setInvFStatus(e.target.value)} style={selSt}>
+                  <option value="all">All Statuses</option>
+                  {[["draft","Draft"],["sent","Sent"],["viewed","Viewed"],["paid","Paid"],["overdue","Overdue"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                </select>
+                {/* Clear */}
+                {hasFilter&&<button onClick={()=>{setInvFClient("all");setInvFProject("all");setInvFTask("all");setInvFStatus("all");}} style={{...GBtn,padding:"7px 14px",fontSize:12,whiteSpace:"nowrap"}}>✕ Clear</button>}
+              </div>
+              {hasFilter&&<div style={{marginTop:8,fontSize:11,color:C.t3}}>Showing {filteredInvoices.length} of {clientInvoices.length} invoice{clientInvoices.length!==1?"s":""}</div>}
+            </div>
+          );
+        })()}
 
         {/* Invoice list */}
         {filteredInvoices.length===0
