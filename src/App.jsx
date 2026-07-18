@@ -9771,7 +9771,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   const [invoiceOpts,setInvoiceOpts]=useState({invoiceNo:"",issueDate:"",dueDate:"",description:""});
   const [generatingPdf,setGeneratingPdf]=useState(false);
   // Billing page tabs + invoice history
-  const [billingView,setBillingView]=useState((isClient||isFinance)?"invoices":"overview"); // "overview"|"invoices"|"settings"
+  const [billingView,setBillingView]=useState(isClient?"invoices":"overview"); // "overview"|"invoices"|"settings"
   const [invoices,setInvoices]=useState([]);
   const [invoiceFilter,setInvoiceFilter]=useState("all");
   const [invoiceDetail,setInvoiceDetail]=useState(null);
@@ -10606,14 +10606,14 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
             {/* Status actions */}
             <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
               <button onClick={()=>setInvoiceDetail(null)} style={{...GBtn,padding:"8px 18px"}}>Close</button>
-              {!isClient&&!isFinance&&invoiceDetail.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:invoiceDetail.invoiceNo||"",issueDate:invoiceDetail.issueDate||"",dueDate:invoiceDetail.dueDate||"",description:invoiceDetail.description||""});setEditInvModal(invoiceDetail);}} style={{...GBtn,padding:"8px 18px"}}>✏️ Edit</button>}
-              {!isClient&&!isFinance&&invoiceDetail.status==="draft"&&<button onClick={()=>{const tl=invoiceDetail.taskSnapshot?.length?invoiceDetail.taskSnapshot:Object.values(clientMap[invoiceDetail.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:invoiceDetail.invoiceNo||"",issueDate:invoiceDetail.issueDate||"",dueDate:invoiceDetail.dueDate||"",description:invoiceDetail.description||""});setInvoiceModal({title:invoiceDetail.invoiceTitle||invoiceDetail.clientName||invoiceDetail.clientKey||"Invoice",subtitle:invoiceDetail.invoiceSubtitle||invoiceDetail.period||"",note:"",taskList:tl,hideProject:invoiceDetail.hideProject||false,filename:"RDS_Invoice_"+String(invoiceDetail.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:invoiceDetail.clientKey,skipRecord:true});}} style={{...SBtn,padding:"8px 18px"}}>📄 Re-download PDF</button>}
+              {!isClient&&invoiceDetail.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:invoiceDetail.invoiceNo||"",issueDate:invoiceDetail.issueDate||"",dueDate:invoiceDetail.dueDate||"",description:invoiceDetail.description||""});setEditInvModal(invoiceDetail);}} style={{...GBtn,padding:"8px 18px"}}>✏️ Edit</button>}
+              {!isClient&&invoiceDetail.status==="draft"&&<button onClick={()=>{const tl=invoiceDetail.taskSnapshot?.length?invoiceDetail.taskSnapshot:Object.values(clientMap[invoiceDetail.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:invoiceDetail.invoiceNo||"",issueDate:invoiceDetail.issueDate||"",dueDate:invoiceDetail.dueDate||"",description:invoiceDetail.description||""});setInvoiceModal({title:invoiceDetail.invoiceTitle||invoiceDetail.clientName||invoiceDetail.clientKey||"Invoice",subtitle:invoiceDetail.invoiceSubtitle||invoiceDetail.period||"",note:"",taskList:tl,hideProject:invoiceDetail.hideProject||false,filename:"RDS_Invoice_"+String(invoiceDetail.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:invoiceDetail.clientKey,skipRecord:true});}} style={{...SBtn,padding:"8px 18px"}}>📄 Re-download PDF</button>}
               {isClient&&["sent","viewed","paid"].includes(invoiceDetail.status)&&<button onClick={()=>{const tl=invoiceDetail.taskSnapshot||[];setInvoiceModal({title:invoiceDetail.invoiceTitle||invoiceDetail.clientName||"Invoice",subtitle:invoiceDetail.invoiceSubtitle||invoiceDetail.period||"",note:"",taskList:tl,hideProject:invoiceDetail.hideProject||false,filename:"RDS_Invoice_"+String(invoiceDetail.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:invoiceDetail.clientKey,skipRecord:true});}} style={{...SBtn,padding:"8px 18px"}}>📄 Download PDF</button>}
-              {!isClient&&!isFinance&&(INV_STATUS[invoiceDetail.status]?.next||[]).map(n=>(
+              {!isClient&&(INV_STATUS[invoiceDetail.status]?.next||[]).map(n=>(
                 <button key={n.s} onClick={()=>{updateInvoiceStatus(invoiceDetail.id,n.s);const now=new Date().toISOString();setInvoiceDetail(p=>{const nw={...p,status:n.s};if(n.s==="sent"&&!nw.sentAt)nw.sentAt=now;if(n.s==="viewed"&&!nw.viewedAt)nw.viewedAt=now;if(n.s==="paid"&&!nw.paidAt)nw.paidAt=now;return nw;});}} style={{...SBtn,padding:"8px 18px"}}>{n.label}</button>
               ))}
-              {!isClient&&!isFinance&&invoiceDetail.status==="sent"&&<button onClick={()=>{updateInvoiceStatus(invoiceDetail.id,"overdue");setInvoiceDetail(p=>({...p,status:"overdue"}));}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>Mark Overdue</button>}
-              {!isClient&&!isFinance&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(invoiceDetail.id);setInvoiceDetail(null);}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>🗑 Delete</button>}
+              {!isClient&&invoiceDetail.status==="sent"&&<button onClick={()=>{updateInvoiceStatus(invoiceDetail.id,"overdue");setInvoiceDetail(p=>({...p,status:"overdue"}));}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>Mark Overdue</button>}
+              {!isClient&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(invoiceDetail.id);setInvoiceDetail(null);}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>🗑 Delete</button>}
             </div>
           </div>
         </div>
@@ -10642,7 +10642,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
       {/* ── Tab Bar ── */}
       <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:`1px solid ${C.border}`}}>
-        {((isClient||isFinance)?[["invoices","🧾 Invoices"+((isClient?clientInvoices:invoices).length>0?` (${(isClient?clientInvoices:invoices).length})`:"")]]:[
+        {(isClient?[["invoices","🧾 Invoices"+(clientInvoices.length>0?` (${clientInvoices.length})`:"")]]:[
           ["overview","📊 Overview"],["invoices","🧾 Invoices"+(invoices.length>0?` (${invoices.length})`:"")],["settings","⚙️ Settings"]]).map(([k,lbl])=>(
           <button key={k} onClick={()=>setBillingView(k)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",color:billingView===k?C.accent:C.t3,fontWeight:billingView===k?700:500,borderBottom:billingView===k?`2px solid ${C.accent}`:"2px solid transparent",fontFamily:"inherit",fontSize:13,transition:"color .15s",whiteSpace:"nowrap"}}>{lbl}</button>
         ))}
@@ -10862,15 +10862,15 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                   </div>
                   {/* Quick actions */}
                   <div style={{display:"flex",gap:6,marginTop:12,flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
-                    {!isClient&&!isFinance&&st.next.map(n=>(
+                    {!isClient&&st.next.map(n=>(
                       <button key={n.s} onClick={()=>updateInvoiceStatus(inv.id,n.s)} style={{...SBtn,padding:"4px 12px",fontSize:11}}>{n.label}</button>
                     ))}
-                    {!isClient&&!isFinance&&inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
-                    {!isClient&&!isFinance&&inv.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setEditInvModal(inv);}} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
-                    {!isClient&&!isFinance&&inv.status==="draft"&&<button onClick={()=>{const tl=inv.taskSnapshot?.length?inv.taskSnapshot:(inv.invoiceTitle&&clientMap[inv.clientKey]?.projMap[inv.invoiceTitle])?clientMap[inv.clientKey].projMap[inv.invoiceTitle].tasks:Object.values(clientMap[inv.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.invoiceTitle||inv.clientName||inv.clientKey||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
+                    {!isClient&&inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
+                    {!isClient&&inv.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setEditInvModal(inv);}} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
+                    {!isClient&&inv.status==="draft"&&<button onClick={()=>{const tl=inv.taskSnapshot?.length?inv.taskSnapshot:(inv.invoiceTitle&&clientMap[inv.clientKey]?.projMap[inv.invoiceTitle])?clientMap[inv.clientKey].projMap[inv.invoiceTitle].tasks:Object.values(clientMap[inv.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.invoiceTitle||inv.clientName||inv.clientKey||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
                     {isClient&&["sent","viewed","paid"].includes(inv.status)&&<button onClick={()=>{const tl=inv.taskSnapshot||[];setInvoiceModal({title:inv.invoiceTitle||inv.clientName||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 Download PDF</button>}
                     <button onClick={()=>setInvoiceDetail(inv)} style={{...GBtn,padding:"4px 12px",fontSize:11}}>View Details</button>
-                    {!isClient&&!isFinance&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(inv.id);}} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red}}>🗑</button>}
+                    {!isClient&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(inv.id);}} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red}}>🗑</button>}
                   </div>
                 </div>
               );
