@@ -11669,7 +11669,187 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       </>)}
 
       {/* ════════════════════════════ INVOICES TAB ════════════════════════════ */}
-      {billingView==="invoices"&&(<>
+      {billingView==="invoices"&&isClient&&(()=>{
+        // ── CLIENT-ONLY INVOICE VIEW ──
+        const visibleInvs=clientInvoices.filter(i=>["sent","viewed","paid","overdue"].includes(i.status));
+        const [payBusy,setPayBusy]=React.useState({});
+        async function sendPaymentNotify(inv){
+          if(!window.confirm(`Notify RDS Projects that you have sent payment for Invoice ${inv.invoiceNo||""}?`))return;
+          setPayBusy(p=>({...p,[inv.id]:true}));
+          // Mark as "paid" in Supabase
+          try{
+            const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+              headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+            });
+            const rows=await r.json();
+            if(Array.isArray(rows)&&rows[0]){
+              const all=JSON.parse(rows[0].value||"[]");
+              const now=new Date().toISOString();
+              const updated=all.map(i=>i.id===inv.id?{...i,status:"paid",paidAt:now}:i);
+              await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+                method:"PATCH",
+                headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+                body:JSON.stringify({value:JSON.stringify(updated)})
+              });
+              setInvoices(updated);
+            }
+          }catch(_){}
+          // Email admin+HR
+          try{
+            const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{
+              headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+            });
+            const ncRows=await ncRow.json();
+            if(Array.isArray(ncRows)&&ncRows[0]){
+              const nc=JSON.parse(ncRows[0].value||"{}");
+              const notifyTo=[nc.adminEmail,nc.hrEmail].filter(Boolean);
+              if(notifyTo.length){
+                const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
+<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
+  <div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div>
+  <div style="padding:28px 32px;">
+    <p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;">${inv.invoiceNo||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;">${inv.clientName||"—"}</strong></div>
+      ${inv.period?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Period</span><strong style="color:#1e293b;">${inv.period}</strong></div>`:""}
+      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
+    </div>
+    <p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p>
+  </div>
+  <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+</div></body></html>`;
+                notifyTo.forEach(email=>{
+                  fetch(SUPA_URL+"/functions/v1/notify",{
+                    method:"POST",
+                    headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+                    body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`💸 Payment Sent — ${inv.clientName} · Invoice ${inv.invoiceNo||""} · $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
+                  }).catch(()=>{});
+                });
+              }
+            }
+          }catch(_){}
+          setPayBusy(p=>({...p,[inv.id]:false}));
+        }
+        return(
+          <div>
+            {/* Summary strip */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:24}}>
+              {[
+                {label:"Total Invoiced",v:`$${Number(clientInvoices.reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.blue},
+                {label:"Paid",v:`$${Number(clientInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.green},
+                {label:"Outstanding",v:`$${Number(clientInvoices.filter(i=>["sent","viewed","overdue"].includes(i.status)).reduce((s,i)=>s+(i.amount||0),0)).toLocaleString("en-US",{minimumFractionDigits:2})}`,color:C.yellow},
+                {label:"Invoices",v:visibleInvs.length,color:C.accent}
+              ].map(s=>(
+                <div key={s.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",borderTop:`3px solid ${s.color}`}}>
+                  <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>{s.label}</div>
+                  <div style={{fontSize:20,fontWeight:800,color:C.t1}}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+            {/* Invoice list */}
+            {visibleInvs.length===0?(
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:48,textAlign:"center",color:C.t3}}>
+                <div style={{fontSize:36,marginBottom:12}}>🧾</div>
+                <div style={{fontWeight:700,fontSize:15}}>No invoices yet</div>
+                <div style={{fontSize:13,marginTop:6}}>Invoices from RDS Projects will appear here once sent.</div>
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {visibleInvs.map(inv=>{
+                  const isOverdue=inv.dueDate&&inv.status!=="paid"&&new Date(inv.dueDate)<new Date();
+                  const stColor=inv.status==="paid"?C.green:inv.status==="viewed"?"#8b5cf6":inv.status==="overdue"||isOverdue?C.red:"#3b82f6";
+                  const stLabel=isOverdue&&inv.status!=="paid"?"Overdue":inv.status==="paid"?"Paid":inv.status==="viewed"?"Viewed":"Sent";
+                  return(
+                    <div key={inv.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,borderLeft:`5px solid ${stColor}`,overflow:"hidden"}}>
+                      {/* Card header */}
+                      <div style={{padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,flexWrap:"wrap"}}>
+                            <span style={{fontWeight:800,fontSize:16,color:C.t1}}>{inv.invoiceNo||"Invoice"}</span>
+                            <span style={{background:stColor+"22",color:stColor,border:`1px solid ${stColor}55`,borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700}}>{stLabel}</span>
+                            {inv.period&&<span style={{color:C.t3,fontSize:12}}>{inv.period}</span>}
+                          </div>
+                          {inv.invoiceTitle&&<div style={{color:C.t2,fontSize:13,marginBottom:4}}>{inv.invoiceTitle}</div>}
+                          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                            <span style={{fontSize:12,color:C.t3}}>📅 Issued: {fmtShortDate(inv.issueDate||inv.createdAt)}</span>
+                            {inv.dueDate&&<span style={{fontSize:12,color:isOverdue&&inv.status!=="paid"?C.red:C.t3}}>⏰ Due: {fmtShortDate(inv.dueDate)}</span>}
+                            {inv.tons>0&&<span style={{fontSize:12,color:C.t3}}>⚖️ {inv.tons} T</span>}
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0}}>
+                          <div style={{fontSize:22,fontWeight:800,color:inv.status==="paid"?C.green:C.accent}}>${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</div>
+                        </div>
+                      </div>
+                      {/* Actions row */}
+                      <div style={{padding:"10px 22px 16px",display:"flex",gap:8,flexWrap:"wrap",borderTop:`1px solid ${C.border}22`,alignItems:"center"}}>
+                        {inv.status==="paid"?(
+                          <span style={{fontSize:12,color:C.green,fontWeight:700}}>✅ Paid on {fmtShortDate(inv.paidAt)}</span>
+                        ):(
+                          <button
+                            disabled={!!payBusy[inv.id]}
+                            onClick={()=>sendPaymentNotify(inv)}
+                            style={{background:"#16a34a",color:"#fff",border:"none",borderRadius:7,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:payBusy[inv.id]?0.7:1}}>
+                            {payBusy[inv.id]?"Sending…":"💸 Payment Sent"}
+                          </button>
+                        )}
+                        <button onClick={()=>{
+                          // Mark as viewed + send email on detail open
+                          if(inv.status==="sent"){
+                            const now=new Date().toISOString();
+                            fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+                              headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+                            }).then(r=>r.json()).then(rows=>{
+                              if(Array.isArray(rows)&&rows[0]){
+                                const all=JSON.parse(rows[0].value||"[]");
+                                const updated=all.map(i=>i.id===inv.id?{...i,status:"viewed",viewedAt:now}:i);
+                                fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+                                  method:"PATCH",
+                                  headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+                                  body:JSON.stringify({value:JSON.stringify(updated)})
+                                });
+                                setInvoices(updated);
+                                // Notify admin+HR
+                                fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{
+                                  headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+                                }).then(r2=>r2.json()).then(nc2=>{
+                                  if(Array.isArray(nc2)&&nc2[0]){
+                                    const nc=JSON.parse(nc2[0].value||"{}");
+                                    [nc.adminEmail,nc.hrEmail].filter(Boolean).forEach(email=>{
+                                      fetch(SUPA_URL+"/functions/v1/notify",{
+                                        method:"POST",
+                                        headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+                                        body:JSON.stringify({type:"billing",data:{recipientEmail:email,
+                                          subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,
+                                          htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><table style="width:100%;border-collapse:collapse;background:#f5f3ff;border-radius:8px;padding:12px;"><tr><td style="padding:6px 12px;color:#6b7280;font-size:12px;">Invoice No</td><td style="padding:6px 12px;font-weight:700;">${inv.invoiceNo||"—"}</td></tr><tr><td style="padding:6px 12px;color:#6b7280;font-size:12px;">Amount</td><td style="padding:6px 12px;font-weight:800;color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</td></tr><tr><td style="padding:6px 12px;color:#6b7280;font-size:12px;">Viewed At</td><td style="padding:6px 12px;font-weight:700;">${new Date(now).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</td></tr></table></div>`
+                                        }})
+                                      }).catch(()=>{});
+                                    });
+                                  }
+                                }).catch(()=>{});
+                              }
+                            }).catch(()=>{});
+                          }
+                          setInvoiceDetail(inv);
+                        }} style={{...GBtn,padding:"7px 16px",fontSize:12}}>📋 View Details</button>
+                        {["sent","viewed","overdue"].includes(inv.status)&&(
+                          <button onClick={()=>{
+                            const tl=inv.taskSnapshot||[];
+                            setInvoiceModal({title:inv.invoiceTitle||inv.clientName||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});
+                          }} style={{...GBtn,padding:"7px 16px",fontSize:12}}>📄 Download PDF</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ════════════════════════════ INVOICES TAB (ADMIN/FINANCE) ════════════════════════════ */}
+      {billingView==="invoices"&&!isClient&&(<>
         {/* Invoice summary stats */}
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
           <button onClick={loadInvoices} style={{...GBtn,display:"flex",alignItems:"center",gap:5,fontSize:12,padding:"5px 14px"}}>🔄 Refresh</button>
@@ -11716,7 +11896,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
               const st=INV_STATUS[inv.status]||INV_STATUS.draft;
               const isOverdue=inv.dueDate&&inv.status!=="paid"&&new Date(inv.dueDate)<new Date();
               return(
-                <div key={inv.id} style={{...card,padding:"16px 20px",cursor:"pointer",borderLeft:`4px solid ${isOverdue?C.red:st.color}`}} onClick={()=>{setInvoiceDetail(inv);if(isClient&&inv.status==="sent"){updateInvoiceStatus(inv.id,"viewed");}}}>
+                <div key={inv.id} style={{...card,padding:"16px 20px",cursor:"pointer",borderLeft:`4px solid ${isOverdue?C.red:st.color}`}} onClick={()=>{setInvoiceDetail(inv);}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
                     <div style={{flex:1}}>
                       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5,flexWrap:"wrap"}}>
@@ -11748,15 +11928,14 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                   </div>
                   {/* Quick actions */}
                   <div style={{display:"flex",gap:6,marginTop:12,flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
-                    {!isClient&&st.next.map(n=>(
+                    {st.next.map(n=>(
                       <button key={n.s} onClick={()=>updateInvoiceStatus(inv.id,n.s)} style={{...SBtn,padding:"4px 12px",fontSize:11}}>{n.label}</button>
                     ))}
-                    {!isClient&&inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
-                    {!isClient&&inv.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setEditInvModal(inv);}} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
-                    {!isClient&&inv.status==="draft"&&<button onClick={()=>{const tl=inv.taskSnapshot?.length?inv.taskSnapshot:(inv.invoiceTitle&&clientMap[inv.clientKey]?.projMap[inv.invoiceTitle])?clientMap[inv.clientKey].projMap[inv.invoiceTitle].tasks:Object.values(clientMap[inv.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.invoiceTitle||inv.clientName||inv.clientKey||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
-                    {isClient&&["sent","viewed","paid"].includes(inv.status)&&<button onClick={()=>{const tl=inv.taskSnapshot||[];setInvoiceModal({title:inv.invoiceTitle||inv.clientName||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 Download PDF</button>}
+                    {inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
+                    {inv.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setEditInvModal(inv);}} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
+                    {inv.status==="draft"&&<button onClick={()=>{const tl=inv.taskSnapshot?.length?inv.taskSnapshot:(inv.invoiceTitle&&clientMap[inv.clientKey]?.projMap[inv.invoiceTitle])?clientMap[inv.clientKey].projMap[inv.invoiceTitle].tasks:Object.values(clientMap[inv.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setInvoiceModal({title:inv.invoiceTitle||inv.clientName||inv.clientKey||"Invoice",subtitle:inv.invoiceSubtitle||inv.period||"",note:"",taskList:tl,hideProject:inv.hideProject||false,filename:"RDS_Invoice_"+String(inv.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:inv.clientKey,skipRecord:true});}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>📄 PDF</button>}
                     <button onClick={()=>setInvoiceDetail(inv)} style={{...GBtn,padding:"4px 12px",fontSize:11}}>View Details</button>
-                    {!isClient&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(inv.id);}} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red}}>🗑</button>}
+                    <button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(inv.id);}} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red}}>🗑</button>
                   </div>
                 </div>
               );
