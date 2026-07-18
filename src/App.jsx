@@ -9784,8 +9784,13 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
   async function runHRSetup(){
     setSetupBusy(true);
-    setSetupMsg("Creating holiday calendar…");
+    setSetupMsg("Preparing database schema…");
     try{
+      // Auto-migrate schema (local PG via server, Supabase if SUPA_DB_PASS set)
+      if(IS_LOCAL){
+        try{await fetch("/api/hr-migrate",{method:"POST"});}catch(_){}
+      }
+      setSetupMsg("Creating holiday calendar…");
       const yr=currentYear;
       const defaultHols=[
         {name:"New Year's Day",date:`${yr}-01-01`,type:"national",year:yr},

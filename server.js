@@ -75,6 +75,21 @@ async function runMigrations() {
     `CREATE INDEX IF NOT EXISTS audit_logs_entity_idx  ON audit_logs (entity_id)`,
     `CREATE INDEX IF NOT EXISTS audit_logs_project_idx ON audit_logs (project_id)`,
     `CREATE INDEX IF NOT EXISTS audit_logs_created_idx ON audit_logs (created_at DESC)`,
+    // ── HR Dashboard schema ──────────────────────────────────────
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id    VARCHAR(50)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_joining DATE`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth   DATE`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS leave_balance   JSONB DEFAULT '{"annual":15,"sick":6,"casual":6,"annual_used":0,"sick_used":0,"casual_used":0}'::jsonb`,
+    `CREATE TABLE IF NOT EXISTS holidays (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name       TEXT NOT NULL,
+      date       DATE NOT NULL,
+      type       TEXT DEFAULT 'public',
+      year       INTEGER NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`,
+    `CREATE INDEX IF NOT EXISTS holidays_year_idx ON holidays (year)`,
+    `CREATE INDEX IF NOT EXISTS holidays_date_idx ON holidays (date)`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); } catch(e) { console.warn("Migration skipped:", e.message); }
@@ -912,6 +927,65 @@ app.delete("/api/war-room/scheduled/:id", async (req, res) => {
 });
 
 // ═════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
+// HR MIGRATE — ensures holidays table + HR columns exist on
+// local PG (auto on startup) AND on Supabase (called from
+// runHRSetup button; uses Supabase direct pg if password set)
+// ═════════════════════════════════════════════════════════════
+
+// Fill this in from: Supabase Dashboard → Settings → Database
+// → Connection string → password field (one-time setup)
+const SUPA_DB_PASS = process.env.SUPA_DB_PASS || "";
+
+const HR_MIGRATIONS = [
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id    VARCHAR(50)`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_joining DATE`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth   DATE`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS leave_balance   JSONB DEFAULT '{"annual":15,"sick":6,"casual":6,"annual_used":0,"sick_used":0,"casual_used":0}'::jsonb`,
+  `CREATE TABLE IF NOT EXISTS holidays (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name       TEXT NOT NULL,
+    date       DATE NOT NULL,
+    type       TEXT DEFAULT 'public',
+    year       INTEGER NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS holidays_year_idx ON holidays (year)`,
+  `CREATE INDEX IF NOT EXISTS holidays_date_idx ON holidays (date)`,
+];
+
+app.post("/api/hr-migrate", async (req, res) => {
+  const results = { localPg: [], supabase: "skipped" };
+  // Local PG (always)
+  for (const sql of HR_MIGRATIONS) {
+    try { await pool.query(sql); results.localPg.push("ok"); }
+    catch(e) { results.localPg.push("skip: " + e.message.split("\n")[0]); }
+  }
+  // Supabase direct pg (only if SUPA_DB_PASS configured)
+  if (SUPA_DB_PASS) {
+    const { Pool: SPool } = require("pg");
+    const sPool = new SPool({
+      host: "aws-0-ap-south-1.pooler.supabase.com",
+      port: 5432,
+      database: "postgres",
+      user: `postgres.xypcbioltukahipkqqzc`,
+      password: SUPA_DB_PASS,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 8000,
+    });
+    const sResults = [];
+    try {
+      for (const sql of HR_MIGRATIONS) {
+        try { await sPool.query(sql); sResults.push("ok"); }
+        catch(e) { sResults.push("skip: " + e.message.split("\n")[0]); }
+      }
+      results.supabase = sResults;
+    } catch(e) { results.supabase = "connect failed: " + e.message; }
+    finally { sPool.end().catch(()=>{}); }
+  }
+  res.json({ ok: true, results });
+});
+
 // SETTINGS
 // ═════════════════════════════════════════════════════════════
 
