@@ -12497,7 +12497,7 @@ export default function App(){
     sl(true);
     try{
       const role=me?.role;
-      const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Team Leader"&&role!=="Client";
+      const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Team Leader"&&role!=="Client"&&role!=="HR & Finance";
       if(isRegularUser){
         // Fetch all then filter in JS — Supabase .or() silently fails for names with spaces
         const mn=(me.name||"").toLowerCase().trim();
