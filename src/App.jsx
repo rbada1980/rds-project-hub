@@ -2605,6 +2605,59 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   const [clStatModal,setCSM]=useState(null);
   const [reviewTask,setRT]=useState(null);
   const [reviewSaving,setRS]=useState(false);
+  // ── Invoices ──
+  const [myInvoices,setMyInvoices]=useState([]);
+  const [invDetail,setInvDetail]=useState(null);
+  const [invExpanded,setInvExpanded]=useState({});
+  useEffect(()=>{
+    fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+      headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+    }).then(r=>r.json()).then(rows=>{
+      if(Array.isArray(rows)&&rows[0]){
+        const all=JSON.parse(rows[0].value||"[]");
+        const mine=all.filter(i=>
+          ["sent","viewed","paid","overdue"].includes(i.status)&&
+          (i.clientKey||"").toLowerCase()===(me.client_name||"").toLowerCase()
+        );
+        setMyInvoices(mine);
+        // Auto-mark any "sent" invoice as "viewed" only when client opens detail — not on load
+      }
+    }).catch(()=>{});
+  },[]);
+  async function markViewed(inv){
+    if(inv.status!=="sent")return;
+    // update in Supabase settings
+    try{
+      const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+      });
+      const rows=await r.json();
+      if(!Array.isArray(rows)||!rows[0])return;
+      const all=JSON.parse(rows[0].value||"[]");
+      const now=new Date().toISOString();
+      const updated=all.map(i=>i.id===inv.id?{...i,status:"viewed",viewedAt:now}:i);
+      await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{
+        method:"PATCH",
+        headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+        body:JSON.stringify({value:JSON.stringify(updated)})
+      });
+      setMyInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"viewed",viewedAt:now}:i));
+      setInvDetail(p=>p&&p.id===inv.id?{...p,status:"viewed",viewedAt:now}:p);
+    }catch(_){}
+  }
+  const INV_S={sent:{label:"Sent",color:"#3b82f6"},viewed:{label:"Viewed",color:"#8b5cf6"},paid:{label:"Paid",color:"#22c55e"},overdue:{label:"Overdue",color:"#ef4444"}};
+  function fmtAmt(n){return n!=null?"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";}
+  function fmtInvDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}
+  // Group taskSnapshot by project
+  function groupByProject(taskSnap){
+    const map={};
+    (taskSnap||[]).forEach(t=>{
+      const key=t.project||t.project_id||"Other";
+      if(!map[key])map[key]=[];
+      map[key].push(t);
+    });
+    return map;
+  }
   const myProjects=projects.filter(p=>(p.client||"").toLowerCase()===(me.client_name||"").toLowerCase());
   const myPids=new Set(myProjects.map(p=>p.id));
   const myTasks=tasks.filter(t=>myPids.has(t.project_id));
@@ -2903,6 +2956,109 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
           })}
         </div>
       }
+
+      {/* ══════════════════ INVOICES SECTION ══════════════════ */}
+      {myInvoices.length>0&&(
+        <div style={{marginTop:32}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{margin:0,color:C.t1,fontSize:16,fontWeight:700}}>📄 My Invoices</h3>
+            <span style={{color:C.t3,fontSize:13}}>{myInvoices.length} invoice{myInvoices.length!==1?"s":""}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {myInvoices.map(inv=>{
+              const sc=INV_S[inv.status]||{label:inv.status,color:C.t3};
+              const taskSnap=inv.taskSnapshot||[];
+              const byProj=groupByProject(taskSnap);
+              const projKeys=Object.keys(byProj);
+              const isOpen=!!invExpanded[inv.id];
+              return(
+                <div key={inv.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 8px #00000020"}}>
+                  {/* Invoice header row */}
+                  <div style={{padding:"16px 20px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}
+                    onClick={()=>{
+                      setInvExpanded(x=>({...x,[inv.id]:!x[inv.id]}));
+                      markViewed(inv);
+                    }}>
+                    <div style={{flex:1,minWidth:200}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                        <span style={{fontWeight:700,color:C.t1,fontSize:15}}>{inv.invoiceNo||"INV"}</span>
+                        <span style={{background:sc.color+"25",color:sc.color,border:`1px solid ${sc.color}60`,borderRadius:5,padding:"2px 9px",fontSize:11,fontWeight:700}}>{sc.label}</span>
+                      </div>
+                      {(inv.invoiceTitle||inv.description)&&(
+                        <div style={{color:C.t2,fontSize:13,marginBottom:2}}>{inv.invoiceTitle||inv.description}</div>
+                      )}
+                      <div style={{display:"flex",gap:16,marginTop:4,flexWrap:"wrap"}}>
+                        <span style={{color:C.t3,fontSize:12}}>Issued: {fmtInvDate(inv.issueDate||inv.createdAt)}</span>
+                        {inv.dueDate&&<span style={{color:C.t3,fontSize:12}}>Due: {fmtInvDate(inv.dueDate)}</span>}
+                        {taskSnap.length>0&&<span style={{color:C.t3,fontSize:12}}>{taskSnap.length} task{taskSnap.length!==1?"s":""}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+                      {inv.tons!=null&&<span style={{color:C.t2,fontSize:13}}>{inv.tons} tons</span>}
+                      <span style={{fontWeight:800,fontSize:18,color:C.accent}}>{fmtAmt(inv.amount)}</span>
+                      <span style={{color:C.t3,fontSize:15}}>{isOpen?"▲":"▼"}</span>
+                    </div>
+                  </div>
+
+                  {/* Expanded task breakdown */}
+                  {isOpen&&(
+                    <div style={{borderTop:`1px solid ${C.border}`,padding:"14px 20px 18px"}}>
+                      {taskSnap.length===0?(
+                        <p style={{margin:0,color:C.t3,fontSize:13}}>No task breakdown available.</p>
+                      ):(
+                        projKeys.map(projName=>{
+                          const ts=byProj[projName];
+                          return(
+                            <div key={projName} style={{marginBottom:16}}>
+                              <div style={{fontWeight:700,color:C.t2,fontSize:13,marginBottom:8,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>
+                                📁 {projName}
+                              </div>
+                              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                                <thead>
+                                  <tr>
+                                    {["Task","Assignee","Status","Priority"].map(h=>(
+                                      <th key={h} style={{textAlign:"left",padding:"5px 10px",fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase"}}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ts.map((t,i)=>(
+                                    <tr key={t.id||i} style={{borderTop:`1px solid ${C.border}22`}}>
+                                      <td style={{padding:"7px 10px",color:C.t1,fontSize:13}}>{t.title||t.name||"—"}</td>
+                                      <td style={{padding:"7px 10px",color:C.t2,fontSize:12}}>{t.assignee||"—"}</td>
+                                      <td style={{padding:"7px 10px"}}>
+                                        <span style={{background:getStatusColor(t.status)+"25",color:getStatusColor(t.status),border:`1px solid ${getStatusColor(t.status)}60`,borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600}}>
+                                          {t.status||"—"}
+                                        </span>
+                                      </td>
+                                      <td style={{padding:"7px 10px",color:PRI_CLR[t.priority]||C.t3,fontSize:12,fontWeight:600}}>{t.priority||"—"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })
+                      )}
+                      {/* Invoice meta footer */}
+                      <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+                          {inv.viewedAt&&<span style={{color:C.t3,fontSize:11}}>Viewed: {fmtInvDate(inv.viewedAt)}</span>}
+                          {inv.paidAt&&<span style={{color:C.green,fontSize:11,fontWeight:700}}>Paid: {fmtInvDate(inv.paidAt)}</span>}
+                          {inv.period&&<span style={{color:C.t3,fontSize:11}}>Period: {inv.period}</span>}
+                        </div>
+                        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                          <span style={{fontWeight:800,fontSize:17,color:C.accent}}>{fmtAmt(inv.amount)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
