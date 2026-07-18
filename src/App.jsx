@@ -11889,21 +11889,21 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                             <span style={{background:stColor+"22",color:stColor,border:`1px solid ${stColor}55`,borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700}}>{stLabel}</span>
                             {inv.period&&<span style={{color:C.t3,fontSize:12}}>{inv.period}</span>}
                           </div>
-                          {inv.invoiceTitle&&<div style={{color:C.t2,fontSize:13,marginBottom:4}}>{inv.invoiceTitle}</div>}
-                          {/* Project → Task breakdown */}
-                          {(inv.taskSnapshot||[]).length>0&&(()=>{
-                            const byP={};
-                            (inv.taskSnapshot||[]).forEach(t=>{const k=t._proj?.name||"Tasks";if(!byP[k])byP[k]=[];byP[k].push(t.title||t.name||"");});
-                            return(
-                              <div style={{marginBottom:8}}>
-                                {Object.entries(byP).map(([proj,tnames])=>(
-                                  <div key={proj} style={{marginBottom:4}}>
-                                    <div style={{fontSize:10,fontWeight:700,color:"#3b82f6",textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{proj}</div>
-                                    {tnames.map((tn,i)=><div key={i} style={{fontSize:12,color:C.t2,paddingLeft:8}}>• {tn}</div>)}
-                                  </div>
-                                ))}
-                              </div>
-                            );
+                          {(()=>{
+                            const snap=inv.taskSnapshot||[];
+                            if(snap.length===1){
+                              // Single task invoice: show task name, project name as small subtitle
+                              const t=snap[0];
+                              return(
+                                <div style={{marginBottom:6}}>
+                                  <div style={{color:C.t2,fontSize:13,fontWeight:600,marginBottom:2}}>{t.title||t.name||inv.invoiceTitle||""}</div>
+                                  {t._proj?.name&&<div style={{fontSize:10,fontWeight:700,color:"#3b82f6",textTransform:"uppercase",letterSpacing:".05em"}}>{t._proj.name}</div>}
+                                </div>
+                              );
+                            }else{
+                              // Project-level or client-level: show invoiceTitle only, no task list
+                              return inv.invoiceTitle?<div style={{color:C.t2,fontSize:13,marginBottom:6}}>{inv.invoiceTitle}</div>:null;
+                            }
                           })()}
                           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
                             <span style={{fontSize:12,color:C.t3}}>📅 Issued: {fmtShortDate(inv.issueDate||inv.createdAt)}</span>
