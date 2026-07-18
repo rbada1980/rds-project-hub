@@ -10649,16 +10649,17 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   function buildClientInvoiceEmail(inv,company){
     const taskSnap=inv.taskSnapshot||[];
     const byProj={};
-    taskSnap.forEach(t=>{const k=t.project||"Tasks";if(!byProj[k])byProj[k]=[];byProj[k].push(t);});
-    // Compute per-task unit price if possible (amount / total tasks, or from rate)
-    const totalTasks=taskSnap.length||1;
+    taskSnap.forEach(t=>{const k=t._proj?.name||t.project||"Tasks";if(!byProj[k])byProj[k]=[];byProj[k].push(t);});
+    // Fallback overall unit price if per-task rate isn't stored
     const unitPrice=inv.tons&&inv.amount?Number(inv.amount/inv.tons).toFixed(2):null;
+    const fmtT=v=>(v!=null&&v!==undefined&&!isNaN(v))?Number(v).toFixed(2)+" T":"—";
+    const fmtR=v=>(v!=null&&v!==undefined&&!isNaN(v)&&Number(v)>0)?"$"+Number(v).toFixed(2)+"/T":(unitPrice?"$"+unitPrice+"/T":"—");
     const taskRows=Object.entries(byProj).map(([proj,tasks])=>`
       <tr><td colspan="3" style="background:#eef2ff;padding:8px 14px;font-weight:700;color:#1e3a8a;font-size:12px;border-top:2px solid #c7d2fe;">📁 ${proj}</td></tr>
       ${tasks.map((t,i)=>`<tr style="background:${i%2===0?"#fff":"#f9fafb"};">
         <td style="padding:8px 14px;color:#374151;font-size:13px;border-bottom:1px solid #f1f5f9;">${t.title||t.name||""}</td>
-        <td style="padding:8px 14px;color:#64748b;font-size:12px;text-align:center;border-bottom:1px solid #f1f5f9;">—</td>
-        <td style="padding:8px 14px;color:#64748b;font-size:12px;text-align:right;border-bottom:1px solid #f1f5f9;">${unitPrice?"$"+unitPrice+"/T":"—"}</td>
+        <td style="padding:8px 14px;color:#1e293b;font-size:12px;font-weight:600;text-align:center;border-bottom:1px solid #f1f5f9;">${fmtT(t._wt)}</td>
+        <td style="padding:8px 14px;color:#1d4ed8;font-size:12px;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${fmtR(t._rate)}</td>
       </tr>`).join("")}
     `).join("");
     return`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -10673,7 +10674,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
   <!-- BODY -->
   <div style="padding:32px 36px;">
-    <p style="color:#1e293b;font-size:15px;margin:0 0 8px;">Dear <strong>${inv.clientName}</strong>,</p>
+    <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 6px;">Hello <strong>${inv.clientName} Team</strong>,</p>
     <p style="color:#475569;font-size:13px;line-height:1.7;margin:0 0 24px;">Please find below your invoice summary. Kindly review and process the payment by the due date. For complete details, task breakdown, and to confirm payment — please log in to your client portal at <a href="https://hub-rdsprojects.com" style="color:#2563eb;font-weight:600;">hub-rdsprojects.com</a>.</p>
 
     <!-- Invoice summary box -->
