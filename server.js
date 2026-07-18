@@ -1115,7 +1115,7 @@ app.post("/api/rpc", async (req, res) => {
     "users","clients","projects","tasks","task_files","task_comments",
     "notifications","announcements","workflows",
     "war_room_messages","war_room_pins","war_room_reactions",
-    "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs","audit_logs"
+    "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs","audit_logs","holidays"
   ]);
   if (!RPC_TABLES.has(table)) return res.json({ data: null, error: { message: "Unknown table: " + table } });
 

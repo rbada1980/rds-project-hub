@@ -9752,6 +9752,12 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const [loading,setLoading]=useState(true);
   const [setupBusy,setSetupBusy]=useState(false);
   const [setupMsg,setSetupMsg]=useState("");
+  // ── Employee edit modal ──
+  const [editEmp,setEditEmp]=useState(null); // null=closed, obj=employee being edited
+  const [editEmpBusy,setEditEmpBusy]=useState(false);
+  // ── Holiday edit modal ──
+  const [editHol,setEditHol]=useState(null); // null=closed, {}=new, {id,...}=existing
+  const [editHolBusy,setEditHolBusy]=useState(false);
   const today=new Date().toISOString().slice(0,10);
   const monthStr=today.slice(0,7);
   const currentYear=new Date().getFullYear();
@@ -9759,6 +9765,51 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
   async function fetchHolidays(){
     try{const{data,error}=await supabase.from("holidays").select("*").eq("year",currentYear).order("date");if(!error)setHolidays(data||[]);}catch(e){}
+  }
+
+  async function saveEmp(emp){
+    setEditEmpBusy(true);
+    try{
+      const payload={
+        employee_id:emp.employee_id||null,
+        date_of_joining:emp.date_of_joining||null,
+        date_of_birth:emp.date_of_birth||null,
+        leave_balance:{
+          annual:parseInt(emp.lb_annual)||15,
+          sick:parseInt(emp.lb_sick)||6,
+          casual:parseInt(emp.lb_casual)||6,
+          annual_used:parseInt(emp.lb_annual_used)||0,
+          sick_used:parseInt(emp.lb_sick_used)||0,
+          casual_used:parseInt(emp.lb_casual_used)||0,
+        },
+      };
+      await supabase.from("users").update(payload).eq("id",emp.id);
+      // refresh users list
+      if(typeof refreshUsers==="function") refreshUsers();
+    }catch(e){}
+    setEditEmpBusy(false);
+    setEditEmp(null);
+  }
+
+  async function saveHol(hol){
+    setEditHolBusy(true);
+    try{
+      if(hol.id){
+        await supabase.from("holidays").update({name:hol.name,date:hol.date,type:hol.type}).eq("id",hol.id);
+      }else{
+        const yr=hol.date?parseInt(hol.date.slice(0,4)):currentYear;
+        await supabase.from("holidays").insert([{name:hol.name,date:hol.date,type:hol.type||"public",year:yr}]);
+      }
+      await fetchHolidays();
+    }catch(e){}
+    setEditHolBusy(false);
+    setEditHol(null);
+  }
+
+  async function deleteHol(id){
+    if(!window.confirm("Delete this holiday?"))return;
+    await supabase.from("holidays").delete().eq("id",id);
+    await fetchHolidays();
   }
 
   useEffect(()=>{
@@ -9935,33 +9986,65 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
       )}
 
       {/* ── HOLIDAY CALENDAR ── */}
-      {holidays.length>0&&(
-        <div style={{...card,marginBottom:24}}>
-          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>🗓️ Holiday Calendar — {new Date().toLocaleString("default",{month:"long",year:"numeric"})}</div>
-          {thisMonthHolidays.length>0?(
-            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:upcomingHolidays.length>0?14:0}}>
-              {thisMonthHolidays.map(h=>(
-                <div key={h.id} style={{background:C.bg,border:`1px solid ${typeColor[h.type]||C.border}44`,borderRadius:8,padding:"8px 14px",borderLeft:`3px solid ${typeColor[h.type]||C.border}`}}>
-                  <div style={{fontWeight:700,fontSize:13,color:C.t1}}>{h.name}</div>
-                  <div style={{fontSize:11,color:C.t3,marginTop:2}}>{fmtDate(h.date)} · <span style={{color:typeColor[h.type]||C.t3,fontWeight:600,textTransform:"capitalize"}}>{h.type}</span></div>
+      <div style={{...card,marginBottom:24}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1}}>🗓️ Holiday Calendar {currentYear}</div>
+          <button onClick={()=>setEditHol({name:"",date:"",type:"public"})} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Holiday</button>
+        </div>
+        {holidays.length===0?(
+          <div style={{fontSize:13,color:C.t3}}>No holidays added yet. Click "Run HR Setup" above to add default Indian holidays, or add manually.</div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {holidays.map(h=>(
+              <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,border:`1px solid ${typeColor[h.type]||C.border}33`,borderRadius:8,padding:"8px 14px",borderLeft:`3px solid ${typeColor[h.type]||C.border}`}}>
+                <div style={{flex:1}}>
+                  <span style={{fontWeight:700,fontSize:13,color:C.t1}}>{h.name}</span>
+                  <span style={{fontSize:11,color:C.t3,marginLeft:10}}>{fmtDate(h.date)}</span>
+                  <span style={{fontSize:11,color:typeColor[h.type]||C.t3,fontWeight:600,textTransform:"capitalize",marginLeft:8,background:(typeColor[h.type]||C.border)+"18",borderRadius:4,padding:"1px 6px"}}>{h.type}</span>
+                </div>
+                <button onClick={()=>setEditHol({id:h.id,name:h.name,date:h.date,type:h.type||"public"})} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 10px",fontSize:11,color:C.t2,cursor:"pointer"}}>✏️</button>
+                <button onClick={()=>deleteHol(h.id)} style={{background:"transparent",border:"1px solid #fee2e2",borderRadius:6,padding:"4px 10px",fontSize:11,color:"#ef4444",cursor:"pointer"}}>🗑️</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Holiday Edit/Add Modal ── */}
+        {editHol&&(
+          <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditHol(null);}}>
+            <div style={{background:C.card,borderRadius:16,padding:28,width:380,maxWidth:"95vw",boxShadow:"0 20px 60px #0004"}}>
+              <div style={{fontWeight:800,fontSize:15,color:C.t1,marginBottom:20}}>{editHol.id?"✏️ Edit Holiday":"➕ Add Holiday"}</div>
+              {[
+                {label:"Holiday Name",key:"name",type:"text",placeholder:"e.g. Diwali"},
+                {label:"Date",key:"date",type:"date"},
+              ].map(f=>(
+                <div key={f.key} style={{marginBottom:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:0.4}}>{f.label}</div>
+                  <input type={f.type} value={editHol[f.key]||""} placeholder={f.placeholder||""} onChange={e=>setEditHol(p=>({...p,[f.key]:e.target.value}))}
+                    style={{width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13,boxSizing:"border-box"}}/>
                 </div>
               ))}
-            </div>
-          ):(
-            <div style={{fontSize:13,color:C.t3,marginBottom:upcomingHolidays.length>0?14:0}}>No holidays this month.</div>
-          )}
-          {upcomingHolidays.length>0&&(
-            <div style={{paddingTop:14,borderTop:`1px solid ${C.border}`}}>
-              <div style={{fontWeight:600,fontSize:12,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:0.5}}>📅 Upcoming</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {upcomingHolidays.map(h=>(
-                  <span key={h.id} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 12px",fontSize:12,color:C.t2}}><b>{h.name}</b> — {fmtDate(h.date)}</span>
-                ))}
+              <div style={{marginBottom:18}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:0.4}}>Type</div>
+                <select value={editHol.type||"public"} onChange={e=>setEditHol(p=>({...p,type:e.target.value}))}
+                  style={{width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13}}>
+                  <option value="national">National</option>
+                  <option value="festival">Festival</option>
+                  <option value="public">Public</option>
+                  <option value="company">Company</option>
+                </select>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button onClick={()=>setEditHol(null)} style={{padding:"9px 20px",borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.t2,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>saveHol(editHol)} disabled={editHolBusy||!editHol.name||!editHol.date}
+                  style={{padding:"9px 22px",borderRadius:8,border:"none",background:C.accent,color:"#fff",fontSize:13,fontWeight:700,cursor:editHolBusy?"wait":"pointer",opacity:(editHolBusy||!editHol.name||!editHol.date)?0.6:1}}>
+                  {editHolBusy?"Saving…":"💾 Save"}
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* ── FINANCE SECTION ── */}
       <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>💰 Finance Overview</div>
@@ -10072,12 +10155,14 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
       {/* ── EMPLOYEE DIRECTORY ── */}
       {employees.length>0&&(
         <div style={{...card}}>
-          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>👤 Employee Directory</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:14,color:C.t1}}>👤 Employee Directory</div>
+          </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:700}}>
               <thead>
                 <tr style={{borderBottom:`2px solid ${C.border}`,background:C.bg}}>
-                  {["Emp ID","Name","Role","Date of Joining","Experience","Date of Birth","Annual Leave","Sick Leave","Casual Leave"].map(h=>(
+                  {["Emp ID","Name","Role","Date of Joining","Experience","Date of Birth","Annual Leave","Sick Leave","Casual Leave",""].map(h=>(
                     <th key={h} style={{padding:"9px 12px",textAlign:"left",color:C.t3,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:0.4,whiteSpace:"nowrap"}}>{h}</th>
                   ))}
                 </tr>
@@ -10102,12 +10187,69 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
                       <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.annual_used} total={lb.annual}/></td>
                       <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.sick_used} total={lb.sick}/></td>
                       <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.casual_used} total={lb.casual}/></td>
+                      <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                        <button onClick={()=>setEditEmp({
+                          id:u.id,name:u.name,
+                          employee_id:u.employee_id||"",
+                          date_of_joining:u.date_of_joining||"",
+                          date_of_birth:u.date_of_birth||"",
+                          lb_annual:lb.annual??15,
+                          lb_sick:lb.sick??6,
+                          lb_casual:lb.casual??6,
+                          lb_annual_used:lb.annual_used??0,
+                          lb_sick_used:lb.sick_used??0,
+                          lb_casual_used:lb.casual_used??0,
+                        })} style={{background:C.accent+"18",color:C.accent,border:"none",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>✏️ Edit</button>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+
+          {/* ── Employee Edit Modal ── */}
+          {editEmp&&(
+            <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditEmp(null);}}>
+              <div style={{background:C.card,borderRadius:16,padding:28,width:460,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px #0004"}}>
+                <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:20}}>✏️ Edit HR Info — {editEmp.name}</div>
+                {[
+                  {label:"Employee ID",key:"employee_id",type:"text",placeholder:"e.g. EMP001"},
+                  {label:"Date of Joining",key:"date_of_joining",type:"date"},
+                  {label:"Date of Birth",key:"date_of_birth",type:"date"},
+                ].map(f=>(
+                  <div key={f.key} style={{marginBottom:14}}>
+                    <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:0.4}}>{f.label}</div>
+                    <input type={f.type} value={editEmp[f.key]} placeholder={f.placeholder||""} onChange={e=>setEditEmp(p=>({...p,[f.key]:e.target.value}))}
+                      style={{width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13,boxSizing:"border-box"}}/>
+                  </div>
+                ))}
+                <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:0.4}}>Leave Balance</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+                  {[
+                    {label:"Annual Total",key:"lb_annual"},
+                    {label:"Sick Total",key:"lb_sick"},
+                    {label:"Casual Total",key:"lb_casual"},
+                    {label:"Annual Used",key:"lb_annual_used"},
+                    {label:"Sick Used",key:"lb_sick_used"},
+                    {label:"Casual Used",key:"lb_casual_used"},
+                  ].map(f=>(
+                    <div key={f.key}>
+                      <div style={{fontSize:10,fontWeight:600,color:C.t3,marginBottom:3}}>{f.label}</div>
+                      <input type="number" min="0" value={editEmp[f.key]} onChange={e=>setEditEmp(p=>({...p,[f.key]:e.target.value}))}
+                        style={{width:"100%",padding:"7px 10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13,boxSizing:"border-box"}}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+                  <button onClick={()=>setEditEmp(null)} style={{padding:"9px 20px",borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.t2,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                  <button onClick={()=>saveEmp(editEmp)} disabled={editEmpBusy} style={{padding:"9px 22px",borderRadius:8,border:"none",background:C.accent,color:"#fff",fontSize:13,fontWeight:700,cursor:editEmpBusy?"wait":"pointer",opacity:editEmpBusy?0.7:1}}>
+                    {editEmpBusy?"Saving…":"💾 Save"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
