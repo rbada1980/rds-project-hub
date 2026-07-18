@@ -11890,11 +11890,26 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                             {inv.period&&<span style={{color:C.t3,fontSize:12}}>{inv.period}</span>}
                           </div>
                           {inv.invoiceTitle&&<div style={{color:C.t2,fontSize:13,marginBottom:4}}>{inv.invoiceTitle}</div>}
+                          {/* Project → Task breakdown */}
+                          {(inv.taskSnapshot||[]).length>0&&(()=>{
+                            const byP={};
+                            (inv.taskSnapshot||[]).forEach(t=>{const k=t._proj?.name||"Tasks";if(!byP[k])byP[k]=[];byP[k].push(t.title||t.name||"");});
+                            return(
+                              <div style={{marginBottom:8}}>
+                                {Object.entries(byP).map(([proj,tnames])=>(
+                                  <div key={proj} style={{marginBottom:4}}>
+                                    <div style={{fontSize:10,fontWeight:700,color:"#3b82f6",textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{proj}</div>
+                                    {tnames.map((tn,i)=><div key={i} style={{fontSize:12,color:C.t2,paddingLeft:8}}>• {tn}</div>)}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
                             <span style={{fontSize:12,color:C.t3}}>📅 Issued: {fmtShortDate(inv.issueDate||inv.createdAt)}</span>
                             {inv.dueDate&&<span style={{fontSize:12,color:isOverdue&&inv.status!=="paid"?C.red:C.t3}}>⏰ Due: {fmtShortDate(inv.dueDate)}</span>}
-                            {inv.tons>0&&<span style={{fontSize:12,color:C.t3}}>⚖️ {inv.tons} T</span>}
-                            {inv.tons>0&&inv.amount>0&&<span style={{fontSize:12,color:C.t3}}>💲 ${(inv.amount/inv.tons).toFixed(2)}/T</span>}
+                            {inv.tons>0&&<span style={{fontSize:12,color:C.t3}}>⚖️ {inv.tons} Tons</span>}
+                            {inv.tons>0&&inv.amount>0&&<span style={{fontSize:12,color:C.t3}}>💲 ${(inv.amount/inv.tons).toFixed(2)}/Ton</span>}
                           </div>
                         </div>
                         <div style={{textAlign:"right",flexShrink:0}}>
