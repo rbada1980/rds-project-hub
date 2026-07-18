@@ -10816,11 +10816,17 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     // ── Email triggers ────────────────────────────────────────
     if(targetInv){
       if(status==="sent"){
-        // Send invoice email to client
+        // Action 1: Invoice is now visible on client's dashboard (status="sent")
+        // Action 2: Send invoice email to client
         const clientEmail=clientCustom[targetInv.clientName]?.email||clientCustom[targetInv.clientKey]?.email||"";
         if(clientEmail){
           const html=buildClientInvoiceEmail(targetInv,companyInfo);
           sendMail(clientEmail,`Invoice ${targetInv.invoiceNo||""} from RDS Projects — $${Number(targetInv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}`,html);
+          setMsg(`✅ Invoice moved to client dashboard & email sent to ${clientEmail}`);
+          setTimeout(()=>setMsg(null),5000);
+        }else{
+          setMsg(`⚠️ Invoice visible in client dashboard — no email on file for ${targetInv.clientName}. Add it in Settings → Client.`);
+          setTimeout(()=>setMsg(null),7000);
         }
       }
       if(status==="paid"){
@@ -11612,7 +11618,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
               {!isClient&&invoiceDetail.status==="draft"&&<button onClick={()=>{const tl=invoiceDetail.taskSnapshot?.length?invoiceDetail.taskSnapshot:Object.values(clientMap[invoiceDetail.clientKey]?.projMap||{}).flatMap(p=>p.tasks);setInvoiceOpts({invoiceNo:invoiceDetail.invoiceNo||"",issueDate:invoiceDetail.issueDate||"",dueDate:invoiceDetail.dueDate||"",description:invoiceDetail.description||""});setInvoiceModal({title:invoiceDetail.invoiceTitle||invoiceDetail.clientName||invoiceDetail.clientKey||"Invoice",subtitle:invoiceDetail.invoiceSubtitle||invoiceDetail.period||"",note:"",taskList:tl,hideProject:invoiceDetail.hideProject||false,filename:"RDS_Invoice_"+String(invoiceDetail.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:invoiceDetail.clientKey,skipRecord:true});}} style={{...SBtn,padding:"8px 18px"}}>📄 Re-download PDF</button>}
               {isClient&&["sent","viewed","paid"].includes(invoiceDetail.status)&&<button onClick={()=>{const tl=invoiceDetail.taskSnapshot||[];setInvoiceModal({title:invoiceDetail.invoiceTitle||invoiceDetail.clientName||"Invoice",subtitle:invoiceDetail.invoiceSubtitle||invoiceDetail.period||"",note:"",taskList:tl,hideProject:invoiceDetail.hideProject||false,filename:"RDS_Invoice_"+String(invoiceDetail.invoiceNo||"").replace(/[^a-z0-9]/gi,"_"),clientKey:invoiceDetail.clientKey,skipRecord:true});}} style={{...SBtn,padding:"8px 18px"}}>📄 Download PDF</button>}
               {!isClient&&(INV_STATUS[invoiceDetail.status]?.next||[]).map(n=>(
-                <button key={n.s} onClick={()=>{if(n.s==="sent"&&!window.confirm(`Send Invoice ${invoiceDetail.invoiceNo||""} to client and mark as Sent? An email will be delivered to the client.`))return;updateInvoiceStatus(invoiceDetail.id,n.s);const now=new Date().toISOString();setInvoiceDetail(p=>{const nw={...p,status:n.s};if(n.s==="sent"&&!nw.sentAt)nw.sentAt=now;if(n.s==="viewed"&&!nw.viewedAt)nw.viewedAt=now;if(n.s==="paid"&&!nw.paidAt)nw.paidAt=now;return nw;});}} style={{...SBtn,padding:"8px 18px"}}>{n.label}</button>
+                <button key={n.s} onClick={()=>{if(n.s==="sent"&&!window.confirm(`Mark Invoice ${invoiceDetail.invoiceNo||""} as Sent?\n\n✅ Invoice will appear in ${invoiceDetail.clientName}'s dashboard\n📧 Invoice email will be sent to client\n\nProceed?`))return;updateInvoiceStatus(invoiceDetail.id,n.s);const now=new Date().toISOString();setInvoiceDetail(p=>{const nw={...p,status:n.s};if(n.s==="sent"&&!nw.sentAt)nw.sentAt=now;if(n.s==="viewed"&&!nw.viewedAt)nw.viewedAt=now;if(n.s==="paid"&&!nw.paidAt)nw.paidAt=now;return nw;});}} style={{...SBtn,padding:"8px 18px"}}>{n.label}</button>
               ))}
               {!isClient&&invoiceDetail.status==="sent"&&<button onClick={()=>{updateInvoiceStatus(invoiceDetail.id,"overdue");setInvoiceDetail(p=>({...p,status:"overdue"}));}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>Mark Overdue</button>}
               {!isClient&&<button onClick={()=>{if(window.confirm("Delete this invoice record?"))deleteInvoice(invoiceDetail.id);setInvoiceDetail(null);}} style={{...GBtn,padding:"8px 18px",color:C.red,borderColor:C.red}}>🗑 Delete</button>}
@@ -11938,7 +11944,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                   {/* Quick actions */}
                   <div style={{display:"flex",gap:6,marginTop:12,flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
                     {st.next.map(n=>(
-                      <button key={n.s} onClick={()=>{if(n.s==="sent"&&!window.confirm(`Send Invoice ${inv.invoiceNo||""} to client and mark as Sent? An email will be sent to the client.`))return;updateInvoiceStatus(inv.id,n.s);}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>{n.label}</button>
+                      <button key={n.s} onClick={()=>{if(n.s==="sent"&&!window.confirm(`Mark Invoice ${inv.invoiceNo||""} as Sent?\n\n✅ Invoice will appear in ${inv.clientName}'s dashboard\n📧 Invoice email will be sent to client\n\nProceed?`))return;updateInvoiceStatus(inv.id,n.s);}} style={{...SBtn,padding:"4px 12px",fontSize:11}}>{n.label}</button>
                     ))}
                     {inv.status==="sent"&&<button onClick={()=>updateInvoiceStatus(inv.id,"overdue")} style={{...GBtn,padding:"4px 12px",fontSize:11,color:C.red,borderColor:C.red}}>Mark Overdue</button>}
                     {inv.status==="draft"&&<button onClick={()=>{setEditInvDraft({invoiceNo:inv.invoiceNo||"",issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||""});setEditInvModal(inv);}} style={{...GBtn,padding:"4px 12px",fontSize:11}}>✏️ Edit</button>}
