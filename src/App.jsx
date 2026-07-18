@@ -9764,8 +9764,8 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
             ?fetch("/api/rpc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"select",table:"attendance",params:{date:today}})}).then(r=>r.json())
             :supabase.from("attendance").select("*").eq("date",today),
         ]);
-        setInvoices(invRes?.data||invRes||[]);
-        setAttendance(attRes?.data||attRes||[]);
+        setInvoices(Array.isArray(invRes?.data)?invRes.data:Array.isArray(invRes)?invRes:[]);
+        setAttendance(Array.isArray(attRes?.data)?attRes.data:Array.isArray(attRes)?attRes:[]);
       }catch(e){}
       setLoading(false);
     }
