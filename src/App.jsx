@@ -7880,11 +7880,11 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
     let data;
     if(IS_LOCAL){
       let q=supabase.from("attendance").select("*").gte("date",item.from).lte("date",item.to).order("date",{ascending:true}).order("user_name",{ascending:true}).limit(500);
-      if(!isAdmin&&!isManager)q=q.eq("user_id",me.id);
+      if(!isAdmin)q=q.eq("user_id",me.id);
       const{data:d}=await q;data=d;
     }else{
       let url=SUPA_URL+"/rest/v1/attendance?date=gte."+item.from+"&date=lte."+item.to+"&order=date.asc,user_name.asc&select=*&limit=500";
-      if(!isAdmin&&!isManager)url+="&user_id=eq."+me.id;
+      if(!isAdmin)url+="&user_id=eq."+me.id;
       const res=await fetch(url,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
       data=await res.json();
     }
@@ -9643,7 +9643,7 @@ function TimingsCharts({timeLogs,projects,month,isClient}){
 // ─── TimingsPage ─────────────────────────────────────────────────────────────
 function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isClient,isFinance=false}){
   const [group,setGroup]=useState("timings"); // "timings" | "analytics"
-  const [tab,setTab]=useState(isClient?"projects":(isAdmin||isManager||isFinance)?"employees":"myatt");
+  const [tab,setTab]=useState(isClient?"projects":(isAdmin||isFinance)?"employees":"myatt");
   const [timeLogs,setTimeLogs]=useState([]);
   const [attendance,setAttendance]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -9673,11 +9673,11 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
       let attData;
       if(IS_LOCAL){
         let q=supabase.from("attendance").select("*").gte("date",from).lte("date",to).order("date",{ascending:false}).limit(3000);
-        if(!isAdmin&&!isManager)q=q.eq("user_id",me.id);
+        if(!isAdmin&&!isFinance)q=q.eq("user_id",me.id);
         const{data:d}=await q;attData=d;
       }else{
         let attUrl=SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+from+"&date=lte."+to+"&order=date.desc&limit=3000";
-        if(!isAdmin&&!isManager)attUrl+="&user_id=eq."+me.id;
+        if(!isAdmin&&!isFinance)attUrl+="&user_id=eq."+me.id;
         const attRes=await fetch(attUrl,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
         attData=await attRes.json();
       }
@@ -9716,15 +9716,15 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
   // ── Tab groups ──────────────────────────────────────────────────────────────
   const timingsTabs=isClient
     ?[["projects","📁","Projects"],["tasks","📋","Tasks"]]
-    :(isAdmin||isManager||isFinance)
+    :(isAdmin||isFinance)
       ?[["employees","👥","Employees"],["attendance","📋","Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"],["capacity","📅","Capacity"]]
-      :isTeamLeader
+      :(isManager||isTeamLeader)
         ?[["myatt","🕐","My Attendance"],["projects","📁","Projects"],["tasks","📋","Tasks"],["timesheets","📝","Timesheets"]]
         :[["myatt","🕐","My Attendance"],["tasks","📋","My Tasks"],["timesheets","📝","Timesheets"]];
 
   const analyticsTabs=isClient
     ?[["charts","📊","Charts"]]
-    :(isAdmin||isManager)
+    :(isAdmin||isFinance)
       ?[["charts","📊","Charts"],["scorecards","🏅","Scorecards"],["budget","💰","Budget"],["reports","📤","Reports"],["gamification","🏆","Awards"]]
       :[["charts","📊","Charts"],["scorecards","🏅","Scorecards"],["gamification","🏆","Awards"]];
 
@@ -9744,7 +9744,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>⏱ Timings</h2>
-          <p style={{margin:"4px 0 0",fontSize:13,color:C.t2}}>{isClient?"Your project & task time overview":(isAdmin||isManager)?"Full team attendance & task time logs":"Your time logs & project breakdown"}</p>
+          <p style={{margin:"4px 0 0",fontSize:13,color:C.t2}}>{isClient?"Your project & task time overview":(isAdmin||isFinance)?"Full team attendance & task time logs":"Your time logs & project breakdown"}</p>
         </div>
         <input type="month" value={month} onChange={e=>setMonth(e.target.value)}
           style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 13px",color:C.t1,fontSize:13,fontFamily:"inherit"}}/>
@@ -14578,7 +14578,7 @@ export default function App(){
                     {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {!isClient&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
                     {!isClient&&exportSec==="hours"&&(()=>{
-                      const isOwnOnly=!isAdmin&&!isManager;
+                      const isOwnOnly=!isAdmin&&!isFinance;
                       async function exportWH(fromStr,toStr,label){
                         try{
                           const adminIds=new Set(users.filter(u=>u.role==="Admin").map(u=>u.id));
