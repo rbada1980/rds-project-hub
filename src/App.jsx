@@ -13813,7 +13813,7 @@ export default function App(){
   }
   async function attClockIn(){
     if(!me||me.role==="Client")return;
-    const todayStr=localDateStr();
+    const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
     try{
       await supabase.from("attendance").insert({user_id:me.id,user_name:me.name,date:todayStr,login_at:new Date().toISOString()});
       await loadAttendance();
