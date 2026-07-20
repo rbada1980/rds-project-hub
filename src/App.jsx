@@ -12,6 +12,9 @@ const IS_LOCAL = typeof window!=="undefined" && (window.location.port==="3000" |
 const LOCAL_BASE = IS_LOCAL ? `${typeof window!=="undefined"?window.location.protocol:"https:"}//${typeof window!=="undefined"?window.location.hostname:"192.168.0.159"}:${typeof window!=="undefined"?window.location.port:"8443"}` : "";
 const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
+// Hardcoded fallback notification emails — used when billing_notify_config is not saved
+const NOTIFY_ADMIN_EMAIL = "ramesh@rdstechserv.com";
+const NOTIFY_HR_EMAIL    = "lavanya@rdstechserv.com";
 // Returns YYYY-MM-DD in LOCAL timezone (IST). Never use toISOString() for attendance
 // dates — it returns UTC which shifts the date between midnight and 5:30 AM IST.
 function localDateStr(d){const dt=d||new Date();return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
@@ -2718,15 +2721,14 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
       setMyInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"paid",paidAt:now}:i));
       // Notify admin + HR
       try{
-        const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{
-          headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
-        });
-        const ncRows=await ncRow.json();
-        if(Array.isArray(ncRows)&&ncRows[0]){
-          const nc=JSON.parse(ncRows[0].value||"{}");
-          const notifyTo=[nc.adminEmail,nc.hrEmail].filter(Boolean);
-          if(notifyTo.length){
-            const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
+        let adminEmail=NOTIFY_ADMIN_EMAIL,hrEmail=NOTIFY_HR_EMAIL;
+        try{
+          const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+          const ncRows=await ncRow.json();
+          if(Array.isArray(ncRows)&&ncRows[0]){const nc=JSON.parse(ncRows[0].value||"{}");if(nc.adminEmail)adminEmail=nc.adminEmail;if(nc.hrEmail)hrEmail=nc.hrEmail;}
+        }catch(_){}
+        const notifyTo=[adminEmail,hrEmail].filter(Boolean);
+        const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
 <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
   <div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">✅ Payment Received</div></div>
   <div style="padding:28px 32px;">
@@ -2741,15 +2743,13 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   </div>
   <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification</div>
 </div></body></html>`;
-            notifyTo.forEach(email=>{
-              fetch(SUPA_URL+"/functions/v1/notify",{
-                method:"POST",
-                headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
-                body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`✅ Payment Received — ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
-              }).catch(()=>{});
-            });
-          }
-        }
+        notifyTo.forEach(email=>{
+          fetch(SUPA_URL+"/functions/v1/notify",{
+            method:"POST",
+            headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+            body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`✅ Payment Received — ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
+          }).catch(()=>{});
+        });
       }catch(_){}
     }catch(_){}
   }
@@ -10909,7 +10909,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       }
       if(status==="paid"){
         // Admin + HR paid notification
-        const notifyTo=[notifyConfig.adminEmail,notifyConfig.hrEmail].filter(Boolean);
+        const notifyTo=[notifyConfig.adminEmail||NOTIFY_ADMIN_EMAIL,notifyConfig.hrEmail||NOTIFY_HR_EMAIL].filter(Boolean);
         const html=buildNotifyEmail(
           `✅ Client has paid Invoice ${targetInv.invoiceNo}`,
           `<strong>${targetInv.clientName}</strong> has marked Invoice <strong>${targetInv.invoiceNo}</strong> as <strong>PAID</strong> on ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}.`,
@@ -10945,20 +10945,19 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       }
     }catch(_){}
     try{
-      const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-      const ncRows=await ncRow.json();
-      if(Array.isArray(ncRows)&&ncRows[0]){
-        const nc=JSON.parse(ncRows[0].value||"{}");
-        const notifyTo=[nc.adminEmail,nc.hrEmail].filter(Boolean);
-        if(notifyTo.length){
-          const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;"><div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div><div style="padding:28px 32px;"><p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong>${inv.invoiceNo||"—"}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong>${inv.clientName||"—"}</strong></div>${inv.period?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Period</span><strong>${inv.period}</strong></div>`:""}<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div></div><p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p></div><div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
-          notifyTo.forEach(email=>{
-            fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
-              body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`💸 Payment Sent — ${inv.clientName} · Invoice ${inv.invoiceNo||""} · $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
-            }).catch(()=>{});
-          });
-        }
-      }
+      let adminEmail=NOTIFY_ADMIN_EMAIL,hrEmail=NOTIFY_HR_EMAIL;
+      try{
+        const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+        const ncRows=await ncRow.json();
+        if(Array.isArray(ncRows)&&ncRows[0]){const nc=JSON.parse(ncRows[0].value||"{}");if(nc.adminEmail)adminEmail=nc.adminEmail;if(nc.hrEmail)hrEmail=nc.hrEmail;}
+      }catch(_){}
+      const notifyTo=[adminEmail,hrEmail].filter(Boolean);
+      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;"><div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div><div style="padding:28px 32px;"><p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong>${inv.invoiceNo||"—"}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong>${inv.clientName||"—"}</strong></div>${inv.period?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Period</span><strong>${inv.period}</strong></div>`:""}<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div></div><p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p></div><div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
+      notifyTo.forEach(email=>{
+        fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+          body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`💸 Payment Sent — ${inv.clientName} · Invoice ${inv.invoiceNo||""} · $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
+        }).catch(()=>{});
+      });
     }catch(_){}
     setPayBusy(p=>({...p,[inv.id]:false}));
   }
@@ -10974,18 +10973,19 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         const updated=all.map(i=>i.id===inv.id?{...i,status:"viewed",viewedAt:now}:i);
         fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_invoices",{method:"PATCH",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({value:JSON.stringify(updated)})});
         setInvoices(updated);
-        const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-        const ncRows=await ncRow.json();
-        if(Array.isArray(ncRows)&&ncRows[0]){
-          const nc=JSON.parse(ncRows[0].value||"{}");
-          [nc.adminEmail,nc.hrEmail].filter(Boolean).forEach(email=>{
-            fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
-              body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,
-                htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f5f3ff;border-radius:8px;padding:16px;"><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No: </span><strong>${inv.invoiceNo||"—"}</strong></div><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount: </span><strong style="color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div><div><span style="color:#6b7280;font-size:12px;">Viewed At: </span><strong>${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div></div></div>`
-              }})
-            }).catch(()=>{});
-          });
-        }
+        let adminEmail=NOTIFY_ADMIN_EMAIL,hrEmail=NOTIFY_HR_EMAIL;
+        try{
+          const ncRow=await fetch(SUPA_URL+"/rest/v1/settings?key=eq.billing_notify_config",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+          const ncRows=await ncRow.json();
+          if(Array.isArray(ncRows)&&ncRows[0]){const nc=JSON.parse(ncRows[0].value||"{}");if(nc.adminEmail)adminEmail=nc.adminEmail;if(nc.hrEmail)hrEmail=nc.hrEmail;}
+        }catch(_){}
+        [adminEmail,hrEmail].filter(Boolean).forEach(email=>{
+          fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+            body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,
+              htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f5f3ff;border-radius:8px;padding:16px;"><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No: </span><strong>${inv.invoiceNo||"—"}</strong></div><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount: </span><strong style="color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div><div><span style="color:#6b7280;font-size:12px;">Viewed At: </span><strong>${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div></div></div>`
+            }})
+          }).catch(()=>{});
+        });
       }
     }catch(_){}
   }
@@ -12243,11 +12243,11 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
               <label style={fldLbl}>Admin Email (receives billing alerts)</label>
-              <input value={notifyConfig.adminEmail||""} onChange={e=>setNotifyConfig(p=>({...p,adminEmail:e.target.value}))} placeholder="ramesh@ecovon.in" style={inp3}/>
+              <input value={notifyConfig.adminEmail||""} onChange={e=>setNotifyConfig(p=>({...p,adminEmail:e.target.value}))} placeholder={NOTIFY_ADMIN_EMAIL} style={inp3}/>
             </div>
             <div>
               <label style={fldLbl}>HR Email (receives billing alerts)</label>
-              <input value={notifyConfig.hrEmail||""} onChange={e=>setNotifyConfig(p=>({...p,hrEmail:e.target.value}))} placeholder="hr@ecovon.in" style={inp3}/>
+              <input value={notifyConfig.hrEmail||""} onChange={e=>setNotifyConfig(p=>({...p,hrEmail:e.target.value}))} placeholder={NOTIFY_HR_EMAIL} style={inp3}/>
             </div>
           </div>
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:C.t3,marginBottom:14}}>
