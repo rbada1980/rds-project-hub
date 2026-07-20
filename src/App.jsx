@@ -1214,6 +1214,92 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
     </div>
   );
 }
+function PersonalStats({me,tasks,projects}){
+  const isMobile=useMobile();
+  // IST today string
+  const todayIST=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
+  const todayDate=new Date(todayIST);
+  // Week start (Monday)
+  const dow0=todayDate.getDay();
+  const daysSinceMon=dow0===0?6:dow0-1;
+  const weekStartDate=new Date(todayDate);
+  weekStartDate.setDate(weekStartDate.getDate()-daysSinceMon);
+  const weekStartStr=weekStartDate.toLocaleDateString('en-CA');
+  // Month prefix
+  const monthStr=todayIST.slice(0,7);
+  // My tasks as assignee
+  const myTasks=tasks.filter(t=>t.assignee===me.name);
+  const doneTasks=myTasks.filter(t=>isDone(t.status));
+  // Time-bucketed completions (using updated_at as proxy)
+  const doneThisWeek=doneTasks.filter(t=>(t.updated_at||"").slice(0,10)>=weekStartStr);
+  const doneThisMonth=doneTasks.filter(t=>(t.updated_at||"").slice(0,7)===monthStr);
+  // On-time rate: done tasks with due_date where updated_at <= due_date
+  const doneWithDue=doneTasks.filter(t=>t.due_date);
+  const onTimeCount=doneWithDue.filter(t=>(t.updated_at||"").slice(0,10)<=t.due_date).length;
+  const onTimeRate=doneWithDue.length>0?Math.round(onTimeCount/doneWithDue.length*100):null;
+  // Avg turnaround: days from created_at to updated_at
+  const withTA=doneTasks.filter(t=>t.created_at&&t.updated_at);
+  const avgTA=withTA.length>0
+    ?Math.round(withTA.reduce((s,t)=>{const d=(new Date(t.updated_at.slice(0,10))-new Date(t.created_at.slice(0,10)))/86400000;return s+Math.max(0,d);},0)/withTA.length*10)/10
+    :null;
+  // Projects contributed to (as assignee)
+  const projCount=new Set(myTasks.map(t=>t.project_id).filter(Boolean)).size;
+  // Personal task streak: consecutive workdays (Mon-Fri) with ≥1 done task (using updated_at)
+  const doneDateSet=new Set(doneTasks.map(t=>(t.updated_at||"").slice(0,10)).filter(Boolean));
+  let streak=0;
+  const sc=new Date(todayDate);
+  for(let i=0;i<180;i++){
+    const ds=sc.toLocaleDateString('en-CA');
+    const dw=sc.getDay();
+    if(dw!==0&&dw!==6){if(doneDateSet.has(ds))streak++;else if(streak>0)break;}
+    sc.setDate(sc.getDate()-1);
+  }
+  const streakMsg=streak>=30?"🔥 Legendary!":streak>=14?"⚡ On Fire!":streak>=7?"💪 Great Streak!":streak>=3?"🌱 Building Momentum":streak>0?"🚀 Keep it going!":"Complete a task to start your streak!";
+  const onTimePct=onTimeRate??0;
+  const onTimeClr=onTimePct>=80?C.green:onTimePct>=60?"#f59e0b":C.red;
+  const stats=[
+    {l:"Done This Week",v:doneThisWeek.length,c:"#10b981",icon:"📅"},
+    {l:"Done This Month",v:doneThisMonth.length,c:"#3b82f6",icon:"📆"},
+    {l:"All-Time Done",v:doneTasks.length,c:"#8b5cf6",icon:"✅"},
+    {l:"Projects",v:projCount,c:"#f59e0b",icon:"📁"},
+    {l:"On-Time Rate",v:onTimeRate!==null?onTimeRate+"%":"—",c:onTimeRate!==null?onTimeClr:C.t3,icon:"🎯"},
+    {l:"Avg Turnaround",v:avgTA!==null?avgTA+"d":"—",c:"#14b8a6",icon:"⏱"},
+  ];
+  return(
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <span style={{fontSize:20}}>🏆</span>
+        <span style={{fontSize:15,fontWeight:800,color:C.t1}}>My Personal Stats</span>
+        <span style={{marginLeft:"auto",fontSize:11,color:C.t3,fontWeight:500}}>Based on your assigned tasks</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(auto-fill,minmax(130px,1fr))",gap:10,marginBottom:14}}>
+        {stats.map(s=>(
+          <div key={s.l} style={{background:s.c+"14",border:`1px solid ${s.c}33`,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
+            <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
+            <div style={{fontSize:22,fontWeight:800,color:s.c,lineHeight:1}}>{s.v}</div>
+            <div style={{fontSize:9,color:C.t3,marginTop:4,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",lineHeight:1.3}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+      {/* Streak bar */}
+      <div style={{display:"flex",alignItems:"center",gap:14,background:streak>0?"#f59e0b0d":C.surface,border:`1px solid ${streak>0?"#f59e0b44":C.border}`,borderRadius:10,padding:"12px 16px"}}>
+        <div style={{fontSize:26,lineHeight:1}}>{streak>0?"🔥":"💤"}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:800,color:streak>0?"#f59e0b":C.t2}}>{streak} day task streak</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{streakMsg}</div>
+        </div>
+        {streak>0&&(
+          <div style={{display:"flex",gap:3,alignItems:"center",flexShrink:0}}>
+            {Array.from({length:Math.min(streak,7)}).map((_,i)=>(
+              <div key={i} style={{width:9,height:9,borderRadius:"50%",background:"#f59e0b",opacity:0.4+0.6*(i+1)/Math.min(streak,7)}}/>
+            ))}
+            {streak>7&&<span style={{fontSize:11,color:"#f59e0b",fontWeight:700,marginLeft:4}}>+{streak-7}</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
@@ -1588,6 +1674,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         })}
         {myProjects.length===0&&<p style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects assigned yet. Ask your admin or manager to assign you to a project.</p>}
       </div>
+      <PersonalStats me={me} tasks={tasks} projects={projects}/>
     </div>
   );
 }
@@ -1967,7 +2054,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           </div>
         );
       })()}
-
+      <PersonalStats me={me} tasks={tasks} projects={projects}/>
     </div>
   );
 }
