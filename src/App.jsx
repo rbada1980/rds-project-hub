@@ -14333,7 +14333,17 @@ export default function App(){
   async function delUser(id){const delU=users.find(u=>u.id===id)||null;await logAudit(me,"user",id,delU?.name||id,null,"delete",delU,null);await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
-  async function deleteClient(id){await supabase.from("clients").delete().eq("id",id);scl(cl=>cl.filter(c=>c.id!==id));showToast("Client deleted ✓");}
+  async function deleteClient(id){
+    const cl=clients.find(c=>c.id===id);
+    await supabase.from("clients").delete().eq("id",id);
+    scl(cl=>cl.filter(c=>c.id!==id));
+    // Also delete the portal user account so the client disappears from Messages
+    if(cl?.name){
+      const portalUser=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(cl.name||"").toLowerCase());
+      if(portalUser){await supabase.from("users").delete().eq("id",portalUser.id);su(us=>us.filter(u=>u.id!==portalUser.id));}
+    }
+    showToast("Client deleted ✓");
+  }
   async function savePortal(clientName,username,password){
     const existing=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===clientName.toLowerCase());
     if(existing){
