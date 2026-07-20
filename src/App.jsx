@@ -1344,6 +1344,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           ))}
         </div>
       </div>
+      <PersonalStats me={me} tasks={tasks} projects={projects}/>
       {uStatModal&&(()=>{
         const completedTasks=myTasks.filter(t=>isDone(t.status));
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
@@ -1674,7 +1675,6 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         })}
         {myProjects.length===0&&<p style={{color:C.t3,fontSize:13,gridColumn:"1/-1"}}>No projects assigned yet. Ask your admin or manager to assign you to a project.</p>}
       </div>
-      <PersonalStats me={me} tasks={tasks} projects={projects}/>
     </div>
   );
 }
@@ -1740,6 +1740,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           ))}
         </div>
       </div>
+      <PersonalStats me={me} tasks={tasks} projects={projects}/>
       {tlStatModal&&(()=>{
         const ipTasks=allTasks.filter(t=>t.status==="In Progress");
         const doneTasks=allTasks.filter(t=>isDone(t.status));
@@ -2054,7 +2055,6 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           </div>
         );
       })()}
-      <PersonalStats me={me} tasks={tasks} projects={projects}/>
     </div>
   );
 }
