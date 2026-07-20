@@ -2356,7 +2356,7 @@ function Login({onLogin}){
       if(error||!data){se("Invalid username or password.");}
       else{
         const isOnline=!IS_LOCAL;
-        const isEmp=data.role!=="Admin"&&data.role!=="Manager"&&data.role!=="Team Leader"&&data.role!=="Client"&&data.username!==SUPER_ADMIN;
+        const isEmp=data.role!=="Admin"&&data.role!=="Manager"&&data.role!=="Team Leader"&&data.role!=="HR & Finance"&&data.role!=="Client"&&data.username!==SUPER_ADMIN;
         if(isOnline&&isEmp){setOfflineWarn(data);sl(false);return;}
         localStorage.setItem("rds_user",JSON.stringify(data));onLogin(data);
       }
