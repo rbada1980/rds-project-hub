@@ -12,6 +12,9 @@ const IS_LOCAL = typeof window!=="undefined" && (window.location.port==="3000" |
 const LOCAL_BASE = IS_LOCAL ? `${typeof window!=="undefined"?window.location.protocol:"https:"}//${typeof window!=="undefined"?window.location.hostname:"192.168.0.159"}:${typeof window!=="undefined"?window.location.port:"8443"}` : "";
 const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
+// Returns YYYY-MM-DD in LOCAL timezone (IST). Never use toISOString() for attendance
+// dates — it returns UTC which shifts the date between midnight and 5:30 AM IST.
+function localDateStr(d){const dt=d||new Date();return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
 
 const DARK_C={
   bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
@@ -7836,18 +7839,19 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   const rawMin=loginMs?Math.floor((now-loginMs)/60000):0;
   const todayLive=loginMs?Math.max(0,rawMin-(attRec.total_break_minutes||0)-liveBrk):(stats.todayMin||0);
   const todayD=new Date();
-  const todayStr=todayD.toISOString().slice(0,10);
-  const ystStr=new Date(todayD.getTime()-86400000).toISOString().slice(0,10);
+  const todayStr=localDateStr(todayD);
+  const yst=new Date(todayD);yst.setDate(yst.getDate()-1);
+  const ystStr=localDateStr(yst);
   const dow=todayD.getDay();
-  const mon=new Date(todayD);mon.setDate(todayD.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+  const mon=new Date(todayD);mon.setDate(todayD.getDate()-(dow===0?6:dow-1));
   const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
   const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
-  const monStr=mon.toISOString().slice(0,10);
-  const lMonStr=lMon.toISOString().slice(0,10);
-  const lSunStr=lSun.toISOString().slice(0,10);
+  const monStr=localDateStr(mon);
+  const lMonStr=localDateStr(lMon);
+  const lSunStr=localDateStr(lSun);
   const mthStr=todayStr.slice(0,8)+"01";
-  const lMthStart=new Date(todayD.getFullYear(),todayD.getMonth()-1,1).toISOString().slice(0,10);
-  const lMthEnd=new Date(todayD.getFullYear(),todayD.getMonth(),0).toISOString().slice(0,10);
+  const lMthStart=localDateStr(new Date(todayD.getFullYear(),todayD.getMonth()-1,1));
+  const lMthEnd=localDateStr(new Date(todayD.getFullYear(),todayD.getMonth(),0));
   const items=[
     {label:"Today",min:todayLive,color:"#22c55e",icon:"📅",from:todayStr,to:todayStr},
     {label:"Yesterday",min:stats.yesterdayMin||0,color:"#3b82f6",icon:"📆",from:ystStr,to:ystStr},
@@ -8004,8 +8008,8 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
 }
 // ─── AttendancePage ───────────────────────────────────────────────────────────
 function AttendancePage({users}){
-  const todayStr=new Date().toISOString().slice(0,10);
-  const dfltFrom=new Date(Date.now()-29*86400000).toISOString().slice(0,10);
+  const todayStr=localDateStr();
+  const dfltFrom=localDateStr(new Date(Date.now()-29*86400000));
   const [rows,setRows]=useState([]);
   const [ldng,setLdng]=useState(false);
   const [dateFrom,setDateFrom]=useState(dfltFrom);
@@ -8335,7 +8339,7 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
     const attDates=new Set(attendance.filter(r=>r.user_name===name).map(r=>r.date));
     let streak=0;const cur=new Date();
     for(let i=0;i<90;i++){
-      const ds=cur.toISOString().slice(0,10);const dow=cur.getDay();
+      const ds=localDateStr(cur);const dow=cur.getDay();
       if(dow!==0&&dow!==6){if(attDates.has(ds))streak++;else if(streak>0)break;}
       cur.setDate(cur.getDate()-1);
     }
@@ -9100,7 +9104,7 @@ function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
     const attDates=new Set(attendance.filter(r=>r.user_name===uName).map(r=>r.date));
     let streak=0;const cur=new Date();
     for(let i=0;i<90;i++){
-      const ds=cur.toISOString().slice(0,10);
+      const ds=localDateStr(cur);
       const dow=cur.getDay();
       if(dow!==0&&dow!==6){if(attDates.has(ds))streak++;else if(streak>0)break;}
       cur.setDate(cur.getDate()-1);
@@ -10010,7 +10014,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   // ── Holiday edit modal ──
   const [editHol,setEditHol]=useState(null); // null=closed, {}=new, {id,...}=existing
   const [editHolBusy,setEditHolBusy]=useState(false);
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateStr();
   const monthStr=today.slice(0,7);
   const currentYear=new Date().getFullYear();
   const currentMonth=new Date().getMonth()+1;
@@ -13736,7 +13740,7 @@ export default function App(){
   // cloud directly (client browsers on the LAN have no internet access).
   async function loadAttendance(){
     if(!me||me.role==="Client")return;
-    const todayStr=new Date().toISOString().slice(0,10);
+    const todayStr=localDateStr();
     try{
       const{data:rows}=await supabase.from("attendance").select("*").eq("user_id",me.id).eq("date",todayStr);
       if(rows&&rows.length>0){
@@ -13752,7 +13756,7 @@ export default function App(){
   }
   async function attClockIn(){
     if(!me||me.role==="Client")return;
-    const todayStr=new Date().toISOString().slice(0,10);
+    const todayStr=localDateStr();
     try{
       await supabase.from("attendance").insert({user_id:me.id,user_name:me.name,date:todayStr,login_at:new Date().toISOString()});
       await loadAttendance();
@@ -13761,22 +13765,23 @@ export default function App(){
   async function loadAttStats(){
     if(!me||me.role==="Client")return;
     const now=new Date();
-    const todayStr=now.toISOString().slice(0,10);
+    const todayStr=localDateStr(now);
     const from60=new Date(now);from60.setDate(from60.getDate()-60);
     try{
-      const{data:rows}=await supabase.from("attendance").select("date,total_work_minutes").eq("user_id",me.id).gte("date",from60.toISOString().slice(0,10));
+      const{data:rows}=await supabase.from("attendance").select("date,total_work_minutes").eq("user_id",me.id).gte("date",localDateStr(from60));
       if(!rows)return;
       const dow=now.getDay();
-      const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+      const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));
       const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
       const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
-      const monStr=mon.toISOString().slice(0,10);
-      const lMonStr=lMon.toISOString().slice(0,10);
-      const lSunStr=lSun.toISOString().slice(0,10);
-      const ystStr=new Date(now.getTime()-86400000).toISOString().slice(0,10);
+      const monStr=localDateStr(mon);
+      const lMonStr=localDateStr(lMon);
+      const lSunStr=localDateStr(lSun);
+      const yst=new Date(now);yst.setDate(yst.getDate()-1);
+      const ystStr=localDateStr(yst);
       const mthStr=todayStr.slice(0,8)+"01";
-      const lMthStart=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,10);
-      const lMthEnd=new Date(now.getFullYear(),now.getMonth(),0).toISOString().slice(0,10);
+      const lMthStart=localDateStr(new Date(now.getFullYear(),now.getMonth()-1,1));
+      const lMthEnd=localDateStr(new Date(now.getFullYear(),now.getMonth(),0));
       function sumMin(fn){return rows.filter(fn).reduce((s,r)=>s+(r.total_work_minutes||0),0);}
       sattStats({
         todayMin:sumMin(r=>r.date===todayStr),
