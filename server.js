@@ -1128,6 +1128,39 @@ function pushPayload({ title, body, employee, type, url, tag, extra }) {
 }
 
 // ═════════════════════════════════════════════════════════════
+// DATE FIX — pg may return DATE columns as JS Date objects
+// (setTypeParser doesn't always fire). When that happens,
+// JSON.stringify calls toISOString() → UTC midnight → IST shows
+// previous day. We detect midnight-time Date objects and convert
+// using LOCAL date getters instead.
+// ═════════════════════════════════════════════════════════════
+function fixPgDates(rows) {
+  if (!Array.isArray(rows)) {
+    return rows && typeof rows === 'object' ? fixPgDates([rows])[0] : rows;
+  }
+  return rows.map(row => {
+    if (!row || typeof row !== 'object') return row;
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (v instanceof Date) {
+        const h = v.getHours(), m = v.getMinutes(), s = v.getSeconds(), ms = v.getMilliseconds();
+        if (h === 0 && m === 0 && s === 0 && ms === 0) {
+          // DATE-only column — use local components to avoid UTC shift
+          out[k] = v.getFullYear() + '-' +
+                   String(v.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(v.getDate()).padStart(2, '0');
+        } else {
+          out[k] = v.toISOString();
+        }
+      } else {
+        out[k] = v;
+      }
+    }
+    return out;
+  });
+}
+
+// ═════════════════════════════════════════════════════════════
 // GENERIC RPC — used by localApi.js (supabase.from() shim)
 // ═════════════════════════════════════════════════════════════
 
@@ -1185,7 +1218,8 @@ app.post("/api/rpc", async (req, res) => {
       const cols = columns === "*" ? "*" : columns.split(",").map(c => `"${c.trim()}"`).join(", ");
       const q = `SELECT ${cols} FROM "${table}"${buildWhere(vals)}${buildOrder()}${buildLimit()}`;
       const r = await pool.query(q, vals);
-      return res.json({ data: single ? (r.rows[0] || null) : r.rows, error: null });
+      const fixed = fixPgDates(r.rows);
+      return res.json({ data: single ? (fixed[0] || null) : fixed, error: null });
     }
 
     // ── INSERT ──
@@ -1200,7 +1234,7 @@ app.post("/api/rpc", async (req, res) => {
           `INSERT INTO "${table}" (${keys.map(k=>`"${k}"`).join(",")}) VALUES (${phs.join(",")}) RETURNING *`,
           rowVals
         );
-        inserted.push(r.rows[0]);
+        inserted.push(fixPgDates([r.rows[0]])[0]);
       }
       const out = (single || rows.length === 1) ? inserted[0] : inserted;
       return res.json({ data: out, error: null });
@@ -1219,14 +1253,15 @@ app.post("/api/rpc", async (req, res) => {
       }
       const where = buildWhere(vals);
       const r = await pool.query(`UPDATE "${table}" SET ${sets.join(",")}${where} RETURNING *`, vals);
-      return res.json({ data: single ? r.rows[0] : r.rows, error: null });
+      const fixedU = fixPgDates(r.rows);
+      return res.json({ data: single ? fixedU[0] : fixedU, error: null });
     }
 
     // ── DELETE ──
     if (op === "delete") {
       const vals = [];
       const r = await pool.query(`DELETE FROM "${table}"${buildWhere(vals)} RETURNING *`, vals);
-      return res.json({ data: r.rows, error: null });
+      return res.json({ data: fixPgDates(r.rows), error: null });
     }
 
     // ── UPSERT ──
@@ -1243,7 +1278,7 @@ app.post("/api/rpc", async (req, res) => {
            ON CONFLICT (id) DO UPDATE SET ${updateSets} RETURNING *`,
           rowVals
         );
-        inserted.push(r.rows[0]);
+        inserted.push(fixPgDates([r.rows[0]])[0]);
       }
       const out = (single || rows.length === 1) ? inserted[0] : inserted;
       return res.json({ data: out, error: null });
