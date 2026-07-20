@@ -10143,6 +10143,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const employees=users.filter(u=>u.role&&u.role!=="Client"&&u.role!=="Admin");
   const totalEmp=employees.length;
   const todayAttendance=attendance.filter(a=>a.date===today);
+  const staleSessions=attendance.filter(a=>a.date<today&&!a.logout_at);
   const presentToday=todayAttendance.filter(a=>!a.logout_at).length;
   const loggedOut=todayAttendance.filter(a=>a.logout_at).length;
   const totalPresent=todayAttendance.length;
@@ -10150,6 +10151,20 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const uniqueDays=[...new Set(attendance.map(a=>a.date))].length;
   const monthTotalRecords=attendance.length;
   const avgPresence=uniqueDays>0?(monthTotalRecords/uniqueDays).toFixed(1):"0";
+  async function closeStaleSessions(){
+    if(!staleSessions.length)return;
+    if(!window.confirm(`Close ${staleSessions.length} unclosed session(s) from previous days?\n\nThese are employees who clocked in on a previous day and never clocked out. Their work hours will be set to 0 for those sessions.`))return;
+    for(const s of staleSessions){
+      const eod=s.date+"T23:59:00.000Z";
+      try{await supabase.from("attendance").update({logout_at:eod,total_work_minutes:0}).eq("id",s.id);}catch(_){}
+    }
+    // Reload attendance
+    const adminIds=new Set(users.filter(u=>u.role==="Admin").map(u=>u.id));
+    let attData;
+    if(IS_LOCAL){const{data:d}=await supabase.from("attendance").select("*").gte("date",monthStr+"-01").order("date",{ascending:false}).limit(2000);attData=d;}
+    else{const r=await fetch(SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+monthStr+"-01&order=date.desc&limit=2000",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});attData=await r.json();}
+    setAttendance(Array.isArray(attData)?attData.filter(r=>!adminIds.has(r.user_id)):[]);
+  }
 
   // ── Billing tasks ──
   const completedWithWeight=tasks.filter(t=>(t.status==="Completed"||t.status==="completed")&&t.det_weight>0);
@@ -10406,6 +10421,17 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
       )}
       {!loading&&todayAttendance.length===0&&(
         <div style={{...card,textAlign:"center",color:C.t3,fontSize:13,padding:32,marginBottom:24}}>No attendance records for today yet.</div>
+      )}
+      {!loading&&staleSessions.length>0&&(
+        <div style={{...card,marginBottom:24,border:`1px solid #f59e0b44`,background:"#f59e0b08"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:13,color:"#f59e0b",marginBottom:4}}>⚠️ {staleSessions.length} Unclosed Session{staleSessions.length>1?"s":""} from Previous Day{staleSessions.length>1?"s":""}</div>
+              <div style={{fontSize:12,color:C.t3}}>{staleSessions.map(s=>s.user_name||"Unknown").join(", ")} — clocked in but never clocked out</div>
+            </div>
+            <button onClick={closeStaleSessions} style={{background:"#f59e0b22",border:"1px solid #f59e0b55",borderRadius:8,padding:"7px 16px",color:"#f59e0b",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Close All Stale Sessions</button>
+          </div>
+        </div>
       )}
 
       {/* ── EMPLOYEE DIRECTORY ── */}
@@ -13742,6 +13768,16 @@ export default function App(){
     if(!me||me.role==="Client")return;
     const todayStr=localDateStr();
     try{
+      // Auto-close any unclosed session from a PREVIOUS day so it doesn't
+      // block today's clock-in (happens when old UTC-date bug left sessions open)
+      const{data:stale}=await supabase.from("attendance").select("id,login_at,date").eq("user_id",me.id).is("logout_at",null).lt("date",todayStr);
+      if(stale&&stale.length>0){
+        for(const s of stale){
+          // Best-effort: mark logout at end of that day (23:59) with 0 work minutes noted
+          const eod=s.date+"T23:59:00.000Z";
+          await supabase.from("attendance").update({logout_at:eod,total_work_minutes:0}).eq("id",s.id);
+        }
+      }
       const{data:rows}=await supabase.from("attendance").select("*").eq("user_id",me.id).eq("date",todayStr);
       if(rows&&rows.length>0){
         const rec=rows[0];
