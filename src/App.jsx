@@ -15279,7 +15279,7 @@ export default function App(){
             )}
           </>
         )}
-        {view==="timings"&&(
+        {view==="timings"&&!isClient&&(
           <TimingsPage me={me} tasks={tasks} projects={accessibleProjects} users={users} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} isClient={isClient} isFinance={isFinance}/>
         )}
         {view==="clientfeedback"&&(isAdmin||isManager||isTeamLeader)&&(
