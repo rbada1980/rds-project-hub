@@ -7780,16 +7780,17 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose,pinnedTasks=
 }
 
 // ─── AttendanceBar ───────────────────────────────────────────────────────────
-function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClockIn}){
+function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClockIn,canClockInOnline=false}){
   const [tick,setTick]=useState(0);
   useEffect(()=>{
     if(!attRec||attRec.logout_at)return;
     const id=setInterval(()=>setTick(t=>t+1),1000);
     return()=>clearInterval(id);
   },[attRec]);
-  // Not clocked in yet today — show Login button (offline only)
+  // Employees: block clock-in on online site. Manager/TL/HR: allow online clock-in.
+  const blockOnline=!IS_LOCAL&&!canClockInOnline;
   if(!attRec){
-    if(!IS_LOCAL)return(
+    if(blockOnline)return(
       <span style={{fontSize:12,color:"#f59e0b",background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:8,padding:"5px 12px",fontWeight:600,whiteSpace:"nowrap"}}>
         ⚠ Attendance not counted online
       </span>
@@ -7802,7 +7803,7 @@ function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClo
     );
   }
   if(attRec.logout_at){
-    if(!IS_LOCAL)return(
+    if(blockOnline)return(
       <span style={{fontSize:12,color:"#f59e0b",background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:8,padding:"5px 12px",fontWeight:600,whiteSpace:"nowrap"}}>
         ⚠ Attendance not counted online
       </span>
@@ -14434,7 +14435,7 @@ export default function App(){
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <button onClick={toggleTheme} title={theme==="dark"?"Switch to Light Mode":"Switch to Dark Mode"} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",fontSize:16,cursor:"pointer",color:C.t2,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>{theme==="dark"?"☀️":"🌙"}</button>
             {!isClient&&<NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>}
-            {!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn}/>}
+            {!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn} canClockInOnline={isManager||isTeamLeader||isFinance}/>}
             {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
             <span className="rds-topbar-filters" style={{display:"contents"}}></span>
             {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button className="rds-export-btn" onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export</span></button>);})()}
