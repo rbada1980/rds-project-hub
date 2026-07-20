@@ -17,6 +17,19 @@ const SUPER_ADMIN = "ramesh";
 function localDateStr(d){const dt=d||new Date();return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
 // IST datetime string for <input type="datetime-local"> min value
 function localDateTimeStr(d){const dt=d||new Date();return localDateStr(dt)+"T"+String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0");}
+// Normalize any pg date value to correct IST YYYY-MM-DD string.
+// pg (without setTypeParser) returns DATE as JS Date at UTC midnight:
+//   "2026-07-20" in pg → new Date("2026-07-19T18:30:00.000Z") → JSON → "2026-07-19T18:30:00.000Z"
+// This function handles BOTH cases:
+//   "2026-07-20"              → returned as-is (already correct)
+//   "2026-07-19T18:30:00.000Z" → new Date() in IST → getDate()=20 → "2026-07-20"
+function normDate(ds){
+  if(!ds)return"—";
+  if(typeof ds==="string"&&ds.length===10)return ds; // already YYYY-MM-DD
+  const d=new Date(ds);
+  if(isNaN(d.getTime()))return String(ds).slice(0,10);
+  return localDateStr(d); // use local (IST) getDate/getMonth/getFullYear
+}
 
 const DARK_C={
   bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
@@ -7986,7 +7999,7 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
                       <tbody>
                         {modalRows.map(r=>(
                           <tr key={r.id} style={{borderBottom:"1px solid "+C.border+"44"}}>
-                            <td style={{padding:"8px 12px",color:C.t1,fontWeight:600}}>{r.date}</td>
+                            <td style={{padding:"8px 12px",color:C.t1,fontWeight:600}}>{normDate(r.date)}</td>
                             {(isAdmin||isManager)&&<td style={{padding:"8px 12px",color:C.t1}}>{r.user_name}</td>}
                             <td style={{padding:"8px 12px",color:"#22c55e",fontFamily:"monospace"}}>{fmtTime(r.login_at)}</td>
                             <td style={{padding:"8px 12px",color:r.logout_at?C.t2:"#f59e0b",fontFamily:"monospace"}}>{fmtTime(r.logout_at)}</td>
@@ -8032,7 +8045,10 @@ function AttendancePage({users}){
       const res=await fetch(url,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
       data=await res.json();
     }
-    setRows(Array.isArray(data)?data.filter(r=>!adminIds.has(r.user_id)):[]);
+    // Normalize date field: pg may return DATE as JS Date object → ISO timestamp
+    // normDate() converts any form to correct IST YYYY-MM-DD string
+    const norm=arr=>(arr||[]).map(r=>({...r,date:normDate(r.date)}));
+    setRows(Array.isArray(data)?norm(data).filter(r=>!adminIds.has(r.user_id)):[]);
     setLdng(false);
   }
   function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h+"h "+String(mn).padStart(2,"0")+"m";}
@@ -8073,7 +8089,7 @@ function AttendancePage({users}){
             <tbody>
               {rows.length===0?<tr><td colSpan={7} style={{padding:32,textAlign:"center",color:C.t3}}>No records found</td></tr>:rows.map(r=>(
                 <tr key={r.id} style={{borderBottom:"1px solid "+C.border+"55"}}>
-                  <td style={{padding:"9px 12px",color:C.t1,fontWeight:600}}>{r.date}</td>
+                  <td style={{padding:"9px 12px",color:C.t1,fontWeight:600}}>{normDate(r.date)}</td>
                   <td style={{padding:"9px 12px",color:C.t1}}>{r.user_name}</td>
                   <td style={{padding:"9px 12px",color:"#22c55e",fontFamily:"monospace"}}>{fmtTime(r.login_at)}</td>
                   <td style={{padding:"9px 12px",color:r.logout_at?C.t2:"#f59e0b",fontFamily:"monospace"}}>{fmtTime(r.logout_at)}</td>
@@ -9665,7 +9681,8 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
         const attRes=await fetch(attUrl,{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
         attData=await attRes.json();
       }
-      setAttendance(Array.isArray(attData)?attData.filter(r=>!adminIds.has(r.user_id)):[]);
+      const normAtt=arr=>(arr||[]).map(r=>({...r,date:normDate(r.date)}));
+      setAttendance(Array.isArray(attData)?normAtt(attData).filter(r=>!adminIds.has(r.user_id)):[]);
     }
     setLoading(false);
   }
@@ -9808,7 +9825,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
                       const sc=r.logout_at?"#059669":"#d97706";
                       return(
                         <tr key={r.id} style={{background:i%2===0?"transparent":C.surface+"44",borderBottom:`1px solid ${C.border}22`}}>
-                          <td style={{padding:"8px 12px",fontWeight:600,color:C.t1}}>{r.date}</td>
+                          <td style={{padding:"8px 12px",fontWeight:600,color:C.t1}}>{normDate(r.date)}</td>
                           <td style={{padding:"8px 12px",color:C.t2}}>{fmtTime(r.login_at)}</td>
                           <td style={{padding:"8px 12px",color:C.t2}}>{fmtTime(r.logout_at)}</td>
                           <td style={{padding:"8px 12px"}}><span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 9px"}}>{fmtDur(r.total_work_minutes)}</span></td>
@@ -10083,7 +10100,8 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
             :supabase.from("attendance").select("*").gte("date",monthStr+"-01").order("date",{ascending:false}).limit(2000),
         ]);
         setInvoices(Array.isArray(invRes?.data)?invRes.data:Array.isArray(invRes)?invRes:[]);
-        setAttendance(Array.isArray(attRes?.data)?attRes.data:Array.isArray(attRes)?attRes:[]);
+        const rawAtt=Array.isArray(attRes?.data)?attRes.data:Array.isArray(attRes)?attRes:[];
+        setAttendance(rawAtt.map(r=>({...r,date:normDate(r.date)})));
       }catch(e){}
       await fetchHolidays();
       setLoading(false);
@@ -10165,7 +10183,8 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
     let attData;
     if(IS_LOCAL){const{data:d}=await supabase.from("attendance").select("*").gte("date",monthStr+"-01").order("date",{ascending:false}).limit(2000);attData=d;}
     else{const r=await fetch(SUPA_URL+"/rest/v1/attendance?select=*&date=gte."+monthStr+"-01&order=date.desc&limit=2000",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});attData=await r.json();}
-    setAttendance(Array.isArray(attData)?attData.filter(r=>!adminIds.has(r.user_id)):[]);
+    const normAtt2=arr=>(arr||[]).map(r=>({...r,date:normDate(r.date)}));
+    setAttendance(Array.isArray(attData)?normAtt2(attData).filter(r=>!adminIds.has(r.user_id)):[]);
   }
 
   // ── Billing tasks ──
