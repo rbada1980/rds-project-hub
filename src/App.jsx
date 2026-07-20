@@ -14747,7 +14747,7 @@ export default function App(){
                   <p style={{margin:"3px 0 0",fontSize:13,color:C.t2}}>Welcome back, {me.name} · Full access to all projects, users, and clients</p>
                 </div>
                 <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-                  {[{l:"Employees",v:users.length,c:C.accent,k:"users"},{l:"Clients",v:clients.length,c:C.teal,k:"clients"},{l:"Projects",v:accessibleProjects.length,c:C.blue,k:"projects"},{l:"Completion",v:(tasks.length?Math.round(tasks.filter(t=>t.status==="Completed"||t.status==="Done").length/tasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
+                  {[{l:"Employees",v:users.filter(u=>u.role!=="Client").length,c:C.accent,k:"users"},{l:"Clients",v:clients.length,c:C.teal,k:"clients"},{l:"Projects",v:accessibleProjects.length,c:C.blue,k:"projects"},{l:"Completion",v:(tasks.length?Math.round(tasks.filter(t=>t.status==="Completed"||t.status==="Done").length/tasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
                     <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
                       onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
                       onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
