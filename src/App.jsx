@@ -15,6 +15,8 @@ const SUPER_ADMIN = "ramesh";
 // Returns YYYY-MM-DD in LOCAL timezone (IST). Never use toISOString() for attendance
 // dates — it returns UTC which shifts the date between midnight and 5:30 AM IST.
 function localDateStr(d){const dt=d||new Date();return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+// IST datetime string for <input type="datetime-local"> min value
+function localDateTimeStr(d){const dt=d||new Date();return localDateStr(dt)+"T"+String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0");}
 
 const DARK_C={
   bg:"#0f1117",surface:"#171b26",card:"#1e2433",border:"#2a3040",
@@ -1013,7 +1015,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
 function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
   const td={padding:"5px 7px",borderBottom:`1px solid ${C.border}`};
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateStr();
   const overdue=task.due_date&&task.due_date<today&&!isDone(task.status);
   const showCb=!!onSelect;
   const apv=task.client_approval||"Pending Review";
@@ -1357,7 +1359,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       {/* ── Due This Week ── */}
       {(()=>{
         const weekEnd=new Date(today);weekEnd.setDate(weekEnd.getDate()+7);
-        const ws=weekEnd.toISOString().slice(0,10);
+        const ws=localDateStr(weekEnd);
         const dueWeek=myTasks.filter(t=>t.due_date&&t.due_date>=today&&t.due_date<=ws&&!isDone(t.status));
         if(!dueWeek.length)return null;
         return(
@@ -1433,7 +1435,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                 ))}</tr></thead>
                 <tbody>{ft.length===0
                   ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -1842,7 +1844,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                 ))}</tr></thead>
                 <tbody>{ft.length===0
                   ?<tr><td colSpan={11} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=new Date().toISOString().slice(0,10);const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -1956,7 +1958,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
 function ClientOverview({projects,tasks,onSelectClient,clients}){
   const isMobile=useMobile();
   const clientNames=[...new Set(projects.map(p=>p.client||"Unassigned"))].filter(c=>c==="Unassigned"||clients.some(cl=>cl.name===c));
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateStr();
   return(
     <div style={{marginBottom:32}}>
       <h2 style={{margin:"0 0 12px",fontSize:16,fontWeight:700,color:C.t1}}>Client-wise Overview</h2>
@@ -2061,7 +2063,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
 }
 function exportExcel(projects,tasks,label="Report"){
   const projectById=new Map(projects.map(p=>[p.id,p]));
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateStr();
   const safe=label.replace(/[/\\:*?"<>|]/g," ").trim();
   const pct=(d,t)=>t?Math.round((d/t)*100)+"%":"0%";
 
@@ -2398,7 +2400,7 @@ const APPROVAL_ICON={"Pending Review":"⏳","Approved":"✅","Rejected":"❌","N
 function ClientReviewModal({task,project,onSave,onClose,saving}){
   const [approval,setApproval]=useState(task.client_approval||"Pending Review");
   const [comment,setComment]=useState(task.client_comment||"");
-  const tdy=new Date().toISOString().slice(0,10);
+  const tdy=localDateStr();
   const isOv=task.due_date&&task.due_date<tdy&&!isDone(task.status);
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"#00000088",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
@@ -2563,7 +2565,7 @@ function ClientFeedbackPage({tasks,projects,users,onEditTask}){
                     const proj=projectById.get(t.project_id);
                     const apv=t.client_approval||"Pending Review";
                     const col=APPROVAL_CLR[apv]||C.t3;
-                    const today2=new Date().toISOString().slice(0,10);
+                    const today2=localDateStr();
                     const ov=t.due_date&&t.due_date<today2&&!isDone(t.status);
                     return(
                       <tr key={t.id} onClick={()=>onEditTask(t)} style={{cursor:"pointer",borderBottom:`1px solid ${C.border}`}}
@@ -2666,7 +2668,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#1d4ed8;font-size:15px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
-      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Viewed At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Viewed At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
     </div>
     <p style="color:#64748b;font-size:13px;margin:0;">Log in to RDS Projects portal to follow up or mark as paid.</p>
   </div>
@@ -2720,7 +2722,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
-      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Paid At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Paid At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
     </div>
     <p style="color:#64748b;font-size:13px;margin:0;">Log in to RDS Projects to confirm and update records.</p>
   </div>
@@ -2740,7 +2742,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   }
   const INV_S={sent:{label:"Sent",color:"#3b82f6"},viewed:{label:"Viewed",color:"#8b5cf6"},paid:{label:"Paid",color:"#22c55e"},overdue:{label:"Overdue",color:"#ef4444"}};
   function fmtAmt(n){return n!=null?"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";}
-  function fmtInvDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}
+  function fmtInvDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"});}
   // Group taskSnapshot by project
   function groupByProject(taskSnap){
     const map={};
@@ -3662,8 +3664,8 @@ function NotificationCenter({me,onBadgeChange}){
   }
 
   const unreadCount=notifs.filter(n=>!n.is_read).length;
-  const todayStr=new Date().toISOString().slice(0,10);
-  const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,10);
+  const todayStr=localDateStr();
+  const weekAgo=localDateStr(new Date(Date.now()-7*24*60*60*1000));
 
   const base=tab==="unread"?notifs.filter(n=>!n.is_read):tab==="pinned"?notifs.filter(n=>n.is_pinned):notifs;
   const pinned=base.filter(n=>n.is_pinned&&tab!=="pinned");
@@ -3961,10 +3963,10 @@ ${overdueList.map((t,i)=>{const pj=projectById.get(t.project_id);const days=Math
 // ─────────────────────────────────────────────────────────────────────────────
 function exportSubmissionList(projects,tasks,today){
   const projectById=new Map(projects.map(p=>[p.id,p]));
-  const ws=new Date(today);ws.setDate(ws.getDate()-ws.getDay());
-  const we=new Date(today);we.setDate(we.getDate()+(6-we.getDay()));
-  const wsStr=ws.toISOString().slice(0,10);
-  const weStr=we.toISOString().slice(0,10);
+  const ws=new Date(today+"T00:00:00");ws.setDate(ws.getDate()-ws.getDay());
+  const we=new Date(today+"T00:00:00");we.setDate(we.getDate()+(6-we.getDay()));
+  const wsStr=localDateStr(ws);
+  const weStr=localDateStr(we);
   const ds=v=>v?String(v).slice(0,10):null;
   const inRange=(t,from,to)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to);};
   const todayTasks=tasks.filter(t=>inRange(t,today,today));
@@ -4005,8 +4007,8 @@ function exportSubmissionListByPeriod(projects,tasks,period,today){
   const wkStart=mondayOf(today);const wkEnd=sundayOf(today);
   const nwStart=addDays(wkStart,7);const nwEnd=addDays(nwStart,6);
   const d=new Date(today);
-  const nmStart=new Date(d.getFullYear(),d.getMonth()+1,1).toISOString().slice(0,10);
-  const nmEnd=new Date(d.getFullYear(),d.getMonth()+2,0).toISOString().slice(0,10);
+  const nmStart=localDateStr(new Date(d.getFullYear(),d.getMonth()+1,1));
+  const nmEnd=localDateStr(new Date(d.getFullYear(),d.getMonth()+2,0));
   const CFG={
     overdue:{from:"2000-01-01",to:yesterday,label:"Overdue Tasks",icon:"⚠️",filename:`RDS_Overdue_${today}`},
     today:{from:today,to:today,label:`Today — ${today}`,icon:"📅",filename:`RDS_Today_${today}`},
@@ -4080,7 +4082,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
     if(period==="tomorrow"){const tm=addDays(today,1);return{from:tm,to:tm,label:"Tomorrow",icon:"🌅",color:C.green};}
     if(period==="this_week"){const ms=mondayOf(today);const se=sundayOf(today);return{from:ms,to:se,label:`This Week  ${ms} → ${se}`,icon:"📆",color:"#f59e0b"};}
     if(period==="next_week"){const nm=addDays(mondayOf(today),7);const ns=addDays(nm,6);return{from:nm,to:ns,label:`Next Week  ${nm} → ${ns}`,icon:"🗓",color:"#8b5cf6"};}
-    if(period==="next_month"){const nm=new Date(d.getFullYear(),d.getMonth()+1,1);const ne=new Date(d.getFullYear(),d.getMonth()+2,0);const nms=nm.toISOString().slice(0,10);const nes=ne.toISOString().slice(0,10);return{from:nms,to:nes,label:`Next Month  ${nms} → ${nes}`,icon:"📅",color:"#06b6d4"};}
+    if(period==="next_month"){const nm=new Date(d.getFullYear(),d.getMonth()+1,1);const ne=new Date(d.getFullYear(),d.getMonth()+2,0);const nms=localDateStr(nm);const nes=localDateStr(ne);return{from:nms,to:nes,label:`Next Month  ${nms} → ${nes}`,icon:"📅",color:"#06b6d4"};}
     return{from:customFrom,to:customTo,label:`${customFrom} → ${customTo}`,icon:"📆",color:C.accent};
   };
 
@@ -4123,8 +4125,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const nextWeekStart=addDays(mondayOf(today),7);
   const nextWeekEnd=addDays(nextWeekStart,6);
   const nextWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=nextWeekStart&&d1<=nextWeekEnd)||(d2&&d2>=nextWeekStart&&d2<=nextWeekEnd);}).length;
-  const nextMonthStart=(()=>{const d=new Date(today);return new Date(d.getFullYear(),d.getMonth()+1,1).toISOString().slice(0,10);})();
-  const nextMonthEnd=(()=>{const d=new Date(today);return new Date(d.getFullYear(),d.getMonth()+2,0).toISOString().slice(0,10);})();
+  const nextMonthStart=(()=>{const d=new Date();return localDateStr(new Date(d.getFullYear(),d.getMonth()+1,1));})();
+  const nextMonthEnd=(()=>{const d=new Date();return localDateStr(new Date(d.getFullYear(),d.getMonth()+2,0));})();
   const nextMonthCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=nextMonthStart&&d1<=nextMonthEnd)||(d2&&d2>=nextMonthStart&&d2<=nextMonthEnd);}).length;
   const noDatesCount=allTasks.filter(t=>!hasDate(t)).length;
 
@@ -5454,7 +5456,7 @@ function AnnouncementsPage({me,users,projects,canPost}){
   }
 
   const filtered=tab==="all"?anns:anns.filter(a=>a.scope===tab);
-  const fmt=dt=>new Date(dt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+  const fmt=dt=>new Date(dt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"});
 
   return(
     <div>
@@ -6196,7 +6198,7 @@ function WarRoomPage({me,projects,users}){
       ``,
       `👥 Participants: ${participants.join(", ")}`,
       `📈 Volume: ${Object.entries(byAuthor).map(([n,c])=>`${n} (${c})`).join("  ·  ")}`,
-      `🕐 Period: ${new Date(msgs[0].created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} → ${new Date(msgs[msgs.length-1].created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}`,
+      `🕐 Period: ${new Date(msgs[0].created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} → ${new Date(msgs[msgs.length-1].created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}`,
     ];
     if(actionItems.length){lines.push("");lines.push(`⚡ Action Required (${actionItems.length}):`);actionItems.forEach(m=>lines.push(`  • ${m.author_name}: "${(m.edited_body||m.body||"").slice(0,90)}"`));}
     if(urgent.length){lines.push("");lines.push(`🚨 Urgent (${urgent.length}):`);urgent.forEach(m=>lines.push(`  • ${m.author_name}: "${(m.edited_body||m.body||"").slice(0,90)}"`));}
@@ -6296,8 +6298,8 @@ function WarRoomPage({me,projects,users}){
 
   const fmt=dt=>{const d=new Date(dt);const now=new Date();const diff=now-d;
     if(diff<60000)return"just now";if(diff<3600000)return Math.floor(diff/60000)+"m ago";
-    if(diff<86400000)return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
-    return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+    if(diff<86400000)return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"});
+    return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short"});
   };
   const renderBody=body=>{if(!body)return null;return body.split(/(@\w+)/g).map((part,i)=>part.startsWith("@")?<span key={i} style={{color:C.accent,fontWeight:700,background:C.accent+"18",borderRadius:4,padding:"0 3px"}}>{part}</span>:<span key={i}>{part}</span>);};
 
@@ -6368,7 +6370,7 @@ function WarRoomPage({me,projects,users}){
                   <div key={sm.id} style={{padding:"10px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",gap:10,alignItems:"flex-start"}}>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:12,color:C.t1,marginBottom:4,wordBreak:"break-word"}}>{sm.body}</div>
-                      <div style={{fontSize:10,color:C.teal,fontWeight:700}}>🕐 {new Date(sm.send_at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>
+                      <div style={{fontSize:10,color:C.teal,fontWeight:700}}>🕐 {new Date(sm.send_at).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>
                     </div>
                     <button onClick={()=>cancelScheduled(sm.id)} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 8px",color:C.red,cursor:"pointer",fontSize:11,flexShrink:0,fontFamily:"inherit"}}>Cancel</button>
                   </div>
@@ -6565,7 +6567,7 @@ function WarRoomPage({me,projects,users}){
                           <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0 12px",flexShrink:0}}>
                             <div style={{flex:1,height:1,background:C.border}}/>
                             <span style={{fontSize:11,color:C.t3,background:C.bg,padding:"3px 12px",borderRadius:20,border:`1px solid ${C.border}`,flexShrink:0,whiteSpace:"nowrap"}}>
-                              {new Date(msg.created_at).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short",year:"numeric"})}
+                              {new Date(msg.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"long",day:"numeric",month:"short",year:"numeric"})}
                             </span>
                             <div style={{flex:1,height:1,background:C.border}}/>
                           </div>
@@ -6715,7 +6717,7 @@ function WarRoomPage({me,projects,users}){
                             {/* Timestamp */}
                             {!msg._pending&&!msg._failed&&(
                               <span style={{fontSize:10,color:C.t3,padding:"0 2px"}}>
-                                {new Date(msg.created_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
+                                {new Date(msg.created_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"})}
                                 {isMe&&<span style={{marginLeft:4,color:readBy.length>0?C.teal:C.t3}}>{readBy.length>0?"✓✓ Seen":"✓"}</span>}
                               </span>
                             )}
@@ -6828,7 +6830,7 @@ function WarRoomPage({me,projects,users}){
                       <div style={{fontSize:12,fontWeight:700,color:C.t1,marginBottom:8}}>🕐 Schedule message</div>
                       {!input.trim()&&<div style={{fontSize:11,color:C.red,marginBottom:8}}>Write a message first</div>}
                       <input type="datetime-local" value={scheduleTime} onChange={e=>setScheduleTime(e.target.value)}
-                        min={new Date().toISOString().slice(0,16)}
+                        min={localDateTimeStr()}
                         style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}}/>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>setScheduleOpen(false)} style={{flex:1,background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Cancel</button>
@@ -6924,7 +6926,7 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
   const lEl=localElapsed();
   const [hrs,setHrs]=useState("");
   const [mins,setMins]=useState("0");
-  const [logDate,setLogDate]=useState(new Date().toISOString().slice(0,10));
+  const [logDate,setLogDate]=useState(localDateStr());
   const [notes,setNotes]=useState("");
   const [saving,setSaving]=useState(false);
 
@@ -6952,7 +6954,7 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
 
   const totalMins=logs.reduce((s,l)=>s+(l.duration_minutes||0),0);
   function fmtDur(min){if(!min)return"0m";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
-  function fmtDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});}
+  function fmtDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"});}
   const byUser={};
   logs.forEach(l=>{if(!byUser[l.user_name])byUser[l.user_name]=0;byUser[l.user_name]+=(l.duration_minutes||0);});
   const canSave=(parseInt(hrs)||0)*60+(parseInt(mins)||0)>0;
@@ -7092,10 +7094,10 @@ function ProjectActivityFeed({projectId,tasks,isAdmin,isManager}){
   function fmtTime(ts){
     const d=new Date(ts);const now=new Date();
     const diff=Math.floor((now-d)/86400000);
-    const t=d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+    const t=d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});
     if(diff===0)return"Today, "+t;
     if(diff===1)return"Yesterday, "+t;
-    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+", "+t;
+    return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"})+", "+t;
   }
 
   // Group by date label
@@ -7104,7 +7106,7 @@ function ProjectActivityFeed({projectId,tasks,isAdmin,isManager}){
     for(const l of logs){
       const d=new Date(l.created_at);const now=new Date();
       const diff=Math.floor((now-d)/86400000);
-      const label=diff===0?"Today":diff===1?"Yesterday":d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+      const label=diff===0?"Today":diff===1?"Yesterday":d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"});
       if(!g[label])g[label]=[];
       g[label].push(l);
     }
@@ -7267,10 +7269,10 @@ function TaskHistory({taskId,me}){
     const d=new Date(ts);
     const now=new Date();
     const diffDays=Math.floor((now-d)/86400000);
-    const timeStr=d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+    const timeStr=d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});
     if(diffDays===0)return timeStr;
     if(diffDays===1)return"Yesterday "+timeStr;
-    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+", "+timeStr;
+    return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short"})+", "+timeStr;
   }
 
   function groupByDate(logs){
@@ -7279,7 +7281,7 @@ function TaskHistory({taskId,me}){
       const d=new Date(l.created_at);
       const now=new Date();
       const diffDays=Math.floor((now-d)/86400000);
-      const label=diffDays===0?"Today":diffDays===1?"Yesterday":d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+      const label=diffDays===0?"Today":diffDays===1?"Yesterday":d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"});
       if(!groups[label])groups[label]=[];
       groups[label].push(l);
     }
@@ -7392,7 +7394,7 @@ function TaskComments({taskId,projectId,me,users}){
     setSaving(false);
   }
 
-  const fmt=dt=>new Date(dt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+  const fmt=dt=>new Date(dt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"});
   const renderBody=body=>body.split(/(@\w+)/g).map((part,i)=>
     part.startsWith("@")?<span key={i} style={{color:"#6366f1",fontWeight:700,background:"#6366f118",borderRadius:3,padding:"0 2px"}}>{part}</span>:<span key={i}>{part}</span>
   );
@@ -7471,14 +7473,14 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
   const [dragId,setDragId]=useState(null);
   const [dropTarget,setDropTarget]=useState(null);
 
-  const todayD=new Date();todayD.setHours(0,0,0,0);
-  const todayStr=todayD.toISOString().slice(0,10);
-  const tomorrowStr=new Date(todayD.getTime()+86400000).toISOString().slice(0,10);
+  const todayD=new Date();
+  const todayStr=localDateStr(todayD);
+  const tomorrowStr=localDateStr(new Date(todayD.getFullYear(),todayD.getMonth(),todayD.getDate()+1));
   const startD=baseDate?new Date(baseDate):new Date(todayD);
   startD.setDate(startD.getDate()+weekOffset*7);
   const dateArr=Array.from({length:rangeDays},(_,i)=>{const d=new Date(startD);d.setDate(d.getDate()+i);return d;});
-  const startStr=dateArr[0].toISOString().slice(0,10);
-  const endStr=dateArr[dateArr.length-1].toISOString().slice(0,10);
+  const startStr=localDateStr(dateArr[0]);
+  const endStr=localDateStr(dateArr[dateArr.length-1]);
 
   const teamUsers=users.filter(u=>u.role!=="Client");
 
@@ -7514,7 +7516,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
       if(!workload[uid])continue;
       const cur=new Date(base);
       while(cur<=lim){
-        const k=cur.toISOString().slice(0,10);
+        const k=localDateStr(cur);
         if(!workload[uid][k])workload[uid][k]=[];
         if(!workload[uid][k].find(x=>x.id===t.id))workload[uid][k].push(t);
         cur.setDate(cur.getDate()+1);
@@ -7569,7 +7571,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
         <div style={{display:"flex",position:"sticky",top:0,zIndex:10,background:C.surface,borderBottom:"1px solid "+C.border}}>
           <div style={{width:NAME_W,minWidth:NAME_W,padding:"8px 12px",fontSize:11,fontWeight:700,color:C.t3,borderRight:"1px solid "+C.border,position:"sticky",left:0,background:C.surface,zIndex:12}}>MEMBER</div>
           {dateArr.map(d=>{
-            const ds=d.toISOString().slice(0,10);
+            const ds=localDateStr(d);
             const isT=ds===todayStr;
             const isWe=d.getDay()===0||d.getDay()===6;
             return(
@@ -7605,7 +7607,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
                 </div>
               </div>
               {dateArr.map(d=>{
-                const ds=d.toISOString().slice(0,10);
+                const ds=localDateStr(d);
                 const cellTs=uWork[ds]||[];
                 const cnt=cellTs.length;
                 const isT=ds===todayStr;
@@ -7832,7 +7834,7 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   },[attRec]);
   if(!stats)return null;
   function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h>0?h+"h "+String(mn).padStart(2,"0")+"m":mn+"m";}
-  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
   const now=Date.now();
   const loginMs=attRec&&!attRec.logout_at?new Date(attRec.login_at).getTime():null;
   const liveBrk=attRec&&attBreak&&!attRec.logout_at?Math.floor((now-new Date(attBreak.break_start).getTime())/60000):0;
@@ -8034,7 +8036,7 @@ function AttendancePage({users}){
     setLdng(false);
   }
   function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h+"h "+String(mn).padStart(2,"0")+"m";}
-  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
   function exportCsv(){
     const hdr=["Date","Employee","Clock In","Clock Out","Work Hours","Break Min","Status"];
     const csvRows=rows.map(r=>[r.date,r.user_name,fmtTime(r.login_at),fmtTime(r.logout_at),fmtMin(r.total_work_minutes),r.total_break_minutes||0,r.logout_at?"Done":"Active"]);
@@ -8213,7 +8215,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
             xml+='</Table></Worksheet></Workbook>';
             const blob=new Blob([xml],{type:"application/vnd.ms-excel"});
             const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;
-            a.download="Task_Time_Logs_"+new Date().toISOString().slice(0,10)+".xls";a.click();URL.revokeObjectURL(url);
+            a.download="Task_Time_Logs_"+localDateStr()+".xls";a.click();URL.revokeObjectURL(url);
           }} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 14px",color:C.t2,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}
             onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
             📥 Export Excel
@@ -8332,7 +8334,7 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
     const totalMins=myLogs.reduce((s,l)=>s+(l.duration_minutes||0),0);
     const myTasks=tasks.filter(t=>t.assignee===name);
     const done=myTasks.filter(t=>t.status==="Completed"||t.status==="Done");
-    const today=new Date().toISOString().slice(0,10);
+    const today=localDateStr();
     const onTime=done.filter(t=>t.due_date&&(t.updated_at||"").slice(0,10)<=t.due_date).length;
     const projSet=new Set(myLogs.map(l=>l.project_id).filter(Boolean));
     // Streak
@@ -8486,14 +8488,14 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
     const d=new Date();const day=d.getDay();
     d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);d.setHours(0,0,0,0);return d;
   }
-  function fmtDate(d){return d.toISOString().slice(0,10);}
+  function fmtDate(d){return localDateStr(d);}
   function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
 
   const weekStart=getWeekStart(weekOffset);
   const weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
   const weekStartStr=fmtDate(weekStart);
   const weekEndStr=fmtDate(weekEnd);
-  const fmtRange=weekStart.toLocaleDateString("en-IN",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});
+  const fmtRange=weekStart.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric",year:"numeric"});
 
   const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
   const DOW=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -8567,7 +8569,7 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
       :0;
     const remainingMins=remaining.length*(avgTaskMins||120); // default 2h per task
     const weeksLeft=weeklyMins>0?remainingMins/weeklyMins:null;
-    const eta=weeksLeft!=null?(()=>{const d=new Date();d.setDate(d.getDate()+Math.ceil(weeksLeft*7));return d.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});})():null;
+    const eta=weeksLeft!=null?(()=>{const d=new Date();d.setDate(d.getDate()+Math.ceil(weeksLeft*7));return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric",year:"numeric"});})():null;
     return{...p,remaining:remaining.length,weeklyMins,weeksLeft,eta};
   }).filter(p=>p.remaining>0).sort((a,b)=>(a.weeksLeft??999)-(b.weeksLeft??999));
 
@@ -8696,7 +8698,7 @@ function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,i
   const CURRENCY="₹";
 
   function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
-  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-IN",{maximumFractionDigits:0});}
+  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-IN",{timeZone:"Asia/Kolkata",maximumFractionDigits:0});}
 
   // ── 1. Payroll CSV ────────────────────────────────────────────────────────
   async function downloadPayrollCsv(){
@@ -8743,7 +8745,7 @@ function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,i
     <body><h2>⚠️ Overtime Report</h2><p>Month: ${month} &nbsp;·&nbsp; Days with &gt;8 hours logged</p>
     <table><thead><tr><th>Date</th><th>Employee</th><th>Hours Logged</th><th>Overtime</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="4" class="none">No overtime this month 🎉</td></tr>'}</tbody></table>
-    <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString()} · RDS Project Hub</p>
+    <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})} · RDS Project Hub</p>
     </body></html>`;
     const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
   }
@@ -8768,7 +8770,7 @@ function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,i
     <table><thead><tr><th>Project</th><th>Hours</th><th>Team Size</th><th>Tasks Done</th></tr></thead>
     <tbody>${projRows}</tbody>
     <tfoot><tr><td><strong>Total</strong></td><td>${fmtH(totalMins)}</td><td>—</td><td>—</td></tr></tfoot></table>
-    <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString()} · RDS Project Hub</p>
+    <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})} · RDS Project Hub</p>
     </body></html>`;
     const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
   }
@@ -8918,7 +8920,7 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
   }
 
   function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
-  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-IN",{maximumFractionDigits:0});}
+  function fmtMoney(v){return CURRENCY+v.toLocaleString("en-IN",{timeZone:"Asia/Kolkata",maximumFractionDigits:0});}
 
   // Build per-project stats
   const projStats=projects.map(p=>{
@@ -8948,7 +8950,7 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
     const totalCost=projStats.reduce((s,p)=>s+p.cost,0);
     const totalH=fmtH(projStats.reduce((s,p)=>s+p.actualMins,0));
     const html=`<html><head><title>Project Billing Report</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th,td{padding:9px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:700}tfoot td{font-weight:700;background:#fafafa}.total{font-size:15px;color:#059669}</style></head>
-    <body><h2>📊 Project Billing Report</h2><p>Month: ${month} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; RDS Project Hub</p>
+    <body><h2>📊 Project Billing Report</h2><p>Month: ${month} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})} &nbsp;·&nbsp; RDS Project Hub</p>
     <table><thead><tr><th>Project</th><th>Hours Logged</th><th>Est. Hours</th><th>Burn %</th><th>Cost</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr><td><strong>Total</strong></td><td>${totalH}</td><td>—</td><td>—</td><td class="total">${fmtMoney(totalCost)}</td></tr></tfoot></table>
@@ -9085,7 +9087,7 @@ function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
     const myTasks=tasks.filter(t=>t.assignee===uName);
     const done=myTasks.filter(t=>t.status==="Completed"||t.status==="Done");
     const inProg=myTasks.filter(t=>t.status==="In Progress");
-    const today=new Date().toISOString().slice(0,10);
+    const today=localDateStr();
     const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&t.status!=="Completed"&&t.status!=="Done");
     const doneWithDue=done.filter(t=>t.due_date);
     // on-time: completed task where due_date >= completed date (use updated_at as proxy)
@@ -9242,9 +9244,9 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
     d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);
     d.setHours(0,0,0,0);return d;
   }
-  function fmtDate(d){return d.toISOString().slice(0,10);}
+  function fmtDate(d){return localDateStr(d);}
   function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
-  function fmtDay(ds){return new Date(ds+"T00:00:00").toLocaleDateString("en-IN",{weekday:"short",month:"short",day:"numeric"});}
+  function fmtDay(ds){return new Date(ds+"T00:00:00").toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"short",month:"short",day:"numeric"});}
 
   const weekStart=getWeekStart(weekOffset);
   const weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
@@ -9321,8 +9323,8 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
     const em=byEmp[empName];const ts=getTs(empName);
     const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
     const rows=weekDays.map(d=>"<tr><td>"+fmtDay(d)+"</td><td>"+(em&&em.days[d]?fmtH(em.days[d]):"-")+"</td></tr>").join("");
-    const fmtRange=weekStart.toLocaleDateString("en-IN",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});
-    const html="<html><head><title>Timesheet — "+empName+"</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:8px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:600}tfoot td{font-weight:700;background:#fafafa}</style></head><body><h2>Timesheet — "+empName+"</h2><p>Week: "+fmtRange+" &nbsp;|&nbsp; Status: "+ts.status+(ts.approved_by?" &nbsp;|&nbsp; Approved by: "+ts.approved_by:"")+"</p><table><thead><tr><th>Day</th><th>Hours Logged</th></tr></thead><tbody>"+rows+"</tbody><tfoot><tr><td>Total</td><td>"+(em?fmtH(em.mins):"0h")+"</td></tr></tfoot></table><p style='margin-top:24px;font-size:11px;color:#999'>Printed "+new Date().toLocaleString()+" &nbsp;·&nbsp; RDS Project Hub</p></body></html>";
+    const fmtRange=weekStart.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric",year:"numeric"});
+    const html="<html><head><title>Timesheet — "+empName+"</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:8px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:600}tfoot td{font-weight:700;background:#fafafa}</style></head><body><h2>Timesheet — "+empName+"</h2><p>Week: "+fmtRange+" &nbsp;|&nbsp; Status: "+ts.status+(ts.approved_by?" &nbsp;|&nbsp; Approved by: "+ts.approved_by:"")+"</p><table><thead><tr><th>Day</th><th>Hours Logged</th></tr></thead><tbody>"+rows+"</tbody><tfoot><tr><td>Total</td><td>"+(em?fmtH(em.mins):"0h")+"</td></tr></tfoot></table><p style='margin-top:24px;font-size:11px;color:#999'>Printed "+new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})+" &nbsp;·&nbsp; RDS Project Hub</p></body></html>";
     const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
   }
 
@@ -9338,7 +9340,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
     ?Object.keys(byEmp).sort()
     :[me.name].filter(n=>byEmp[n]);
 
-  const fmtRange=weekStart.toLocaleDateString("en-IN",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{month:"short",day:"numeric",year:"numeric"});
+  const fmtRange=weekStart.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric",year:"numeric"});
   const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
 
   return(
@@ -9395,7 +9397,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
                 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:16}}>
                   {weekDays.map(d=>{
                     const mins=em.days[d]||0;
-                    const label=new Date(d+"T00:00:00").toLocaleDateString("en-IN",{weekday:"short"});
+                    const label=new Date(d+"T00:00:00").toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"short"});
                     const dayNum=new Date(d+"T00:00:00").getDate();
                     const isToday=d===fmtDate(new Date());
                     const pct=Math.min(mins/480,1);
@@ -9428,7 +9430,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
                     </>
                   )}
                   {isApproved&&(
-                    <span style={{fontSize:12,color:"#34d399",display:"flex",alignItems:"center",gap:4}}>🔒 Approved by {ts.approved_by} · {new Date(ts.approved_at).toLocaleDateString("en-IN")}</span>
+                    <span style={{fontSize:12,color:"#34d399",display:"flex",alignItems:"center",gap:4}}>🔒 Approved by {ts.approved_by} · {new Date(ts.approved_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</span>
                   )}
                   <div style={{marginLeft:"auto"}}>
                     <button onClick={e=>{e.stopPropagation();printTs(empName);}} style={{background:C.surface,border:"1px solid "+C.border,borderRadius:8,padding:"7px 14px",color:C.t2,cursor:"pointer",fontSize:12}}>🖨️ Print / PDF</button>
@@ -9640,7 +9642,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
     setLoading(true);
     const from=month+"-01";
     const toD=new Date(month);toD.setMonth(toD.getMonth()+1);toD.setDate(0);
-    const to=toD.toISOString().slice(0,10);
+    const to=localDateStr(toD);
     const projIds=[...new Set(projects.map(p=>p.id))].slice(0,60);
     // time_logs
     let tlUrl=SUPA_URL+"/rest/v1/time_logs?select=*&logged_date=gte."+from+"&logged_date=lte."+to+"&order=logged_date.desc&limit=3000";
@@ -9669,7 +9671,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
   }
 
   function fmtDur(min){if(!min)return"—";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
-  function fmtTime(ts){if(!ts)return"—";return new Date(ts).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+  function fmtTime(ts){if(!ts)return"—";return new Date(ts).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
 
   const SC={"Completed":"#059669","Done":"#059669","In Progress":"#3b82f6","Not Yet Started":"#6b7280","To Be Started":"#6b7280","On Hold":"#f59e0b","Hold":"#f59e0b"};
 
@@ -10185,7 +10187,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
   // ── Helpers ──
   function fmtMoney(n){if(n>=1000000)return"₹"+(n/1000000).toFixed(1)+"M";if(n>=1000)return"₹"+(n/1000).toFixed(1)+"K";return"₹"+n.toFixed(0);}
-  function fmtDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt.getTime())?"—":dt.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}
+  function fmtDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt.getTime())?"—":dt.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"});}
   function yearsAt(d){if(!d)return null;const y=Math.floor((Date.now()-new Date(d))/(365.25*24*3600*1000));return y>=0?y:null;}
   function LeaveBar({used,total}){
     if(total==null)return<span style={{color:C.t3,fontSize:11}}>—</span>;
@@ -10207,7 +10209,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
           <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>HR & Finance Dashboard</h2>
           <p style={{margin:"3px 0 0",fontSize:13,color:C.t2}}>Welcome back, {me.name} · Attendance management & billing overview</p>
         </div>
-        <div style={{fontSize:12,color:C.t3,textAlign:"right"}}>{new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+        <div style={{fontSize:12,color:C.t3,textAlign:"right"}}>{new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
       </div>
 
       {/* ── ONE-TIME SETUP ── */}
@@ -10246,7 +10248,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
                     <div style={{fontWeight:800,fontSize:13,color:C.t1}}>{u.name}</div>
                     <div style={{fontSize:11,color:C.t3}}>{u.role}</div>
                     <div style={{fontSize:12,fontWeight:700,color:isToday?"#ec4899":"#f472b6",marginTop:2}}>
-                      {isToday?"🎉 Today!":new Date(u.date_of_birth).toLocaleDateString("en-IN",{day:"numeric",month:"long"})}
+                      {isToday?"🎉 Today!":new Date(u.date_of_birth).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long"})}
                     </div>
                   </div>
                 </div>
@@ -10387,8 +10389,8 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
               const user=users.find(u=>(u.id===a.user_id)||(u.name||"").toLowerCase()===(a.employee_name||"").toLowerCase());
               const name=user?.name||a.employee_name||"Unknown";
               const isActive=!a.logout_at;
-              const loginTime=a.login_at?new Date(a.login_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true}):"—";
-              const logoutTime=a.logout_at?new Date(a.logout_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true}):"Active";
+              const loginTime=a.login_at?new Date(a.login_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true}):"—";
+              const logoutTime=a.logout_at?new Date(a.logout_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true}):"Active";
               const hrs=a.total_work_minutes?Math.floor(a.total_work_minutes/60)+"h "+String(a.total_work_minutes%60).padStart(2,"0")+"m":"—";
               return(
                 <div key={a.id} style={{background:C.bg,border:`1px solid ${isActive?"#22c55e44":C.border}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
@@ -10771,7 +10773,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   <!-- FOOTER -->
   <div style="background:#1e293b;padding:18px 36px;text-align:center;">
     <img src="https://hub-rdsprojects.com/logo.png" alt="RDS" style="height:28px;width:auto;margin-bottom:8px;opacity:0.7;" onerror="this.style.display='none'"/>
-    <div style="color:#94a3b8;font-size:11px;">${company?.accountName||"RDS Projects"} · Invoice ${inv.invoiceNo||""} · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+    <div style="color:#94a3b8;font-size:11px;">${company?.accountName||"RDS Projects"} · Invoice ${inv.invoiceNo||""} · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}</div>
   </div>
 
 </div></body></html>`;
@@ -10790,7 +10792,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;font-size:12px;">Amount</span><strong style="color:#1d4ed8;font-size:15px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
     </div>`:""}
   </div>
-  <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+  <div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
 </div></body></html>`;
   }
 
@@ -10891,7 +10893,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         const notifyTo=[notifyConfig.adminEmail,notifyConfig.hrEmail].filter(Boolean);
         const html=buildNotifyEmail(
           `✅ Client has paid Invoice ${targetInv.invoiceNo}`,
-          `<strong>${targetInv.clientName}</strong> has marked Invoice <strong>${targetInv.invoiceNo}</strong> as <strong>PAID</strong> on ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}.`,
+          `<strong>${targetInv.clientName}</strong> has marked Invoice <strong>${targetInv.invoiceNo}</strong> as <strong>PAID</strong> on ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}.`,
           targetInv
         );
         sendMail(notifyTo,`✅ Payment Received — ${targetInv.clientName} paid Invoice ${targetInv.invoiceNo}`,html);
@@ -10930,7 +10932,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         const nc=JSON.parse(ncRows[0].value||"{}");
         const notifyTo=[nc.adminEmail,nc.hrEmail].filter(Boolean);
         if(notifyTo.length){
-          const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;"><div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div><div style="padding:28px 32px;"><p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong>${inv.invoiceNo||"—"}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong>${inv.clientName||"—"}</strong></div>${inv.period?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Period</span><strong>${inv.period}</strong></div>`:""}<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div></div><p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p></div><div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
+          const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;"><div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div><div style="padding:28px 32px;"><p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong>${inv.invoiceNo||"—"}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong>${inv.clientName||"—"}</strong></div>${inv.period?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Period</span><strong>${inv.period}</strong></div>`:""}<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div></div><p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p></div><div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
           notifyTo.forEach(email=>{
             fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
               body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`💸 Payment Sent — ${inv.clientName} · Invoice ${inv.invoiceNo||""} · $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
@@ -10960,7 +10962,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           [nc.adminEmail,nc.hrEmail].filter(Boolean).forEach(email=>{
             fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
               body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,
-                htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f5f3ff;border-radius:8px;padding:16px;"><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No: </span><strong>${inv.invoiceNo||"—"}</strong></div><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount: </span><strong style="color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div><div><span style="color:#6b7280;font-size:12px;">Viewed At: </span><strong>${new Date(now).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div></div></div>`
+                htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f5f3ff;border-radius:8px;padding:16px;"><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No: </span><strong>${inv.invoiceNo||"—"}</strong></div><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount: </span><strong style="color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div><div><span style="color:#6b7280;font-size:12px;">Viewed At: </span><strong>${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div></div></div>`
               }})
             }).catch(()=>{});
           });
@@ -11221,7 +11223,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   function triggerPdf(args){
     const today=new Date();
     const due=new Date(today); due.setDate(due.getDate()+15);
-    const fmt=d=>d.toISOString().slice(0,10);
+    const fmt=d=>localDateStr(d);
     const yyMM=String(today.getFullYear()).slice(-2)+String(today.getMonth()+1).padStart(2,"0");
     const prefix="INV-"+yyMM+"-";
     const existing=invoices.filter(inv=>(inv.invoiceNo||"").startsWith(prefix));
@@ -12290,7 +12292,7 @@ function AuditLogPage({users,projects,me}){
 
   function fmtTs(ts){
     const d=new Date(ts);
-    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});
+    return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});
   }
 
   const filtered=logs.filter(l=>{
@@ -12308,7 +12310,7 @@ function AuditLogPage({users,projects,me}){
     const csv=[header,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
     const blob=new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-    a.download="rds_audit_log_"+new Date().toISOString().slice(0,10)+".csv";a.click();
+    a.download="rds_audit_log_"+localDateStr()+".csv";a.click();
   }
 
   const sel=active=>({background:C.surface,border:`1px solid ${active?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:active?C.accent:C.t1,fontSize:12,outline:"none",cursor:"pointer",fontFamily:"inherit"});
@@ -12574,7 +12576,7 @@ function BackupCenter({me}){
         backup.tables[t]=data||[];
       }
       backup.summary=Object.fromEntries(Object.entries(backup.tables).map(([k,v])=>[k,v.length]));
-      const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+      const ts=localDateTimeStr().replace('T','_').replace(':','-');
       const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
@@ -12590,7 +12592,7 @@ function BackupCenter({me}){
     const blob=new Blob([JSON.stringify({report:label,exportedAt:new Date().toISOString(),data},null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download=label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+    a.href=url;a.download=label.replace(/\s+/g,'_')+'_'+localDateStr()+'.json';a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -13197,7 +13199,7 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
   const isRegularUser=!isAdmin&&!isManager&&!isTeamLeader;
   const priOrder={High:0,Medium:1,Low:2};
   const byPri=(a,b)=>(priOrder[a.priority]??3)-(priOrder[b.priority]??3);
-  const d3=new Date(today);d3.setDate(d3.getDate()+3);const threeDaysStr=d3.toISOString().slice(0,10);
+  const d3=new Date();d3.setDate(d3.getDate()+3);const threeDaysStr=localDateStr(d3);
 
   useEffect(()=>{
     const id="myday-anim";
@@ -13463,7 +13465,7 @@ export default function App(){
     window.addEventListener("keydown",handleCmdKey);
     return()=>window.removeEventListener("keydown",handleCmdKey);
   },[]);
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateStr();
   const isClient=me?.role==="Client";
   const isAdmin=me?.role==="Admin"||me?.username===SUPER_ADMIN;
   const isManager=!isAdmin&&me?.role==="Manager";
@@ -14093,7 +14095,7 @@ export default function App(){
     const cur=timerRef.current;if(!cur)return;
     const el=timerElapsed(cur);const mins=Math.max(1,Math.floor(el/60));
     if(doSave&&el>=60){
-      await fetch(SUPA_URL+"/rest/v1/time_logs",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({task_id:cur.taskId,project_id:cur.projectId,user_id:cur.userId,user_name:cur.userName,duration_minutes:mins,logged_date:new Date().toISOString().slice(0,10),notes:"⏱ Timer auto-logged"})});
+      await fetch(SUPA_URL+"/rest/v1/time_logs",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({task_id:cur.taskId,project_id:cur.projectId,user_id:cur.userId,user_name:cur.userName,duration_minutes:mins,logged_date:localDateStr(),notes:"⏱ Timer auto-logged"})});
       sToast({msg:`⏱ Logged ${fmtTimer(el)} — "${cur.taskTitle}"`,color:"#059669"});
     }else if(doSave){sToast({msg:"Timer stopped (< 1 min — not logged)",color:"#f59e0b"});}
     setActTmr(null);saveTmrLS(null);
@@ -14418,7 +14420,7 @@ export default function App(){
             {!isClient&&<div ref={exportRef} style={{position:"relative"}}>
               <button className="rds-export-btn" onClick={()=>{setExportOpen(v=>!v);setExportSec(null);}} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export ▾</span></button>
               {exportOpen&&(()=>{
-                const today2=new Date().toISOString().slice(0,10);
+                const today2=localDateStr();
                 const closeExport=()=>{setExportOpen(false);setExportSec(null);};
                 const allProjTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
                 const overdueTsk=allProjTasks.filter(t=>t.due_date&&t.due_date<today2&&!isDone(t.status));
@@ -14577,7 +14579,7 @@ export default function App(){
                             rawRows=await res.json();
                           }
                           const rows=(Array.isArray(rawRows)?rawRows:[]).filter(r=>!adminIds.has(r.user_id));
-                          function fmtTime(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true});}
+                          function fmtTime(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
                           function fmtHrs(min){if(!min&&min!==0)return"";return Math.floor(min/60)+"h "+(min%60)+"m";}
                           const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
                           let xml=xlsHead+'<Worksheet ss:Name="Working Hours"><Table ss:DefaultRowHeight="18">';
