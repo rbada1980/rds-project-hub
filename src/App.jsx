@@ -11269,7 +11269,9 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   }
   function pdfTask(t,cl){
     const note=getNote("task",t.id);
-    const fname="RDS_Billing_Task_"+t.id+"_"+year+"_"+month;
+    const safeCl=(cl||"").replace(/[^a-z0-9]/gi,"_");
+    const safeProjOrTask=(t._proj?.name||t.title||"Task").replace(/[^a-z0-9]/gi,"_");
+    const fname="RDS_Billing_"+safeCl+"_"+safeProjOrTask+"_"+year+"_"+month;
     triggerPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,taskList:[t],filename:fname,hideProject:true,clientKey:cl});
   }
 
