@@ -1664,7 +1664,26 @@ function buildDigestHtml(recipientName, tasks, projMap, dateLabel) {
     "</td></tr></table></body></html>";
 }
 
+// ── /api/cron-daily — proxy to Vercel (single sender, never fires locally) ────
+// The Vercel function at hub-rdsprojects.com/api/cron-daily is the ONLY sender.
+// It holds the service_role key and the proper date guard.
+// Local servers (port 3000 / 8080) must NEVER send emails themselves —
+// they proxy here so PC startup, manual triggers, etc. all go through one path.
 app.get("/api/cron-daily", async (req, res) => {
+  try {
+    const qs = req.query.force === "true" ? "?force=true" : "";
+    const upstream = await fetch("https://hub-rdsprojects.com/api/cron-daily" + qs, {
+      headers: { "x-forwarded-from": "local-server" }
+    });
+    const data = await upstream.json();
+    return res.json(data);
+  } catch(e) {
+    return res.status(502).json({ error: "Could not reach Vercel: " + e.message });
+  }
+});
+// ── OLD local sender (disabled — causes duplicate emails) ─────────────────────
+// eslint-disable-next-line no-unused-vars
+async function _old_cron_daily_DISABLED(req, res) {
   try {
     const force = req.query.force === "true";
 
@@ -1783,7 +1802,7 @@ app.get("/api/cron-daily", async (req, res) => {
     console.error("[cron-daily] Error:", e.message);
     res.status(500).json({ error: e.message });
   }
-});
+} // end _old_cron_daily_DISABLED
 
 // ═════════════════════════════════════════════════════════════
 // SPA FALLBACK — serve React app for all other routes
