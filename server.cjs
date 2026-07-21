@@ -1123,7 +1123,23 @@ function _buildDigestHtml(recipient, tasks, projMap, dateLabel) {
   return parts.join("");
 }
 
+// ── /api/cron-daily: proxy to server.js (port 3000) — single sender ──────────
+// server.js on port 3000 is the canonical email sender with full date guards.
+// This server (port 8080) delegates entirely to avoid duplicate sends.
 app.get("/api/cron-daily", async function(req, res) {
+  try {
+    const qs = req.query.force === "true" ? "?force=true" : "";
+    const upstream = await fetch("http://localhost:3000/api/cron-daily" + qs);
+    const data = await upstream.json();
+    return res.json(data);
+  } catch(e) {
+    return res.status(502).json({ error: "Could not reach primary server (port 3000): " + e.message });
+  }
+});
+
+// ── OLD handler kept below for reference only — DO NOT RESTORE ────────────────
+// eslint-disable-next-line no-unused-vars
+async function _old_cron_daily_DISABLED(req, res) {
   try {
     const force = req.query.force === "true";
     const today = new Date(Date.now() + 5.5*60*60*1000).toISOString().slice(0,10);
@@ -1205,7 +1221,7 @@ app.get("/api/cron-daily", async function(req, res) {
     console.error("[cron-daily] Error:", e.message);
     res.status(500).json({ error: e.message });
   }
-});
+} // end _old_cron_daily_DISABLED
 
 // =============================================================
 // SPA FALLBACK — serve React app for all other routes

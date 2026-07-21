@@ -1705,13 +1705,29 @@ app.get("/api/cron-daily", async (req, res) => {
     const projMap  = {};
     for (const p of (projects || [])) projMap[p.id] = p;
 
-    // Recipients: Admin, Manager, Team Leader with email
+    // Recipients: Admin, Manager, Team Leader with email — dedup by email address
     const users = await supaGet("/rest/v1/users?select=name,email,role&role=in.(Admin,Manager,Team Leader)");
-    const recipients = (users || []).filter(u => u.email && u.email.includes("@"));
+    const seenEmails = new Set();
+    const recipients = (users || []).filter(u => {
+      if (!u.email || !u.email.includes("@")) return false;
+      const key = u.email.trim().toLowerCase();
+      if (seenEmails.has(key)) return false;
+      seenEmails.add(key);
+      return true;
+    });
 
     if (!recipients.length) {
+      _digestSending = false;
       return res.json({ error: "No recipients found — add email addresses to Admin/Manager/Team Leader accounts" });
     }
+
+    // ── Stamp local PG BEFORE sending so any concurrent request is blocked ──
+    try {
+      await pool.query(
+        "INSERT INTO settings(key,value) VALUES('last_digest_date',$1) ON CONFLICT(key) DO UPDATE SET value=$1",
+        [today]
+      );
+    } catch(_) {}
 
     let sent = 0;
     for (const u of recipients) {
