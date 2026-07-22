@@ -13884,9 +13884,10 @@ export default function App(){
       const{data:stale}=await supabase.from("attendance").select("id,login_at,date").eq("user_id",me.id).is("logout_at",null).lt("date",todayStr);
       if(stale&&stale.length>0){
         for(const s of stale){
-          // Best-effort: mark logout at end of that day (23:59) with 0 work minutes noted
-          const eod=s.date+"T23:59:00.000Z";
-          await supabase.from("attendance").update({logout_at:eod,total_work_minutes:0}).eq("id",s.id);
+          // Auto-close: logout = login_at + 8h 45min (8 hours work + 45 min lunch), work = 480 min
+          const loginMs=s.login_at?new Date(s.login_at).getTime():new Date(s.date+"T09:00:00.000Z").getTime();
+          const autoLogout=new Date(loginMs+(8*60+45)*60*1000).toISOString();
+          await supabase.from("attendance").update({logout_at:autoLogout,total_work_minutes:480}).eq("id",s.id);
         }
       }
       const{data:rows}=await supabase.from("attendance").select("*").eq("user_id",me.id).eq("date",todayStr);

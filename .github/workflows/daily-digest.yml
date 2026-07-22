@@ -1,10 +1,11 @@
 name: Daily Submission Digest
 
-# Runs Mon-Sat at 1:00 AM IST (= 19:30 UTC Sun-Fri)
+# DISABLED — Vercel's built-in cron (vercel.json) is the sole sender.
+# Having both GitHub Actions + Vercel cron fire at the same time caused
+# a race condition that bypassed the date guard and sent duplicate emails.
+# Re-enable only if Vercel cron is removed.
 on:
-  schedule:
-    - cron: '30 19 * * 0-5'  # Sun-Fri UTC = Mon-Sat 1AM IST
-  workflow_dispatch:          # Manual trigger from GitHub Actions tab
+  workflow_dispatch:          # Manual trigger only (no automatic schedule)
 
 jobs:
   send-digest:
@@ -15,7 +16,7 @@ jobs:
       - name: Trigger daily digest
         run: |
           echo "Calling digest at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          RESPONSE=$(curl -s -w "\n%{http_code}" https://hub-rdsprojects.com/api/cron-daily)
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://hub-rdsprojects.com/api/cron-daily?force=true)
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -1)
           echo "HTTP $HTTP_CODE"

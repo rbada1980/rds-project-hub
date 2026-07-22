@@ -1666,12 +1666,26 @@ function buildDigestHtml(recipientName, tasks, projMap, dateLabel) {
 
 // ── /api/cron-daily — proxy to Vercel (single sender, never fires locally) ────
 // The Vercel function at hub-rdsprojects.com/api/cron-daily is the ONLY sender.
-// It holds the service_role key and the proper date guard.
-// Local servers (port 3000 / 8080) must NEVER send emails themselves —
-// they proxy here so PC startup, manual triggers, etc. all go through one path.
+// IMPORTANT: Only proxy during the 1 AM IST cron window (1:00–1:45 AM).
+// Startup scripts / PC boot triggers that land outside this window are silently
+// dropped so the PC turning on never causes a duplicate email.
 app.get("/api/cron-daily", async (req, res) => {
+  const force = req.query.force === "true";
+
+  if (!force) {
+    // Check IST hour — only allow between 1:00 AM and 1:45 AM IST
+    const nowIST    = new Date(Date.now() + 5.5 * 3600 * 1000);
+    const hourIST   = nowIST.getUTCHours();   // 0–23 in IST
+    const minIST    = nowIST.getUTCMinutes();
+    const inWindow  = hourIST === 1 && minIST <= 45;
+    if (!inWindow) {
+      console.log(`[cron-daily] Skipped — called at ${hourIST}:${String(minIST).padStart(2,"0")} IST (outside 1 AM window). PC startup trigger suppressed.`);
+      return res.json({ skipped: true, reason: "Outside 1:00–1:45 AM IST window. PC startup call suppressed." });
+    }
+  }
+
   try {
-    const qs = req.query.force === "true" ? "?force=true" : "";
+    const qs = force ? "?force=true" : "";
     const upstream = await fetch("https://hub-rdsprojects.com/api/cron-daily" + qs, {
       headers: { "x-forwarded-from": "local-server" }
     });
@@ -1803,6 +1817,42 @@ async function _old_cron_daily_DISABLED(req, res) {
     res.status(500).json({ error: e.message });
   }
 } // end _old_cron_daily_DISABLED
+
+// ═════════════════════════════════════════════════════════════
+// AUTO-LOGOUT CRON — 10 PM IST daily
+// If employee forgot to clock out AND login_at + 11h 45min has passed,
+// auto-set: logout_at = login_at + 8h 45min, total_work_minutes = 480
+// (8 hours work + 45 min lunch break = expected full work-day)
+// ══════════════════════════════════════════════════════════════
+cron.schedule("0 22 * * *", async () => {
+  const GRACE_MS = (11 * 60 + 45) * 60 * 1000; // 11h 45min — wait before auto-closing
+  const WORK_MS  = ( 8 * 60 + 45) * 60 * 1000; // 8h 45min  — auto-logout offset from login
+  const WORK_MIN = 480;                          // 8 hours of actual work (excl. lunch)
+  console.log("[Auto-logout] 10 PM IST check running...");
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, user_name, login_at FROM attendance
+       WHERE logout_at IS NULL
+         AND login_at  IS NOT NULL
+         AND login_at  < NOW() - INTERVAL '11 hours 45 minutes'`
+    );
+    if (rows.length === 0) {
+      console.log("[Auto-logout] No forgotten logouts today.");
+      return;
+    }
+    for (const r of rows) {
+      const autoLogout = new Date(new Date(r.login_at).getTime() + WORK_MS);
+      await pool.query(
+        `UPDATE attendance SET logout_at=$1, total_work_minutes=$2 WHERE id=$3`,
+        [autoLogout.toISOString(), WORK_MIN, r.id]
+      );
+      console.log(`[Auto-logout] ${r.user_name} — auto-closed at ${autoLogout.toISOString()} (was clocked in since ${r.login_at})`);
+    }
+    console.log(`[Auto-logout] Done — closed ${rows.length} record(s).`);
+  } catch (e) {
+    console.error("[Auto-logout] Error:", e.message);
+  }
+}, { timezone: "Asia/Kolkata" });
 
 // ═════════════════════════════════════════════════════════════
 // SPA FALLBACK — serve React app for all other routes
