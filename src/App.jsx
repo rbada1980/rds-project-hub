@@ -13862,7 +13862,7 @@ export default function App(){
           return chk(tk.assignee)||chk(tk.detailer)||chk(tk.checker);
         }
         const [{data:u},{data:p},{data:t}]=await Promise.all([
-          supabase.from("users").select("id,name,username,role,email").order("name").limit(2000),
+          supabase.from("users").select("id,name,username,role,email,is_active").order("name").limit(2000),
           supabase.from("projects").select("*").order("name").limit(2000),
           supabase.from("tasks").select("*").order("created_at").limit(9999),
         ]);
