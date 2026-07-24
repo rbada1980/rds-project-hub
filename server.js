@@ -943,6 +943,7 @@ app.delete("/api/war-room/scheduled/:id", async (req, res) => {
 const SUPA_DB_PASS = process.env.SUPA_DB_PASS || "";
 
 const HR_MIGRATIONS = [
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active      BOOLEAN NOT NULL DEFAULT true`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id    VARCHAR(50)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_joining DATE`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth   DATE`,
