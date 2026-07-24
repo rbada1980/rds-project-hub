@@ -149,7 +149,7 @@ app.post("/api/auth/login", async (req, res) => {
     );
     if (!r.rows.length) return res.json(err(new Error("Invalid credentials")));
     const user = r.rows[0];
-    if (user.is_active === false) return res.json(err(new Error("Your profile is inactive, please contact your management.")));
+    if (user.is_active === false) return res.json(err(new Error("Your profile is inactive, please contact RDS management.")));
     res.json(ok(user));
   } catch (e) { res.json(err(e)); }
 });

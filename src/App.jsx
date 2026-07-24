@@ -2454,7 +2454,7 @@ function Login({onLogin}){
     try{
       const {data,error}=await supabase.from("users").select("*").eq("username",un.trim().toLowerCase()).eq("password",pw).single();
       if(error||!data){se("Invalid username or password.");}
-      else if(data.is_active===false){se("Your profile is inactive, please contact your management.");}
+      else if(data.is_active===false){se("Your profile is inactive, please contact RDS management.");}
       else{
         const isOnline=!IS_LOCAL;
         const isEmp=data.role!=="Admin"&&data.role!=="Manager"&&data.role!=="Team Leader"&&data.role!=="HR & Finance"&&data.role!=="Client"&&data.username!==SUPER_ADMIN;
