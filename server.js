@@ -90,6 +90,8 @@ async function runMigrations() {
     )`,
     `CREATE INDEX IF NOT EXISTS holidays_year_idx ON holidays (year)`,
     `CREATE INDEX IF NOT EXISTS holidays_date_idx ON holidays (date)`,
+    // ── Employee active/inactive ──────────────────────────────────
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); } catch(e) { console.warn("Migration skipped:", e.message); }
@@ -146,7 +148,9 @@ app.post("/api/auth/login", async (req, res) => {
       [username?.trim().toLowerCase(), password]
     );
     if (!r.rows.length) return res.json(err(new Error("Invalid credentials")));
-    res.json(ok(r.rows[0]));
+    const user = r.rows[0];
+    if (user.is_active === false) return res.json(err(new Error("Your profile is inactive, please contact your management.")));
+    res.json(ok(user));
   } catch (e) { res.json(err(e)); }
 });
 
@@ -157,7 +161,7 @@ app.post("/api/auth/login", async (req, res) => {
 // GET /api/users?full=true  (full=true returns all columns)
 app.get("/api/users", async (req, res) => {
   try {
-    const cols = req.query.full === "true" ? "*" : "id,name,username,role,email,client_name";
+    const cols = req.query.full === "true" ? "*" : "id,name,username,role,email,client_name,is_active";
     const r = await pool.query(`SELECT ${cols} FROM users ORDER BY name`);
     res.json(ok(r.rows));
   } catch (e) { res.json(err(e)); }
@@ -183,6 +187,7 @@ app.put("/api/users/:id", async (req, res) => {
     const sets = ["name=$1","username=$2","role=$3","client_name=$4","email=$5"];
     const vals = [f.name, f.username?.toLowerCase(), f.role, f.client_name||"", f.email||""];
     if (f.password?.trim()) { sets.push(`password=$${vals.length+1}`); vals.push(f.password.trim()); }
+    if (typeof f.is_active === "boolean") { sets.push(`is_active=$${vals.length+1}`); vals.push(f.is_active); }
     vals.push(req.params.id);
     const r = await pool.query(
       `UPDATE users SET ${sets.join(",")} WHERE id=$${vals.length} RETURNING *`, vals

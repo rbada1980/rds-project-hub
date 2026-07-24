@@ -693,7 +693,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
 function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
-  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[]});
+  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[],is_active:true});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
@@ -702,8 +702,8 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",assigned_projects:[]});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[]});se("");}
+  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",assigned_projects:[],is_active:u.is_active!==false});st("edit");se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[],is_active:true});se("");}
   async function addUser(){
     if(!f.name.trim()){se("Full Name is required.");return;}
     if(!f.role){se("Role is required.");return;}
@@ -723,7 +723,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(!f.name.trim()){se("Name is required.");return;}
     setSaving(true);
     try{
-      const updates={name:f.name.trim(),username:f.username.trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email.trim()||""};
+      const updates={name:f.name.trim(),username:f.username.trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",is_active:f.is_active};
       if(f.password&&f.password.trim())updates.password=f.password.trim();
       await onEdit(editUser.id,updates);
       resetForm();st("list");
@@ -784,6 +784,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                     <div style={{fontSize:11,color:C.t3}}>@{u.username}{u.email?` · ${u.email}`:""}{u.client_name?` · ${u.client_name}`:""}</div>
                   </div>
                   <Bdg color={u.role==="Admin"?C.accent:u.role==="Manager"?"#f59e0b":u.role==="Team Leader"?"#8b5cf6":u.role==="Client"?C.teal:u.role==="Tekla"?"#10b981":C.blue}>{u.role}</Bdg>
+                  {u.is_active===false&&<Bdg color="#6b7280">Inactive</Bdg>}
                   {u.id===currentUser.id
                     ?<span style={{fontSize:18,opacity:0.3}} title="This is you">👤</span>
                     :<button onClick={e=>{e.stopPropagation();startEdit(u);}} style={{background:C.blue,color:"#fff",border:"none",borderRadius:6,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",whiteSpace:"nowrap"}}>✏️ Edit</button>
@@ -951,6 +952,18 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           {f.role!==editUser.role&&(
             <div style={{marginBottom:14,padding:"10px 14px",background:C.blue+"11",border:`1px solid ${C.blue}44`,borderRadius:8}}>
               <p style={{margin:0,fontSize:12,color:C.blue,fontWeight:600}}>🔄 Role: <strong>{editUser.role}</strong> → <strong>{f.role}</strong></p>
+            </div>
+          )}
+          {(currentUser.role==="Admin"||currentUser.role==="HR & Finance")&&(
+            <div style={{marginBottom:14,padding:"14px 16px",background:f.is_active?C.green+"11":"#f59e0b11",border:`1px solid ${f.is_active?C.green+"44":"#f59e0b44"}`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:f.is_active?C.green:"#f59e0b"}}>{f.is_active?"✅ Account Active":"⛔ Account Inactive"}</div>
+                <div style={{fontSize:11,color:C.t3,marginTop:2}}>{f.is_active?"Employee can login normally.":"Employee login will be blocked with a message."}</div>
+              </div>
+              <button onClick={()=>sf(p=>({...p,is_active:!p.is_active}))}
+                style={{background:f.is_active?C.red+"22":"#22c55e22",color:f.is_active?C.red:"#22c55e",border:`1px solid ${f.is_active?C.red+"44":"#22c55e44"}`,borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                {f.is_active?"Mark Inactive":"Mark Active"}
+              </button>
             </div>
           )}
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
@@ -2441,6 +2454,7 @@ function Login({onLogin}){
     try{
       const {data,error}=await supabase.from("users").select("*").eq("username",un.trim().toLowerCase()).eq("password",pw).single();
       if(error||!data){se("Invalid username or password.");}
+      else if(data.is_active===false){se("Your profile is inactive, please contact your management.");}
       else{
         const isOnline=!IS_LOCAL;
         const isEmp=data.role!=="Admin"&&data.role!=="Manager"&&data.role!=="Team Leader"&&data.role!=="HR & Finance"&&data.role!=="Client"&&data.username!==SUPER_ADMIN;
@@ -7582,7 +7596,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
   const startStr=localDateStr(dateArr[0]);
   const endStr=localDateStr(dateArr[dateArr.length-1]);
 
-  const teamUsers=users.filter(u=>u.role!=="Client");
+  const teamUsers=users.filter(u=>u.role!=="Client"&&u.is_active!==false);
 
   const workload={};
   for(const u of teamUsers)workload[u.id]={};
@@ -8148,7 +8162,7 @@ function AttendancePage({users}){
     const blob=new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="attendance_report.csv";a.click();
   }
-  const nonClients=users.filter(u=>u.role!=="Client"&&u.role!=="Admin");
+  const nonClients=users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.is_active!==false);
   return(
     <div style={{marginTop:32,marginBottom:32}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
@@ -8431,7 +8445,7 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
   }
 
   // Per-employee stats
-  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name);
+  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name);
 
   function empStats(name){
     const myLogs=timeLogs.filter(l=>l.user_name===name);
@@ -8649,7 +8663,7 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
 
   const canManage=isAdmin||isManager;
   const empList=canManage
-    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name).sort()
+    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name).sort()
     :[me.name];
 
   // Overloaded: >45h/week (2700 min)
@@ -8807,7 +8821,7 @@ function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,i
   // ── 1. Payroll CSV ────────────────────────────────────────────────────────
   async function downloadPayrollCsv(){
     // Load rates from settings
-    const empNames=users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name);
+    const empNames=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name);
     const rateKeys=empNames.map(n=>"emp_rate__"+n.replace(/\s+/g," "));
     const rateMap={};
     if(rateKeys.length){
@@ -8979,7 +8993,7 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
   // Load budgets + rates from settings
   useEffect(()=>{
     const budgetKeys=projects.map(p=>budgetKey(p.id));
-    const rateKeys=users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>rateKey(u.name));
+    const rateKeys=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>rateKey(u.name));
     const allKeys=[...budgetKeys,...rateKeys];
     if(!allKeys.length)return;
     fetch(SUPA_URL+"/rest/v1/settings?key=in.("+allKeys.join(",")+")",{
@@ -9063,7 +9077,7 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
   }
 
   const canEdit=isAdmin||isManager;
-  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client");
+  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false);
 
   return(
     <div>
@@ -9231,7 +9245,7 @@ function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
 
   // Build list: admin/manager see all non-admin employees; others see just themselves
   const empList=(isAdmin||isManager)
-    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client").map(u=>u.name).sort()
+    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name).sort()
     :[me.name];
 
   const scored=empList.map(n=>({name:n,...metrics(n)})).sort((a,b)=>b.score-a.score);
