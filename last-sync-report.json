@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-24T10:02:38.050Z",
-  "ist_time": "2026-07-24 15:32:38 IST",
-  "duration_sec": 7.5,
-  "total_synced": 2877,
-  "total_pushed": 1296,
-  "total_pulled": 1581,
+  "timestamp": "2026-07-25T05:35:44.422Z",
+  "ist_time": "2026-07-25 11:05:44 IST",
+  "duration_sec": 5.9,
+  "total_synced": 2885,
+  "total_pushed": 1301,
+  "total_pulled": 1584,
   "total_failed": 31,
   "status": "partial",
   "tables": [
@@ -101,10 +101,10 @@
     },
     {
       "table": "war_room_reads",
-      "synced": 21,
+      "synced": 24,
       "failed": 0,
-      "total": 21,
-      "pulled": 21
+      "total": 24,
+      "pulled": 24
     },
     {
       "table": "war_room_scheduled",
@@ -123,9 +123,9 @@
     },
     {
       "table": "attendance",
-      "synced": 44,
+      "synced": 46,
       "failed": 0,
-      "total": 44,
+      "total": 46,
       "pulled": 0
     },
     {

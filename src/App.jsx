@@ -1569,22 +1569,18 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       })()}
       {/* Filtered task list */}
       {statusFilter&&(
-        <div style={{marginBottom:28}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <h2 style={{margin:0,fontSize:16,fontWeight:700,color:C.t1}}>{filterLabel} ({filteredTasks.length})</h2>
-            <button onClick={()=>ssf(null)} style={{...GBtn,fontSize:12,padding:"5px 12px"}}>✕ Close</button>
-          </div>
+        <Modal title={`${filterLabel} (${filteredTasks.length})`} onClose={()=>ssf(null)} wide>
           {filteredTasks.length===0
-            ?<p style={{color:C.t3,fontSize:13}}>No tasks in this category.</p>
-            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+            ?<p style={{color:C.t3,fontSize:13,textAlign:"center",padding:32}}>No tasks in this category.</p>
+            :<div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
               {filteredTasks.map(t=>{
                 const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                 return(
-                  <div key={t.id} onClick={()=>onEditTask(t)}
-                    style={{background:C.card,border:`1px solid ${isOv?C.red+"66":C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .12s"}}
-                    onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-                    onMouseLeave={e=>e.currentTarget.style.background=C.card}>
+                  <div key={t.id} onClick={()=>{ssf(null);onEditTask(t);}}
+                    style={{background:C.surface,border:`1px solid ${isOv?C.red+"66":C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .12s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.card}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.surface}>
                     <div style={{width:3,height:36,borderRadius:2,background:proj?.color||C.accent,flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</p>
@@ -1599,7 +1595,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
               })}
             </div>
           }
-        </div>
+        </Modal>
       )}
       {/* My Projects */}
       <h2 style={{margin:"0 0 16px",fontSize:16,fontWeight:700,color:C.t1}}>My Projects ({myProjects.length})</h2>
