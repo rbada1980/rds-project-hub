@@ -117,6 +117,25 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
+// ── SSE — Server-Sent Events for instant LAN live updates ───
+const sseClients = new Map();
+app.get("/api/sse", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.flushHeaders();
+  const id = Date.now() + "_" + Math.random();
+  sseClients.set(id, res);
+  const hb = setInterval(() => { try { res.write(":hb\n\n"); } catch {} }, 25000);
+  req.on("close", () => { sseClients.delete(id); clearInterval(hb); });
+});
+function broadcastSSE(table, eventType, row) {
+  if (!sseClients.size) return;
+  const msg = "data: " + JSON.stringify({ table, eventType, row }) + "\n\n";
+  for (const [, res] of sseClients) { try { res.write(msg); } catch {} }
+}
+
 // Serve uploaded files
 app.use("/uploads", express.static(UPLOAD_DIR));
 
@@ -1260,6 +1279,8 @@ app.post("/api/rpc", async (req, res) => {
         inserted.push(fixPgDates([r.rows[0]])[0]);
       }
       const out = (single || rows.length === 1) ? inserted[0] : inserted;
+      // broadcast to all LAN browsers instantly
+      (Array.isArray(out) ? out : [out]).forEach(r => broadcastSSE(table, "INSERT", r));
       return res.json({ data: out, error: null });
     }
 
@@ -1277,6 +1298,7 @@ app.post("/api/rpc", async (req, res) => {
       const where = buildWhere(vals);
       const r = await pool.query(`UPDATE "${table}" SET ${sets.join(",")}${where} RETURNING *`, vals);
       const fixedU = fixPgDates(r.rows);
+      fixedU.forEach(row => broadcastSSE(table, "UPDATE", row));
       return res.json({ data: single ? fixedU[0] : fixedU, error: null });
     }
 
@@ -1284,7 +1306,9 @@ app.post("/api/rpc", async (req, res) => {
     if (op === "delete") {
       const vals = [];
       const r = await pool.query(`DELETE FROM "${table}"${buildWhere(vals)} RETURNING *`, vals);
-      return res.json({ data: fixPgDates(r.rows), error: null });
+      const fixedD = fixPgDates(r.rows);
+      fixedD.forEach(row => broadcastSSE(table, "DELETE", row));
+      return res.json({ data: fixedD, error: null });
     }
 
     // ── UPSERT ──
@@ -1304,6 +1328,7 @@ app.post("/api/rpc", async (req, res) => {
         inserted.push(fixPgDates([r.rows[0]])[0]);
       }
       const out = (single || rows.length === 1) ? inserted[0] : inserted;
+      (Array.isArray(out) ? out : [out]).forEach(r => broadcastSSE(table, "UPDATE", r));
       return res.json({ data: out, error: null });
     }
 

@@ -7366,8 +7366,17 @@ function TaskHistory({taskId,me}){
   async function loadHistory(){
     setLoading(true);
     try{
-      const {data}=await supabase.from("audit_logs").select("*").eq("entity_id",taskId).order("created_at",{ascending:false}).limit(100);
-      setLogs(Array.isArray(data)?data:[]);
+      let data=[];
+      if(IS_LOCAL){
+        // LAN employees have no direct Supabase access — use local API
+        const r=await fetch(LOCAL_BASE+"/api/audit-logs?task_id="+taskId+"&limit=100");
+        const j=await r.json();
+        data=Array.isArray(j.data)?j.data:[];
+      } else {
+        const res=await supabase.from("audit_logs").select("*").eq("entity_id",taskId).order("created_at",{ascending:false}).limit(100);
+        data=Array.isArray(res.data)?res.data:[];
+      }
+      setLogs(data);
     }catch(e){}
     setLoading(false);
   }
@@ -13881,6 +13890,27 @@ export default function App(){
     sl(false);
   }
   useEffect(()=>{if(me)loadAll();},[me]);
+
+  // ── Live updates ──────────────────────────────────────────────
+  // Online: Supabase Realtime WebSocket (instant)
+  // LAN:    SSE from server.js via createLocalClient channel (instant)
+  // Both paths use the same code — localClient mirrors the Supabase channel API
+  useEffect(()=>{
+    if(!me)return;
+    const ch=supabase.channel("rds-live")
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"tasks"},   (p)=>st(prev=>[...prev,p.new]))
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"tasks"},   (p)=>st(prev=>prev.map(t=>t.id===p.new.id?{...t,...p.new}:t)))
+      .on("postgres_changes",{event:"DELETE",schema:"public",table:"tasks"},   (p)=>st(prev=>prev.filter(t=>t.id!==p.old.id)))
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"projects"},(p)=>sp(prev=>[...prev,p.new]))
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"projects"},(p)=>sp(prev=>prev.map(r=>r.id===p.new.id?{...r,...p.new}:r)))
+      .on("postgres_changes",{event:"DELETE",schema:"public",table:"projects"},(p)=>sp(prev=>prev.filter(r=>r.id!==p.old.id)))
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"clients"}, (p)=>scl(prev=>[...prev,p.new]))
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"clients"}, (p)=>scl(prev=>prev.map(c=>c.id===p.new.id?{...c,...p.new}:c)))
+      .on("postgres_changes",{event:"DELETE",schema:"public",table:"clients"}, (p)=>scl(prev=>prev.filter(c=>c.id!==p.old.id)))
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"users"},   (p)=>su(prev=>prev.map(u=>u.id===p.new.id?{...u,...p.new}:u)))
+      .subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[me]);
   // ── Attendance functions ──────────────────────────────────────────────────
   // ── Attendance helpers — route through supabase client so offline LAN site ──
   // uses the local PostgreSQL proxy (/api/rpc) instead of calling Supabase

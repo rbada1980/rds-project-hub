@@ -84,19 +84,71 @@ class QueryBuilder {
   }
 }
 
-// Stub Supabase Realtime channel — app already polls as fallback
-const makeStubChannel = () => ({
-  on()        { return this; },
-  subscribe() { return this; },
-});
+// ── SSE-backed Realtime channel ───────────────────────────────
+// Mirrors Supabase's .channel().on('postgres_changes', filter, cb).subscribe()
+// so the same App.jsx live-update code works for both LAN and online.
+function createSSEChannel(base) {
+  const listeners = [];
+  let source = null;
+  let active = false;
+
+  const ch = {
+    on(type, filter, callback) {
+      // type = "postgres_changes"
+      // filter = { event: "INSERT"|"UPDATE"|"DELETE"|"*", table: "tasks", ... }
+      listeners.push({ event: filter.event || "*", table: filter.table, callback });
+      return ch;
+    },
+    subscribe() {
+      if (active) return ch;
+      active = true;
+      try {
+        source = new EventSource(`${base}/api/sse`);
+        source.onmessage = (e) => {
+          try {
+            const { table, eventType, row } = JSON.parse(e.data);
+            for (const l of listeners) {
+              if (l.table !== table) continue;
+              if (l.event !== "*" && l.event !== eventType) continue;
+              l.callback({ eventType, new: row, old: row });
+            }
+          } catch {}
+        };
+        source.onerror = () => {
+          // Browser auto-reconnects EventSource on error — no manual retry needed
+        };
+      } catch {}
+      return ch;
+    },
+    unsubscribe() {
+      if (source) { source.close(); source = null; }
+      active = false;
+    },
+  };
+  return ch;
+}
+
+// Registry of active channels so removeChannel can close them
+const _channels = new Map();
+let _channelSeq = 0;
 
 export function createLocalClient(base = "") {
   return {
     from: (table) => new QueryBuilder(base, table),
 
-    // Realtime stubs (polling in App.jsx handles live updates)
-    channel:       () => makeStubChannel(),
-    removeChannel: ()  => {},
+    // Real SSE-backed Realtime channel
+    channel(name) {
+      const id = name || `ch_${++_channelSeq}`;
+      const ch = createSSEChannel(base);
+      _channels.set(id, ch);
+      return ch;
+    },
+    removeChannel(ch) {
+      try { ch.unsubscribe(); } catch {}
+      for (const [k, v] of _channels) {
+        if (v === ch) { _channels.delete(k); break; }
+      }
+    },
 
     // Storage stubs — file uploads use dedicated fetch calls in App.jsx
     storage: {
