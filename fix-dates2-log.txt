@@ -22,3 +22,22 @@ Local PG ALTON DELRAY fixed: 68
 Reading: C:\Users\HP\rds-project-hub\Formcrete Projects Tracker_2026.xlsx
 Reading: C:\Users\HP\rds-project-hub\Formcrete Projects.xlsx
 Total rows with dates: 551
+Formcrete dates corrected: 501 | already correct: 0
+
+=== Verification: tasks due today (2026-07-27) ===
+Count: 0
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\fix-dates2-log.txt'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (C:\Users\HP\rds-project-hub\fix-dates2.cjs:182:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\HP\\rds-project-hub\\fix-dates2-log.txt'
+}
+
+Node.js v24.16.0
