@@ -1,0 +1,35 @@
+=== Fixing Supabase ===
+Tasks with client_sub_date in Supabase: 774
+Sample current dates:
+  POOL PAVILION → 2026-01-01
+  LIFT-4 COLUMNS → 2026-04-27
+  Columns (Residential) lift - 11 vertical → 2026-10-07
+  Bldg #4 Type I - Lift-4 verticals → 2026-09-29
+  3RD FLOOR SLAB (GARAGE) → 2026-02-26
+Supabase fixed: 774 | errors: 0
+
+=== Fixing local PostgreSQL ===
+Local PG fixed: 774 rows
+
+=== Verification (today = 2026-07-27) ===
+Tasks due today in Supabase: 5
+  Clubhouse Lift-2 verticals & Roof beams
+  Bldg #1 Type IIM - 5th floor slab
+  Clubhouse Lift-1 verticals
+  Bldg #1 Type IIM - 3rd floor slab
+  Bldg #1 Type IIM - 4th floor slab
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\fix-dates-log.txt'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (C:\Users\HP\rds-project-hub\fix-dates.cjs:80:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\HP\\rds-project-hub\\fix-dates-log.txt'
+}
+
+Node.js v24.16.0

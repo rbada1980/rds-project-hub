@@ -23,16 +23,18 @@ function normalize(s) {
 }
 
 function excelDateToISO(val) {
+  // Use getFullYear/getMonth/getDate (local IST time) — NOT toISOString() which gives UTC (-1 day before 05:30 IST)
   try {
     if (!val) return null;
     if (val instanceof Date) {
       if (isNaN(val)) return null;
-      return val.toISOString().slice(0, 10);
+      const y = val.getFullYear(), m = String(val.getMonth()+1).padStart(2,"0"), d = String(val.getDate()).padStart(2,"0");
+      return `${y}-${m}-${d}`;
     }
     if (typeof val === "number") {
-      const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-      if (isNaN(d)) return null;
-      return d.toISOString().slice(0, 10);
+      const dt = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (isNaN(dt)) return null;
+      return dt.toISOString().slice(0, 10); // serial dates are UTC-based, toISOString is correct here
     }
     const s = String(val).trim().slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s;

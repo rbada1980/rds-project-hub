@@ -16,22 +16,26 @@ const SUPER_ADMIN = "ramesh";
 const NOTIFY_ADMIN_EMAIL = "ramesh@rdstechserv.com";
 const NOTIFY_HR_EMAIL    = "lavanya@rdstechserv.com";
 // Returns YYYY-MM-DD in LOCAL timezone (IST). Never use toISOString() for attendance
-// dates — it returns UTC which shifts the date between midnight and 5:30 AM IST.
-function localDateStr(d){const dt=d||new Date();return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
-// IST datetime string for <input type="datetime-local"> min value
-function localDateTimeStr(d){const dt=d||new Date();return localDateStr(dt)+"T"+String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0");}
-// Normalize any pg date value to correct IST YYYY-MM-DD string.
-// pg (without setTypeParser) returns DATE as JS Date at UTC midnight:
-//   "2026-07-20" in pg → new Date("2026-07-19T18:30:00.000Z") → JSON → "2026-07-19T18:30:00.000Z"
-// This function handles BOTH cases:
-//   "2026-07-20"              → returned as-is (already correct)
-//   "2026-07-19T18:30:00.000Z" → new Date() in IST → getDate()=20 → "2026-07-20"
+// All date/time calculations are anchored to IST (Asia/Kolkata) — the company operates entirely in India.
+// Only billing amounts use en-US / USD since those clients are in the USA.
+function localDateStr(d){
+  return (d||new Date()).toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});
+  // en-CA gives YYYY-MM-DD; timeZone ensures correct IST date even between 00:00–05:29 IST
+}
+function localDateTimeStr(d){
+  const dt=d||new Date();
+  const date=dt.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});
+  const time=dt.toLocaleTimeString("en-GB",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"});
+  return date+"T"+time;
+}
+// Normalize any date value to YYYY-MM-DD in IST.
+// Handles: "2026-07-20" (returned as-is), "2026-07-19T18:30:00.000Z" (IST midnight → "2026-07-20")
 function normDate(ds){
   if(!ds)return"—";
   if(typeof ds==="string"&&ds.length===10)return ds; // already YYYY-MM-DD
   const d=new Date(ds);
   if(isNaN(d.getTime()))return String(ds).slice(0,10);
-  return localDateStr(d); // use local (IST) getDate/getMonth/getFullYear
+  return localDateStr(d); // uses IST via toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"})
 }
 
 const DARK_C={
