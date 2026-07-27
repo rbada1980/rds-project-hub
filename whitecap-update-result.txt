@@ -1,0 +1,27 @@
+Reading: C:\Users\HP\rds-project-hub\White Cap Projects Tracker2_2026.xlsx
+Columns: PROJECT NAME | Tasks | STATUS | CLIENT SUB. DATE | DETAILER | CHECKER
+Excel rows: 313
+White Cap projects in DB: 69
+White Cap tasks in DB: 364
+
+=== White Cap Update Complete ===
+Excel rows:       313
+Updated:          274
+Inserted (new):   0
+Skipped (no chg): 189
+New projects:     0
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\whitecap-update-result.txt'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (C:\Users\HP\rds-project-hub\update-whitecap.cjs:191:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\HP\\rds-project-hub\\whitecap-update-result.txt'
+}
+
+Node.js v24.16.0

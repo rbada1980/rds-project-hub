@@ -1,9 +1,9 @@
 Reading: C:\Users\HP\rds-project-hub\Formcrete Projects Tracker_2026.xlsx
 Columns: S.No, BILL STATUS, PROJECT NAME, SCOPE, DWG NO., COMPONENTS OF WORK, REC. DATE, STATUS, SUB. DATE, CUST. REQ. DATE, EXP. WT/HRS, DET. WT., HRS, C.O., DETAILER, CHECKER, REMARKS
 Excel rows: 359
-Projects in DB: 14
-Tasks in DB: 707
-Unique project|title keys: 358
+Projects in DB: 15
+Tasks in DB: 775
+Unique project|title keys: 426
 Progress: 50/359 rows processed...
 Progress: 100/359 rows processed...
 Progress: 150/359 rows processed...
@@ -15,7 +15,22 @@ Progress: 350/359 rows processed...
 === Formcrete Update Complete ===
 Excel rows:          359
 Matched:             359
-Updated:             58
-Skipped (no change): 653
+Updated:             201
+Skipped (no change): 510
 Not found:           0
 Errors:              0
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\formcrete-update-result.txt'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (C:\Users\HP\rds-project-hub\update-formcrete-tasks.cjs:213:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\HP\\rds-project-hub\\formcrete-update-result.txt'
+}
+
+Node.js v24.16.0
