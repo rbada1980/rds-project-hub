@@ -1,0 +1,62 @@
+Reading: C:\Users\HP\rds-project-hub\Formcrete Projects.xlsx
+Sheet: PROJECTS
+Columns: PROJECT NAME, SCOPE, Tasks, STATUS, SUB. DATE, CUST. REQ. DATE, DET. WT., DETAILER, CHECKER
+Title col: "Tasks", Date col: "SUB. DATE"
+Excel tasks found: 432
+Alton DB tasks: 68
+  "Bldg #3 Type III - Roof slab": 2026-09-13 → 2026-09-14
+  "Bldg #3 Type III - Lift-1 verticals": 2026-09-13 → 2026-09-14
+  "Bldg #4 Type I - Upper roof slab": 2026-09-30 → 2026-09-29
+  "Bldg #3 Type III - Upper roof slab": 2026-09-12 → 2026-09-14
+  "Bldg #2 Type II - Lift-4 verticals": 2026-08-22 → 2026-08-23
+  "Bldg #3 Type III - Lift-5 verticals": 2026-09-13 → 2026-09-14
+  "Bldg #2 Type II - 4th floor slab": 2026-08-22 → 2026-08-23
+  "Bldg #3 Type III - Tunnel walls": 2026-09-13 → 2026-09-14
+  "Bldg #3 Type III - 5th floor slab": 2026-09-13 → 2026-09-14
+  "Bldg #1 Type IIM - 4th floor slab": 2026-07-23 → 2026-07-26
+  "Bldg #1 Type IIM - Lift-3 verticals": 2026-07-31 → 2026-08-02
+  "Bldg #1 Type IIM - Lift-5 verticals": 2026-07-31 → 2026-08-02
+  "Bldg #4 Type I - Lift-1 verticals": 2026-09-30 → 2026-09-29
+  "Clubhouse 2nd floor slab": 2026-07-20 → 2026-07-21
+  "Bldg #4 Type I - Tunnel walls": 2026-10-02 → 2026-09-29
+  "Bldg #3 Type III - Lift-4 verticals": 2026-09-13 → 2026-09-14
+  "Parking Garage - 2nd floor slab": 2026-08-13 → 2026-08-16
+  "Bldg #3 Type III - 3rd floor slab": 2026-09-13 → 2026-09-14
+  "Bldg #1 Type IIM - 5th floor slab": 2026-07-23 → 2026-07-26
+  "Bldg #3 Type III - Lift-2 verticals": 2026-09-12 → 2026-09-14
+  "Bldg #2 Type II - Roof slab": 2026-08-21 → 2026-08-23
+  "Parking Garage - Verticals": 2026-08-15 → 2026-08-16
+  "Bldg #2 Type II - Lift-2 verticals": 2026-08-21 → 2026-08-23
+  "Bldg #2 Type II - Lift-1 verticals": 2026-08-22 → 2026-08-23
+  "Bldg #2 Type II - Tunnel walls": 2026-08-22 → 2026-08-23
+  "Bldg #4 Type I - Lift-4 verticals": 2026-10-02 → 2026-09-29
+  "Bldg #3 Type III - Lift-3 verticals": 2026-09-12 → 2026-09-14
+  "Bldg #2 Type II - 2nd floor slab": 2026-08-21 → 2026-08-23
+  "Bldg #1 Type IIM - Roof slab": 2026-08-03 → 2026-08-02
+  "Bldg #1 Type IIM - Lift-1 verticals": 2026-07-30 → 2026-08-02
+  "Bldg #3 Type III - 4th floor slab": 2026-09-12 → 2026-09-14
+  "Bldg #1 Type IIM - 3rd floor slab": 2026-07-23 → 2026-07-26
+  "Bldg #2 Type II - Lift-3 verticals": 2026-08-21 → 2026-08-23
+  "Bldg #2 Type II - 3rd floor slab": 2026-08-21 → 2026-08-23
+  "Bldg #3 Type III - 2nd floor slab": 2026-09-12 → 2026-09-14
+  "Bldg #1 Type IIM - Tunnel walls": 2026-08-01 → 2026-08-02
+  "Bldg #1 Type IIM - 2nd floor slab": 2026-07-25 → 2026-07-26
+  "Bldg #2 Type II - Lift-5 verticals": 2026-08-21 → 2026-08-23
+  "Clubhouse Lift-1 verticals": 2026-07-27 → 2026-07-26
+  "Bldg #2 Type II - 5th floor slab": 2026-08-21 → 2026-08-23
+  "Bldg #3 Type III - Lift-6 verticals": 2026-09-12 → 2026-09-14
+  "Bldg #1 Type IIM - Lift-4 verticals": 2026-07-30 → 2026-08-02
+  "Bldg #1 Type IIM - Lift-2 verticals": 2026-07-30 → 2026-08-02
+
+Alton Supabase: Updated=43, Skipped=25, NotFound=0
+
+=== Syncing Alton Delray in local PG ===
+Local PG Alton synced: 68 rows
+
+=== Final: tasks due today 2026-07-27 ===
+Count: 5
+  Foundations & slab on grade
+  Lift - 1 verticals and beams
+  Foundations & slab on grade
+  Lift - 2 verticals and beams
+  Garage Type 1

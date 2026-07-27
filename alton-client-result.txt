@@ -1,0 +1,8 @@
+Current Alton project(s):
+  id=6f915efb-e314-423c-adc8-99a16b79fa7d  name="ALTON DELRAY"  client="Formcrete"
+All clients in DB: Formcrete, KS&P Limited, White Cap
+OK: "ALTON DELRAY" already has client="Formcrete"
+Local PG updated: 0 row(s)
+
+Final state:
+  "ALTON DELRAY" client="Formcrete"
