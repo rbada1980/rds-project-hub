@@ -1,0 +1,24 @@
+
+=== 1. Fix ALTON DELRAY dates (+1 day) ===
+ALTON DELRAY tasks with dates: 68
+  2026-08-18 → 2026-08-19 (2 tasks)
+  2026-09-30 → 2026-10-01 (6 tasks)
+  2026-10-01 → 2026-10-02 (8 tasks)
+  2026-08-24 → 2026-08-25 (4 tasks)
+  2026-07-22 → 2026-07-23 (1 tasks)
+  2026-07-28 → 2026-07-29 (5 tasks)
+  2026-08-03 → 2026-08-04 (3 tasks)
+  2026-07-27 → 2026-07-28 (1 tasks)
+  2026-08-04 → 2026-08-05 (4 tasks)
+  2026-09-15 → 2026-09-16 (6 tasks)
+  2026-09-28 → 2026-09-29 (7 tasks)
+  2026-08-25 → 2026-08-26 (7 tasks)
+  2026-09-29 → 2026-09-30 (7 tasks)
+  2026-09-16 → 2026-09-17 (7 tasks)
+Supabase ALTON DELRAY fixed: 68
+Local PG ALTON DELRAY fixed: 68
+
+=== 2. Re-apply Formcrete dates (corrected) ===
+Reading: C:\Users\HP\rds-project-hub\Formcrete Projects Tracker_2026.xlsx
+Reading: C:\Users\HP\rds-project-hub\Formcrete Projects.xlsx
+Total rows with dates: 551
