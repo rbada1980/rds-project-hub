@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-07-25T05:35:44.422Z",
-  "ist_time": "2026-07-25 11:05:44 IST",
-  "duration_sec": 5.9,
-  "total_synced": 2885,
-  "total_pushed": 1301,
-  "total_pulled": 1584,
-  "total_failed": 31,
+  "timestamp": "2026-07-27T06:00:28.595Z",
+  "ist_time": "2026-07-27 11:30:28 IST",
+  "duration_sec": 7.6,
+  "total_synced": 2580,
+  "total_pushed": 990,
+  "total_pulled": 1590,
+  "total_failed": 148,
   "status": "partial",
   "tables": [
     {
@@ -17,21 +17,21 @@
     },
     {
       "table": "clients",
-      "synced": 3,
-      "failed": 0,
+      "synced": 0,
+      "failed": 3,
       "total": 3,
       "pulled": 3
     },
     {
       "table": "projects",
-      "synced": 114,
-      "failed": 0,
+      "synced": 0,
+      "failed": 114,
       "total": 114,
       "pulled": 114
     },
     {
       "table": "tasks",
-      "synced": 1086,
+      "synced": 886,
       "failed": 0,
       "total": 1086,
       "pulled": 1086
@@ -101,10 +101,10 @@
     },
     {
       "table": "war_room_reads",
-      "synced": 24,
+      "synced": 30,
       "failed": 0,
-      "total": 24,
-      "pulled": 24
+      "total": 30,
+      "pulled": 30
     },
     {
       "table": "war_room_scheduled",

@@ -958,6 +958,23 @@ const HR_MIGRATIONS = [
   )`,
   `CREATE INDEX IF NOT EXISTS holidays_year_idx ON holidays (year)`,
   `CREATE INDEX IF NOT EXISTS holidays_date_idx ON holidays (date)`,
+  // ── Realtime sync: updated_at columns + triggers + publication ─
+  `ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+  `ALTER TABLE users    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+  `ALTER TABLE clients  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+  `CREATE OR REPLACE FUNCTION _rds_set_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`,
+  `DROP TRIGGER IF EXISTS _rds_trg_tasks_updated_at    ON tasks`,
+  `CREATE TRIGGER _rds_trg_tasks_updated_at    BEFORE UPDATE ON tasks    FOR EACH ROW EXECUTE FUNCTION _rds_set_updated_at()`,
+  `DROP TRIGGER IF EXISTS _rds_trg_projects_updated_at ON projects`,
+  `CREATE TRIGGER _rds_trg_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION _rds_set_updated_at()`,
+  `DROP TRIGGER IF EXISTS _rds_trg_users_updated_at    ON users`,
+  `CREATE TRIGGER _rds_trg_users_updated_at    BEFORE UPDATE ON users    FOR EACH ROW EXECUTE FUNCTION _rds_set_updated_at()`,
+  `DROP TRIGGER IF EXISTS _rds_trg_clients_updated_at  ON clients`,
+  `CREATE TRIGGER _rds_trg_clients_updated_at  BEFORE UPDATE ON clients  FOR EACH ROW EXECUTE FUNCTION _rds_set_updated_at()`,
+  `ALTER PUBLICATION supabase_realtime ADD TABLE tasks`,
+  `ALTER PUBLICATION supabase_realtime ADD TABLE projects`,
+  `ALTER PUBLICATION supabase_realtime ADD TABLE users`,
+  `ALTER PUBLICATION supabase_realtime ADD TABLE clients`,
 ];
 
 app.post("/api/hr-migrate", async (req, res) => {
