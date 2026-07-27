@@ -1,0 +1,15 @@
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\delete-dupes-log.txt'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (C:\Users\HP\rds-project-hub\delete-dupes.cjs:88:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\HP\\rds-project-hub\\delete-dupes-log.txt'
+}
+
+Node.js v24.16.0

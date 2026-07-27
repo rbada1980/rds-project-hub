@@ -1,0 +1,27 @@
+Reading: C:\Users\HP\rds-project-hub\Formcrete Projects.xlsx
+ALTON DELRAY tasks found in Excel: 68
+Project created: 6f915efb-e314-423c-adc8-99a16b79fa7d
+Existing tasks in DB for this project: 0
+Tasks to insert: 68
+Inserted: 68
+
+=== ALTON DELRAY Import Complete ===
+Project ID: 6f915efb-e314-423c-adc8-99a16b79fa7d
+Tasks in Excel: 68
+Already existed: 0
+Newly inserted: 68
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\alton-delray-import-log.txt'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (C:\Users\HP\rds-project-hub\import-alton-delray.cjs:177:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\HP\\rds-project-hub\\alton-delray-import-log.txt'
+}
+
+Node.js v24.16.0

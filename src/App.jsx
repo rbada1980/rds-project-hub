@@ -13853,6 +13853,20 @@ export default function App(){
     else if(bulkModal==="priority")await supabase.from("tasks").update({priority:val}).in("id",ids);
     setBM(null);clearSel();setBSO(false);await loadAll();showToast("Updated successfully ✓");
   }
+  // Fetch all tasks paginated — Supabase PostgREST caps at 1000 rows per call
+  async function fetchAllTasks(){
+    let all=[];
+    let from=0;
+    const PAGE=1000;
+    while(true){
+      const {data,error}=await supabase.from("tasks").select("*").order("created_at").range(from,from+PAGE-1);
+      if(error||!data||data.length===0)break;
+      all=all.concat(data);
+      if(data.length<PAGE)break;
+      from+=PAGE;
+    }
+    return all;
+  }
   async function loadAll(){
     sl(true);
     try{
@@ -13866,10 +13880,12 @@ export default function App(){
           const chk=v=>{if(!v)return false;const vl=v.toLowerCase().trim();return vl===mn||(mu&&vl===mu)||mn.startsWith(vl+" ")||vl.startsWith(mn+" ")||vl.includes(mn);};
           return chk(tk.assignee)||chk(tk.detailer)||chk(tk.checker);
         }
-        const [{data:u},{data:p},{data:t}]=await Promise.all([
-          supabase.from("users").select("id,name,username,role,email,is_active").order("name").limit(2000),
-          supabase.from("projects").select("*").order("name").limit(2000),
-          supabase.from("tasks").select("*").order("created_at").limit(9999),
+        const [[u,p],t]=await Promise.all([
+          Promise.all([
+            supabase.from("users").select("id,name,username,role,email,is_active").order("name").limit(2000),
+            supabase.from("projects").select("*").order("name").limit(2000),
+          ]).then(([ur,pr])=>[ur.data,pr.data]),
+          fetchAllTasks(),
         ]);
         su(u||[]);
         const myTasks=(t||[]).filter(taskBelongsToMe);
@@ -13877,12 +13893,14 @@ export default function App(){
         const myProjects=(p||[]).filter(proj=>taskPids.has(proj.id));
         sp(myProjects); st(myTasks); scl([]);
       }else{
-        const [{data:u},{data:p},{data:t},{data:cl},{data:wf}]=await Promise.all([
-          supabase.from("users").select("*").order("name").limit(2000),
-          supabase.from("projects").select("*").order("name").limit(2000),
-          supabase.from("tasks").select("*").order("created_at").limit(9999),
-          supabase.from("clients").select("*").order("name").limit(2000),
-          supabase.from("workflows").select("*").order("created_at").limit(2000),
+        const [[u,p,cl,wf],t]=await Promise.all([
+          Promise.all([
+            supabase.from("users").select("*").order("name").limit(2000),
+            supabase.from("projects").select("*").order("name").limit(2000),
+            supabase.from("clients").select("*").order("name").limit(2000),
+            supabase.from("workflows").select("*").order("created_at").limit(2000),
+          ]).then(([ur,pr,cr,wr])=>[ur.data,pr.data,cr.data,wr.data]),
+          fetchAllTasks(),
         ]);
         su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);swf(wf||[]);
       }

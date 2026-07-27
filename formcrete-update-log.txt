@@ -1,0 +1,23 @@
+Reading: C:\Users\HP\rds-project-hub\Formcrete Projects Tracker_2026.xlsx
+Columns: S.No, BILL STATUS, PROJECT NAME, SCOPE, DWG NO., COMPONENTS OF WORK, REC. DATE, STATUS, SUB. DATE, CUST. REQ. DATE, EXP. WT/HRS, DET. WT., HRS, C.O., DETAILER, CHECKER, REMARKS
+Excel rows: 359
+Projects in DB: 14
+Tasks in DB: 707
+Unique project|title keys: 358
+Progress: 50/359 rows processed...
+Progress: 100/359 rows processed...
+Progress: 150/359 rows processed...
+Progress: 200/359 rows processed...
+Progress: 250/359 rows processed...
+Progress: 300/359 rows processed...
+Progress: 350/359 rows processed...
+
+=== Formcrete Update Complete ===
+Excel rows:          359
+Matched:             359
+Updated:             58
+Skipped (no change): 653
+Not found:           0
+Errors:              0
+
+Result saved to: C:\Users\HP\rds-project-hub\formcrete-update-result.txt

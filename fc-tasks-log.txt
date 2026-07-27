@@ -1,0 +1,124 @@
+FORMCRETE PROJECTS: 14
+TOTAL TASKS: 707
+[
+  {
+    "project": "2460 Australian (Ocean Tower)",
+    "taskCount": 56,
+    "sampleTitles": [
+      "2ND FLR. SLAB & BEAMS",
+      "2ND FLR. SLAB & BEAMS",
+      "3RD FLR. SLAB & BEAMS"
+    ]
+  },
+  {
+    "project": "2460 Australian (Ocean Tower)",
+    "taskCount": 0,
+    "sampleTitles": []
+  },
+  {
+    "project": "4541-Gables Cypress Creek",
+    "taskCount": 10,
+    "sampleTitles": [
+      "All bldgs tunnel walls candycane bars",
+      "BIKE STORAGE & PET SPA BLDG.",
+      "Bldg. Type I & II RFI #98 fnds revision"
+    ]
+  },
+  {
+    "project": "4541-Gables Cypress Creek",
+    "taskCount": 168,
+    "sampleTitles": [
+      "8\"-Wall for Bldg.; Type IV - L1-L2",
+      "8\"-Wall for Bldg.; Type IV - L1-L2",
+      "All bldgs tunnel walls candycane bars"
+    ]
+  },
+  {
+    "project": "4543 DULCE VIDA",
+    "taskCount": 44,
+    "sampleTitles": [
+      "2ND FLOOR SLAB (GARAGE)",
+      "2ND FLOOR SLAB (RESIDENTIAL)",
+      "2ND FLOOR SLAB (RESIDENTIAL)"
+    ]
+  },
+  {
+    "project": "4543 DULCE VIDA",
+    "taskCount": 6,
+    "sampleTitles": [
+      "2ND FLOOR SLAB (GARAGE)",
+      "4TH FLOOR SLAB (RESIDENTIAL)",
+      "5TH FLOOR SLAB (RESIDENTIAL)"
+    ]
+  },
+  {
+    "project": "Adela II",
+    "taskCount": 2,
+    "sampleTitles": [
+      "slabs markups",
+      "slabs markups"
+    ]
+  },
+  {
+    "project": "Alexan margrate",
+    "taskCount": 2,
+    "sampleTitles": [
+      "steel columns EMDS",
+      "steel columns EMDS"
+    ]
+  },
+  {
+    "project": "Altis Delray",
+    "taskCount": 7,
+    "sampleTitles": [
+      "Building Type I",
+      "Building Type I",
+      "Building Type II"
+    ]
+  },
+  {
+    "project": "Hilltop Gardens",
+    "taskCount": 14,
+    "sampleTitles": [
+      "Building _1 Type III",
+      "Building _1 Type III",
+      "Building _2 Type II"
+    ]
+  },
+  {
+    "project": "Magnolia Point",
+    "taskCount": 128,
+    "sampleTitles": [
+      "BLDG 1 Type II",
+      "BLDG 1 Type II",
+      "BLDG 1 Type II - 2nd floor slab"
+    ]
+  },
+  {
+    "project": "Modera Boca Raton",
+    "taskCount": 104,
+    "sampleTitles": [
+      "10TH FLR SLAB",
+      "10TH FLR SLAB",
+      "10TH LEVEL TO 11TH LEVEL TC & CMU WALLS"
+    ]
+  },
+  {
+    "project": "NOMI-6",
+    "taskCount": 106,
+    "sampleTitles": [
+      "10th FLOOR SLAB & BEAMS",
+      "10th FLOOR SLAB & BEAMS",
+      "11th FLOOR SLAB & BEAMS"
+    ]
+  },
+  {
+    "project": "Octavia",
+    "taskCount": 60,
+    "sampleTitles": [
+      "Deep footings",
+      "Deep footings",
+      "Elevator mat footings"
+    ]
+  }
+]

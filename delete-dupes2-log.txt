@@ -1,0 +1,24 @@
+Moved 6 task(s): 2460 Australian
+Deleted: 2460 Australian
+Moved 10 task(s): 4541-Gables Cypress Creek
+Deleted: 4541-Gables Cypress Creek
+Moved 6 task(s): 4543 DULCE VIDA
+Deleted: 4543 DULCE VIDA
+Deleted: 6024 Lelac Rd
+Deleted: 799 Park Drive
+Deleted: 810 S Swinton Ave Residence
+Deleted: Ackerman Residence
+Deleted: Baig Residence
+Deleted: Blue Water Cove 3
+Deleted: Bluewater cove 11
+Deleted: Bluewater cove 9
+Deleted: BOKOR 432 SUNSHINE BLVD
+Deleted: Chateau De La Duchess
+Deleted: Country inn Pet Resort
+Deleted: Custom Residence (134 Worth CTN)
+Deleted: Custom Residence (515 lido drive)
+Deleted: Felies Residence
+Deleted: Jandrews Residence (dup1)
+Deleted: Jandrews Residence (dup2)
+
+=== DONE === Deleted: 19  Tasks moved: 22  Errors: 0
