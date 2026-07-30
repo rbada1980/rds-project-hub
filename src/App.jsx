@@ -697,7 +697,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
 function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
-  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[],is_active:true});
+  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",assigned_projects:[],is_active:true});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
@@ -706,8 +706,8 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",assigned_projects:[],is_active:u.is_active!==false});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",assigned_projects:[],is_active:true});se("");}
+  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",date_of_birth:u.date_of_birth||"",assigned_projects:[],is_active:u.is_active!==false});st("edit");se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",assigned_projects:[],is_active:true});se("");}
   async function addUser(){
     if(!f.name.trim()){se("Full Name is required.");return;}
     if(!f.role){se("Role is required.");return;}
@@ -718,7 +718,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
     try{
-      await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||"",email:f.email.trim()||""});
+      await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",date_of_birth:f.date_of_birth||null});
       resetForm();st("list");
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
@@ -727,7 +727,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(!f.name.trim()){se("Name is required.");return;}
     setSaving(true);
     try{
-      const updates={name:f.name.trim(),username:f.username.trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",is_active:f.is_active};
+      const updates={name:f.name.trim(),username:f.username.trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",is_active:f.is_active,date_of_birth:f.date_of_birth||null};
       if(f.password&&f.password.trim())updates.password=f.password.trim();
       await onEdit(editUser.id,updates);
       resetForm();st("list");
@@ -848,6 +848,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           </div>
           {f.role!=="Client"&&<div style={{display:"flex",gap:16,marginBottom:4}}>
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
+            <div style={{flex:1}}><FInput label="Date of Birth 🎂" value={f.date_of_birth} onChange={s("date_of_birth")} type="date"/></div>
           </div>}
           {f.role==="Client"&&(
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
@@ -917,6 +918,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="New Password (leave blank to keep)" value={f.password} onChange={s("password")} type="password" placeholder="Leave blank to keep unchanged"/></div>
+            <div style={{flex:1}}><FInput label="Date of Birth 🎂" value={f.date_of_birth} onChange={s("date_of_birth")} type="date"/></div>
           </div>
           {f.role==="Client"&&(
             <div style={{display:"flex",gap:16}}>
@@ -1326,35 +1328,56 @@ function BirthdayBanner({me,users,today}){
   const tomorrowBdays=emps.filter(u=>(u.date_of_birth||"").slice(5)===tomorrowMD);
   const isMeBday=me&&me.date_of_birth&&(me.date_of_birth||"").slice(5)===todayMD;
   if(!isMeBday&&todayBdays.length===0&&tomorrowBdays.length===0)return null;
+  const RDS_ORANGE="#f97316";
   return(
-    <div style={{marginBottom:20}}>
+    <div style={{marginBottom:22}}>
+      {/* Own birthday — big RDS-branded celebration banner */}
       {isMeBday&&(
-        <div style={{background:"linear-gradient(135deg,#ec4899,#f43f5e)",borderRadius:16,padding:"22px 28px",marginBottom:12,display:"flex",alignItems:"center",gap:18,boxShadow:"0 4px 28px #ec489944",flexWrap:"wrap"}}>
-          <div style={{fontSize:52,lineHeight:1}}>🎂</div>
-          <div style={{flex:1,minWidth:180}}>
-            <div style={{fontSize:22,fontWeight:900,color:"#fff"}}>Happy Birthday, {me.name}! 🎉</div>
-            <div style={{fontSize:14,color:"rgba(255,255,255,0.88)",marginTop:5}}>Wishing you a fantastic day! The whole RDS team celebrates with you! 🎈</div>
+        <div style={{background:"linear-gradient(135deg,#f97316,#ea580c,#c2410c)",borderRadius:18,padding:"26px 32px",marginBottom:14,display:"flex",alignItems:"center",gap:20,boxShadow:"0 6px 32px #f9731644",flexWrap:"wrap",position:"relative",overflow:"hidden"}}>
+          {/* Background decoration */}
+          <div style={{position:"absolute",right:-20,top:-20,fontSize:120,opacity:0.08,lineHeight:1,pointerEvents:"none"}}>🎂</div>
+          <div style={{position:"absolute",right:80,bottom:-10,fontSize:80,opacity:0.06,lineHeight:1,pointerEvents:"none"}}>🎉</div>
+          {/* RDS Logo badge */}
+          <div style={{width:64,height:64,borderRadius:16,background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <span style={{fontSize:36,lineHeight:1}}>🎂</span>
           </div>
-          <div style={{fontSize:48,lineHeight:1}}>🎉</div>
+          <div style={{flex:1,minWidth:200,position:"relative"}}>
+            <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🎊 RDS Techserv — Birthday Celebration</div>
+            <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Happy Birthday, "+me.name+"! 🎉"}</div>
+            <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",marginTop:6}}>{"Wishing you a wonderful day from the entire RDS Team! 🎈"}</div>
+          </div>
+          <div style={{display:"flex",gap:8,flexShrink:0}}>
+            <div style={{fontSize:40,lineHeight:1}}>🥳</div>
+            <div style={{fontSize:40,lineHeight:1}}>🎁</div>
+          </div>
         </div>
       )}
+      {/* Colleague birthdays today */}
       {todayBdays.filter(u=>me&&u.id!==me.id).map(u=>(
-        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#fce7f3)`,border:"2px solid #ec489966",borderRadius:14,padding:"16px 22px",marginBottom:10,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
-          <div style={{fontSize:38,lineHeight:1}}>🎂</div>
-          <div style={{flex:1,minWidth:160}}>
-            <div style={{fontSize:16,fontWeight:800,color:"#be185d"}}>{"🎉 Today is "+u.name+"'s Birthday!"}</div>
-            <div style={{fontSize:13,color:"#9d174d",marginTop:3,fontWeight:500}}>{u.role+" · Don't forget to wish them a Happy Birthday! 🎁"}</div>
+        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},${RDS_ORANGE}0a)`,border:`2px solid ${RDS_ORANGE}55`,borderRadius:14,padding:"16px 22px",marginBottom:10,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:`0 2px 12px ${RDS_ORANGE}22`}}>
+          {/* Avatar circle */}
+          <div style={{width:52,height:52,borderRadius:"50%",background:`linear-gradient(135deg,${RDS_ORANGE},#ea580c)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",flexShrink:0}}>
+            {u.name.charAt(0).toUpperCase()}
           </div>
-          <div style={{background:"#ec4899",color:"#fff",borderRadius:10,padding:"9px 18px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0}}>{"Wish "+u.name.split(" ")[0]+"! 🥳"}</div>
+          <div style={{flex:1,minWidth:160}}>
+            <div style={{fontSize:11,fontWeight:700,color:RDS_ORANGE,letterSpacing:".08em",textTransform:"uppercase",marginBottom:2}}>🎂 Birthday Today · RDS Techserv</div>
+            <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{"Wish "+u.name+" a Happy Birthday!"}</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role}</div>
+          </div>
+          <div style={{background:`linear-gradient(135deg,${RDS_ORANGE},#ea580c)`,color:"#fff",borderRadius:10,padding:"10px 20px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0,boxShadow:`0 2px 8px ${RDS_ORANGE}44`}}>
+            {"🥳 Happy Birthday "+u.name.split(" ")[0]+"!"}
+          </div>
         </div>
       ))}
+      {/* Tomorrow's birthdays */}
       {tomorrowBdays.filter(u=>me&&u.id!==me.id).map(u=>(
-        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#ffedd5)`,border:"1px solid #fb923c55",borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
-          <div style={{fontSize:32,lineHeight:1}}>🎁</div>
+        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#fff7ed)`,border:`1px solid ${RDS_ORANGE}44`,borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <div style={{width:42,height:42,borderRadius:"50%",background:RDS_ORANGE+"22",border:`1px solid ${RDS_ORANGE}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🎁</div>
           <div style={{flex:1,minWidth:160}}>
-            <div style={{fontSize:15,fontWeight:700,color:"#c2410c"}}>{"🗓️ "+u.name+"'s Birthday is Tomorrow!"}</div>
-            <div style={{fontSize:12,color:"#9a3412",marginTop:2}}>{u.role+" · Get ready to wish them! 🎂"}</div>
+            <div style={{fontSize:13,fontWeight:700,color:RDS_ORANGE}}>{"🗓️ Tomorrow — "+u.name+"'s Birthday!"}</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role+" · Prepare your wishes for tomorrow! 🎂"}</div>
           </div>
+          <div style={{fontSize:11,fontWeight:600,color:RDS_ORANGE,background:RDS_ORANGE+"15",borderRadius:8,padding:"5px 12px",border:`1px solid ${RDS_ORANGE}33`}}>Tomorrow</div>
         </div>
       ))}
     </div>
@@ -14523,8 +14546,8 @@ export default function App(){
   await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;const delProj=accessibleProjects.find(p=>p.id===id);await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
-  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||""}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
-  async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){const delU=users.find(u=>u.id===id)||null;await logAudit(me,"user",id,delU?.name||id,null,"delete",delU,null);await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
