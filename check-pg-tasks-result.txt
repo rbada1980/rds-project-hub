@@ -1,0 +1,8 @@
+Local PG total tasks: 946
+Local PG overdue: 78
+Supabase total tasks: 946
+Supabase overdue: 78
+
+In local PG but NOT in Supabase: 0
+
+In Supabase but NOT in local PG: 0

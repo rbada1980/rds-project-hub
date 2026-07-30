@@ -1,0 +1,76 @@
+Written: C:\Users\HP\rds-project-hub\ksp-new.xlsx (14041 bytes)
+Using Excel: C:\Users\HP\rds-project-hub\ksp-new.xlsx
+Reading: C:\Users\HP\rds-project-hub\ksp-new.xlsx
+Sheet: RDS Report
+Headers: SL. NO. | TASK | PROJECT | MAIN STEEL | MISC | STATUS | PRIORITY | ASSIGNEE | DETAILER | CHECKER | DUE DATE | CLIENT SUB DATE
+Row number column: "SL. NO." (index 0)
+
+Tasks parsed from Excel: 4
+  "SC-P1-LEVEL-1" | project="Sports complex" | status=Completed | assignee=Divya | date=2026-07-29
+  "SC-P1-LEVEL-2" | project="Sports complex" | status=Completed | assignee=siva | date=2026-07-29
+  "LRC Building GA & Details" | project="LRC Building" | status=Completed | assignee=Akash | date=2026-06-29
+  "LRC Building GA & Details (Checking)" | project="LRC Building" | status=Completed | assignee=Naidu | date=2026-06-29
+
+Projects needed: Sports complex, LRC Building
+Project "Sports complex" already exists: 4b3a0a91-db5d-43a0-9c45-d519a90883eb
+Project "LRC Building" already exists: 5e624ee4-9daa-46ca-9dda-12fa51d3e927
+Existing tasks in "Sports complex": 2
+Existing tasks in "LRC Building": 2
+UPDATED: "SC-P1-LEVEL-1"
+UPDATED: "SC-P1-LEVEL-2"
+UPDATED: "LRC Building GA & Details"
+UPDATED: "LRC Building GA & Details (Checking)"
+
+=== Summary ===
+Updated:  4
+Inserted: 0
+Skipped:  0
+Errors:   0
+
+=== Final KS&P Tasks in Supabase ===
+
+"Sports complex" (2 tasks):
+  "SC-P1-LEVEL-2" | Completed | siva | 2026-07-29
+  "SC-P1-LEVEL-1" | Completed | Divya | 2026-07-29
+
+"LRC Building" (2 tasks):
+  "LRC Building GA & Details (Checking)" | Completed | Naidu | 2026-06-29
+  "LRC Building GA & Details" | Completed | Akash | 2026-06-29
+Written: C:\Users\HP\rds-project-hub\ksp-new.xlsx (14041 bytes)
+Using Excel: C:\Users\HP\rds-project-hub\ksp-new.xlsx
+Reading: C:\Users\HP\rds-project-hub\ksp-new.xlsx
+Sheet: RDS Report
+Headers: SL. NO. | TASK | PROJECT | MAIN STEEL | MISC | STATUS | PRIORITY | ASSIGNEE | DETAILER | CHECKER | DUE DATE | CLIENT SUB DATE
+Row number column: "SL. NO." (index 0)
+
+Tasks parsed from Excel: 4
+  "SC-P1-LEVEL-1" | project="Sports complex" | status=Completed | assignee=Divya | date=2026-07-29
+  "SC-P1-LEVEL-2" | project="Sports complex" | status=Completed | assignee=siva | date=2026-07-29
+  "LRC Building GA & Details" | project="LRC Building" | status=Completed | assignee=Akash | date=2026-06-29
+  "LRC Building GA & Details (Checking)" | project="LRC Building" | status=Completed | assignee=Naidu | date=2026-06-29
+
+Projects needed: Sports complex, LRC Building
+Project "Sports complex" already exists: 4b3a0a91-db5d-43a0-9c45-d519a90883eb
+Project "LRC Building" already exists: 5e624ee4-9daa-46ca-9dda-12fa51d3e927
+Existing tasks in "Sports complex": 2
+Existing tasks in "LRC Building": 2
+SKIP (no change): "SC-P1-LEVEL-1"
+SKIP (no change): "SC-P1-LEVEL-2"
+SKIP (no change): "LRC Building GA & Details"
+UPDATED: "LRC Building GA & Details (Checking)"
+
+=== Summary ===
+Updated:  1
+Inserted: 0
+Skipped:  3
+Errors:   0
+
+=== Final KS&P Tasks in Supabase ===
+
+"Sports complex" (2 tasks):
+  "SC-P1-LEVEL-2" | Completed | siva | 2026-07-29
+  "SC-P1-LEVEL-1" | Completed | Divya | 2026-07-29
+
+"LRC Building" (2 tasks):
+  "LRC Building GA & Details (Checking)" | Completed | Naidu | 2026-06-29
+  "LRC Building GA & Details" | Completed | Akash | 2026-06-29

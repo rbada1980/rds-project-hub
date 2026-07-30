@@ -1,0 +1,70 @@
+Fetching all tasks from Supabase...
+Total tasks in DB: 954
+Duplicate groups found: 15
+
+KEEP  [791f577b-dfc1-4f18-b7de-b09be2cffe75] "BUILDING TYPE-IV ROOF SLAB & BEAMS WITH PARAPET" | Completed | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [e489d46c-33bd-471d-bde6-d25051bd18c1] "BUILDING TYPE-IV ROOF SLAB & BEAMS WITH PARAPET" | Completed | updated: 2026-07-30T08:55:49.644245+00:00 | due: null
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [4801ed25-575a-4bec-b491-9521bc2b2358] "Bg Thru 1st lift" | Not Yet Started | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [f66e95d2-6e6e-4a50-9a43-e11f5f0239b8] "Bg Thru 1st lift" | Not Yet Started | updated: 2026-07-30T08:55:49.644245+00:00 | due: 2026-07-17
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [1e1f8dab-91bd-48d1-8249-dbaa2b0fd20f] "Columns 35, 36, and 37 terminate below the pool slab" | Not Yet Started | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [a440bc86-5f91-4570-b68f-3674ea31f3b6] "Columns 35, 36, and 37 terminate below the pool slab" | Not Yet Started | updated: 2026-07-30T08:55:49.644245+00:00 | due: 2026-01-10
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [5d2393a9-a447-42a2-bd94-64b017da02d4] "LIFT-11 COLUMNS" | Completed | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [8cb6f1f9-de9c-48bf-83b4-86e605e8663b] "LIFT-11 COLUMNS" | Completed | updated: 2026-07-30T08:55:49.644245+00:00 | due: null
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [d8026990-8315-45cb-9042-023b97647209] "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [4655ba3c-645b-4c0f-abf2-8f6434da89d2] "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | updated: 2026-07-30T08:55:49.644245+00:00 | due: 2026-03-07
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [a6a2590c-20d8-4a15-9523-165ab039e27d] "3RD FLR. SLAB & BEAMS" | Completed | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [d1a19867-29b0-4d8f-a268-2e108e3207ff] "3RD FLR. SLAB & BEAMS" | Completed | updated: 2026-07-30T08:55:49.644245+00:00 | due: 2026-05-15
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [372dc0c0-247b-4ae8-aa95-c0756d727467] "BLDG 2 Type VI - Lift-2 verticals" | Not Yet Started | updated: 2026-07-30T08:55:54.965062+00:00
+  DEL [f72affc6-555e-40c0-99d5-af69e3f16b30] "BLDG 2 Type VI - Lift-2 verticals" | Not Yet Started | updated: 2026-07-30T08:55:49.644245+00:00 | due: null
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [515ca83b-3808-490f-a4a5-7f7ae3ceb9ac] "BASEMENT SLAB ON GRADE" | Completed | updated: 2026-07-30T08:55:53.043582+00:00
+  DEL [be28aff9-245d-4b86-b86e-dd97010053e5] "BASEMENT SLAB ON GRADE" | Completed | updated: 2026-07-30T08:55:49.644245+00:00 | due: 2025-12-15
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [13413785-087b-4de3-84bd-53131244681b] "3RD FLOOR SLAB & BEAMS" | Completed | updated: 2026-07-30T08:55:52.821379+00:00
+  DEL [79df8057-4dcd-4cef-81be-5535930a0164] "3RD FLOOR SLAB & BEAMS" | Completed | updated: 2026-07-30T08:55:51.870072+00:00 | due: 2026-03-21
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [b242cdee-b352-4301-9b1e-6c55b284fff7] "LIFT-4 COLUMNS" | Completed | updated: 2026-07-30T08:55:52.821379+00:00
+  DEL [710bb3a4-ec60-4351-ab1d-2874379cf6a1] "LIFT-4 COLUMNS" | Completed | updated: 2026-07-30T08:55:52.181865+00:00 | due: 2026-04-28
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [69a9ffb5-6da1-4efa-b99f-acdd36bdb04c] "BLDG 5 Type VII - Lift-1 verticals" | Not Yet Started | updated: 2026-07-30T08:55:52.670482+00:00
+  DEL [ee60c591-938e-4acf-b5c0-913a36e6087b] "BLDG 5 Type VII - Lift-1 verticals" | Not Yet Started | updated: 2026-07-30T08:55:49.644245+00:00 | due: null
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [b4af3773-836a-483a-8575-ee960afec175] "SHEAR WALLS (LVL-8 TO BULK HEAD)" | Completed | updated: 2026-07-30T08:55:52.414359+00:00
+  DEL [ee9041e4-db29-4ccc-a41d-9d90c9c5bb02] "SHEAR WALLS (LVL-8 TO BULK HEAD)" | Completed | updated: 2026-07-30T08:55:49.644245+00:00 | due: 2026-02-28
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [2cc933b2-3297-4bd2-9812-0c21ccfb956a] "RETAIINING WALL" | Completed | updated: 2026-07-30T08:55:52.414359+00:00
+  DEL [00d5a231-56e9-4e62-a804-402190076b32] "RETAIINING WALL" | Completed | updated: 2026-07-30T08:55:52.181865+00:00 | due: 2026-05-08
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [0707e27d-4e2c-47d2-8044-a88698e10720] "Building Type V - SOG" | Not Yet Started | updated: 2026-07-30T08:55:52.181865+00:00
+  DEL [814a31f2-f1e1-4b05-9b9b-77a8410d4952] "Building Type V - SOG" | Not Yet Started | updated: 2026-07-30T08:55:50.854517+00:00 | due: 2026-05-09
+  Supabase: deleted 1 | PG: deleted 1
+
+KEEP  [171d1648-3cb6-4386-8188-7542d9920c52] "Residence 2nd floor slab & beams" | Not Yet Started | updated: 2026-07-30T08:55:51.692399+00:00
+  DEL [8b132f3f-1ace-481e-a3b5-08a0d6a16470] "Residence 2nd floor slab & beams" | Not Yet Started | updated: 2026-07-30T08:55:49.644245+00:00 | due: null
+  Supabase: deleted 1 | PG: deleted 1
+
+=== Summary ===
+Duplicate groups: 15
+Rows deleted:     15
+Errors:           0
+
+Done. Run check-overdue.cjs to verify the new count.

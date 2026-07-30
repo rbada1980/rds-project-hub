@@ -1,0 +1,185 @@
+Total tasks: 1010
+Duplicate groups: 58
+
+⚠ Duplicates found:
+  x2: "Missing rebar for slab transitions on pool deck slab" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [ae9652bf-29a4-41ef-9a27-fc304ea5ab0b] Completed | updated: 2026-07-30T07:34:37.361387+00:00
+    [7ca5bf7b-ad60-4db3-874a-ae3b35340413] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "10th FLOOR SLAB & BEAMS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [87a61792-1ccd-49fe-a947-4e38fb9fe004] Completed | updated: 2026-07-30T07:34:37.576001+00:00
+    [8abd092c-9cee-44c5-996d-ca28b11941c7] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+  x3: "Bg Thru 1st lift" (project: 66558692-26af-44db-a96d-a49cf1b5c3c0)
+    [f66e95d2-6e6e-4a50-9a43-e11f5f0239b8] Not Yet Started | updated: 2026-07-30T07:34:37.977455+00:00
+    [4801ed25-575a-4bec-b491-9521bc2b2358] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [4cb94e91-184b-43a6-8a50-5f135cf2ad8a] Not Yet Started | updated: 2026-07-30T07:34:37.977455+00:00
+  x2: "Residence Columns" (project: 7890e355-c009-4b56-b33b-89100799bcb3)
+    [30927f6e-e326-47ed-9e2d-090350c61ff5] Not Yet Started | updated: 2026-07-30T07:34:38.177209+00:00
+    [2ebf4e1d-d0b8-4dc3-92e5-28f0f4a5f0a3] Not Yet Started | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "BUILDING TYPE-III LIFT-2 VERTICALS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [418a5405-108f-43d6-8402-146254fdfc7a] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+    [651364f4-5ae0-432e-b09e-373c1e122cb5] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "BUILDING TYPE-III SLAB ON GRADE" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [c59fb9a4-5c2a-409b-a48d-1f9810e9d022] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+    [4e8e2f79-4536-499c-957f-13e0f83793bb] Completed | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "Pool Pavilion" (project: 66558692-26af-44db-a96d-a49cf1b5c3c0)
+    [87a10b79-8a05-49ac-9ce0-18baa5eb71d9] Not Yet Started | updated: 2026-07-30T07:34:37.977455+00:00
+    [f2aa9bbf-1fcc-476d-be97-333a85f47fa0] Not Yet Started | updated: 2026-07-30T07:34:37.977455+00:00
+  x2: "7TH FLR. SLAB & BEAMS" (project: 95bf954d-4cfc-43cd-ba00-cfca50bed78e)
+    [ca09ad03-e353-49c7-8946-f5ee44d7e7ed] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+    [c616b03f-df8b-4224-8eec-61c7e1a8ea67] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "Clubhouse" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [ec20358b-234c-4ee9-91ee-eabb448d31f6] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+    [4b0a4d36-fee4-4a8e-8b9a-84a56b5e7ca6] Completed | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "2ND FLR GARAGE SLAB" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [b09cbd59-3562-4167-a3e1-74f339c34431] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [f3cfd0a0-9e8a-4dd6-aa28-efa8fb69e0fe] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "Foundations & Slab on grade" (project: cf8b80c0-5128-48b7-ba23-bc11d8adc2c8)
+    [ffed7e43-ed7f-493e-ac56-ba3ef7d506c8] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [7eac3978-f873-4e84-9b8a-ed13b4df1fae] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "BASEMENT RETAINIG WALLS & CMU WALLS" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [b7a322b7-7e88-44d3-a2ab-2e7023ef6e38] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [260ad719-f214-40c9-8340-28979bca15e1] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+  x2: "BUILDING TYPE-IV TUNNEL WALLS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [4b1c8274-08fa-4b7a-afb6-e10f6d520baa] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [b1680618-4238-46f3-9159-2cd15494542c] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "SHEAR WALLS (LVL-8 TO BULK HEAD)" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [ee9041e4-db29-4ccc-a41d-9d90c9c5bb02] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [b4af3773-836a-483a-8575-ee960afec175] Completed | updated: 2026-07-30T07:34:38.333083+00:00
+  x2: "3RD FLR. SLAB & BEAMS" (project: 95bf954d-4cfc-43cd-ba00-cfca50bed78e)
+    [a6a2590c-20d8-4a15-9523-165ab039e27d] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [d1a19867-29b0-4d8f-a268-2e108e3207ff] Completed | updated: 2026-07-30T07:34:37.977455+00:00
+  x5: "2nd Flr. Thru 2nd lift & 2nd floor beams" (project: 66558692-26af-44db-a96d-a49cf1b5c3c0)
+    [4655ba3c-645b-4c0f-abf2-8f6434da89d2] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [5fcee6d2-f38a-4147-91d6-bf5ae3da17f0] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [d8026990-8315-45cb-9042-023b97647209] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [6a83b81c-61bf-4a6b-ba4a-d27a91213239] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [79c4a27e-dcda-4a14-b1a8-6f65f156a01e] Not Yet Started | updated: 2026-07-30T07:34:37.977455+00:00
+  x2: "Garage Shear walls" (project: 7890e355-c009-4b56-b33b-89100799bcb3)
+    [ec565996-5075-4b4f-aaba-01860f2321da] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [c12e4596-d97f-4832-ab50-503dd1c6cf15] Not Yet Started | updated: 2026-07-30T07:34:37.361387+00:00
+  x2: "Columns lvl 4 to 8" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [211fd8b1-1ef4-449b-9a27-5fd399b36635] In Progress | updated: 2026-07-30T07:34:42.38858+00:00
+    [c96ea8bd-85b2-4ee7-9f10-9029481db5c1] In Progress | updated: 2026-07-30T07:34:36.985424+00:00
+  x2: "MAITAINANCE BUIDLING" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [d11df411-625c-4ddb-831d-c96ef34ba277] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [e55ce077-af78-4d5c-8311-523b030457b1] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "BLDG 2 Type VI - Lift-2 verticals" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [372dc0c0-247b-4ae8-aa95-c0756d727467] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [f72affc6-555e-40c0-99d5-af69e3f16b30] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "BLDG 3 Type V - Lift-3 verticals" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [eeb1d149-7228-4971-b42c-0e731b084c3a] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [5ef0f653-7344-4f71-bd83-ce34807f8bcd] Not Yet Started | updated: 2026-07-30T07:34:37.776463+00:00
+  x2: "BUILDING TYPE-IV 5th FLR. SLAB & BEAMS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [02ad964c-537d-4b9a-9225-48508f63ce89] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [88dedf31-6de2-4de3-bead-164a096da23d] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+  x2: "LIFT-11 COLUMNS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [5d2393a9-a447-42a2-bd94-64b017da02d4] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [8cb6f1f9-de9c-48bf-83b4-86e605e8663b] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+  x2: "6TH FLR RESIDENTIAL SLAB" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [694daaad-f222-4558-bfba-9bc7a10e48bf] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [d341080c-2904-4d9c-885b-04c2df7dd6b5] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+  x2: "Columns 35, 36, and 37 terminate below the pool slab" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [1e1f8dab-91bd-48d1-8249-dbaa2b0fd20f] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [a440bc86-5f91-4570-b68f-3674ea31f3b6] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "BLDG 4 Type III - Lift-2 verticals" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [11de4825-aadc-4219-9c4c-39b3cfe30f31] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [2be0391d-fd18-4fbe-83af-0a48c41af56a] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "BUILDING TYPE-IV LIFT-2 VERTICALS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [379a5fde-f1ca-4a9b-9714-693c37f6d576] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [22a32216-a58e-424c-9f87-a12f09ef8613] Not Yet Started | updated: 2026-07-30T07:34:37.776463+00:00
+  x2: "BUILDING TYPE-IV ROOF SLAB & BEAMS WITH PARAPET" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [791f577b-dfc1-4f18-b7de-b09be2cffe75] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [e489d46c-33bd-471d-bde6-d25051bd18c1] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+  x2: "BUILDING TYPE-IV LIFT-1 VERTICALS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [3c5aa49a-b8f5-4b99-ba15-6ac37e661795] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [4bf7bb9e-1de3-4d9a-b810-0ca112f93867] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+  x2: "GROUND FLOOR SLAB (RESIDENTIAL AREA)" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [8d107c2c-2e3b-46e1-86db-f39c76fc4142] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+    [cb86ef24-26b0-4cd9-83e3-693a5cadddcf] Completed | updated: 2026-07-30T07:34:37.361387+00:00
+  x2: "BASEMENT SLAB ON GRADE" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [be28aff9-245d-4b86-b86e-dd97010053e5] Completed | updated: 2026-07-30T07:34:42.38858+00:00
+    [515ca83b-3808-490f-a4a5-7f7ae3ceb9ac] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "BLDG 3 Type V - 4th floor slab" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [e1700c22-b929-4626-95ef-6662c81d9eea] Not Yet Started | updated: 2026-07-30T07:34:38.762761+00:00
+    [0112d58d-af64-4860-8661-2840fc144130] Not Yet Started | updated: 2026-07-30T07:34:37.977455+00:00
+  x2: "BLDG 5 Type VII - Lift-1 verticals" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [69a9ffb5-6da1-4efa-b99f-acdd36bdb04c] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [ee60c591-938e-4acf-b5c0-913a36e6087b] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+  x3: "Building Type V - SOG" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [814a31f2-f1e1-4b05-9b9b-77a8410d4952] Not Yet Started | updated: 2026-07-30T07:34:42.38858+00:00
+    [0707e27d-4e2c-47d2-8044-a88698e10720] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+    [5b71fd2b-a34d-4423-b7b9-38bc3d8aef1f] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "Columns level 2 to Level 4" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [546f9e9e-0f14-4593-bb1d-8c64c20725d8] Completed | updated: 2026-07-30T07:34:38.177209+00:00
+    [907ff9b8-c862-41b0-a5d9-76d52717bffc] Completed | updated: 2026-07-30T07:34:38.891077+00:00
+  x2: "STAIRS (UP TO LVL.-4)" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [2f8545f5-735d-47d3-b760-bac692c92fb7] Completed | updated: 2026-07-30T07:34:38.177209+00:00
+    [aeb62ffe-80ab-44a8-b123-9a5c672f16c5] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "3RD FLOOR SLAB & BEAMS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [79df8057-4dcd-4cef-81be-5535930a0164] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+    [13413785-087b-4de3-84bd-53131244681b] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "BLDG 3 Type V - 3rd floor slab" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [70b6f032-6221-478c-a89c-68c32e6e9c15] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+    [b15d6dae-07fd-4dfa-a6db-99c64859524e] Not Yet Started | updated: 2026-07-30T07:34:38.891077+00:00
+  x2: "Ground Level Slab FFU drawings and bar lists. RFI #79" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [2b64879b-a5b5-4060-86d0-ed2c5d04c6ce] Not Yet Started | updated: 2026-07-30T07:34:38.177209+00:00
+    [0fa49f49-4dee-4615-a490-feadc2d79e3c] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "4TH FLR RESIDENTIAL SLAB" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [9a1164c3-601f-48ae-89c7-58d82bf9318c] Completed | updated: 2026-07-30T07:34:37.576001+00:00
+    [6359b9d4-8612-432e-b6d2-2034e232544e] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "6TH FLR GARAGE SLAB" (project: 987a4a3f-8d72-42de-a891-095123135029)
+    [48293ce7-795a-43fc-8fe4-5d6d81cdc5c8] Completed | updated: 2026-07-30T07:34:37.977455+00:00
+    [1bfa4a4d-8e32-49eb-9a1b-eb358469d22f] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "RETAIINING WALL" (project: 95bf954d-4cfc-43cd-ba00-cfca50bed78e)
+    [2cc933b2-3297-4bd2-9812-0c21ccfb956a] Completed | updated: 2026-07-30T07:34:38.333083+00:00
+    [00d5a231-56e9-4e62-a804-402190076b32] Completed | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "Lift - 1 Verticals, 2nd floor slab and beams (2-story residence)" (project: 4d8d21b3-cd9f-43e0-bb7d-6562ac362d47)
+    [d82eba3b-9d21-419b-b9e6-d021b49a6459] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+    [07c6b83d-344f-4628-a87f-cdea5a298b6b] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "BUILDING TYPE-III 2ND FLR. SLAB & BEAMS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [0b92e954-1920-429f-b454-4f7ccbe67fe2] Completed | updated: 2026-07-30T07:34:37.977455+00:00
+    [66673d17-ce36-4679-851b-bfdfccbe5357] Completed | updated: 2026-07-30T07:34:38.891077+00:00
+  x2: "Columns Lvl-4 to 5 pour separation" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [c0894cb7-e461-4d7c-8422-cc10c1835f85] In Progress | updated: 2026-07-30T07:34:38.612515+00:00
+    [5510d56b-6e9e-4227-8cd7-521e578ca088] In Progress | updated: 2026-07-30T07:34:37.361387+00:00
+  x2: "BUILDING TYPE-V 5th FLR. SLAB & BEAMS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [8904b153-dde3-40c5-a29f-44ada39cacad] Completed | updated: 2026-07-30T07:34:37.776463+00:00
+    [889056e1-daf8-4b02-b001-1c91bf599798] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "4TH FLOOR SLAB & BEAMS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [6982527c-f022-4aab-bcac-5c320de0b91f] Completed | updated: 2026-07-30T07:34:37.977455+00:00
+    [27cd86ce-8440-40e1-808a-ac4ebf63ffe7] Completed | updated: 2026-07-30T07:34:38.762761+00:00
+  x2: "Residence 2nd floor slab & beams" (project: 7890e355-c009-4b56-b33b-89100799bcb3)
+    [171d1648-3cb6-4386-8188-7542d9920c52] Not Yet Started | updated: 2026-07-30T07:34:38.333083+00:00
+    [8b132f3f-1ace-481e-a3b5-08a0d6a16470] Not Yet Started | updated: 2026-07-30T07:34:37.361387+00:00
+  x2: "BUILDING TYPE-I ROOF SLAB & BEAMS WITH PARAPET" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [89e4c917-47b6-46fb-82d2-c69a795f4186] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+    [d4d9ede5-a4b0-47b6-8e70-447d9d26bafc] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+  x2: "BUILDING TYPE-V LIFT-4 VERTICALS" (project: f4182839-e0ed-4d13-876d-14bba144c6f7)
+    [1854fdd7-cf9f-4ac8-b39e-cde957bdc56a] Not Yet Started | updated: 2026-07-30T07:34:36.985424+00:00
+    [3e1e5495-9bec-4efe-b5ae-923b3a9922f1] Not Yet Started | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "9th FLOOR SLAB & BEAMS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [11f19de5-722c-4203-9856-dc2ac327b131] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+    [3ef446a7-ca90-4fd3-9649-632adab65952] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "Residence - Cont ftgs" (project: 7890e355-c009-4b56-b33b-89100799bcb3)
+    [acc4d191-c42d-49dd-b853-fef11654a565] Not Yet Started | updated: 2026-07-30T07:34:36.985424+00:00
+    [2854e4fa-8707-449d-95b8-43236688fa5e] Not Yet Started | updated: 2026-07-30T07:34:37.361387+00:00
+  x2: "LIFT-4 COLUMNS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [710bb3a4-ec60-4351-ab1d-2874379cf6a1] Completed | updated: 2026-07-30T07:34:37.361387+00:00
+    [b242cdee-b352-4301-9b1e-6c55b284fff7] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "BLDG 1 Type II" (project: f41c0dac-a6a6-462c-a73a-8e25ac1af20b)
+    [70b49385-191e-48cb-a8e5-a51a587ee66f] Completed | updated: 2026-07-30T07:34:37.361387+00:00
+    [6cfbdb8c-aaf0-4385-bb5d-f9f36467d4f8] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "LIFT-1 STAIRS" (project: df23aa9c-650b-4c7d-8d5c-45c441379f82)
+    [ceb58901-8919-414e-9315-b033aa5794a2] Completed | updated: 2026-07-30T07:34:37.361387+00:00
+    [b8e8e1b2-c7b6-4f70-8124-d47c35565440] Completed | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "Building _2 Type II" (project: b832e0a5-14f0-4d48-9a04-2a8dc5f37718)
+    [9dcdbe01-ebb8-4508-ab38-2889d8a9f3bb] Completed | updated: 2026-07-30T07:34:37.576001+00:00
+    [159453a8-dcca-4312-bc58-de26a918b572] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+  x2: "Garage 6th floor slab & beams" (project: 7890e355-c009-4b56-b33b-89100799bcb3)
+    [bd16fa44-d7ba-47a4-a911-bf518f671cd9] Not Yet Started | updated: 2026-07-30T07:34:37.576001+00:00
+    [140a910d-2045-477c-afa6-de2e9aed40d1] Not Yet Started | updated: 2026-07-30T07:34:38.612515+00:00
+  x2: "2ND FLOOR SLAB (RESIDENTIAL)" (project: ee741c1a-d31c-4cb5-a9f1-a5e66817847c)
+    [7e039546-afbb-4a3e-bd72-ac45580ad730] Completed | updated: 2026-07-30T07:34:36.985424+00:00
+    [e8bd5e10-3417-4fc4-bb29-afacb37bbee6] Completed | updated: 2026-07-30T07:34:38.333083+00:00
+
+Run dedup-tasks.cjs to fix.

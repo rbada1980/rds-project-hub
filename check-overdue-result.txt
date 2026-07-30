@@ -1,0 +1,89 @@
+Today: 2026-07-30
+
+Overdue tasks (due_date < 2026-07-30, status not Completed/Done): 86
+  [White Cap] The Syed Residence → "Lift - 1 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: Jagadeesh
+  [Formcrete] 2460 Australian (Ocean Tower) → "GRADE BEAMS" | In Progress | due: 2026-04-02 | assignee: Dhanush
+  [Formcrete] 4541-Gables Cypress Creek → "BUILDING TYPE-V FOUNDATIONS (sub#26.1)" | In Progress | due: 2026-04-13 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "Building Type -III Tunnel walls" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "BUILDING TYPE-V FOUNDATIONS (sub#26.1)" | In Progress | due: 2026-04-14 | assignee: Swathi
+  [White Cap] 2235 Mangolia Drive → "Lift - 1 verticals and beams" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "Bg Thru Roof beams" | Not Yet Started | due: 2026-07-17 | assignee: Pradeep
+  [White Cap] Nuvo → "3rd Flr. Thru 3rd lift & 3rd floor beams" | Not Yet Started | due: 2026-03-07 | assignee: Lokesh
+  [Formcrete] Modera Boca Raton → "Columns lvl 4 to 8" | In Progress | due: 2026-01-11 | assignee: Jagadeesh
+  [White Cap] 810 S Swinton Ave Residence → "Lift - 2 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: 
+  [Formcrete] Octavia → "RESIDENTIAL 4TH LVL SLAB" | In Progress | due: 2026-07-26 | assignee: null
+  [White Cap] Nuvo → "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | due: 2026-03-07 | assignee: Siva Kumar
+  [White Cap] Gallery at Somi Parc Phase 1 → "Slab on grade (Residential) part - 1 & 2" | In Progress | due: 2026-06-26 | assignee: 
+  [White Cap] 128 Worth CT N → "Foundations & slab on grade" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "Cabana Footings" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Masucci Residence → "Lift - 1 verticals and beams" | In Progress | due: 2026-03-07 | assignee: 
+  [White Cap] Nuvo → "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | due: 2026-03-07 | assignee: Lokesh
+  [White Cap] Nuvo → "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | due: 2026-03-07 | assignee: Siva Kumar
+  [Formcrete] Magnolia Point → "Trash enclosure" | Not Yet Started | due: 2026-01-10 | assignee: 
+  [Formcrete] NOMI-6 → "Lvl-4 slab markups & barlists" | Not Yet Started | due: 2026-01-10 | assignee: Sai
+  [White Cap] 840 Denery Ln. Residence → "Lift - 2 verticals and bond beams" | Not Yet Started | due: 2026-03-07 | assignee: Praveena
+  [White Cap] Nuvo → "Pool Pavilion" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "BBQ Station" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "Raised Planters" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] 2960 Greenbriair → "Lift - 2 verticals and roof beams" | In Progress | due: 2026-03-07 | assignee: Praveena
+  [White Cap] Nuvo → "Bg Thru 1st lift" | Not Yet Started | due: 2026-07-17 | assignee: Pradeep
+  [White Cap] Chateau De La Duchess (925 Hillsboro) → "Entry Garages foundations and slab on grade" | In Progress | due: 2026-03-07 | assignee: 
+  [Formcrete] Modera Boca Raton → "Columns 35, 36, and 37 terminate below the pool slab" | Not Yet Started | due: 2026-01-10 | assignee: 
+  [White Cap] Nuvo → "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | due: 2026-03-07 | assignee: Siva Kumar
+  [Formcrete] Modera Boca Raton → "Columns 35, 36, and 37 terminate below the pool slab" | Not Yet Started | due: 2026-01-10 | assignee: 
+  [White Cap] Nuvo → "Garage Type 2" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] 128 Worth CT N → "Lift - 1 verticals and beams" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "Bg Thru 1st lift" | Not Yet Started | due: 2026-07-24 | assignee: Pradeep
+  [Formcrete] 4541-Gables Cypress Creek → "RFI responses 86 & 95.1" | In Progress | due: 2026-05-11 | assignee: Dhanush
+  [White Cap] Nuvo → "2nd Flr. Thru 2nd lift & 2nd floor beams" | Not Yet Started | due: 2026-03-07 | assignee: Lokesh
+  [White Cap] Nuvo → "Elevator Pits & Stairs, Bg Thru 1st lift" | In Progress | due: 2026-06-16 | assignee: Lokesh
+  [White Cap] Chateau De La Duchess (925 Hillsboro) → "Entry Garages lift - 2 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: 
+  [Formcrete] 4541-Gables Cypress Creek → "Building Type V - SOG" | Not Yet Started | due: 2026-05-09 | assignee: Swathi
+  [Formcrete] 4541-Gables Cypress Creek → "Building Type - I SOG" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] NOMI-6 → "11th FLOOR SLAB & BEAMS" | In Progress | due: 2026-06-26 | assignee: 
+  [White Cap] Nuvo → "Trash Compactor" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] 2960 Greenbriair → "Lift - 1 verticals, beams and 2nd floor slab" | In Progress | due: 2026-03-07 | assignee: Sridevi
+  [White Cap] Nuvo → "Bg Thru 1st lift" | Not Yet Started | due: 2026-07-17 | assignee: Pradeep
+  [White Cap] Nuvo → "Trellis Footings" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] 840 Denery Ln. Residence → "Roof beams" | Not Yet Started | due: 2026-03-07 | assignee: Praveena
+  [White Cap] Nuvo → "Pool Pavilion" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [Formcrete] 2460 Australian (Ocean Tower) → "Pour separation" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [White Cap] 840 Denery Ln. Residence → "2nd floor slab & beams" | In Progress | due: 2026-03-07 | assignee: Sridevi
+  [Formcrete] NOMI-6 → "Columns Lvl-4 to 5 pour separation" | In Progress | due: 2026-04-29 | assignee: Sai
+  [White Cap] 810 S Swinton Ave Residence → "Lift - 1 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: 
+  [White Cap] Masucci Residence → "Lift - 2 verticals and beams" | In Progress | due: 2026-03-07 | assignee: 
+  [Formcrete] 4541-Gables Cypress Creek → "Bldg. Type I & II RFI #98 fnds revision" | Not Yet Started | due: 2026-01-10 | assignee: Swathi
+  [White Cap] 2235 Mangolia Drive → "Foundations & slab on grade" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Chateau De La Duchess (925 Hillsboro) → "Entry Garages lift - 1 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: 
+  [Formcrete] 4541-Gables Cypress Creek → "Bldg. Type IV - Tunnel Walls submittal" | In Progress | due: 2026-04-13 | assignee: Swathi
+  [Formcrete] Octavia → "RESIDENTIAL 3RD LVL SLAB" | In Progress | due: 2026-07-19 | assignee: null
+  [Formcrete] NOMI-6 → "Columns Lvl-4 to 5 pour separation" | In Progress | due: 2026-04-28 | assignee: Sai
+  [Formcrete] 4541-Gables Cypress Creek → "Bldg. Type IV - Level-2" | In Progress | due: 2026-05-04 | assignee: Swathi
+  [White Cap] 90 Stingaree → "Lift - 1 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: Praveena
+  [Formcrete] 4541-Gables Cypress Creek → "Bldg. Type IV - Tunnel Walls submittal" | In Progress | due: 2026-04-12 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "Building Type - I Tunnel walls" | In Progress | due: 2026-01-10 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "8"-Wall for Bldg.; Type IV - L1-L2" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] 4543 DULCE VIDA → "Garage Lvl-3 to 8 slabs EMDS" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [White Cap] Nuvo → "4th Flr. Thru Roof & Abv Roof beams" | Not Yet Started | due: 2026-03-07 | assignee: Lokesh
+  [Formcrete] NOMI-6 → "grade 80 grade 60 bars" | In Progress | due: 2026-01-10 | assignee: Sai
+  [Formcrete] NOMI-6 → "Slab edge reinf't addition" | Not Yet Started | due: 2026-01-12 | assignee: 
+  [White Cap] The Syed Residence → "Lift - 2 verticals and beams" | Not Yet Started | due: 2026-03-07 | assignee: Nanaji
+  [Formcrete] 4541-Gables Cypress Creek → "Tunnel walls revision per RFI#35" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "All bldgs tunnel walls candycane bars" | Not Yet Started | due: 2026-01-10 | assignee: Swathi
+  [Formcrete] 2460 Australian (Ocean Tower) → "Change Elevator level -5-0" to -4'-0" & RFI 043, 20" | In Progress | due: 2026-01-10 | assignee: null
+  [White Cap] Nuvo → "Clubhouse" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [Formcrete] 4541-Gables Cypress Creek → "RFI responses 86 & 95.1" | In Progress | due: 2026-05-10 | assignee: null
+  [Formcrete] 4543 DULCE VIDA → "Main bldg roof slab" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "Bldg. Type III 2nd floor slab" | Not Yet Started | due: 2026-01-14 | assignee: null
+  [Formcrete] 2460 Australian (Ocean Tower) → "RFI responses 25 & 27" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] ALTON DELRAY → "Clubhouse 2nd floor slab" | In Progress | due: 2026-07-26 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "Bldg. Type IV - Level-2" | In Progress | due: 2026-05-05 | assignee: Swathi
+  [White Cap] Masucci Residence → "2nd floor slab and beams" | In Progress | due: 2026-03-07 | assignee: 
+  [Formcrete] 4541-Gables Cypress Creek → "Building Type V - SOG" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] 4541-Gables Cypress Creek → "remaining bldgs walls updated dwgs" | Not Yet Started | due: 2026-01-10 | assignee: null
+  [Formcrete] Modera Boca Raton → "Revision per RFI #50, #67, #78 responses" | Not Yet Started | due: 2026-01-10 | assignee: 
+  [White Cap] 2235 Mangolia Drive → "Lift - 2 verticals and beams" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] 128 Worth CT N → "Lift - 2 verticals and beams" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "Garage Type 1" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [White Cap] Nuvo → "Mail Kiosk - Slab on grade" | Not Yet Started | due: 2026-07-24 | assignee: 
+  [Formcrete] Modera Boca Raton → "Ground Level Slab FFU drawings and bar lists. RFI #79" | Not Yet Started | due: 2026-01-10 | assignee: 

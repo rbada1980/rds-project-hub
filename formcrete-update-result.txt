@@ -1,36 +1,998 @@
-Reading: C:\Users\HP\rds-project-hub\Formcrete Projects Tracker_2026.xlsx
-Columns: S.No, BILL STATUS, PROJECT NAME, SCOPE, DWG NO., COMPONENTS OF WORK, REC. DATE, STATUS, SUB. DATE, CUST. REQ. DATE, EXP. WT/HRS, DET. WT., HRS, C.O., DETAILER, CHECKER, REMARKS
-Excel rows: 359
-Projects in DB: 15
-Tasks in DB: 775
-Unique project|title keys: 426
-Progress: 50/359 rows processed...
-Progress: 100/359 rows processed...
-Progress: 150/359 rows processed...
-Progress: 200/359 rows processed...
-Progress: 250/359 rows processed...
-Progress: 300/359 rows processed...
-Progress: 350/359 rows processed...
+Written: C:\Users\HP\rds-project-hub\formcrete-new.xlsx (43891 bytes)
+Reading: C:\Users\HP\rds-project-hub\formcrete-new.xlsx
+Total rows in sheet: 485
+Header at row index: 2
+SKIP (hold): "Patch list for Bldg. 2, 4-5 Type IV, I-II– ADD'LS @Balcony" in "4541-Gables Cypress Creek"
 
-=== Formcrete Update Complete ===
-Excel rows:          359
-Matched:             359
-Updated:             201
-Skipped (no change): 510
-Not found:           0
-Errors:              0
-node:fs:2422
-    return binding.writeFileUtf8(
-                   ^
+Tasks parsed: 449
+Projects: Modera Boca Raton, 4541-Gables Cypress Creek, NOMI-6, 4543 DULCE VIDA, 2460 Australian (Ocean Tower), Magnolia Point, Hilltop Gardens, Altis Delray, Octavia, ALTON DELRAY, Bird Arts, Adela II, Alexan margrate
 
-Error: EBUSY: resource busy or locked, open 'C:\Users\HP\rds-project-hub\formcrete-update-result.txt'
-    at Object.writeFileSync (node:fs:2422:20)
-    at main (C:\Users\HP\rds-project-hub\update-formcrete-tasks.cjs:213:6)
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
-  errno: -4082,
-  code: 'EBUSY',
-  syscall: 'open',
-  path: 'C:\\Users\\HP\\rds-project-hub\\formcrete-update-result.txt'
-}
+Client: "Formcrete"
+Project "Modera Boca Raton": 987a4a3f-8d72-42de-a891-095123135029 (existing)
+Project "4541-Gables Cypress Creek": a12ebdfc-1cb1-4156-9666-b54b4f3115ca (existing)
+Project "NOMI-6": df23aa9c-650b-4c7d-8d5c-45c441379f82 (existing)
+Project "4543 DULCE VIDA": 75ecc479-c4eb-4fbd-b807-7c52260db1d0 (existing)
+Project "2460 Australian (Ocean Tower)": f44a631d-36e7-4c49-bf41-14cee4a9abbf (existing)
+Project "Magnolia Point": f41c0dac-a6a6-462c-a73a-8e25ac1af20b (existing)
+Project "Hilltop Gardens": b832e0a5-14f0-4d48-9a04-2a8dc5f37718 (existing)
+Project "Altis Delray": 0089cf21-7056-4c5c-9458-8d608685c9c0 (existing)
+Project "Octavia": 7890e355-c009-4b56-b33b-89100799bcb3 (existing)
+Project "ALTON DELRAY": 6f915efb-e314-423c-adc8-99a16b79fa7d (existing)
+Project "Bird Arts": fcdfa14f-ea21-4f9a-b14c-b0a39b540ab9 (existing)
+Project "Adela II": f1e831ba-034f-4fcf-8421-be7b306eec98 (existing)
+Project "Alexan margrate": 3cd43d93-35cd-4a29-a3e3-0edb173277a9 (existing)
 
-Node.js v24.16.0
+Existing tasks in DB: 484
+SKIP (no change): "BASEMENT SLAB ON GRADE" [Modera Boca Raton]
+SKIP (no change): "GROUND FLOOR SLAB (GARAGE AREA)" [Modera Boca Raton]
+UPDATED: "GROUND FLOOR SLAB (RESIDENTIAL AREA)" [Modera Boca Raton] → Completed
+UPDATED: "BASEMENT RETAINIG WALLS & CMU WALLS" [Modera Boca Raton] → Completed
+SKIP (no change): "2ND FLR GARAGE SLAB" [Modera Boca Raton]
+SKIP (no change): "2ND FLR RESIDENTIAL SLAB" [Modera Boca Raton]
+SKIP (no change): "3RD FLR GARAGE SLAB" [Modera Boca Raton]
+SKIP (no change): "3RD FLR RESIDENTIAL SLAB" [Modera Boca Raton]
+SKIP (no change): "SHEAR WALLS (LVL-2 TO LVL-8)" [Modera Boca Raton]
+SKIP (no change): "SHEAR WALLS (LVL-8 TO BULK HEAD)" [Modera Boca Raton]
+SKIP (no change): "LEVEL-2 TO LEVEL-4 COLUMNS" [Modera Boca Raton]
+SKIP (no change): "4TH FLR GARAGE SLAB" [Modera Boca Raton]
+SKIP (no change): "4TH FLR RESIDENTIAL SLAB" [Modera Boca Raton]
+SKIP (no change): "5TH FLR GARAGE SLAB" [Modera Boca Raton]
+SKIP (no change): "5TH FLR RESIDENTIAL SLAB" [Modera Boca Raton]
+SKIP (no change): "6TH FLR GARAGE SLAB" [Modera Boca Raton]
+SKIP (no change): "6TH FLR RESIDENTIAL SLAB" [Modera Boca Raton]
+SKIP (no change): "LEVEL-4 TO LEVEL-8 COLUMNS" [Modera Boca Raton]
+SKIP (no change): "7TH FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "8TH FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "LEVEL-8 TO ROOF COLUMNS" [Modera Boca Raton]
+SKIP (no change): "9TH FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "10TH FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "11TH FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "12TH FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "12TH MEZZ FLR SLAB" [Modera Boca Raton]
+SKIP (no change): "ROOF SLAB" [Modera Boca Raton]
+SKIP (no change): "HIGH ROOF SLAB" [Modera Boca Raton]
+UPDATED: "GROUND LEVEL TO 2ND LEVEL TC & CMU WALLS" [Modera Boca Raton] → Completed
+UPDATED: "2ND LEVEL TO 3RD LEVEL TC & CMU WALLS" [Modera Boca Raton] → Completed
+SKIP (no change): "3RD LEVEL TO 4TH LEVEL TC & CMU WALLS" [Modera Boca Raton]
+UPDATED: "4TH LEVEL TO 5TH LEVEL TC & CMU WALLS" [Modera Boca Raton] → Completed
+SKIP (no change): "5TH LEVEL TO 6TH LEVEL TC & CMU WALLS" [Modera Boca Raton]
+UPDATED: "6TH LEVEL TO 7TH LEVEL TC & CMU WALLS" [Modera Boca Raton] → Completed
+SKIP (no change): "7TH LEVEL TO 8TH LEVEL TC & CMU WALLS" [Modera Boca Raton]
+SKIP (no change): "8TH LEVEL TO 9TH LEVEL TC & CMU WALLS" [Modera Boca Raton]
+SKIP (no change): "9TH LEVEL TO 10TH LEVEL TC & CMU WALLS" [Modera Boca Raton]
+UPDATED: "10TH LEVEL TO 11TH LEVEL TC & CMU WALLS" [Modera Boca Raton] → Completed
+SKIP (no change): "11TH LEVEL TO 12TH LEVEL TC & CMU WALLS" [Modera Boca Raton]
+SKIP (no change): "12TH LEVEL TO 12TH MEZZ LEVEL TC & CMU WALLS" [Modera Boca Raton]
+SKIP (no change): "12TH MEZZ LEVEL TO ROOF LEVEL TC & CMU WALLS" [Modera Boca Raton]
+SKIP (no change): "ROOF LEVEL TO HIGH ROOF TC & CMU WALLS" [Modera Boca Raton]
+SKIP (no change): "BUILDING TYPE-I FOUNDATIONS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I SLAB ON GRADE" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I TUNNEL WALLS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I LIFT-1 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I 2ND FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I LIFT-2 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I 3rd FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I LIFT-3 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I 4th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I LIFT-4 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I 5th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I LIFT-5 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-I ROOF SLAB & BEAMS WITH PARAPET" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II FOUNDATIONS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II SLAB ON GRADE" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II TUNNEL WALLS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II LIFT-1 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II 2ND FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II LIFT-2 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II 3rd FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II LIFT-3 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II 4th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II LIFT-4 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II 5th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II LIFT-5 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-II ROOF SLAB & BEAMS WITH PARAPET" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III FOUNDATIONS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III SLAB ON GRADE" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III TUNNEL WALLS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III LIFT-1 VERTICALS (CMU & COLUMNS)" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III 2ND FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III LIFT-2 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III 3rd FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III LIFT-3 VERTICALS" [4541-Gables Cypress Creek]
+INSERTED: "BUILDING TYPE-III 4th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek] → Completed
+SKIP (no change): "BUILDING TYPE-III LIFT-4 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III 5th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III LIFT-5 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-III ROOF SLAB & BEAMS WITH PARAPET" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV FOUNDATIONS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV SLAB ON GRADE" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV TUNNEL WALLS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV LIFT-1 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV 2ND FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV LIFT-2 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV 3rd FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV LIFT-3 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV 4th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV LIFT-4 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV 5th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV LIFT-5 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-IV ROOF SLAB & BEAMS WITH PARAPET" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V FOUNDATIONS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V SLAB ON GRADE" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V TUNNEL WALLS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V LIFT-1 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V 2ND FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V LIFT-2 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V 3rd FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V LIFT-3 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V 4th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V LIFT-4 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V 5th FLR. SLAB & BEAMS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V LIFT-5 VERTICALS" [4541-Gables Cypress Creek]
+SKIP (no change): "BUILDING TYPE-V ROOF SLAB & BEAMS WITH PARAPET" [4541-Gables Cypress Creek]
+SKIP (no change): "BIKE STORAGE & PET SPA BLDG." [4541-Gables Cypress Creek]
+SKIP (no change): "GARAGE TYPE-1" [4541-Gables Cypress Creek]
+SKIP (no change): "TRASH ENCLOSURE" [4541-Gables Cypress Creek]
+SKIP (no change): "GARAGE TYPE-4" [4541-Gables Cypress Creek]
+SKIP (no change): "GARAGE TYPE-2" [4541-Gables Cypress Creek]
+SKIP (no change): "GARAGE TYPE-3" [4541-Gables Cypress Creek]
+SKIP (no change): "POOL PAVILION" [4541-Gables Cypress Creek]
+SKIP (no change): "MAITAINANCE BUIDLING" [4541-Gables Cypress Creek]
+SKIP (no change): "LIFT-1 COLUMN VERTICALS" [NOMI-6]
+SKIP (no change): "LIFT-1 & LIFT-2 SHEAR WALLS" [NOMI-6]
+SKIP (no change): "STEM WALLS" [NOMI-6]
+UPDATED: "LIFT-1 CMU VERTICALS" [NOMI-6] → Completed
+UPDATED: "LIFT-1 STAIRS" [NOMI-6] → Completed
+UPDATED: "PIERS" [NOMI-6] → Completed
+SKIP (no change): "2ND FLOOR SLAB" [NOMI-6]
+SKIP (no change): "LIFT-2 & 3 Columns" [NOMI-6]
+SKIP (no change): "LIFT-2 & 3 SHEAR WALLS" [NOMI-6]
+UPDATED: "STAIRS (UP TO LVL.-4)" [NOMI-6] → Completed
+SKIP (no change): "3RD FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "4TH FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "5th FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "6th FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "7th FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "8th FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "9th FLOOR SLAB & BEAMS" [NOMI-6]
+UPDATED: "10th FLOOR SLAB & BEAMS" [NOMI-6] → Completed
+SKIP (no change): "11th FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "ROOF FLOOR SLAB & BEAMS" [NOMI-6]
+SKIP (no change): "LIFT-4 COLUMNS" [NOMI-6]
+SKIP (no change): "LIFT-5&6 COLUMNS" [NOMI-6]
+SKIP (no change): "LIFT-4 & 5 SHEAR WALLS" [NOMI-6]
+SKIP (no change): "LIFT-7 & 8 COLUMNS" [NOMI-6]
+SKIP (no change): "LIFT-6 & 7 SHEAR WALLS" [NOMI-6]
+SKIP (no change): "LIFT-9 & 10 COLUMNS" [NOMI-6]
+SKIP (no change): "LIFT-8 & 9 SHEAR WALLS" [NOMI-6]
+SKIP (no change): "LIFT-11 COLUMNS" [NOMI-6]
+SKIP (no change): "LIFT-10 & 11 SHEAR WALLS" [NOMI-6]
+SKIP (no change): "STAIRS (LEVEL-4 TO LEVEL-6)" [NOMI-6]
+SKIP (no change): "STAIRS (LEVEL-6 TO ROOF)" [NOMI-6]
+SKIP (no change): "2ND FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "2ND FLOOR SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "3RD FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "3RD FLOOR SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "4TH FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "4TH FLOOR SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "5TH FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "5TH FLOOR SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "6TH FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "6TH FLOOR SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "7TH FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "7TH FLOOR SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "8TH FLOOR SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "8TH FLOOR AND ROOF SLAB (GARAGE)" [4543 DULCE VIDA]
+SKIP (no change): "ROOF SLAB (RESIDENTIAL)" [4543 DULCE VIDA]
+SKIP (no change): "STAIR #1 (GROUND FLOOR TO ROOF)" [4543 DULCE VIDA]
+SKIP (no change): "STAIR #2 (GROUND FLOOR TO ROOF)" [4543 DULCE VIDA]
+INSERTED: "STAIR #3 (GROUND FLOOR TO ROOF)" [4543 DULCE VIDA] → Completed
+SKIP (no change): "STAIR #4 (GROUND FLOOR TO ROOF)" [4543 DULCE VIDA]
+INSERTED: "STEEL COLUMNS" [2460 Australian (Ocean Tower)] → Completed
+SKIP (no change): "PILE CAPS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "GRADE BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "SLAB ON GRADE" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -1   VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "TUNNEL WALLS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "2ND FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -2  VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "RETAIINING WALL" [2460 Australian (Ocean Tower)]
+SKIP (no change): "3RD FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -3  VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "4TH FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -4   VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "5TH FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -5   VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "6TH FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -6   VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "7TH FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -7   VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "8TH FLR. SLAB & BEAMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "LIFT -8   VERTICALS CMU & COLUMS" [2460 Australian (Ocean Tower)]
+SKIP (no change): "ROOF SLAB & BEAMS WITH PARAPET" [2460 Australian (Ocean Tower)]
+SKIP (no change): "BLDG 1 Type II" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII" [Magnolia Point]
+UPDATED: "Clubhouse" [Magnolia Point] → Completed
+SKIP (no change): "Clubhouse - Foundations & SOG" [Magnolia Point]
+SKIP (no change): "Clubhouse - Lift-1 verticals" [Magnolia Point]
+SKIP (no change): "Clubhouse - Roof slab" [Magnolia Point]
+SKIP (no change): "Trash enclosure" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - Foundations & SOG" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - 2nd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - 3rd floor slab" [Magnolia Point]
+UPDATED: "BLDG 3 Type V - 4th floor slab" [Magnolia Point] → Not Yet Started
+SKIP (no change): "BLDG 3 Type V - 5th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - 6th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - Roof level slab" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - Lift-1 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - Lift-2 verticals" [Magnolia Point]
+UPDATED: "BLDG 3 Type V - Lift-3 verticals" [Magnolia Point] → Not Yet Started
+SKIP (no change): "BLDG 3 Type V - Lift-4 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - Lift-5 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 3 Type V - Lift-6 & parapet verticals" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Foundations & SOG" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - 2nd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - 3rd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - 4th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - 5th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - 6th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Roof level slab" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Lift-1 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Lift-2 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Lift-3 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Lift-4 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Lift-5 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 1 Type II - Lift-6 & parapet verticals" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - Foundations & SOG" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - 2nd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - 3rd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - 4th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - 5th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - 6th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - Roof level slab" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - Lift-1 verticals" [Magnolia Point]
+UPDATED: "BLDG 2 Type VI - Lift-2 verticals" [Magnolia Point] → Not Yet Started
+SKIP (no change): "BLDG 2 Type VI - Lift-3 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - Lift-4 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - Lift-5 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 2 Type VI - Lift-6 & parapet verticals" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - Foundations & SOG" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - 2nd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - 3rd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - Roof level slab" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - Lift-1 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - Lift-2 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 5 Type VII - Lift-3 & parapet verticals" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - Foundations & SOG" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - 2nd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - 3rd floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - 4th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - 5th floor slab" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - Roof level slab" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - Lift-1 verticals" [Magnolia Point]
+UPDATED: "BLDG 4 Type III - Lift-2 verticals" [Magnolia Point] → Not Yet Started
+SKIP (no change): "BLDG 4 Type III - Lift-3 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - Lift-4 verticals" [Magnolia Point]
+SKIP (no change): "BLDG 4 Type III - Lift-5 & parapet verticals" [Magnolia Point]
+SKIP (no change): "Building _1 Type III" [Hilltop Gardens]
+UPDATED: "Building _2 Type II" [Hilltop Gardens] → Completed
+SKIP (no change): "Building _3 Type II" [Hilltop Gardens]
+SKIP (no change): "Building _4 Type I" [Hilltop Gardens]
+SKIP (no change): "Building _5 Type I" [Hilltop Gardens]
+SKIP (no change): "Building _6 Type I" [Hilltop Gardens]
+SKIP (no change): "Clubhouse" [Hilltop Gardens]
+SKIP (no change): "Building Type I" [Altis Delray]
+SKIP (no change): "Building Type II" [Altis Delray]
+SKIP (no change): "Building Type IIM" [Altis Delray]
+SKIP (no change): "Building Type III" [Altis Delray]
+SKIP (no change): "Clubhouse" [Altis Delray]
+SKIP (no change): "Steel columns" [Octavia]
+SKIP (no change): "Deep footings" [Octavia]
+SKIP (no change): "SHALLOW GARAGE FOUNDATIONS" [Octavia]
+SKIP (no change): "RESIDENTIAL SHALLOW FOUNDATIONS" [Octavia]
+SKIP (no change): "RESIDENTIAL SOG" [Octavia]
+SKIP (no change): "SHEAR WALLS RESIDENTIAL & GARAGE" [Octavia]
+SKIP (no change): "RESIDENTIAL 1ST LIFT OF COLUMNS (GRND TO 2ND)" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (GRND TO 2ND)" [Octavia]
+SKIP (no change): "GARAGE 1ST LIFT OF COLUMNS (GRND TO 1.5)" [Octavia]
+SKIP (no change): "GARAGE 1.5 LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL 2ND LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL COLUMNS (2ND TO ROOF)" [Octavia]
+SKIP (no change): "GARAGE COLUMNS (1.5 TO ROOF)" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS  (2ND TO 3RD)" [Octavia]
+SKIP (no change): "GARAGE 2ND LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL 3RD LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (3RD TO 4TH)" [Octavia]
+SKIP (no change): "GARAGE 3RD LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL 4TH LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (4TH TO 5TH)" [Octavia]
+SKIP (no change): "GARAGE 4TH LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL 5TH LVL SLAB" [Octavia]
+SKIP (no change): "GARAGE 5TH LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (5TH TO 6TH)" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (2ND TO 3RD)" [Octavia]
+SKIP (no change): "RESIDENTIAL 6TH LVL SLAB" [Octavia]
+SKIP (no change): "GARAGE 6TH LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (6TH TO 7TH)" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (3RD TO 4TH)" [Octavia]
+SKIP (no change): "GARAGE 7TH LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL 7TH LVL SLAB" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (4TH TO 5TH)" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (7TH TO 8TH)" [Octavia]
+SKIP (no change): "GARAGE SOG SLAB" [Octavia]
+SKIP (no change): "GARAGE 8TH LVL SLAB" [Octavia]
+SKIP (no change): "RESIDENTIAL 8TH LVL SLAB" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (5TH TO 6TH)" [Octavia]
+SKIP (no change): "RESIDENTIAL CMU & LINTELS (8TH TO ROOF)" [Octavia]
+SKIP (no change): "GARAGE ABOVE ROOF REBAR" [Octavia]
+SKIP (no change): "RESIDENTIAL ROOF LVL SLAB" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (6TH TO 7TH)" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (7TH TO 8TH)" [Octavia]
+SKIP (no change): "GARAGE CMU & LINTELS (GRND TO 2ND)" [Octavia]
+SKIP (no change): "Clubhouse 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Clubhouse Lift-1 verticals" [ALTON DELRAY]
+SKIP (no change): "Clubhouse Lift-2 verticals & Roof beams" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - 3rd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - 4th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - 5th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Tunnel walls" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Lift-1 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Lift-2 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Lift-3 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Lift-4 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #1 Type IIM - Lift-5 verticals" [ALTON DELRAY]
+SKIP (no change): "Parking Garage - 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Parking Garage - Verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - 3rd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - 4th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - 5th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Tunnel walls" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Lift-1 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Lift-2 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Lift-3 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Lift-4 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #2 Type II - Lift-5 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - 3rd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - 4th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - 5th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Upper roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Tunnel walls" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Lift-1 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Lift-2 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Lift-3 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Lift-4 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Lift-5 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #3 Type III - Lift-6 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - 3rd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - 4th floor slab" [ALTON DELRAY]
+INSERTED: "Bldg #5 Type I - 5th floor slab" [ALTON DELRAY] → Not Yet Started
+SKIP (no change): "Bldg #5 Type I - 6th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Upper roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Tunnel walls" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Lift-1 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Lift-2 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Lift-3 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Lift-4 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Lift-5 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #5 Type I - Lift-6 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - 2nd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - 3rd floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - 4th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - 5th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - 6th floor slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Upper roof slab" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Tunnel walls" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Lift-1 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Lift-2 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Lift-3 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Lift-4 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Lift-5 verticals" [ALTON DELRAY]
+SKIP (no change): "Bldg #4 Type I - Lift-6 verticals" [ALTON DELRAY]
+SKIP (no change): "2nd floor slab & beams" [Bird Arts]
+SKIP (no change): "3rd floor slab & beams" [Bird Arts]
+SKIP (no change): "Garage Lvl-3 to 8 slabs EMDS" [4543 DULCE VIDA]
+SKIP (no change): "BUILDING TYPE-V FOUNDATIONS (sub#26.1)" [4541-Gables Cypress Creek]
+SKIP (no change): "Main bldg roof slab" [4543 DULCE VIDA]
+SKIP (no change): "Lvl-4 slab markups & barlists" [NOMI-6]
+SKIP (no change): "Bldg. Type IV - Tunnel Walls submittal" [4541-Gables Cypress Creek]
+SKIP (no change): "Satirs" [NOMI-6]
+SKIP (no change): "Building Type - I SOG" [4541-Gables Cypress Creek]
+SKIP (no change): "Building Type - I Tunnel walls" [4541-Gables Cypress Creek]
+SKIP (no change): "Building Type -III Tunnel walls" [4541-Gables Cypress Creek]
+SKIP (no change): "Columns lvl 4 to 8" [Modera Boca Raton]
+SKIP (no change): "Slab edge reinf't addition" [NOMI-6]
+SKIP (no change): "Columns 8th to roof" [Modera Boca Raton]
+SKIP (no change): "Bldg. Type III 2nd floor slab" [4541-Gables Cypress Creek]
+SKIP (no change): "Satirs 1&4 Grnd to L2 addition & barlists" [4543 DULCE VIDA]
+SKIP (no change): "8"-Wall for Bldg.; Type IV - L1-L2" [4541-Gables Cypress Creek]
+SKIP (no change): "Change Elevator level -5-0" to -4'-0" & RFI 043, 20" [2460 Australian (Ocean Tower)]
+SKIP (no change): "All floor balcony bars changed galvanized to black bars" [NOMI-6]
+SKIP (no change): "STAIR LEVEL 3 TO 4" [NOMI-6]
+SKIP (no change): "Patch list for lift-3 column #60" [NOMI-6]
+SKIP (no change): "Satirs #1 addition work" [4543 DULCE VIDA]
+SKIP (no change): "Pilecaps & Gradebeams revision per RFI 24,11,12,35&39 responses" [2460 Australian (Ocean Tower)]
+SKIP (no change): "Ground Level Rebar Shop Drawings" [Modera Boca Raton]
+SKIP (no change): "Level-7 slab EMDS" [Modera Boca Raton]
+SKIP (no change): "Columns 35, 36, and 37 terminate below the pool slab" [Modera Boca Raton]
+SKIP (no change): "Tunnel walls revision per RFI#35" [4541-Gables Cypress Creek]
+SKIP (no change): "Bldg. Type II - SOG" [4541-Gables Cypress Creek]
+UPDATED: "Columns Lvl-4 to 5 pour separation" [NOMI-6] → In Progress
+SKIP (no change): "All slabs balconies galv bars." [Modera Boca Raton]
+SKIP (no change): "All bldgs tunnel walls candycane bars" [4541-Gables Cypress Creek]
+SKIP (no change): "Bldg. Type I & II RFI #98 fnds revision" [4541-Gables Cypress Creek]
+SKIP (no change): "columns, shear walls, slabs & stairs" [NOMI-6]
+SKIP (no change): "Bldg. Type IV - Level-2" [4541-Gables Cypress Creek]
+UPDATED: "Ground Level Slab FFU drawings and bar lists. RFI #79" [Modera Boca Raton] → Not Yet Started
+SKIP (no change): "Submittal 13- Ground Floor Slab" [2460 Australian (Ocean Tower)]
+SKIP (no change): "Submittal 10- Steel Column Shop Drawings" [2460 Australian (Ocean Tower)]
+SKIP (no change): "slabs markups" [Adela II]
+SKIP (no change): "remaining bldgs walls updated dwgs" [4541-Gables Cypress Creek]
+SKIP (no change): "lvl-5 barlists & lvl-4 release separation" [NOMI-6]
+SKIP (no change): "Lvl-2 drop beams for savers." [4543 DULCE VIDA]
+SKIP (no change): "Revision per RFI #50, #67, #78 responses" [Modera Boca Raton]
+SKIP (no change): "Pour separation" [2460 Australian (Ocean Tower)]
+SKIP (no change): "Columns level 2 to Level 4" [Modera Boca Raton]
+SKIP (no change): "RFI responses 86 & 95.1" [4541-Gables Cypress Creek]
+SKIP (no change): "steel columns EMDS" [Alexan margrate]
+SKIP (no change): "Pet Wash details addition" [Modera Boca Raton]
+SKIP (no change): "RFI responses 25 & 27" [2460 Australian (Ocean Tower)]
+INSERTED: "Building Type V - SOG" [4541-Gables Cypress Creek] → Not Yet Started
+INSERTED: "Building Type V - SOG" [4541-Gables Cypress Creek] → Not Yet Started
+SKIP (no change): "male to female savers." [4543 DULCE VIDA]
+SKIP (no change): "Missing rebar for slab transitions on pool deck slab" [NOMI-6]
+SKIP (no change): "grade 80 grade 60 bars" [NOMI-6]
+SKIP (no change): "Level-7-11 verticals EMDS" [Modera Boca Raton]
+SKIP (no change): "Precast stairs emds & Release separation" [2460 Australian (Ocean Tower)]
+SKIP (no change): "Level-2 slab changes per RFI#84" [Modera Boca Raton]
+SKIP (no change): "Level-7 slab beam changes per email response" [Modera Boca Raton]
+SKIP (no change): "Level-3 slab changes per RFI#84" [Modera Boca Raton]
+SKIP (no change): "Ground slab changes and revised barlist for pour-G2" [Modera Boca Raton]
+SKIP (no change): "Shear walls verticals (single piece) patch list" [2460 Australian (Ocean Tower)]
+SKIP (no change): "Elevator walls EMDS" [Modera Boca Raton]
+SKIP (no change): "Lift-2 to 4 CMU verticals EMDS" [Modera Boca Raton]
+SKIP (no change): "Submittal Distributed 47.1, Level 11 slab" [Modera Boca Raton]
+SKIP (no change): "Rebar at Placing Boom and Crane Openings Clarification" [Modera Boca Raton]
+SKIP (no change): "Submittal Distributed 57.1, CMU Walls Level 5 to Level 6" [Modera Boca Raton]
+SKIP (no change): "Submittal Distributed 58.1, CMU Walls Level 6 to Level 7" [Modera Boca Raton]
+SKIP (no change): "Tunnel walls pour- separation" [2460 Australian (Ocean Tower)]
+SKIP (no change): "2nd floor slab pour separation & markups" [2460 Australian (Ocean Tower)]
+SKIP (no change): "Bldg type-II 2nd to roof slab (patch list)" [4541-Gables Cypress Creek]
+SKIP (no change): "Lift-1 verticals revision per typ detail" [Modera Boca Raton]
+SKIP (no change): "Submittal Distributed 59.1, CMU Walls Level 7 to Level 8" [Modera Boca Raton]
+SKIP (no change): "Submittal Distributed 72.1, Concrete Walls Elevator #4" [Modera Boca Raton]
+
+=== Summary ===
+Updated:  20
+Inserted: 6
+Skipped:  423
+Errors:   0
+
+=== Formcrete Projects & Tasks in Supabase ===
+
+"Modera Boca Raton" (67 tasks):
+  "10TH FLR SLAB" | Completed | 2026-05-05
+  "10TH LEVEL TO 11TH LEVEL TC & CMU WALLS" | Completed | 2026-01-08
+  "11TH FLR SLAB" | Completed | 2026-05-13
+  "11TH LEVEL TO 12TH LEVEL TC & CMU WALLS" | Completed | 2026-01-09
+  "12TH FLR SLAB" | Completed | 2026-05-13
+  "12TH LEVEL TO 12TH MEZZ LEVEL TC & CMU WALLS" | Completed | 2026-01-10
+  "12TH MEZZ FLR SLAB" | Completed | 2026-05-14
+  "12TH MEZZ LEVEL TO ROOF LEVEL TC & CMU WALLS" | Completed | 2026-01-11
+  "2ND FLR GARAGE SLAB" | Completed | 2026-01-23
+  "2ND FLR RESIDENTIAL SLAB" | Completed | 2026-01-23
+  "2ND LEVEL TO 3RD LEVEL TC & CMU WALLS" | Completed | 2026-05-28
+  "3RD FLR GARAGE SLAB" | Completed | 2026-03-19
+  "3RD FLR RESIDENTIAL SLAB" | Completed | 2026-03-19
+  "3RD LEVEL TO 4TH LEVEL TC & CMU WALLS" | Completed | 2026-06-01
+  "4TH FLR GARAGE SLAB" | Completed | 2026-04-06
+  "4TH FLR RESIDENTIAL SLAB" | Completed | 2026-04-06
+  "4TH LEVEL TO 5TH LEVEL TC & CMU WALLS" | Completed | 2026-06-02
+  "5TH FLR GARAGE SLAB" | Completed | 2026-04-06
+  "5TH FLR RESIDENTIAL SLAB" | Completed | 2026-04-06
+  "5TH LEVEL TO 6TH LEVEL TC & CMU WALLS" | Completed | 2026-06-03
+  "6TH FLR GARAGE SLAB" | Completed | 2026-04-09
+  "6TH FLR RESIDENTIAL SLAB" | Completed | 2026-04-09
+  "6TH LEVEL TO 7TH LEVEL TC & CMU WALLS" | Completed | 2026-06-04
+  "7TH FLR SLAB" | Completed | 2026-04-16
+  "7TH LEVEL TO 8TH LEVEL TC & CMU WALLS" | Completed | 2026-06-05
+  "8TH FLR SLAB" | Completed | 2026-04-30
+  "8TH LEVEL TO 9TH LEVEL TC & CMU WALLS" | Completed | 2026-01-06
+  "9TH FLR SLAB" | Completed | 2026-05-05
+  "9TH LEVEL TO 10TH LEVEL TC & CMU WALLS" | Completed | 2026-01-07
+  "All slabs balconies galv bars." | Not Yet Started | 2026-01-10
+  "BASEMENT RETAINIG WALLS & CMU WALLS" | Completed | 2026-01-07
+  "BASEMENT SLAB ON GRADE" | Completed | 2025-12-14
+  "Columns 35, 36, and 37 terminate below the pool slab" | Not Yet Started | 2026-01-10
+  "Columns 8th to roof" | Not Yet Started | 2026-01-13
+  "Columns level 2 to Level 4" | Completed | 2026-05-10
+  "Columns lvl 4 to 8" | In Progress | 2026-01-11
+  "Elevator walls EMDS" | In Progress | no date
+  "GROUND FLOOR SLAB (GARAGE AREA)" | Completed | 2025-12-05
+  "GROUND FLOOR SLAB (RESIDENTIAL AREA)" | Completed | 2025-12-06
+  "Ground Level Rebar Shop Drawings" | Completed | 2026-04-27
+  "Ground Level Slab FFU drawings and bar lists. RFI #79" | Not Yet Started | 2026-01-10
+  "GROUND LEVEL TO 2ND LEVEL TC & CMU WALLS" | Completed | no date
+  "Ground slab changes and revised barlist for pour-G2" | Completed | no date
+  "HIGH ROOF SLAB" | Completed | 2026-05-17
+  "Level-2 slab changes per RFI#84" | Completed | no date
+  "LEVEL-2 TO LEVEL-4 COLUMNS" | Completed | 2026-03-26
+  "Level-3 slab changes per RFI#84" | Completed | no date
+  "LEVEL-4 TO LEVEL-8 COLUMNS" | Completed | 2026-04-12
+  "Level-7 slab beam changes per email response" | Completed | no date
+  "Level-7 slab EMDS" | Completed | 2026-04-30
+  "Level-7-11 verticals EMDS" | Completed | no date
+  "LEVEL-8 TO ROOF COLUMNS" | Completed | 2026-04-16
+  "Lift-1 verticals revision per typ detail" | Not Yet Started | no date
+  "Lift-2 to 4 CMU verticals EMDS" | Not Yet Started | no date
+  "Pet Wash details addition" | Completed | 2026-05-10
+  "Rebar at Placing Boom and Crane Openings Clarification" | Not Yet Started | no date
+  "Revision per RFI #50, #67, #78 responses" | Not Yet Started | 2026-01-10
+  "ROOF LEVEL TO HIGH ROOF TC & CMU WALLS" | Completed | 2026-01-12
+  "ROOF SLAB" | Completed | 2026-05-17
+  "SHEAR WALLS (LVL-2 TO LVL-8)" | Completed | 2026-03-05
+  "SHEAR WALLS (LVL-8 TO BULK HEAD)" | Completed | 2026-02-27
+  "SHEAR WALLS (LVL-8 TO BULK HEAD)" | Completed | 2026-02-28
+  "Submittal Distributed 47.1, Level 11 slab" | Not Yet Started | no date
+  "Submittal Distributed 57.1, CMU Walls Level 5 to Level 6" | Not Yet Started | no date
+  "Submittal Distributed 58.1, CMU Walls Level 6 to Level 7" | Not Yet Started | no date
+  "Submittal Distributed 59.1, CMU Walls Level 7 to Level 8" | Not Yet Started | no date
+  "Submittal Distributed 72.1, Concrete Walls Elevator #4" | Not Yet Started | no date
+
+"4541-Gables Cypress Creek" (90 tasks):
+  "8"-Wall for Bldg.; Type IV - L1-L2" | Not Yet Started | 2026-01-10
+  "All bldgs tunnel walls candycane bars" | Not Yet Started | 2026-01-10
+  "BIKE STORAGE & PET SPA BLDG." | Completed | 2025-11-30
+  "Bldg type-II 2nd to roof slab (patch list)" | In Progress | no date
+  "Bldg. Type I & II RFI #98 fnds revision" | Not Yet Started | 2026-01-10
+  "Bldg. Type II - SOG" | Completed | 2026-04-27
+  "Bldg. Type III 2nd floor slab" | Not Yet Started | 2026-01-14
+  "Bldg. Type IV - Level-2" | In Progress | 2026-05-04
+  "Bldg. Type IV - Tunnel Walls submittal" | In Progress | 2026-04-12
+  "Building Type - I SOG" | Not Yet Started | 2026-01-10
+  "Building Type - I Tunnel walls" | In Progress | 2026-01-10
+  "Building Type -III Tunnel walls" | Not Yet Started | 2026-01-10
+  "Building Type V - SOG" | Not Yet Started | 2026-01-10
+  "Building Type V - SOG" | Not Yet Started | 2026-05-08
+  "BUILDING TYPE-I 2ND FLR. SLAB & BEAMS" | Completed | 2025-12-02
+  "BUILDING TYPE-I 3rd FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-I 4th FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-I 5th FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-I FOUNDATIONS" | Completed | 2025-12-02
+  "BUILDING TYPE-I LIFT-1 VERTICALS" | Completed | 2026-06-21
+  "BUILDING TYPE-I LIFT-2 VERTICALS" | Completed | 2026-01-10
+  "BUILDING TYPE-I LIFT-3 VERTICALS" | Completed | 2026-06-21
+  "BUILDING TYPE-I LIFT-4 VERTICALS" | Completed | 2026-06-21
+  "BUILDING TYPE-I LIFT-5 VERTICALS" | Completed | 2026-06-21
+  "BUILDING TYPE-I ROOF SLAB & BEAMS WITH PARAPET" | Completed | 2026-06-22
+  "BUILDING TYPE-I SLAB ON GRADE" | Completed | 2026-01-01
+  "BUILDING TYPE-I TUNNEL WALLS" | Completed | 2026-01-18
+  "BUILDING TYPE-II 2ND FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-II 3rd FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-II 4th FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-II 5th FLR. SLAB & BEAMS" | Completed | 2026-01-21
+  "BUILDING TYPE-II FOUNDATIONS" | Completed | 2026-01-21
+  "BUILDING TYPE-II LIFT-1 VERTICALS" | Completed | 2026-06-22
+  "BUILDING TYPE-II LIFT-2 VERTICALS" | Completed | 2026-06-22
+  "BUILDING TYPE-II LIFT-3 VERTICALS" | Completed | 2026-06-24
+  "BUILDING TYPE-II LIFT-4 VERTICALS" | Completed | 2026-06-24
+  "BUILDING TYPE-II LIFT-5 VERTICALS" | Completed | 2026-06-24
+  "BUILDING TYPE-II ROOF SLAB & BEAMS WITH PARAPET" | Completed | 2026-06-24
+  "BUILDING TYPE-II SLAB ON GRADE" | Completed | 2026-01-26
+  "BUILDING TYPE-II TUNNEL WALLS" | Completed | 2026-01-21
+  "BUILDING TYPE-III 2ND FLR. SLAB & BEAMS" | Completed | 2026-03-22
+  "BUILDING TYPE-III 3rd FLR. SLAB & BEAMS" | Completed | 2026-05-17
+  "BUILDING TYPE-III 4th FLR. SLAB & BEAMS" | Completed | 2026-05-17
+  "BUILDING TYPE-III 5th FLR. SLAB & BEAMS" | Completed | 2026-05-17
+  "BUILDING TYPE-III FOUNDATIONS" | Completed | 2025-12-12
+  "BUILDING TYPE-III LIFT-1 VERTICALS (CMU & COLUMNS)" | Completed | 2026-02-03
+  "BUILDING TYPE-III LIFT-2 VERTICALS" | Completed | 2026-06-17
+  "BUILDING TYPE-III LIFT-3 VERTICALS" | Completed | 2026-06-17
+  "BUILDING TYPE-III LIFT-4 VERTICALS" | Completed | 2026-06-18
+  "BUILDING TYPE-III LIFT-5 VERTICALS" | Completed | 2026-06-18
+  "BUILDING TYPE-III ROOF SLAB & BEAMS WITH PARAPET" | Completed | 2026-05-17
+  "BUILDING TYPE-III SLAB ON GRADE" | Completed | 2025-12-21
+  "BUILDING TYPE-III TUNNEL WALLS" | Completed | 2026-01-18
+  "BUILDING TYPE-IV 2ND FLR. SLAB & BEAMS" | Completed | 2026-04-09
+  "BUILDING TYPE-IV 3rd FLR. SLAB & BEAMS" | Completed | 2026-04-23
+  "BUILDING TYPE-IV 4th FLR. SLAB & BEAMS" | Completed | 2026-05-03
+  "BUILDING TYPE-IV 5th FLR. SLAB & BEAMS" | Completed | 2026-05-03
+  "BUILDING TYPE-IV FOUNDATIONS" | Completed | 2025-01-01
+  "BUILDING TYPE-IV LIFT-1 VERTICALS" | Completed | 2026-02-10
+  "BUILDING TYPE-IV LIFT-2 VERTICALS" | Completed | 2026-06-25
+  "BUILDING TYPE-IV LIFT-3 VERTICALS" | Completed | 2026-06-25
+  "BUILDING TYPE-IV LIFT-4 VERTICALS" | Completed | 2026-06-25
+  "BUILDING TYPE-IV LIFT-5 VERTICALS" | Completed | 2026-06-25
+  "BUILDING TYPE-IV ROOF SLAB & BEAMS WITH PARAPET" | Completed | 2026-02-12
+  "BUILDING TYPE-IV SLAB ON GRADE" | Completed | 2025-12-23
+  "BUILDING TYPE-IV TUNNEL WALLS" | Completed | 2026-01-18
+  "BUILDING TYPE-V 2ND FLR. SLAB & BEAMS" | Completed | 2026-04-22
+  "BUILDING TYPE-V 3rd FLR. SLAB & BEAMS" | Completed | 2026-04-24
+  "BUILDING TYPE-V 4th FLR. SLAB & BEAMS" | Completed | 2026-04-27
+  "BUILDING TYPE-V 5th FLR. SLAB & BEAMS" | Completed | 2026-04-27
+  "BUILDING TYPE-V FOUNDATIONS" | Completed | 2026-02-12
+  "BUILDING TYPE-V FOUNDATIONS (sub#26.1)" | In Progress | 2026-04-13
+  "BUILDING TYPE-V LIFT-1 VERTICALS" | Completed | 2026-06-15
+  "BUILDING TYPE-V LIFT-2 VERTICALS" | Completed | 2026-06-16
+  "BUILDING TYPE-V LIFT-3 VERTICALS" | Completed | 2026-06-16
+  "BUILDING TYPE-V LIFT-4 VERTICALS" | Completed | 2026-06-16
+  "BUILDING TYPE-V LIFT-5 VERTICALS" | Completed | 2026-06-16
+  "BUILDING TYPE-V ROOF SLAB & BEAMS WITH PARAPET" | Completed | 2026-05-15
+  "BUILDING TYPE-V SLAB ON GRADE" | Completed | 2026-04-13
+  "BUILDING TYPE-V TUNNEL WALLS" | Completed | 2026-04-17
+  "GARAGE TYPE-1" | Completed | 2025-12-14
+  "GARAGE TYPE-2" | Completed | 2025-12-26
+  "GARAGE TYPE-3" | Completed | 2025-12-29
+  "GARAGE TYPE-4" | Completed | 2025-12-14
+  "MAITAINANCE BUIDLING" | Completed | 2026-01-01
+  "POOL PAVILION" | Completed | 2026-01-01
+  "remaining bldgs walls updated dwgs" | Not Yet Started | 2026-01-10
+  "RFI responses 86 & 95.1" | In Progress | 2026-05-10
+  "TRASH ENCLOSURE" | Completed | 2026-01-01
+  "Tunnel walls revision per RFI#35" | Not Yet Started | 2026-01-10
+
+"NOMI-6" (53 tasks):
+  "10th FLOOR SLAB & BEAMS" | Completed | 2026-05-27
+  "11th FLOOR SLAB & BEAMS" | Completed | 2026-06-17
+  "2ND FLOOR SLAB" | Completed | 2026-03-09
+  "3RD FLOOR SLAB & BEAMS" | Completed | 2026-03-20
+  "4TH FLOOR SLAB & BEAMS" | Completed | 2026-04-03
+  "5th FLOOR SLAB & BEAMS" | Completed | 2026-04-23
+  "6th FLOOR SLAB & BEAMS" | Completed | 2026-04-23
+  "7th FLOOR SLAB & BEAMS" | Completed | 2026-04-23
+  "8th FLOOR SLAB & BEAMS" | Completed | 2026-05-03
+  "9th FLOOR SLAB & BEAMS" | Completed | 2026-05-03
+  "All floor balcony bars changed galvanized to black bars" | Completed | 2026-04-24
+  "Columns Lvl-4 to 5 pour separation" | In Progress | 2026-04-28
+  "columns, shear walls, slabs & stairs" | Completed | 2026-04-29
+  "ELEVATOR, STAIR LIDS & PARAPET WALLS" | Not Yet Started | no date
+  "grade 80 grade 60 bars" | In Progress | 2026-01-10
+  "LIFT-1 & LIFT-2 SHEAR WALLS" | Completed | 2026-01-01
+  "LIFT-1 CMU VERTICALS" | Completed | 2025-01-09
+  "LIFT-1 COLUMN VERTICALS" | Completed | 2025-12-28
+  "LIFT-1 STAIRS" | Completed | 2025-01-09
+  "LIFT-10 & 11 SHEAR WALLS" | Completed | no date
+  "LIFT-10 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-11 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-11 COLUMNS" | Completed | no date
+  "LIFT-2 & 3 Columns" | Completed | 2026-03-16
+  "LIFT-2 & 3 SHEAR WALLS" | Completed | 2026-03-16
+  "LIFT-2 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-3 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-4 & 5 SHEAR WALLS" | Completed | 2026-02-04
+  "LIFT-4 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-4 COLUMNS" | Completed | 2026-04-27
+  "LIFT-5 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-5&6 COLUMNS" | Completed | 2026-05-05
+  "LIFT-6 & 7 SHEAR WALLS" | Completed | 2026-05-08
+  "LIFT-6 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-7 & 8 COLUMNS" | Completed | 2026-05-05
+  "LIFT-7 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-8 & 9 SHEAR WALLS" | Completed | no date
+  "LIFT-8 CMU VERTICALS" | Not Yet Started | no date
+  "LIFT-9 & 10 COLUMNS" | Completed | no date
+  "LIFT-9 CMU VERTICALS" | Not Yet Started | no date
+  "Lvl-4 slab markups & barlists" | Not Yet Started | 2026-01-10
+  "lvl-5 barlists & lvl-4 release separation" | Completed | 2026-05-03
+  "Missing rebar for slab transitions on pool deck slab" | Completed | 2026-05-11
+  "Patch list for lift-3 column #60" | Completed | 2026-04-24
+  "PIERS" | Completed | 2026-03-02
+  "ROOF FLOOR SLAB & BEAMS" | Completed | 2026-06-24
+  "Satirs" | Completed | 2026-04-10
+  "Slab edge reinf't addition" | Not Yet Started | 2026-01-12
+  "STAIR LEVEL 3 TO 4" | Completed | 2026-04-24
+  "STAIRS (LEVEL-4 TO LEVEL-6)" | Completed | 2026-04-28
+  "STAIRS (LEVEL-6 TO ROOF)" | Completed | 2026-06-04
+  "STAIRS (UP TO LVL.-4)" | Completed | 2026-03-19
+  "STEM WALLS" | Completed | 2025-01-08
+
+"4543 DULCE VIDA" (25 tasks):
+  "2ND FLOOR SLAB (GARAGE)" | Completed | 2026-02-04
+  "2ND FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-04
+  "3RD FLOOR SLAB (GARAGE)" | Completed | 2026-02-26
+  "3RD FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-27
+  "4TH FLOOR SLAB (GARAGE)" | Completed | 2026-02-26
+  "4TH FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-27
+  "5TH FLOOR SLAB (GARAGE)" | Completed | 2026-02-26
+  "5TH FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-13
+  "6TH FLOOR SLAB (GARAGE)" | Completed | 2026-02-27
+  "6TH FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-13
+  "7TH FLOOR SLAB (GARAGE)" | Completed | 2026-02-27
+  "7TH FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-13
+  "8TH FLOOR AND ROOF SLAB (GARAGE)" | Completed | 2026-02-27
+  "8TH FLOOR SLAB (RESIDENTIAL)" | Completed | 2026-02-13
+  "Garage Lvl-3 to 8 slabs EMDS" | Not Yet Started | 2026-01-10
+  "Lvl-2 drop beams for savers." | Completed | 2026-05-03
+  "Main bldg roof slab" | Not Yet Started | 2026-01-10
+  "male to female savers." | Completed | 2026-05-11
+  "ROOF SLAB (RESIDENTIAL)" | Completed | 2026-02-15
+  "Satirs #1 addition work" | Completed | 2026-04-24
+  "Satirs 1&4 Grnd to L2 addition & barlists" | Completed | 2026-04-21
+  "STAIR #1 (GROUND FLOOR TO ROOF)" | Completed | 2026-03-12
+  "STAIR #2 (GROUND FLOOR TO ROOF)" | Completed | 2026-03-12
+  "STAIR #3 (GROUND FLOOR TO ROOF)" | Completed | 2026-03-12
+  "STAIR #4 (GROUND FLOOR TO ROOF)" | Completed | 2026-03-12
+
+"2460 Australian (Ocean Tower)" (32 tasks):
+  "2nd floor slab pour separation & markups" | In Progress | no date
+  "2ND FLR. SLAB & BEAMS" | Completed | 2026-05-07
+  "3RD FLR. SLAB & BEAMS" | Completed | 2026-05-14
+  "4TH FLR. SLAB & BEAMS" | Completed | 2026-05-21
+  "5TH FLR. SLAB & BEAMS" | Completed | 2026-05-27
+  "6TH FLR. SLAB & BEAMS" | Completed | 2026-05-27
+  "7TH FLR. SLAB & BEAMS" | Completed | 2026-05-27
+  "8TH FLR. SLAB & BEAMS" | Completed | 2026-06-02
+  "Change Elevator level -5-0" to -4'-0" & RFI 043, 20" | In Progress | 2026-01-10
+  "GRADE BEAMS" | Completed | 2026-04-01
+  "LIFT -1   VERTICALS CMU & COLUMS" | Completed | 2026-04-20
+  "LIFT -2  VERTICALS CMU & COLUMS" | Completed | 2026-05-07
+  "LIFT -3  VERTICALS CMU & COLUMS" | Completed | 2026-05-14
+  "LIFT -4   VERTICALS CMU & COLUMS" | Completed | 2026-05-21
+  "LIFT -5   VERTICALS CMU & COLUMS" | Completed | 2026-05-27
+  "LIFT -6   VERTICALS CMU & COLUMS" | Completed | 2026-05-27
+  "LIFT -7   VERTICALS CMU & COLUMS" | Completed | 2026-05-27
+  "LIFT -8   VERTICALS CMU & COLUMS" | Completed | 2026-06-04
+  "PILE CAPS" | Completed | 2026-02-11
+  "Pilecaps & Gradebeams revision per RFI 24,11,12,35&39 responses" | Completed | 2026-04-30
+  "Pour separation" | Not Yet Started | 2026-01-10
+  "Precast stairs emds & Release separation" | Completed | 2026-07-23
+  "RETAIINING WALL" | Completed | 2026-05-07
+  "RFI responses 25 & 27" | Not Yet Started | 2026-01-10
+  "ROOF SLAB & BEAMS WITH PARAPET" | Completed | no date
+  "Shear walls verticals (single piece) patch list" | Completed | no date
+  "SLAB ON GRADE" | Completed | 2026-04-19
+  "STEEL COLUMNS" | Completed | 2026-02-08
+  "Submittal 10- Steel Column Shop Drawings" | Completed | 2026-05-04
+  "Submittal 13- Ground Floor Slab" | Completed | 2026-05-03
+  "TUNNEL WALLS" | Completed | 2026-04-30
+  "Tunnel walls pour- separation" | In Progress | no date
+
+"Magnolia Point" (68 tasks):
+  "BLDG 1 Type II" | Completed | 2026-05-28
+  "BLDG 1 Type II - 2nd floor slab" | Not Yet Started | no date
+  "BLDG 1 Type II - 3rd floor slab" | Not Yet Started | no date
+  "BLDG 1 Type II - 4th floor slab" | Not Yet Started | no date
+  "BLDG 1 Type II - 5th floor slab" | Not Yet Started | no date
+  "BLDG 1 Type II - 6th floor slab" | Not Yet Started | no date
+  "BLDG 1 Type II - Foundations & SOG" | Not Yet Started | no date
+  "BLDG 1 Type II - Lift-1 verticals" | Not Yet Started | no date
+  "BLDG 1 Type II - Lift-2 verticals" | Not Yet Started | no date
+  "BLDG 1 Type II - Lift-3 verticals" | Not Yet Started | no date
+  "BLDG 1 Type II - Lift-4 verticals" | Not Yet Started | no date
+  "BLDG 1 Type II - Lift-5 verticals" | Not Yet Started | no date
+  "BLDG 1 Type II - Lift-6 & parapet verticals" | Not Yet Started | no date
+  "BLDG 1 Type II - Roof level slab" | Not Yet Started | no date
+  "BLDG 2 Type VI" | Completed | 2026-05-28
+  "BLDG 2 Type VI - 2nd floor slab" | Not Yet Started | no date
+  "BLDG 2 Type VI - 3rd floor slab" | Not Yet Started | no date
+  "BLDG 2 Type VI - 4th floor slab" | Not Yet Started | no date
+  "BLDG 2 Type VI - 5th floor slab" | Not Yet Started | no date
+  "BLDG 2 Type VI - 6th floor slab" | Not Yet Started | no date
+  "BLDG 2 Type VI - Foundations & SOG" | Not Yet Started | no date
+  "BLDG 2 Type VI - Lift-1 verticals" | Not Yet Started | no date
+  "BLDG 2 Type VI - Lift-2 verticals" | Not Yet Started | no date
+  "BLDG 2 Type VI - Lift-3 verticals" | Not Yet Started | no date
+  "BLDG 2 Type VI - Lift-4 verticals" | Not Yet Started | no date
+  "BLDG 2 Type VI - Lift-5 verticals" | Not Yet Started | no date
+  "BLDG 2 Type VI - Lift-6 & parapet verticals" | Not Yet Started | no date
+  "BLDG 2 Type VI - Roof level slab" | Not Yet Started | no date
+  "BLDG 3 Type V" | Completed | 2026-05-28
+  "BLDG 3 Type V - 2nd floor slab" | In Progress | no date
+  "BLDG 3 Type V - 3rd floor slab" | Not Yet Started | no date
+  "BLDG 3 Type V - 4th floor slab" | Not Yet Started | no date
+  "BLDG 3 Type V - 5th floor slab" | Not Yet Started | no date
+  "BLDG 3 Type V - 6th floor slab" | Not Yet Started | no date
+  "BLDG 3 Type V - Foundations & SOG" | Completed | 2026-06-25
+  "BLDG 3 Type V - Lift-1 verticals" | Completed | 2026-07-14
+  "BLDG 3 Type V - Lift-2 verticals" | Not Yet Started | no date
+  "BLDG 3 Type V - Lift-3 verticals" | Not Yet Started | no date
+  "BLDG 3 Type V - Lift-4 verticals" | Not Yet Started | no date
+  "BLDG 3 Type V - Lift-5 verticals" | Not Yet Started | no date
+  "BLDG 3 Type V - Lift-6 & parapet verticals" | Not Yet Started | no date
+  "BLDG 3 Type V - Roof level slab" | Not Yet Started | no date
+  "BLDG 4 Type III" | Completed | 2026-05-28
+  "BLDG 4 Type III - 2nd floor slab" | Not Yet Started | no date
+  "BLDG 4 Type III - 3rd floor slab" | Not Yet Started | no date
+  "BLDG 4 Type III - 4th floor slab" | Not Yet Started | no date
+  "BLDG 4 Type III - 5th floor slab" | Not Yet Started | no date
+  "BLDG 4 Type III - Foundations & SOG" | Not Yet Started | no date
+  "BLDG 4 Type III - Lift-1 verticals" | Not Yet Started | no date
+  "BLDG 4 Type III - Lift-2 verticals" | Not Yet Started | no date
+  "BLDG 4 Type III - Lift-3 verticals" | Not Yet Started | no date
+  "BLDG 4 Type III - Lift-4 verticals" | Not Yet Started | no date
+  "BLDG 4 Type III - Lift-5 & parapet verticals" | Not Yet Started | no date
+  "BLDG 4 Type III - Roof level slab" | Not Yet Started | no date
+  "BLDG 5 Type VII" | Completed | 2026-05-28
+  "BLDG 5 Type VII - 2nd floor slab" | Not Yet Started | no date
+  "BLDG 5 Type VII - 3rd floor slab" | Not Yet Started | no date
+  "BLDG 5 Type VII - Foundations & SOG" | Not Yet Started | no date
+  "BLDG 5 Type VII - Lift-1 verticals" | Not Yet Started | no date
+  "BLDG 5 Type VII - Lift-2 verticals" | Not Yet Started | no date
+  "BLDG 5 Type VII - Lift-3 & parapet verticals" | Not Yet Started | no date
+  "BLDG 5 Type VII - Roof level slab" | Not Yet Started | no date
+  "Clubhouse" | Completed | 2026-05-28
+  "Clubhouse - Foundations & SOG" | Completed | 2026-05-31
+  "Clubhouse - Lift-1 verticals" | Completed | 2026-06-23
+  "Clubhouse - Parapet & Trellis slab" | Not Yet Started | no date
+  "Clubhouse - Roof slab" | Completed | no date
+  "Trash enclosure" | Not Yet Started | 2026-01-10
+
+"Hilltop Gardens" (7 tasks):
+  "Building _1 Type III" | Completed | 2026-05-28
+  "Building _2 Type II" | Completed | 2026-05-28
+  "Building _3 Type II" | Completed | 2026-05-28
+  "Building _4 Type I" | Completed | 2026-05-28
+  "Building _5 Type I" | Completed | 2026-05-28
+  "Building _6 Type I" | Completed | 2026-05-28
+  "Clubhouse" | Completed | 2026-05-28
+
+"Altis Delray" (5 tasks):
+  "Building Type I" | Completed | 2026-05-28
+  "Building Type II" | Completed | 2026-05-28
+  "Building Type III" | Completed | 2026-05-28
+  "Building Type IIM" | Completed | 2026-05-28
+  "Clubhouse" | Completed | 2026-05-28
+
+"Octavia" (71 tasks):
+  "Deep footings" | Completed | 2026-06-14
+  "Elevator mat footings" | Completed | 2026-05-27
+  "Garage - Cont ftgs" | Not Yet Started | no date
+  "GARAGE 1.5 LVL SLAB" | Completed | 2026-07-06
+  "GARAGE 1ST LIFT OF COLUMNS (GRND TO 1.5)" | Completed | 2026-07-09
+  "Garage 2nd floor slab & beams" | Not Yet Started | no date
+  "GARAGE 2ND LVL SLAB" | Completed | 2026-07-16
+  "Garage 3rd floor slab & beams" | Not Yet Started | no date
+  "GARAGE 3RD LVL SLAB" | Completed | 2026-07-23
+  "Garage 4th floor slab & beams" | Not Yet Started | no date
+  "GARAGE 4TH LVL SLAB" | Completed | 2026-07-29
+  "Garage 5th floor slab & beams" | Not Yet Started | no date
+  "GARAGE 5TH LVL SLAB" | Not Yet Started | 2026-08-04
+  "Garage 6th floor slab & beams" | Not Yet Started | no date
+  "GARAGE 6TH LVL SLAB" | Not Yet Started | 2026-08-10
+  "Garage 7th floor slab & beams" | Not Yet Started | no date
+  "GARAGE 7TH LVL SLAB" | Not Yet Started | 2026-08-16
+  "Garage 8th floor slab & beams" | Not Yet Started | no date
+  "GARAGE 8TH LVL SLAB" | Not Yet Started | 2026-08-23
+  "GARAGE ABOVE ROOF REBAR" | Not Yet Started | 2026-08-27
+  "GARAGE CMU & LINTELS (2ND TO 3RD)" | Not Yet Started | 2026-08-06
+  "GARAGE CMU & LINTELS (3RD TO 4TH)" | Not Yet Started | 2026-08-12
+  "GARAGE CMU & LINTELS (4TH TO 5TH)" | Not Yet Started | 2026-08-18
+  "GARAGE CMU & LINTELS (5TH TO 6TH)" | Not Yet Started | 2026-08-24
+  "GARAGE CMU & LINTELS (6TH TO 7TH)" | Not Yet Started | 2026-08-31
+  "GARAGE CMU & LINTELS (7TH TO 8TH)" | Not Yet Started | 2026-09-07
+  "GARAGE CMU & LINTELS (GRND TO 2ND)" | Not Yet Started | 2026-09-14
+  "Garage Columns" | Not Yet Started | no date
+  "GARAGE COLUMNS (1.5 TO ROOF)" | Completed | 2026-07-19
+  "Garage Shear walls" | Not Yet Started | no date
+  "Garage Slab on grade" | Not Yet Started | no date
+  "GARAGE SOG SLAB" | Not Yet Started | 2026-08-19
+  "Garage Stairs" | Not Yet Started | no date
+  "GarageLevel-1.5 slab & beams" | Not Yet Started | no date
+  "Residence - Cont ftgs" | Not Yet Started | no date
+  "Residence 2nd floor slab & beams" | Not Yet Started | no date
+  "Residence 3rd floor slab & beams" | Not Yet Started | no date
+  "Residence 4th floor slab & beams" | Not Yet Started | no date
+  "Residence 5th floor slab & beams" | Not Yet Started | no date
+  "Residence 6th floor slab & beams" | Not Yet Started | no date
+  "Residence 8th floor slab & beams" | Not Yet Started | no date
+  "Residence Columns" | Not Yet Started | no date
+  "Residence Roof floor slab & beams" | Not Yet Started | no date
+  "Residence Shear walls" | Not Yet Started | no date
+  "Residence Slab on grade" | Not Yet Started | no date
+  "Residence Stairs" | Not Yet Started | no date
+  "Residence7th floor slab & beams" | Not Yet Started | no date
+  "RESIDENTIAL 1ST LIFT OF COLUMNS (GRND TO 2ND)" | Completed | 2026-07-06
+  "RESIDENTIAL 2ND LVL SLAB" | Completed | 2026-07-15
+  "RESIDENTIAL 3RD LVL SLAB" | In Progress | 2026-07-19
+  "RESIDENTIAL 4TH LVL SLAB" | In Progress | 2026-07-26
+  "RESIDENTIAL 5TH LVL SLAB" | Not Yet Started | 2026-08-02
+  "RESIDENTIAL 6TH LVL SLAB" | Not Yet Started | 2026-08-09
+  "RESIDENTIAL 7TH LVL SLAB" | Not Yet Started | 2026-08-16
+  "RESIDENTIAL 8TH LVL SLAB" | Not Yet Started | 2026-08-23
+  "RESIDENTIAL CMU & LINTELS  (2ND TO 3RD)" | Completed | 2026-07-16
+  "RESIDENTIAL CMU & LINTELS (3RD TO 4TH)" | Completed | 2026-07-21
+  "RESIDENTIAL CMU & LINTELS (4TH TO 5TH)" | Completed | 2026-07-28
+  "RESIDENTIAL CMU & LINTELS (5TH TO 6TH)" | Not Yet Started | 2026-08-04
+  "RESIDENTIAL CMU & LINTELS (6TH TO 7TH)" | Not Yet Started | 2026-08-11
+  "RESIDENTIAL CMU & LINTELS (7TH TO 8TH)" | Not Yet Started | 2026-08-18
+  "RESIDENTIAL CMU & LINTELS (8TH TO ROOF)" | Not Yet Started | 2026-08-25
+  "RESIDENTIAL CMU & LINTELS (GRND TO 2ND)" | Completed | 2026-07-12
+  "RESIDENTIAL COLUMNS (2ND TO ROOF)" | Completed | 2026-07-13
+  "RESIDENTIAL ROOF LVL SLAB" | Not Yet Started | 2026-08-30
+  "RESIDENTIAL SHALLOW FOUNDATIONS" | Completed | 2026-06-30
+  "RESIDENTIAL SOG" | Completed | 2026-06-30
+  "SHALLOW GARAGE FOUNDATIONS" | Completed | 2026-06-18
+  "SHEAR WALLS RESIDENTIAL & GARAGE" | Completed | 2026-07-05
+  "Steel columns" | Completed | 2026-05-20
+  "Upper roof slab & beams" | Not Yet Started | no date
+
+"ALTON DELRAY" (68 tasks):
+  "Bldg #1 Type IIM - 2nd floor slab" | Completed | 2026-07-26
+  "Bldg #1 Type IIM - 3rd floor slab" | Completed | 2026-07-26
+  "Bldg #1 Type IIM - 4th floor slab" | Completed | 2026-07-26
+  "Bldg #1 Type IIM - 5th floor slab" | Completed | 2026-07-26
+  "Bldg #1 Type IIM - Lift-1 verticals" | Not Yet Started | 2026-08-02
+  "Bldg #1 Type IIM - Lift-2 verticals" | Not Yet Started | 2026-08-02
+  "Bldg #1 Type IIM - Lift-3 verticals" | Not Yet Started | 2026-08-02
+  "Bldg #1 Type IIM - Lift-4 verticals" | Not Yet Started | 2026-08-02
+  "Bldg #1 Type IIM - Lift-5 verticals" | Not Yet Started | 2026-08-02
+  "Bldg #1 Type IIM - Roof slab" | Not Yet Started | 2026-08-02
+  "Bldg #1 Type IIM - Tunnel walls" | Not Yet Started | 2026-08-02
+  "Bldg #2 Type II - 2nd floor slab" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - 3rd floor slab" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - 4th floor slab" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - 5th floor slab" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Lift-1 verticals" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Lift-2 verticals" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Lift-3 verticals" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Lift-4 verticals" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Lift-5 verticals" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Roof slab" | Not Yet Started | 2026-08-23
+  "Bldg #2 Type II - Tunnel walls" | Not Yet Started | 2026-08-23
+  "Bldg #3 Type III - 2nd floor slab" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - 3rd floor slab" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - 4th floor slab" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - 5th floor slab" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Lift-1 verticals" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Lift-2 verticals" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Lift-3 verticals" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Lift-4 verticals" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Lift-5 verticals" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Lift-6 verticals" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Roof slab" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Tunnel walls" | Not Yet Started | 2026-09-14
+  "Bldg #3 Type III - Upper roof slab" | Not Yet Started | 2026-09-14
+  "Bldg #4 Type I - 2nd floor slab" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - 3rd floor slab" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - 4th floor slab" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - 5th floor slab" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - 6th floor slab" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Lift-1 verticals" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Lift-2 verticals" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Lift-3 verticals" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Lift-4 verticals" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Lift-5 verticals" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Lift-6 verticals" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Roof slab" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Tunnel walls" | Not Yet Started | 2026-09-29
+  "Bldg #4 Type I - Upper roof slab" | Not Yet Started | 2026-09-29
+  "Bldg #5 Type I - 2nd floor slab" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - 3rd floor slab" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - 4th floor slab" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - 5th floor slab" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - 6th floor slab" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Lift-1 verticals" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Lift-2 verticals" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Lift-3 verticals" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Lift-4 verticals" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Lift-5 verticals" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Lift-6 verticals" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Roof slab" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Tunnel walls" | Not Yet Started | 2026-09-27
+  "Bldg #5 Type I - Upper roof slab" | Not Yet Started | 2026-09-27
+  "Clubhouse 2nd floor slab" | In Progress | 2026-07-26
+  "Clubhouse Lift-1 verticals" | Completed | 2026-07-26
+  "Clubhouse Lift-2 verticals & Roof beams" | Completed | 2026-07-26
+  "Parking Garage - 2nd floor slab" | In Progress | 2026-08-16
+  "Parking Garage - Verticals" | Not Yet Started | 2026-08-16
+
+"Bird Arts" (2 tasks):
+  "2nd floor slab & beams" | In Progress | 2026-08-27
+  "3rd floor slab & beams" | Not Yet Started | no date
+
+"Adela II" (1 tasks):
+  "slabs markups" | Not Yet Started | 2026-01-10
+
+"Alexan margrate" (1 tasks):
+  "steel columns EMDS" | Completed | 2026-05-06

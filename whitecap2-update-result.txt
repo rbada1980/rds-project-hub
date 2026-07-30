@@ -1,0 +1,392 @@
+Written: C:\Users\HP\rds-project-hub\whitecap2-new.xlsx (44566 bytes)
+Reading: C:\Users\HP\rds-project-hub\whitecap2-new.xlsx
+Sheet: White Cap Work Schedule
+Total rows: 496
+Header at row index: 2
+Tasks parsed: 313
+Projects (62): Felies Residence, Valencia Del Mar Pickleball, City of temple terrace-fire station #01, 228 Rutland, Palmetto Lakes Industrial Park, Frenchman's Creek Operations Center, Miami Shores Residence (R+R bluenest), Licata Residence 2726 Appaloosa trail, 4669 S. Flagler Dr, Harrison Residence, PBIA - Revenue Control Building, 127 EL Bravo Way, Blue Water Cove 6, 1050 N Lake way, 143 Reef Road, Cutler Bay SHS, Ackerman Residence, Blue Water Cove 3, BOKOR 432 SUNSHINE BLVD, Cloyd, 6017 Le Lac Road (Weiner Residence), Bluewater cove 11, Bluewater cove 9, 164 Seminole, Roy & Shelley Silverman, 50 SE OLIVE, Valencia Del Mar Clubhouse, 910 S Ocean, Burns Residence, 5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE), 320 S atlantic Drive, Custom Residence (515 lido drive), Jandrews Residence, 6024 Lelac Rd, 5900 Powerline Garag, South Florida Jewish Cemetery, 1820 S Federal Hwy - Fifth Third Bank, 20 Hudson Ave, South Rd Office Building E, Baig Residence, SW Ranches, 2651 Southcast 10th court, Country inn Pet Resort, 2960 Greenbriair, Gallery at Somi Parc Phase 1, 6007 Le Lac (Furing residence), 90 Stingaree, O.B. (Scattered Lots), 840 Denery Ln. Residence, Nuvo, The Syed Residence, 810 S Swinton Ave Residence, Custom Residence (134 Worth CTN), Rancano, 799 Park Drive, Chateau De La Duchess (925 Hillsboro), Masucci Residence, The Bueller family, SPOTLOT 28810 SW 207 AVE, Broken Sound Club, 128 Worth CT N, 2235 Mangolia Drive
+
+Client: "White Cap"
+Project "Felies Residence": d8924af8-d413-4937-9188-6231839da0eb (existing)
+Project "Valencia Del Mar Pickleball": e21423fa-178d-4879-ac7a-4cbf901cc3ce (existing)
+Project "City of temple terrace-fire station #01": 8dd85fd2-4769-4860-ac1a-b3b41b62490b (existing)
+Project "228 Rutland": adaa4c79-d595-4566-a6e6-b48f8c66d651 (existing)
+Project "Palmetto Lakes Industrial Park": 9c2bf324-1bbc-4359-804f-10ae0e5c1dff (existing)
+Project "Frenchman's Creek Operations Center": 8f02a7b7-cb59-4206-b261-d0a62b4c8322 (existing)
+Project "Miami Shores Residence (R+R bluenest)": 672e1e62-5a82-44c7-9a7d-d2578f657246 (existing)
+Project "Licata Residence 2726 Appaloosa trail": 445cf75b-368f-4965-96e2-d6abaa089ed3 (existing)
+Project "4669 S. Flagler Dr": 103c0bb7-65f2-444f-aadb-9c727bbe1491 (existing)
+Project "Harrison Residence": 0b908daf-8cbf-4b1c-b86e-903318f67b2d (existing)
+Project "PBIA - Revenue Control Building": 9f256c78-46b7-405e-89a7-09a950b8b6cb (existing)
+Project "127 EL Bravo Way": 30d4bbea-1072-4da6-a433-70068070c3b3 (existing)
+Project "Blue Water Cove 6": 001be165-9b47-4c9d-974b-f29857be1126 (existing)
+Project "1050 N Lake way": a9e95717-3cc2-4ad7-a674-1aad60987cfa (existing)
+Project "143 Reef Road": 298771c5-8c10-4c9e-bc20-602aed79e326 (existing)
+Project "Cutler Bay SHS": 91b656a0-6db1-4a91-94dd-a27cc8702259 (existing)
+Project "Ackerman Residence": ef928463-3d15-4d76-b055-ec589e06c35e (existing)
+Project "Blue Water Cove 3": f0c10b58-339b-4a35-b2a0-394f395eb088 (existing)
+Project "BOKOR 432 SUNSHINE BLVD": b3a1b673-bd76-45bf-8479-0315f4a488a7 (existing)
+Project "Cloyd": a075ad71-759b-49d7-930f-5575fabbd90e (existing)
+Project "6017 Le Lac Road (Weiner Residence)": 4d8d21b3-cd9f-43e0-bb7d-6562ac362d47 (existing)
+Project "Bluewater cove 11": 1f858c86-19db-4eb6-8a57-be43aa12f323 (existing)
+Project "Bluewater cove 9": 54d0f616-a3a1-4797-a46f-9a4233d79f9a (existing)
+Project "164 Seminole": 2e8d5f52-f104-4e1b-8347-cab73cd1a9af (existing)
+Project "Roy & Shelley Silverman": bf8364dd-42c5-48cd-bfba-085e6929636a (existing)
+Project "50 SE OLIVE": 4b1b663f-b76b-4481-b1de-d62fdc4f66dc (existing)
+Project "Valencia Del Mar Clubhouse": 0614a170-9ef7-40be-b4b1-43f979d7d951 (existing)
+Project "910 S Ocean": 836c758a-b4b3-4d5e-91fd-ffff2c248e71 (existing)
+Project "Burns Residence": e48bc32d-0f8f-4179-8790-ae1e09783622 (existing)
+Project "5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE)": 39de837b-f83e-41c2-a680-b4d74d22110d (existing)
+Project "320 S atlantic Drive": 5a283eee-d00c-42d6-a820-6bc3a74da3ed (existing)
+Project "Custom Residence (515 lido drive)": 37906870-1aa0-4304-a165-c65824d8e73e (existing)
+Project "Jandrews Residence": ee2a86e4-0e50-4f05-83f9-f42c98a5af35 (existing)
+Project "6024 Lelac Rd": 22f1060c-d156-4b41-aa49-d405f59f8cbd (existing)
+Project "5900 Powerline Garag": 6e6147b4-c476-4ec0-ac9e-b8a3fffb8e8b (existing)
+Project "South Florida Jewish Cemetery": 53ff9043-8364-4131-a5f2-231bdedef362 (existing)
+Project "1820 S Federal Hwy - Fifth Third Bank": c4561936-565d-44bb-b6c1-86e07eccf3cf (existing)
+Project "20 Hudson Ave": 80d3caa2-7354-496e-b966-11128dfe6c59 (existing)
+Project "South Rd Office Building E": 2003604b-ffa6-46de-a550-dc54478bd164 (existing)
+Project "Baig Residence": 213561ee-bc92-48b5-8eaf-5ba02f21606a (existing)
+Project "SW Ranches": 4d64c4f3-a759-48ac-84bb-ea4476368a57 (existing)
+Project "2651 Southcast 10th court": e7d58807-8362-4a1f-9e7c-c294301e3746 (existing)
+Project "Country inn Pet Resort": 5635c43e-5868-4dba-931b-addb1400ac77 (existing)
+Project "2960 Greenbriair": c3db8a8f-4371-4c59-9ad4-ada9289c2faf (existing)
+Project "Gallery at Somi Parc Phase 1": bc4e58e7-e2e2-4bd8-a892-d20fb2b5c308 (existing)
+Project "6007 Le Lac (Furing residence)": 5ddb0fa0-f7b0-4fc4-8824-7930bf8b2fa7 (existing)
+Project "90 Stingaree": d7a99c39-2964-4610-9d71-ff0fc02364a5 (existing)
+Project "O.B. (Scattered Lots)": 754e4c1a-4681-44a1-98c0-fa09753e59c0 (existing)
+Project "840 Denery Ln. Residence": e105351d-b281-4e10-8a20-1265345ea0a0 (existing)
+Project "Nuvo": 66558692-26af-44db-a96d-a49cf1b5c3c0 (existing)
+Project "The Syed Residence": cf8b80c0-5128-48b7-ba23-bc11d8adc2c8 (existing)
+Project "810 S Swinton Ave Residence": 0fa44d53-1c6f-4d12-bbd0-36cd9dbf08a9 (existing)
+Project "Custom Residence (134 Worth CTN)": c13cc6ae-8b95-4dd3-bc9b-ccc6cbfadcc0 (existing)
+Project "Rancano": 597b23f7-4f49-45a2-bc35-8c100b24ca2e (existing)
+Project "799 Park Drive": 1b7c9110-f5ae-47f9-9694-ff72a31ec8c2 (existing)
+Project "Chateau De La Duchess (925 Hillsboro)": d2f3cf70-65c0-4bbd-9c24-674a6fdadb01 (existing)
+Project "Masucci Residence": c692a63c-406d-4af2-892a-97b8b0d5ee20 (existing)
+Project "The Bueller family": a976be8e-38af-4e16-a5ec-6ce3ac3d8921 (existing)
+Project "SPOTLOT 28810 SW 207 AVE": 9b50974d-fadd-41ef-ad52-ea1f0e239327 (existing)
+Project "Broken Sound Club": b65e521f-183a-4bc6-958c-467ae597cd07 (existing)
+Project "128 Worth CT N": 1c455905-dd4f-48b1-9722-9c9a703955d5 (existing)
+Project "2235 Mangolia Drive": 654b9d34-4a5c-4a0a-91bd-8d6bc5e625b2 (existing)
+
+Existing tasks in DB: 342
+SKIP: "Foundations and slab on grade" [Felies Residence]
+UPDATED: "Lift - 1 Verticals & beams, 2nd floor slab & beams" [Felies Residence] → Completed
+SKIP: "Lift - 2 verticals & beams, Roof slab & beams" [Felies Residence]
+UPDATED: "Foundations and slab on grade" [Valencia Del Mar Pickleball] → Completed
+UPDATED: "Lift - 1 Verticals & beams" [Valencia Del Mar Pickleball] → Completed
+SKIP: "Lift - 2 Verticals & beams" [Valencia Del Mar Pickleball]
+SKIP: "Double Dumpster Enclosure" [Valencia Del Mar Pickleball]
+SKIP: "Single Dumpster Enclosure" [Valencia Del Mar Pickleball]
+SKIP: "Mail Pavilion" [Valencia Del Mar Pickleball]
+SKIP: "Monument sign" [Valencia Del Mar Pickleball]
+SKIP: "Foundations" [City of temple terrace-fire station #01]
+SKIP: "Slab on grade" [City of temple terrace-fire station #01]
+UPDATED: "Lift - 1 Verticals, 2nd floor slab & beams" [City of temple terrace-fire station #01] → Completed
+SKIP: "Lift - 2 Verticals and Roof beams" [City of temple terrace-fire station #01]
+UPDATED: "Foundations and slab on grade" [228 Rutland] → Completed
+SKIP: "Lift - 1 Verticals and Bond beams" [228 Rutland]
+SKIP: "Low Roof beams & Slab" [228 Rutland]
+SKIP: "Lift - 2 Verticals, Bond beams & Roof beams" [228 Rutland]
+SKIP: "Foundations and slab on grade" [Palmetto Lakes Industrial Park]
+SKIP: "Lift - 1 walls, Columns & Beams" [Palmetto Lakes Industrial Park]
+SKIP: "Lift - 2 walls, Columns & Beams" [Palmetto Lakes Industrial Park]
+SKIP: "Building - A Foundations & slab on grade" [Frenchman's Creek Operations Center]
+SKIP: "Building - B Foundations & slab on grade" [Frenchman's Creek Operations Center]
+SKIP: "Building - C Foundations & slab on grade" [Frenchman's Creek Operations Center]
+SKIP: "Building - D Foundations & slab on grade" [Frenchman's Creek Operations Center]
+SKIP: "Building - E Foundations & slab on grade" [Frenchman's Creek Operations Center]
+SKIP: "Building - F Foundations & slab on grade" [Frenchman's Creek Operations Center]
+SKIP: "Foundations" [Miami Shores Residence (R+R bluenest)]
+SKIP: "Slab on grade" [Miami Shores Residence (R+R bluenest)]
+SKIP: "Lift - 1 Verticals, 2nd floor slab & beams" [Miami Shores Residence (R+R bluenest)]
+SKIP: "Lift - 2 Verticals and Roof beams" [Miami Shores Residence (R+R bluenest)]
+UPDATED: "Updated drawings received (Cantilever Beams)" [Miami Shores Residence (R+R bluenest)] → Completed
+SKIP: "Foundations & slab on grade" [Licata Residence 2726 Appaloosa trail]
+SKIP: "Lift - 1 Verticals and Roof beams" [Licata Residence 2726 Appaloosa trail]
+SKIP: "Footings & Stem Walls" [4669 S. Flagler Dr]
+UPDATED: "Stem wall & Slab on grade" [4669 S. Flagler Dr] → Completed
+SKIP: "Lift - 1 Verticals, 2nd floor slab & beams" [4669 S. Flagler Dr]
+SKIP: "Lift - 2 Verticals & Roof beams" [4669 S. Flagler Dr]
+SKIP: "Foundations and slab on grade" [Harrison Residence]
+SKIP: "Lift - 1 Verticals and Beams" [Harrison Residence]
+SKIP: "Foundations and slab on grade" [PBIA - Revenue Control Building]
+SKIP: "Lift - 1 Verticals and Roof beams" [PBIA - Revenue Control Building]
+SKIP: "Basement Foundations" [127 EL Bravo Way]
+SKIP: "Basement Walls" [127 EL Bravo Way]
+SKIP: "Level - 1 Foundations" [127 EL Bravo Way]
+SKIP: "Lift - 1 Verticals" [127 EL Bravo Way]
+SKIP: "Lift - 1 Beams" [127 EL Bravo Way]
+SKIP: "Lift - 2 Verticals" [127 EL Bravo Way]
+SKIP: "Roof beams" [127 EL Bravo Way]
+SKIP: "Foundations & slab on grade" [Blue Water Cove 6]
+SKIP: "Lift-1 & 2 Verticals, 2nd floor slab, & Roof beams" [Blue Water Cove 6]
+SKIP: "Foundations and slab on grade" [1050 N Lake way]
+SKIP: "Lift - 1 Verticals, 2nd floor slab & beams" [1050 N Lake way]
+SKIP: "Lift - 2 Verticals & Roof beams" [1050 N Lake way]
+SKIP: "Foundations and slab on grade" [143 Reef Road]
+SKIP: "Lift - 1 Verticals" [143 Reef Road]
+SKIP: "2nd floor slab & Beams" [143 Reef Road]
+SKIP: "Lift-2 verticals & Roof beams" [143 Reef Road]
+SKIP: "Foundations and slab on grade" [Cutler Bay SHS]
+SKIP: "Lift - 1 Verticals and beams" [Cutler Bay SHS]
+SKIP: "Lift - 2 Verticals and Low Roof slab & beams" [Cutler Bay SHS]
+SKIP: "Lift - 3 Verticals and High Roof slab & beams" [Cutler Bay SHS]
+INSERTED: "Foundations & slab on grade" [Ackerman Residence] → Completed
+INSERTED: "Lift - 1 Verticals, 2nd floor slab & beams" [Ackerman Residence] → Completed
+INSERTED: "Lift - 2 Verticals & Roof beams" [Ackerman Residence] → Completed
+INSERTED: "Foundations & slab on grade" [Blue Water Cove 3] → Completed
+INSERTED: "Lift - 1 Verticals and Roof beams" [Blue Water Cove 3] → Completed
+SKIP: "Foundations and slab on grade" [BOKOR 432 SUNSHINE BLVD]
+SKIP: "Lift - 1 Verticals, 2nd floor slab & beams" [BOKOR 432 SUNSHINE BLVD]
+SKIP: "Lift - 2 Verticals and Roof beams" [BOKOR 432 SUNSHINE BLVD]
+SKIP: "Foundations and slab on grade" [Cloyd]
+SKIP: "Lift - 1 Verticals and beams" [Cloyd]
+SKIP: "Lift - 2 Verticals and beams" [Cloyd]
+SKIP: "Foundations and slab on grade (East Garage)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Lift - 1 Verticals and Roof beams (East Garage)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Foundations and slab on grade (Main Building)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Lift - 1 Verticals, 2nd floor slab and beams (Main Building)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Lift - 2 Verticals and roof beams (Main Building)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Foundations and slab on grade (2-story residence)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Lift - 1 Verticals, 2nd floor slab and beams (2-story residence)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Lift - 2 Verticals and roof beams (2-story residence)" [6017 Le Lac Road (Weiner Residence)]
+SKIP: "Foundations and slab on grade (site work)" [6017 Le Lac Road (Weiner Residence)]
+UPDATED: "Foundations and slab on grade" [Bluewater cove 11] → Completed
+SKIP: "Lift - 1 Verticals and Roof beams" [Bluewater cove 11]
+SKIP: "Foundations and slab on grade" [Bluewater cove 9]
+SKIP: "Lift - 1 Verticals and Roof Beams" [Bluewater cove 9]
+SKIP: "Foundations" [164 Seminole]
+SKIP: "Slab on grade" [164 Seminole]
+UPDATED: "Lift - 1 Verticals, 2nd floor slab and beams" [164 Seminole] → job canceled
+UPDATED: "Lift - 2 Verticals and roof beams" [164 Seminole] → job canceled
+SKIP: "Foundations and slab on grade" [Roy & Shelley Silverman]
+SKIP: "Lift - 1 Verticals" [Roy & Shelley Silverman]
+SKIP: "Lift - 1  slab & Beams" [Roy & Shelley Silverman]
+SKIP: "Lift - 2 Verticals & Roof beams" [Roy & Shelley Silverman]
+SKIP: "Foundations & columns" [50 SE OLIVE]
+SKIP: "Bond beams" [50 SE OLIVE]
+SKIP: "Foundations and slab on grade" [Valencia Del Mar Clubhouse]
+SKIP: "Lift - 1 Verticals and beams (pour-1)" [Valencia Del Mar Clubhouse]
+UPDATED: "Lift - 1 Verticals and beams (pour-2)" [Valencia Del Mar Clubhouse] → Completed
+SKIP: "Lift - 1 Verticals and beams (pour-3) & (pour-4)" [Valencia Del Mar Clubhouse]
+SKIP: "Lift - 2 Verticals and beams (pour-1)" [Valencia Del Mar Clubhouse]
+SKIP: "Lift - 2 Verticals and beams (pour-2)" [Valencia Del Mar Clubhouse]
+SKIP: "Lift - 2 Verticals and beams (pour-3)" [Valencia Del Mar Clubhouse]
+SKIP: "Monument walls" [Valencia Del Mar Clubhouse]
+SKIP: "Tennis & Bocce Courts Restrooms" [Valencia Del Mar Clubhouse]
+SKIP: "Basement Foundations" [910 S Ocean]
+SKIP: "Lift - 1 Verticals & roof beams" [910 S Ocean]
+SKIP: "Retaining wall & Planter walls & stairs" [910 S Ocean]
+SKIP: "Foundations and slab on grade" [Burns Residence]
+SKIP: "Lift - 1 Verticals and Beams" [Burns Residence]
+SKIP: "Lift - 2 Verticals and beams" [Burns Residence]
+SKIP: "Foundations" [5940 North Bay Road (NEW SINGLE FAMILY RESIDENCE)]
+UPDATED: "Foundations" [320 S atlantic Drive] → Completed
+SKIP: "Stem wall & Slab on grade" [320 S atlantic Drive]
+SKIP: "Lift - 1 Verticals, 2nd Floor slab & beams" [320 S atlantic Drive]
+SKIP: "Lift - 2 Verticals and Roof beams" [320 S atlantic Drive]
+UPDATED: "Foundations and slab on grade" [Custom Residence (515 lido drive)] → Completed
+SKIP: "Lift - 1 Verticals" [Custom Residence (515 lido drive)]
+SKIP: "2nd floor slab & beams" [Custom Residence (515 lido drive)]
+SKIP: "Lift - 2 Verticals & Roof beams" [Custom Residence (515 lido drive)]
+SKIP: "Foundations and slab on grade" [Jandrews Residence]
+SKIP: "Lift - 1 Verticals and beams" [Jandrews Residence]
+SKIP: "Lift - 2 Verticals and beams" [Jandrews Residence]
+INSERTED: "Foundations and slab on grade" [6024 Lelac Rd] → Completed
+INSERTED: "Lift - 1 Verticals, loft floor slab & beams" [6024 Lelac Rd] → Completed
+INSERTED: "Lift - 2 Verticals and roof beams" [6024 Lelac Rd] → Completed
+INSERTED: "Foundations & slab on grade (Summer kitchen)" [6024 Lelac Rd] → Completed
+INSERTED: "Lift - 1 Verticals, slab and beams (Summer kitchen)" [6024 Lelac Rd] → Completed
+SKIP: "Grade beams" [5900 Powerline Garag]
+UPDATED: "Slab on grade, Lift - 1 Verticals and Roof beams" [5900 Powerline Garag] → Completed
+UPDATED: "Foundations and slab on grade" [South Florida Jewish Cemetery] → Completed
+UPDATED: "Lift - 1 Verticals and Roof Beams" [South Florida Jewish Cemetery] → Completed
+UPDATED: "Foundations and slab on grade" [1820 S Federal Hwy - Fifth Third Bank] → Completed
+UPDATED: "Lift - 1 Verticals and Roof beams" [1820 S Federal Hwy - Fifth Third Bank] → Completed
+SKIP: "Foundations & slab on grade" [20 Hudson Ave]
+UPDATED: "Lift - 1 Verticals and Beams" [20 Hudson Ave] → Completed
+SKIP: "Lift - 2 Verticals and Beams" [20 Hudson Ave]
+UPDATED: "Foundations and slab on grade" [South Rd Office Building E] → Completed
+SKIP: "Lift - 1 Verticals and beams" [South Rd Office Building E]
+INSERTED: "3rd Floor tie beams" [Baig Residence] → Completed
+INSERTED: "2nd Floor slab" [Baig Residence] → Completed
+SKIP: "Lower Roof Deck" [SW Ranches]
+SKIP: "Lift - 1 verticals" [SW Ranches]
+UPDATED: "Pool deck slab and beams" [2651 Southcast 10th court] → Completed
+SKIP: "Foundations and slab on grade" [Country inn Pet Resort]
+SKIP: "Lift - 1 verticals and beams" [Country inn Pet Resort]
+SKIP: "Foundations" [2960 Greenbriair]
+SKIP: "Slab on grade" [2960 Greenbriair]
+UPDATED: "Lift - 1 verticals, beams and 2nd floor slab" [2960 Greenbriair] → In Progress
+UPDATED: "Lift - 2 verticals and roof beams" [2960 Greenbriair] → In Progress
+SKIP: "Foundations (Residential) part - 1" [Gallery at Somi Parc Phase 1]
+SKIP: "Foundations (Residential) part - 2" [Gallery at Somi Parc Phase 1]
+UPDATED: "Slab on grade (Residential) part - 1 & 2" [Gallery at Somi Parc Phase 1] → In Progress
+SKIP: "Columns (Residential) lift - 1 verticals" [Gallery at Somi Parc Phase 1]
+UPDATED: "Shear walls (Residential)  lift - 1 verticals" [Gallery at Somi Parc Phase 1] → Not Yet Started
+SKIP: "Cmu walls lift - 1 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "2nd Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 2 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 2 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 2 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "3rd Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 3 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 3 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 3 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "3rd Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 4 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 4 verticals" [Gallery at Somi Parc Phase 1]
+UPDATED: "Cmu walls lift - 4 verticals" [Gallery at Somi Parc Phase 1] → Not Yet Started
+SKIP: "4th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 5 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 5 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 5 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "5th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 6 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 6 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 6 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "6th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 7 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 7 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 7 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "7th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 8 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 8 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 8 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "8th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 9 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 9 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 9 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "9th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 10 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 10 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 10 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "10th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 11 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 11 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 11 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "11th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 12 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 12 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 12 verticals" [Gallery at Somi Parc Phase 1]
+UPDATED: "12th Floor slab (Residential)" [Gallery at Somi Parc Phase 1] → Not Yet Started
+SKIP: "Columns (Residential) lift - 13 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 13 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 13 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "13th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 14 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 14 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Cmu walls lift - 14 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "14th Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 15 verticals" [Gallery at Somi Parc Phase 1]
+UPDATED: "Shear walls (Residential)  lift - 15 verticals" [Gallery at Somi Parc Phase 1] → Not Yet Started
+SKIP: "Cmu walls lift - 15 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "15th floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Columns (Residential) lift - 16 verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Residential)  lift - 16 verticals" [Gallery at Somi Parc Phase 1]
+UPDATED: "Cmu walls lift - 16 verticals" [Gallery at Somi Parc Phase 1] → Not Yet Started
+SKIP: "Roof Floor slab (Residential)" [Gallery at Somi Parc Phase 1]
+SKIP: "Parapet walls (Residential) verticals" [Gallery at Somi Parc Phase 1]
+SKIP: "Foundations (Garage)" [Gallery at Somi Parc Phase 1]
+UPDATED: "Slab on grade (Garage)" [Gallery at Somi Parc Phase 1] → Not Yet Started
+SKIP: "Columns (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "Shear walls (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "2nd Floor slab (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "3rd Floor slab (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "4th Floor slab (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "5th Floor slab (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "6th Floor slab (Garage)" [Gallery at Somi Parc Phase 1]
+SKIP: "Foundations & Walls (scope added)" [6007 Le Lac (Furing residence)]
+SKIP: "Cabana slab on grade" [6007 Le Lac (Furing residence)]
+SKIP: "Slab on grade" [90 Stingaree]
+UPDATED: "Lift - 1 verticals and beams" [90 Stingaree] → In Progress
+SKIP: "Foundaitons & sog." [O.B. (Scattered Lots)]
+SKIP: "Lift - 1 verticals and beams" [O.B. (Scattered Lots)]
+SKIP: "Foundaitons & Slab on grade" [840 Denery Ln. Residence]
+SKIP: "Lift - 1 verticals and bond beams" [840 Denery Ln. Residence]
+UPDATED: "2nd floor slab & beams" [840 Denery Ln. Residence] → In Progress
+SKIP: "Lift - 2 verticals and bond beams" [840 Denery Ln. Residence]
+SKIP: "Roof beams" [840 Denery Ln. Residence]
+SKIP: "Bldg. Type 1 (A, C, D & G)" [Nuvo]
+UPDATED: "Foundations and slab on grade" [Nuvo] → Completed
+UPDATED: "Lift - 1 verticals and beams" [Nuvo] → Completed
+UPDATED: "2nd Flr. Thru 2nd lift & 2nd floor beams" [Nuvo] → In Progress
+UPDATED: "3rd Flr. Thru 3rd lift & 3rd floor beams" [Nuvo] → Not Yet Started
+UPDATED: "4th Flr. Thru Roof & Abv Roof beams" [Nuvo] → In Progress
+SKIP: "Bldg. Type 2 (E & H)" [Nuvo]
+UPDATED: "Foundations and slab on grade" [Nuvo] → Completed
+UPDATED: "Lift - 1 verticals and beams" [Nuvo] → Completed
+SKIP: "2nd Flr. Thru 2nd lift & 2nd floor beams" [Nuvo]
+SKIP: "3rd Flr. Thru 3rd lift & 3rd floor beams" [Nuvo]
+SKIP: "4th Flr. Thru Roof & Abv Roof beams" [Nuvo]
+SKIP: "Bldg. Type 3 (B & F)" [Nuvo]
+UPDATED: "Elevator Pits & Stairs, Bg Thru 1st lift" [Nuvo] → In Progress
+UPDATED: "2nd Flr. Thru 2nd lift & 2nd floor beams" [Nuvo] → Not Yet Started
+UPDATED: "3rd Flr. Thru 3rd lift & 3rd floor beams" [Nuvo] → Not Yet Started
+UPDATED: "4th Flr. Thru Roof & Abv Roof beams" [Nuvo] → Not Yet Started
+SKIP: "Bus Shelter - Footings" [Nuvo]
+UPDATED: "Bg Thru 1st lift" [Nuvo] → Not Yet Started
+SKIP: "Clubhouse" [Nuvo]
+UPDATED: "Bg Thru Abv Roof beams" [Nuvo] → Completed
+UPDATED: "Garage Type 1" [Nuvo] → Not Yet Started
+UPDATED: "Bg Thru Abv Roof beams" [Nuvo] → In Progress
+UPDATED: "Garage Type 2" [Nuvo] → Not Yet Started
+UPDATED: "Bg Thru Abv Roof beams" [Nuvo] → In Progress
+SKIP: "Mail Kiosk - Slab on grade" [Nuvo]
+UPDATED: "Slab on grade" [Nuvo] → In Progress
+SKIP: "Trash Compactor" [Nuvo]
+UPDATED: "Bg Thru 1st lift" [Nuvo] → Not Yet Started
+SKIP: "Pool Pavilion" [Nuvo]
+SKIP: "Bg Thru Roof beams" [Nuvo]
+UPDATED: "Raised Planters" [Nuvo] → Not Yet Started
+UPDATED: "Bg Thru 1st lift" [Nuvo] → Not Yet Started
+SKIP: "BBQ Station" [Nuvo]
+SKIP: "Bg Thru Roof beams" [Nuvo]
+SKIP: "Cabana Footings" [Nuvo]
+SKIP: "Bg Thru 1st lift" [Nuvo]
+SKIP: "Trellis Footings" [Nuvo]
+SKIP: "Bg Thru 1st lift" [Nuvo]
+UPDATED: "Retaining Wall" [Nuvo] → Completed
+UPDATED: "Bg Thru 1st lift" [Nuvo] → Completed
+SKIP: "Foundations & Slab on grade" [The Syed Residence]
+SKIP: "Lift - 1 verticals and beams" [The Syed Residence]
+SKIP: "Lift - 2 verticals and beams" [The Syed Residence]
+INSERTED: "Foundations and slab on grade" [810 S Swinton Ave Residence] → In Progress
+INSERTED: "Lift - 1 verticals and beams" [810 S Swinton Ave Residence] → Not Yet Started
+INSERTED: "Lift - 2 verticals and beams" [810 S Swinton Ave Residence] → Not Yet Started
+UPDATED: "Foundations" [Custom Residence (134 Worth CTN)] → Completed
+SKIP: "Slab on grade" [Custom Residence (134 Worth CTN)]
+SKIP: "Lift - 1 verticals and beams" [Custom Residence (134 Worth CTN)]
+SKIP: "Lift - 2 verticals and beams" [Custom Residence (134 Worth CTN)]
+SKIP: "Foundations & slab on grade" [Rancano]
+SKIP: "Lift - 1 verticals and Roof beams" [Rancano]
+INSERTED: "Foundations & Slab on grade" [799 Park Drive] → Completed
+INSERTED: "Lift - 1 verticals and beams" [799 Park Drive] → Completed
+INSERTED: "Lift - 2 verticals and beams" [799 Park Drive] → Completed
+UPDATED: "Entry Garages foundations and slab on grade" [Chateau De La Duchess (925 Hillsboro)] → In Progress
+SKIP: "Entry Garages lift - 1 verticals and beams" [Chateau De La Duchess (925 Hillsboro)]
+SKIP: "Entry Garages lift - 2 verticals and beams" [Chateau De La Duchess (925 Hillsboro)]
+SKIP: "Foundations & slab on grade" [Masucci Residence]
+UPDATED: "Lift - 1 verticals and beams" [Masucci Residence] → In Progress
+UPDATED: "2nd floor slab and beams" [Masucci Residence] → In Progress
+UPDATED: "Lift - 2 verticals and beams" [Masucci Residence] → In Progress
+SKIP: "Foundations & slab on grade" [The Bueller family]
+SKIP: "Lift - 1 verticals and beams" [The Bueller family]
+UPDATED: "Foundations & slab on grade" [SPOTLOT 28810 SW 207 AVE] → Completed
+SKIP: "Lift - 1 verticals and beams" [SPOTLOT 28810 SW 207 AVE]
+SKIP: "Foundations & slab on grade" [Broken Sound Club]
+SKIP: "Lift - 1 verticals and beams" [Broken Sound Club]
+UPDATED: "Foundations & slab on grade" [128 Worth CT N] → Not Yet Started
+SKIP: "Lift - 1 verticals and beams" [128 Worth CT N]
+SKIP: "Lift - 2 verticals and beams" [128 Worth CT N]
+UPDATED: "Foundations & slab on grade" [2235 Mangolia Drive] → Not Yet Started
+UPDATED: "Lift - 1 verticals and beams" [2235 Mangolia Drive] → Not Yet Started
+UPDATED: "Lift - 2 verticals and beams" [2235 Mangolia Drive] → Not Yet Started
+
+=== Summary ===
+Updated:  65
+Inserted: 18
+Skipped:  230
+Errors:   0

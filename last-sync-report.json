@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-27T12:58:36.614Z",
-  "ist_time": "2026-07-27 18:28:36 IST",
-  "duration_sec": 5.4,
-  "total_synced": 2755,
-  "total_pushed": 1136,
-  "total_pulled": 1619,
+  "timestamp": "2026-07-30T09:06:08.406Z",
+  "ist_time": "2026-07-30 14:36:08 IST",
+  "duration_sec": 6.8,
+  "total_synced": 2273,
+  "total_pushed": 850,
+  "total_pulled": 1423,
   "total_failed": 31,
   "status": "partial",
   "tables": [
@@ -17,24 +17,24 @@
     },
     {
       "table": "clients",
-      "synced": 3,
+      "synced": 0,
       "failed": 0,
       "total": 3,
       "pulled": 3
     },
     {
       "table": "projects",
-      "synced": 86,
+      "synced": 0,
       "failed": 0,
-      "total": 86,
-      "pulled": 86
+      "total": 87,
+      "pulled": 87
     },
     {
       "table": "tasks",
-      "synced": 943,
+      "synced": 746,
       "failed": 0,
-      "total": 1143,
-      "pulled": 1143
+      "total": 946,
+      "pulled": 946
     },
     {
       "table": "task_files",
