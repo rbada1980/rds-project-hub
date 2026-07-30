@@ -4209,11 +4209,13 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   // inRange: task date falls within [f, to]; for "overdue" period, also exclude completed tasks
   const inRange=(t,f,to)=>{
     const d1=ds(t.client_sub_date);const d2=ds(t.due_date);
+    // For overdue period: only use due_date (matches dashboard logic); skip completed tasks
+    if(period==="overdue"){
+      if(isDone(t.status)) return false;
+      return !!(d2&&d2>=f&&d2<=to);
+    }
     const inWindow=(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);
-    if(!inWindow) return false;
-    // Overdue: skip completed tasks
-    if(period==="overdue"&&isDone(t.status)) return false;
-    return true;
+    return !!inWindow;
   };
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
@@ -4232,7 +4234,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   // Summary stats (always shown regardless of period)
   // Overdue: tasks with any past date that are NOT completed
-  const overdueCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length;
+  const overdueCount=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
   const todayCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===today)||(d2&&d2===today);}).length;
   const tomorrowCount=allTasks.filter(t=>{const tm=addDays(today,1);const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===tm)||(d2&&d2===tm);}).length;
   const thisWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);const ms=mondayOf(today);const se=sundayOf(today);return(d1&&d1>=ms&&d1<=se)||(d2&&d2>=ms&&d2<=se);}).length;
