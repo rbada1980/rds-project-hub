@@ -1317,6 +1317,49 @@ function PersonalStats({me,tasks,projects}){
     </div>
   );
 }
+function BirthdayBanner({me,users,today}){
+  const todayMD=today.slice(5);
+  const tmr=new Date(today+"T00:00:00");tmr.setDate(tmr.getDate()+1);
+  const tomorrowMD=tmr.toISOString().slice(0,10).slice(5);
+  const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_birth&&u.is_active!==false);
+  const todayBdays=emps.filter(u=>(u.date_of_birth||"").slice(5)===todayMD);
+  const tomorrowBdays=emps.filter(u=>(u.date_of_birth||"").slice(5)===tomorrowMD);
+  const isMeBday=me&&me.date_of_birth&&(me.date_of_birth||"").slice(5)===todayMD;
+  if(!isMeBday&&todayBdays.length===0&&tomorrowBdays.length===0)return null;
+  return(
+    <div style={{marginBottom:20}}>
+      {isMeBday&&(
+        <div style={{background:"linear-gradient(135deg,#ec4899,#f43f5e)",borderRadius:16,padding:"22px 28px",marginBottom:12,display:"flex",alignItems:"center",gap:18,boxShadow:"0 4px 28px #ec489944",flexWrap:"wrap"}}>
+          <div style={{fontSize:52,lineHeight:1}}>🎂</div>
+          <div style={{flex:1,minWidth:180}}>
+            <div style={{fontSize:22,fontWeight:900,color:"#fff"}}>Happy Birthday, {me.name}! 🎉</div>
+            <div style={{fontSize:14,color:"rgba(255,255,255,0.88)",marginTop:5}}>Wishing you a fantastic day! The whole RDS team celebrates with you! 🎈</div>
+          </div>
+          <div style={{fontSize:48,lineHeight:1}}>🎉</div>
+        </div>
+      )}
+      {todayBdays.filter(u=>me&&u.id!==me.id).map(u=>(
+        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#fce7f3)`,border:"2px solid #ec489966",borderRadius:14,padding:"16px 22px",marginBottom:10,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <div style={{fontSize:38,lineHeight:1}}>🎂</div>
+          <div style={{flex:1,minWidth:160}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#be185d"}}>{"🎉 Today is "+u.name+"'s Birthday!"}</div>
+            <div style={{fontSize:13,color:"#9d174d",marginTop:3,fontWeight:500}}>{u.role+" · Don't forget to wish them a Happy Birthday! 🎁"}</div>
+          </div>
+          <div style={{background:"#ec4899",color:"#fff",borderRadius:10,padding:"9px 18px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0}}>{"Wish "+u.name.split(" ")[0]+"! 🥳"}</div>
+        </div>
+      ))}
+      {tomorrowBdays.filter(u=>me&&u.id!==me.id).map(u=>(
+        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#ffedd5)`,border:"1px solid #fb923c55",borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <div style={{fontSize:32,lineHeight:1}}>🎁</div>
+          <div style={{flex:1,minWidth:160}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#c2410c"}}>{"🗓️ "+u.name+"'s Birthday is Tomorrow!"}</div>
+            <div style={{fontSize:12,color:"#9a3412",marginTop:2}}>{u.role+" · Get ready to wish them! 🎂"}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
@@ -14871,6 +14914,7 @@ export default function App(){
         {view==="billing"&&(isAdmin||isFinance||isClient)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me} isClient={isClient} isFinance={isFinance}/>
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
+        {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
