@@ -1,0 +1,93 @@
+=== Employees in DB (27) ===
+  [Rebar] Vaishnavi | DOB: NOT SET
+  [Rebar] Kameshwari | DOB: NOT SET
+  [Rebar] Siva Kumar | DOB: NOT SET
+  [Tekla] Naidu | DOB: NOT SET
+  [Team Leader] Eswar | DOB: NOT SET
+  [Rebar] Anji Reddy | DOB: NOT SET
+  [Rebar] Sridevi | DOB: NOT SET
+  [Rebar] Kunal | DOB: NOT SET
+  [Tekla] Divya | DOB: NOT SET
+  [Manager] Narayana | DOB: NOT SET
+  [Team Leader] Siva | DOB: NOT SET
+  [Rebar] Nanaji | DOB: NOT SET
+  [Rebar] Trisha | DOB: NOT SET
+  [Rebar] Swathi | DOB: NOT SET
+  [Rebar] Balaram | DOB: NOT SET
+  [Team Leader] Chandra Mouli | DOB: NOT SET
+  [Rebar] Sai | DOB: NOT SET
+  [Rebar] Lokesh | DOB: NOT SET
+  [Rebar] Pradeep | DOB: NOT SET
+  [Rebar] Jagadeesh | DOB: NOT SET
+  [Rebar] Praveena | DOB: NOT SET
+  [Tekla] Akash | DOB: NOT SET
+  [Rebar] Pavan sai | DOB: NOT SET
+  [Rebar] Sri Lalitha | DOB: NOT SET
+  [HR & Finance] Lavanya | DOB: NOT SET
+  [Rebar] Lalitha | DOB: NOT SET
+  [Rebar] Dhanush | DOB: NOT SET
+
+=== Birthday Matching ===
+  ✅ 'Trisha' → Trisha [Rebar] → 1990-02-03
+  ✅ 'Vaishnavi' → Vaishnavi [Rebar] → 1990-03-07
+  ❌ NO MATCH: 'K.Ajay' (3/24)
+  ❌ NO MATCH: 'Kalyan' (4/2)
+  ❌ NO MATCH: 'Ramesh' (4/3)
+  ✅ 'Siva Kumar' → Siva Kumar [Rebar] → 1990-04-05
+  ❌ NO MATCH: 'Jeswanth' (4/2)
+  ❌ NO MATCH: 'Harsha' (4/6)
+  ❌ NO MATCH: 'Prathyusha' (4/25)
+  ✅ 'Balaram' → Balaram [Rebar] → 1990-05-16
+  ✅ 'Swathi' → Swathi [Rebar] → 1990-05-22
+  ✅ 'R.S. Naidu' → Naidu [Tekla] → 1990-05-23
+  ✅ 'Pradeep' → Pradeep [Rebar] → 1990-05-27
+  ✅ 'Lokesh' → Lokesh [Rebar] → 1990-05-28
+  ❌ NO MATCH: 'Vamsi' (6/3)
+  ❌ NO MATCH: 'Mohan' (6/5)
+  ✅ 'Kunal' → Kunal [Rebar] → 1990-06-11
+  ❌ NO MATCH: 'Tirupathi' (6/20)
+  ✅ 'Jagadeesh' → Jagadeesh [Rebar] → 1990-07-07
+  ✅ 'Chandra Mouli' → Chandra Mouli [Team Leader] → 1990-07-09
+  ✅ 'K.Lavanya' → Lavanya [HR & Finance] → 1990-07-11
+  ✅ 'K.Divya' → Divya [Tekla] → 1990-07-14
+  ✅ 'Anji' → Anji Reddy [Rebar] → 1990-07-20
+  ✅ 'Sri Lalitha' → Sri Lalitha [Rebar] → 1990-08-03
+  ❌ NO MATCH: 'Pari' (8/5)
+  ✅ 'Nanaji' → Nanaji [Rebar] → 1990-08-12
+  ✅ 'Praveena' → Praveena [Rebar] → 1990-08-12
+  ❌ NO MATCH: 'Vinay' (8/21)
+  ❌ NO MATCH: 'Sangeetha' (9/25)
+  ✅ 'Kameswari' → Eswar [Team Leader] → 1990-09-27
+  ❌ NO MATCH: 'Dhana Lakshmi' (9/18)
+  ✅ 'Eswar Akash' → Eswar [Team Leader] → 1990-10-03
+  ✅ 'Eswar' → Eswar [Team Leader] → 1990-10-08
+  ✅ 'Pavan' → Pavan sai [Rebar] → 1990-10-15
+  ✅ 'Sridevi' → Sridevi [Rebar] → 1990-10-23
+  ✅ 'A.Sai' → Sai [Rebar] → 1990-11-02
+  ❌ NO MATCH: 'Aravind' (11/8)
+  ✅ 'Pavan Sai' → Pavan sai [Rebar] → 1990-11-29
+  ✅ 'Narayana' → Narayana [Manager] → 1990-12-05
+  ❌ NO MATCH: 'Chandu' (12/13)
+  ✅ 'G. Sai Teja' → Sai [Rebar] → 1990-12-25
+  ✅ 'Dhanush' → Dhanush [Rebar] → 1990-12-24
+  ❌ NO MATCH: 'Shekar' (12/29)
+
+✅ Matched: 27 | ❌ Unmatched/Ambiguous: 16
+
+Unmatched — fix names in DB or script:
+  K.Ajay (3/24) — no match in DB
+  Kalyan (4/2) — no match in DB
+  Ramesh (4/3) — no match in DB
+  Jeswanth (4/2) — no match in DB
+  Harsha (4/6) — no match in DB
+  Prathyusha (4/25) — no match in DB
+  Vamsi (6/3) — no match in DB
+  Mohan (6/5) — no match in DB
+  Tirupathi (6/20) — no match in DB
+  Pari (8/5) — no match in DB
+  Vinay (8/21) — no match in DB
+  Sangeetha (9/25) — no match in DB
+  Dhana Lakshmi (9/18) — no match in DB
+  Aravind (11/8) — no match in DB
+  Chandu (12/13) — no match in DB
+  Shekar (12/29) — no match in DB

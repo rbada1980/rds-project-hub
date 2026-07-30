@@ -1,0 +1,28 @@
+✅ Trisha [Rebar] → 1990-02-03
+✅ Vaishnavi [Rebar] → 1990-03-07
+✅ Siva Kumar [Rebar] → 1990-04-05
+✅ Balaram [Rebar] → 1990-05-16
+✅ Swathi [Rebar] → 1990-05-22
+✅ Naidu [Tekla] → 1990-05-23
+✅ Pradeep [Rebar] → 1990-05-27
+✅ Lokesh [Rebar] → 1990-05-28
+✅ Kunal [Rebar] → 1990-06-11
+✅ Jagadeesh [Rebar] → 1990-07-07
+✅ Chandra Mouli [Team Leader] → 1990-07-09
+✅ Lavanya [HR & Finance] → 1990-07-11
+✅ Divya [Tekla] → 1990-07-14
+✅ Anji Reddy [Rebar] → 1990-07-20
+✅ Sri Lalitha [Rebar] → 1990-08-03
+✅ Nanaji [Rebar] → 1990-08-12
+✅ Praveena [Rebar] → 1990-08-12
+✅ Kameshwari [Rebar] → 1990-09-27
+✅ Akash [Tekla] → 1990-10-03
+✅ Eswar [Team Leader] → 1990-10-08
+✅ Pavan sai [Rebar] → 1990-10-15
+✅ Sridevi [Rebar] → 1990-10-23
+✅ Sai [Rebar] → 1990-11-02
+✅ Siva [Team Leader] → 1990-11-06
+✅ Narayana [Manager] → 1990-12-05
+✅ Dhanush [Rebar] → 1990-12-24
+
+Done — Updated: 26 | Skipped: 0 | Errors: 0
