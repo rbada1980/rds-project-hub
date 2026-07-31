@@ -1367,8 +1367,15 @@ function MonthHolidayWidget({today}){
   const currentYear=parseInt(today.slice(0,4),10);
   const monthName=MONTH_NAMES[currentMonth-1];
   useEffect(()=>{
-    supabase.from("holidays").select("*").eq("year",currentYear).order("date")
-      .then(({data})=>{if(data&&data.length>0)setHolidays(data);});
+    function fetchHols(){
+      supabase.from("holidays").select("*").eq("year",currentYear).order("date")
+        .then(({data})=>{if(data)setHolidays(data);});
+    }
+    fetchHols();
+    const ch=supabase.channel("holidays-widget")
+      .on("postgres_changes",{event:"*",schema:"public",table:"holidays"},()=>fetchHols())
+      .subscribe();
+    return()=>{supabase.removeChannel(ch);};
   },[]);
   const monthHols=holidays.filter(h=>(h.date||"").slice(5,7)===today.slice(5,7));
   const byMonth=Array.from({length:12},(_,i)=>({
