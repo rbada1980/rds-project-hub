@@ -11031,8 +11031,6 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
         </div>
       </div>
 
-      {/* ── SHIFT MANAGEMENT ── */}
-      <ShiftManagementWidget users={users} today={today}/>
 
       {/* ── HR SECTION ── */}
       <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>👥 HR — Today's Attendance</div>
@@ -15429,7 +15427,6 @@ export default function App(){
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&isFinance&&<EOMPickerWidget me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&!isTeamLeader&&!isFinance&&<AttendanceReminderBanner attRec={attRec} me={me}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <>
