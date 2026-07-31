@@ -15375,11 +15375,11 @@ export default function App(){
         {view==="billing"&&(isAdmin||isFinance||isClient)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me} isClient={isClient} isFinance={isFinance}/>
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
-        {view==="dashboard"&&<HolidayBanner today={today}/>}
-        {view==="dashboard"&&!isClient&&<EmployeeOfMonthBanner me={me} today={today}/>}
-        {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader||isFinance)&&<EOMPickerWidget me={me} users={users} today={today}/>}
+        {view==="dashboard"&&!(isAdmin||isManager||isTeamLeader)&&<HolidayBanner today={today}/>}
+        {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<EmployeeOfMonthBanner me={me} today={today}/>}
+        {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<BirthdayBanner me={me} users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
+        {view==="dashboard"&&isFinance&&<EOMPickerWidget me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&(
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             <MonthBirthdayWidget users={users} today={today}/>
@@ -15746,6 +15746,12 @@ export default function App(){
                 </div>
               );
             })()}
+            {/* ── Birthday / Holiday / Anniversary / EOM — shown below charts for Admin/Manager/TL ── */}
+            <HolidayBanner today={today}/>
+            <EmployeeOfMonthBanner me={me} today={today}/>
+            <BirthdayBanner me={me} users={users} today={today}/>
+            <WorkAnniversaryBanner me={me} users={users} today={today}/>
+            <EOMPickerWidget me={me} users={users} today={today}/>
             {!isAdmin&&<MyDayView me={me} tasks={activeDashTasks} projects={accessibleProjects} today={today} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} onEditTask={t=>{set(t);stm(true);}} compact/>}
             {/* ── Clean Filter Bar ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
