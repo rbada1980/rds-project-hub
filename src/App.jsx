@@ -1702,6 +1702,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         );
       })()}
       <MyDayView me={me} tasks={tasks} projects={projects} today={today} isAdmin={false} isManager={false} isTeamLeader={false} onEditTask={onEditTask} compact/>
+      <MonthBirthdayWidget users={users} today={today}/>
       {/* Filter bar */}
       {(()=>{
         const allA=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -13700,7 +13701,6 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
       {!compact&&section("Due Today","📅","#f59e0b",dueToday)}
       {!compact&&section("In Progress","🔄",C.blue,inProgress)}
       {!compact&&section("Due Soon","⏳",C.teal,dueSoon)}
-      {!compact&&<MonthBirthdayWidget users={users} today={today}/>}
     </div>
   );
 }
