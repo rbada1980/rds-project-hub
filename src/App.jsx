@@ -1610,6 +1610,76 @@ function BirthdayBanner({me,users,today}){
     </div>
   );
 }
+function WorkAnniversaryBanner({me,users,today}){
+  const todayMD=today.slice(5);
+  const currentYear=parseInt(today.slice(0,4),10);
+  const tmr=new Date(today+"T00:00:00");tmr.setDate(tmr.getDate()+1);
+  const tomorrowMD=tmr.toISOString().slice(0,10).slice(5);
+  const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_joining&&u.is_active!==false);
+  function yrs(doj){return currentYear-parseInt((doj||"").slice(0,4),10);}
+  const todayAnni=emps.filter(u=>(u.date_of_joining||"").slice(5)===todayMD&&yrs(u.date_of_joining)>0);
+  const tomorrowAnni=emps.filter(u=>(u.date_of_joining||"").slice(5)===tomorrowMD&&yrs(u.date_of_joining)>=0);
+  const isMeAnni=me&&me.date_of_joining&&(me.date_of_joining||"").slice(5)===todayMD&&yrs(me.date_of_joining)>0;
+  if(!isMeAnni&&todayAnni.length===0&&tomorrowAnni.length===0)return null;
+  const meYrs=me?yrs(me.date_of_joining):0;
+  const TEAL="#0ea5e9"; const PURPLE="#8b5cf6";
+  return(
+    <div style={{marginBottom:22}}>
+      {/* Own anniversary */}
+      {isMeAnni&&(
+        <div style={{background:"linear-gradient(135deg,#0ea5e9,#6366f1,#8b5cf6)",borderRadius:18,padding:"26px 32px",marginBottom:14,display:"flex",alignItems:"center",gap:20,boxShadow:"0 6px 32px #6366f144",flexWrap:"wrap",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",right:-20,top:-20,fontSize:120,opacity:0.08,lineHeight:1,pointerEvents:"none"}}>🏆</div>
+          <div style={{position:"absolute",right:80,bottom:-10,fontSize:80,opacity:0.06,lineHeight:1,pointerEvents:"none"}}>⭐</div>
+          <div style={{width:64,height:64,borderRadius:16,background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <span style={{fontSize:36,lineHeight:1}}>🏆</span>
+          </div>
+          <div style={{flex:1,minWidth:200,position:"relative"}}>
+            <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🎊 RDS Techserv — Work Anniversary</div>
+            <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Happy "+meYrs+(meYrs===1?" Year":" Years")+" Anniversary, "+me.name+"! 🎉"}</div>
+            <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",marginTop:6}}>{"Thank you for "+meYrs+(meYrs===1?" year":" years")+" of dedication to RDS Team! ⭐"}</div>
+          </div>
+          <div style={{display:"flex",gap:8,flexShrink:0}}>
+            <div style={{fontSize:40,lineHeight:1}}>🥂</div>
+            <div style={{fontSize:40,lineHeight:1}}>⭐</div>
+          </div>
+        </div>
+      )}
+      {/* Colleagues today */}
+      {todayAnni.filter(u=>me&&u.id!==me.id).map(u=>{
+        const y=yrs(u.date_of_joining);
+        return(
+          <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},${TEAL}0a)`,border:`2px solid ${TEAL}55`,borderRadius:14,padding:"16px 22px",marginBottom:10,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:`0 2px 12px ${TEAL}22`}}>
+            <div style={{width:52,height:52,borderRadius:"50%",background:`linear-gradient(135deg,${TEAL},${PURPLE})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",flexShrink:0}}>
+              {u.name.charAt(0).toUpperCase()}
+            </div>
+            <div style={{flex:1,minWidth:160}}>
+              <div style={{fontSize:11,fontWeight:700,color:TEAL,letterSpacing:".08em",textTransform:"uppercase",marginBottom:2}}>🏆 Work Anniversary · RDS Techserv</div>
+              <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{u.name+" — "+y+(y===1?" Year":" Years")+" at RDS! 🎊"}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role}</div>
+            </div>
+            <div style={{background:`linear-gradient(135deg,${TEAL},${PURPLE})`,color:"#fff",borderRadius:10,padding:"10px 20px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0,boxShadow:`0 2px 8px ${TEAL}44`}}>
+              {"🥂 Congrats "+u.name.split(" ")[0]+"!"}
+            </div>
+          </div>
+        );
+      })}
+      {/* Tomorrow */}
+      {tomorrowAnni.filter(u=>me&&u.id!==me.id).map(u=>{
+        const y=yrs(u.date_of_joining)+1;
+        return(
+          <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#f0f9ff)`,border:`1px solid ${TEAL}44`,borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+            <div style={{width:42,height:42,borderRadius:"50%",background:TEAL+"22",border:`1px solid ${TEAL}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🏆</div>
+            <div style={{flex:1,minWidth:160}}>
+              <div style={{fontSize:13,fontWeight:700,color:TEAL}}>{"🗓️ Tomorrow — "+u.name+"'s "+y+(y===1?" Year":" Years")+" Anniversary!"}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role+" · Wish them tomorrow! 🥂"}</div>
+            </div>
+            <div style={{fontSize:11,fontWeight:600,color:TEAL,background:TEAL+"15",borderRadius:8,padding:"5px 12px",border:`1px solid ${TEAL}33`}}>Tomorrow</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject,users}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
@@ -14185,7 +14255,7 @@ export default function App(){
         }
         const [[u,p],t]=await Promise.all([
           Promise.all([
-            supabase.from("users").select("id,name,username,role,email,is_active,date_of_birth").order("name").limit(2000),
+            supabase.from("users").select("id,name,username,role,email,is_active,date_of_birth,date_of_joining").order("name").limit(2000),
             supabase.from("projects").select("*").order("name").limit(2000),
           ]).then(([ur,pr])=>[ur.data,pr.data]),
           fetchAllTasks(),
@@ -15170,6 +15240,7 @@ export default function App(){
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&(
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             <MonthBirthdayWidget users={users} today={today}/>
