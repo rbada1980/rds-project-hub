@@ -14019,7 +14019,7 @@ export default function App(){
         }
         const [[u,p],t]=await Promise.all([
           Promise.all([
-            supabase.from("users").select("id,name,username,role,email,is_active").order("name").limit(2000),
+            supabase.from("users").select("id,name,username,role,email,is_active,date_of_birth").order("name").limit(2000),
             supabase.from("projects").select("*").order("name").limit(2000),
           ]).then(([ur,pr])=>[ur.data,pr.data]),
           fetchAllTasks(),
