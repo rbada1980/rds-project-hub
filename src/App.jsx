@@ -1323,7 +1323,7 @@ function HolidayBanner({today}){
   const [hols,setHols]=useState([]);
   useEffect(()=>{
     const yr=parseInt(today.slice(0,4));
-    supabase.from("holidays").select("name,date,type").eq("date",today).eq("year",yr)
+    supabase.from("holidays").select("name,date,type").eq("date",today)
       .then(({data})=>{if(data&&data.length>0)setHols(data);});
   },[today]);
   if(hols.length===0)return null;
@@ -1368,14 +1368,16 @@ function MonthHolidayWidget({today}){
   const monthName=MONTH_NAMES[currentMonth-1];
   useEffect(()=>{
     function fetchHols(){
-      supabase.from("holidays").select("*").eq("year",currentYear).order("date")
+      supabase.from("holidays").select("*")
+        .gte("date",`${currentYear}-01-01`).lte("date",`${currentYear}-12-31`)
+        .order("date")
         .then(({data})=>{if(data)setHolidays(data);});
     }
     fetchHols();
-    const ch=supabase.channel("holidays-widget")
-      .on("postgres_changes",{event:"*",schema:"public",table:"holidays"},()=>fetchHols())
-      .subscribe();
-    return()=>{supabase.removeChannel(ch);};
+    const poll=setInterval(fetchHols,60000);
+    const onFocus=()=>fetchHols();
+    window.addEventListener("focus",onFocus);
+    return()=>{clearInterval(poll);window.removeEventListener("focus",onFocus);};
   },[]);
   const monthHols=holidays.filter(h=>(h.date||"").slice(5,7)===today.slice(5,7));
   const byMonth=Array.from({length:12},(_,i)=>({
@@ -10444,7 +10446,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   const currentMonth=new Date().getMonth()+1;
 
   async function fetchHolidays(){
-    try{const{data,error}=await supabase.from("holidays").select("*").eq("year",currentYear).order("date");if(!error)setHolidays(data||[]);}catch(e){}
+    try{const{data,error}=await supabase.from("holidays").select("*").gte("date",`${currentYear}-01-01`).lte("date",`${currentYear}-12-31`).order("date");if(!error)setHolidays(data||[]);}catch(e){}
   }
 
   async function saveEmp(emp){
