@@ -15511,7 +15511,13 @@ export default function App(){
           </>
         )}
         {view==="dashboard"&&isFinance&&(
-          <HRFinanceDashboard me={me} users={users} tasks={tasks} projects={accessibleProjects} clients={clients}/>
+          <>
+            <HRFinanceDashboard me={me} users={users} tasks={tasks} projects={accessibleProjects} clients={clients}/>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:16}}>
+              <MonthBirthdayWidget users={users} today={today}/>
+              <MonthHolidayWidget today={today}/>
+            </div>
+          </>
         )}
         {view==="dashboard"&&!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&!isFinance&&(
           <UserDashboard
