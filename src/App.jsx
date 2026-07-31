@@ -1393,7 +1393,7 @@ function EOMPickerWidget({me,users,today}){
   async function save(){
     if(!pickId)return;
     setBusy(true);
-    const emp=emps.find(u=>String(u.id)===String(pickId));
+    const emp=emps.find(u=>(u.username||String(u.id))===pickId);
     if(!emp){setBusy(false);return;}
     const payload={user_id:emp.id,user_name:emp.name,month:monthStr,picked_by:me.username,picked_by_name:me.name,reason:reason.trim()||null};
     await supabase.from("employee_of_month").upsert(payload,{onConflict:"month"});
@@ -1406,7 +1406,10 @@ function EOMPickerWidget({me,users,today}){
     <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:20}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
         <div style={{fontWeight:800,fontSize:14,color:C.t1}}>🏅 Employee of the Month — {monthName} {yr}</div>
-        <button onClick={()=>{setPicking(true);setPickId(eom?.user_id?String(eom.user_id):"");setReason(eom?.reason||"");}}
+        <button onClick={()=>{
+          const existing=eom?emps.find(u=>String(u.id)===String(eom.user_id)||u.name===eom.user_name):null;
+          setPicking(true);setPickId(existing?(existing.username||String(existing.id)):"");setReason(eom?.reason||"");
+        }}
           style={{background:GOLD,color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
           {eom?"✏️ Change":"+ Pick"}
         </button>
@@ -1434,7 +1437,7 @@ function EOMPickerWidget({me,users,today}){
                 style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13}}>
                 <option value="">— Select Employee —</option>
                 {emps.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>(
-                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                  <option key={u.id} value={u.username||String(u.id)}>{u.name} ({u.role})</option>
                 ))}
               </select>
             </div>
