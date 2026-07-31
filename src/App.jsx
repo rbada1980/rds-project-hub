@@ -75,6 +75,8 @@ const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
 const fmtD=v=>{if(!v)return"—";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
+// Global DD/MM/YYYY formatter for any date string or Date object
+const fmtDDMMYYYY=v=>{if(!v)return"—";const s=(v instanceof Date?v.toISOString():String(v)).slice(0,10);if(s.length<10)return"—";return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 
 
 function Av({name,size=28}){
@@ -3305,7 +3307,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   }
   const INV_S={sent:{label:"Sent",color:"#3b82f6"},viewed:{label:"Viewed",color:"#8b5cf6"},paid:{label:"Paid",color:"#22c55e"},overdue:{label:"Overdue",color:"#ef4444"}};
   function fmtAmt(n){return n!=null?"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";}
-  function fmtInvDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"});}
+  function fmtInvDate(d){return fmtDDMMYYYY(d);}
   // Group taskSnapshot by project
   function groupByProject(taskSnap){
     const map={};
@@ -7519,7 +7521,7 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
 
   const totalMins=logs.reduce((s,l)=>s+(l.duration_minutes||0),0);
   function fmtDur(min){if(!min)return"0m";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
-  function fmtDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"});}
+  function fmtDate(d){return fmtDDMMYYYY(d);}
   const byUser={};
   logs.forEach(l=>{if(!byUser[l.user_name])byUser[l.user_name]=0;byUser[l.user_name]+=(l.duration_minutes||0);});
   const canSave=(parseInt(hrs)||0)*60+(parseInt(mins)||0)>0;
@@ -10768,7 +10770,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
   // ── Helpers ──
   function fmtMoney(n){if(n>=1000000)return"₹"+(n/1000000).toFixed(1)+"M";if(n>=1000)return"₹"+(n/1000).toFixed(1)+"K";return"₹"+n.toFixed(0);}
-  function fmtDate(d){if(!d)return"—";const dt=new Date(d);return isNaN(dt.getTime())?"—":dt.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"});}
+  function fmtDate(d){return fmtDDMMYYYY(d);}
   function yearsAt(d){if(!d)return null;const y=Math.floor((Date.now()-new Date(d))/(365.25*24*3600*1000));return y>=0?y:null;}
   function LeaveBar({used,total}){
     if(total==null)return<span style={{color:C.t3,fontSize:11}}>—</span>;
@@ -10829,7 +10831,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
                     <div style={{fontWeight:800,fontSize:13,color:C.t1}}>{u.name}</div>
                     <div style={{fontSize:11,color:C.t3}}>{u.role}</div>
                     <div style={{fontSize:12,fontWeight:700,color:isToday?"#ec4899":"#f472b6",marginTop:2}}>
-                      {isToday?"🎉 Today!":new Date(u.date_of_birth).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long"})}
+                      {isToday?"🎉 Today!":fmtDDMMYYYY(u.date_of_birth)}
                     </div>
                   </div>
                 </div>
@@ -11849,7 +11851,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       const totA=taskList.reduce((s,t)=>s+(t._amt||0),0);
       const ci=companyInfo||{};
       const clInfo=clientKey?clientCustom[clientKey]||{}:{};
-      const fmtDate=s=>{if(!s)return"";try{return new Date(s).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});}catch{return s;}};
+      const fmtDate=s=>fmtDDMMYYYY(s)||s;
 
       // Logo
       let logoData=null;
