@@ -1,0 +1,29 @@
+⚠ Supabase delete warning: Could not find the table 'public.holidays' in the schema cache
+Cleared existing 2026 holidays
+❌ Supabase insert error: Could not find the table 'public.holidays' in the schema cache
+✅ Local PG: 23 holidays inserted
+
+2026 Holiday List:
+  2026-01-01 | national  | New Year's Day
+  2026-01-14 | festival  | Makar Sankranti
+  2026-01-26 | national  | Republic Day
+  2026-02-17 | festival  | Maha Shivaratri
+  2026-03-03 | festival  | Holi
+  2026-03-20 | festival  | Eid ul-Fitr
+  2026-03-27 | festival  | Ram Navami
+  2026-04-03 | public    | Good Friday
+  2026-04-07 | festival  | Mahavir Jayanti
+  2026-04-14 | national  | Dr. Ambedkar Jayanti
+  2026-05-01 | national  | Labour Day
+  2026-05-01 | festival  | Buddha Purnima
+  2026-05-27 | festival  | Eid al-Adha
+  2026-08-15 | national  | Independence Day
+  2026-08-14 | festival  | Janmashtami
+  2026-08-19 | festival  | Ganesh Chaturthi
+  2026-09-05 | festival  | Onam
+  2026-10-02 | national  | Gandhi Jayanti
+  2026-10-21 | festival  | Dussehra
+  2026-10-28 | festival  | Diwali
+  2026-11-15 | festival  | Guru Nanak Jayanti
+  2026-12-25 | public    | Christmas
+  2026-03-02 | company   | RDS Construction Cadd Anniversary
