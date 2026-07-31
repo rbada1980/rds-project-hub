@@ -1353,6 +1353,37 @@ function HolidayBanner({today}){
     </div>
   );
 }
+function MonthBirthdayWidget({users,today}){
+  const currentMonth=parseInt(today.slice(5,7),10);
+  const todayMD=today.slice(5);
+  const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_birth&&u.is_active!==false);
+  const monthBdays=emps
+    .filter(u=>parseInt((u.date_of_birth||"").split("-")[1],10)===currentMonth)
+    .sort((a,b)=>parseInt((a.date_of_birth||"").split("-")[2],10)-parseInt((b.date_of_birth||"").split("-")[2],10));
+  if(monthBdays.length===0)return null;
+  const monthName=new Date(today+"T00:00:00").toLocaleString("default",{month:"long"});
+  return(
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 20px",marginBottom:20}}>
+      <div style={{fontWeight:800,fontSize:14,color:C.t1,marginBottom:12}}>🎂 Birthdays in {monthName}</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+        {monthBdays.map(u=>{
+          const day=parseInt((u.date_of_birth||"").split("-")[2],10);
+          const isToday=(u.date_of_birth||"").slice(5)===todayMD;
+          const isPast=day<new Date().getDate();
+          return(
+            <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,background:isToday?"#ec489914":C.bg,border:`1px solid ${isToday?"#ec489966":C.border}`,borderRadius:9,padding:"7px 12px",opacity:isPast&&!isToday?0.6:1}}>
+              <span style={{fontSize:16}}>{isToday?"🎉":"🎂"}</span>
+              <div>
+                <div style={{fontWeight:700,fontSize:12,color:C.t1}}>{u.name}</div>
+                <div style={{fontSize:11,color:isToday?"#ec4899":C.t3,fontWeight:isToday?700:400}}>{isToday?"Today! 🎉":`${monthName} ${day}`}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 function BirthdayBanner({me,users,today}){
   const todayMD=today.slice(5);
   const tmr=new Date(today+"T00:00:00");tmr.setDate(tmr.getDate()+1);
@@ -14973,6 +15004,7 @@ export default function App(){
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&<MonthBirthdayWidget users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
