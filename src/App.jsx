@@ -1862,7 +1862,11 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>My Dashboard</h2>
           <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · {me.role} · {total} task{total!==1?"s":""} assigned</p>
         </div>
-        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+        <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
+          <div style={{background:"#f97316"+"15",border:`1px solid ${"#f97316"}33`,borderRadius:10,padding:"10px 16px",minWidth:64,textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:pct>=80?C.green:pct>=50?C.blue:"#f97316"}}>{pct}%</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>Completion</div>
+          </div>
           {[{l:"Total Tasks",v:total,c:C.accent,k:"utotal"},{l:"Completed",v:done,c:C.green,k:"ucompleted"},{l:"In Progress",v:inprog,c:C.blue,k:"uinprog"},{l:"Overdue",v:overdue,c:C.red,k:"uoverdue"}].map(s=>(
             <div key={s.l} onClick={()=>setUSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",minWidth:64,textAlign:"center",cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
