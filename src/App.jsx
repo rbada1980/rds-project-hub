@@ -697,7 +697,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
 function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,onClose}){
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
-  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",assigned_projects:[],is_active:true});
+  const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",date_of_joining:"",assigned_projects:[],is_active:true});
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
@@ -706,8 +706,8 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",date_of_birth:u.date_of_birth||"",assigned_projects:[],is_active:u.is_active!==false});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",assigned_projects:[],is_active:true});se("");}
+  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",date_of_birth:u.date_of_birth||"",date_of_joining:u.date_of_joining||"",assigned_projects:[],is_active:u.is_active!==false});st("edit");se("");}
+  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",date_of_joining:"",assigned_projects:[],is_active:true});se("");}
   async function addUser(){
     if(!f.name.trim()){se("Full Name is required.");return;}
     if(!f.role){se("Role is required.");return;}
@@ -718,7 +718,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(users.find(u=>u.username===f.username.trim().toLowerCase())){se("Username already exists.");return;}
     setSaving(true);
     try{
-      await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",date_of_birth:f.date_of_birth||null});
+      await onAdd({name:f.name.trim(),username:f.username.trim().toLowerCase(),password:f.password,role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null});
       resetForm();st("list");
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
@@ -727,7 +727,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     if(!f.name.trim()){se("Name is required.");return;}
     setSaving(true);
     try{
-      const updates={name:f.name.trim(),username:f.username.trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",is_active:f.is_active,date_of_birth:f.date_of_birth||null};
+      const updates={name:f.name.trim(),username:f.username.trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email.trim()||"",is_active:f.is_active,date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null};
       if(f.password&&f.password.trim())updates.password=f.password.trim();
       await onEdit(editUser.id,updates);
       resetForm();st("list");
@@ -850,6 +850,10 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             <div style={{flex:1}}><FInput label="Password" value={f.password} onChange={s("password")} type="password"/></div>
             <div style={{flex:1}}><FInput label="Date of Birth 🎂" value={f.date_of_birth} onChange={s("date_of_birth")} type="date"/></div>
           </div>}
+          {f.role!=="Client"&&<div style={{display:"flex",gap:16,marginBottom:4}}>
+            <div style={{flex:1}}><FInput label="Date of Joining 📅" value={f.date_of_joining} onChange={s("date_of_joining")} type="date"/></div>
+            <div style={{flex:1}}/>
+          </div>}
           {f.role==="Client"&&(
             <div style={{marginBottom:14,padding:"12px 14px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:8}}>
               <p style={{margin:"0 0 10px",fontSize:12,color:C.teal,fontWeight:600}}>👤 Client Access</p>
@@ -919,6 +923,10 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="New Password (leave blank to keep)" value={f.password} onChange={s("password")} type="password" placeholder="Leave blank to keep unchanged"/></div>
             <div style={{flex:1}}><FInput label="Date of Birth 🎂" value={f.date_of_birth} onChange={s("date_of_birth")} type="date"/></div>
+          </div>
+          <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}><FInput label="Date of Joining 📅" value={f.date_of_joining} onChange={s("date_of_joining")} type="date"/></div>
+            <div style={{flex:1}}/>
           </div>
           {f.role==="Client"&&(
             <div style={{display:"flex",gap:16}}>
@@ -14847,8 +14855,8 @@ export default function App(){
   await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;const delProj=accessibleProjects.find(p=>p.id===id);await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
-  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
-  async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
+  async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){const delU=users.find(u=>u.id===id)||null;await logAudit(me,"user",id,delU?.name||id,null,"delete",delU,null);await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
   async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
   async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
