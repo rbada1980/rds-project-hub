@@ -1319,6 +1319,40 @@ function PersonalStats({me,tasks,projects}){
     </div>
   );
 }
+function HolidayBanner({today}){
+  const [hols,setHols]=useState([]);
+  useEffect(()=>{
+    const yr=parseInt(today.slice(0,4));
+    supabase.from("holidays").select("name,date,type").eq("date",today).eq("year",yr)
+      .then(({data})=>{if(data&&data.length>0)setHols(data);});
+  },[today]);
+  if(hols.length===0)return null;
+  const CFG={
+    national:{bg:"linear-gradient(135deg,#FF9933 0%,#cc3300 45%,#000080 100%)",emoji:"🇮🇳",sub:"Wishing you a proud and joyful day — Jai Hind! 🙏",badge:"National Holiday"},
+    festival:{bg:"linear-gradient(135deg,#f59e0b 0%,#ec4899 55%,#8b5cf6 100%)",emoji:"🎉",sub:"Warm festival wishes and blessings from the entire RDS Team! 🪔",badge:"Festival"},
+    public:{bg:"linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%)",emoji:"✨",sub:"Season's greetings and warm wishes from the RDS Team! 🌟",badge:"Public Holiday"},
+    company:{bg:"linear-gradient(135deg,#f97316 0%,#8b5cf6 100%)",emoji:"🎊",sub:"Celebrating this special day together as the RDS Family! 🎉",badge:"RDS Event"},
+  };
+  return(
+    <div style={{marginBottom:22}}>
+      {hols.map((h,i)=>{
+        const cfg=CFG[h.type]||CFG.public;
+        return(
+          <div key={i} style={{background:cfg.bg,borderRadius:18,padding:"22px 28px",marginBottom:10,display:"flex",alignItems:"center",gap:18,boxShadow:"0 6px 28px rgba(0,0,0,0.18)",flexWrap:"wrap",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",right:-16,top:-12,fontSize:110,opacity:0.07,lineHeight:1,pointerEvents:"none"}}>{cfg.emoji}</div>
+            <div style={{position:"absolute",top:12,right:16,background:"rgba(255,255,255,0.22)",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 12px",borderRadius:20,letterSpacing:".06em",textTransform:"uppercase"}}>{cfg.badge}</div>
+            <div style={{width:62,height:62,borderRadius:16,background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,flexShrink:0}}>{cfg.emoji}</div>
+            <div style={{flex:1,minWidth:180,position:"relative"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:3}}>RDS Techserv — Holiday Greetings</div>
+              <div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Happy "+h.name+"! "+cfg.emoji}</div>
+              <div style={{fontSize:13,color:"rgba(255,255,255,0.88)",marginTop:5}}>{cfg.sub}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function BirthdayBanner({me,users,today}){
   const todayMD=today.slice(5);
   const tmr=new Date(today+"T00:00:00");tmr.setDate(tmr.getDate()+1);
@@ -14937,6 +14971,7 @@ export default function App(){
         {view==="billing"&&(isAdmin||isFinance||isClient)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me} isClient={isClient} isFinance={isFinance}/>
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
+        {view==="dashboard"&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
