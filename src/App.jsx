@@ -1354,6 +1354,97 @@ function HolidayBanner({today}){
   );
 }
 const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const HOL_CFG={
+  national:{color:"#f97316",emoji:"🇮🇳",label:"National"},
+  festival:{color:"#ec4899",emoji:"🎉",label:"Festival"},
+  public:{color:"#3b82f6",emoji:"✨",label:"Public"},
+  company:{color:"#8b5cf6",emoji:"🎊",label:"Company"},
+};
+function MonthHolidayWidget({today}){
+  const [showAll,setShowAll]=useState(false);
+  const [holidays,setHolidays]=useState([]);
+  const currentMonth=parseInt(today.slice(5,7),10);
+  const currentYear=parseInt(today.slice(0,4),10);
+  const monthName=MONTH_NAMES[currentMonth-1];
+  useEffect(()=>{
+    supabase.from("holidays").select("*").eq("year",currentYear).order("date")
+      .then(({data})=>{if(data&&data.length>0)setHolidays(data);});
+  },[]);
+  const monthHols=holidays.filter(h=>(h.date||"").slice(5,7)===today.slice(5,7));
+  const byMonth=Array.from({length:12},(_,i)=>({
+    month:i+1,
+    name:MONTH_NAMES[i],
+    items:holidays.filter(h=>parseInt((h.date||"").slice(5,7),10)===i+1)
+  })).filter(g=>g.items.length>0);
+  return(
+    <>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 20px",marginBottom:20,flex:1,minWidth:0}}>
+        <div style={{fontWeight:800,fontSize:14,color:C.t1,marginBottom:12}}>🗓️ Holidays in {monthName}</div>
+        {monthHols.length===0?(
+          <div style={{fontSize:12,color:C.t3,marginBottom:12}}>No holidays this month.</div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+            {monthHols.map(h=>{
+              const cfg=HOL_CFG[h.type]||HOL_CFG.public;
+              const day=parseInt((h.date||"").slice(8,10),10);
+              const isToday=h.date===today;
+              return(
+                <div key={h.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:9,background:isToday?cfg.color+"14":C.bg,border:`1px solid ${isToday?cfg.color+"66":C.border}`,borderLeft:`3px solid ${cfg.color}`}}>
+                  <span style={{fontSize:15}}>{cfg.emoji}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:12,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.name}</div>
+                    <div style={{fontSize:11,color:cfg.color,fontWeight:600}}>{isToday?"Today!":monthName+" "+day} · {cfg.label}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <button onClick={()=>setShowAll(true)} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t2,fontSize:12,fontWeight:700,cursor:"pointer",marginTop:4}}>
+          🗓️ View All Holidays
+        </button>
+      </div>
+      {showAll&&(
+        <div style={{position:"fixed",inset:0,background:"#0009",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setShowAll(false);}}>
+          <div style={{background:C.card,borderRadius:18,padding:28,width:520,maxWidth:"95vw",maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px #0006"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+              <div style={{fontWeight:900,fontSize:17,color:C.t1}}>🗓️ All Holidays {currentYear}</div>
+              <button onClick={()=>setShowAll(false)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:C.t2,lineHeight:1}}>✕</button>
+            </div>
+            <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:18}}>
+              {byMonth.length===0?(
+                <div style={{textAlign:"center",color:C.t3,fontSize:13,padding:"40px 0"}}>No holidays added yet. Ask HR to add them.</div>
+              ):byMonth.map(g=>(
+                <div key={g.month}>
+                  <div style={{fontWeight:800,fontSize:12,color:C.accent,letterSpacing:".08em",textTransform:"uppercase",marginBottom:8,paddingBottom:4,borderBottom:`1px solid ${C.border}`}}>
+                    {g.name} {g.month===currentMonth&&<span style={{fontWeight:700,fontSize:11,color:"#f97316",background:"#f9731614",borderRadius:4,padding:"1px 7px",marginLeft:6}}>This Month</span>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {g.items.map(h=>{
+                      const cfg=HOL_CFG[h.type]||HOL_CFG.public;
+                      const day=parseInt((h.date||"").slice(8,10),10);
+                      const isToday=h.date===today;
+                      return(
+                        <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:9,background:isToday?cfg.color+"10":C.bg,border:`1px solid ${isToday?cfg.color+"44":C.border}`,borderLeft:`3px solid ${cfg.color}`}}>
+                          <span style={{fontSize:18,flexShrink:0}}>{cfg.emoji}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:700,fontSize:13,color:C.t1}}>{h.name}</div>
+                            <div style={{fontSize:11,color:C.t3}}>{g.name} {day}</div>
+                          </div>
+                          <span style={{fontSize:11,fontWeight:700,color:cfg.color,background:cfg.color+"15",borderRadius:6,padding:"2px 8px"}}>{cfg.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 function MonthBirthdayWidget({users,today}){
   const [showAll,setShowAll]=useState(false);
   const currentMonth=parseInt(today.slice(5,7),10);
@@ -1702,7 +1793,10 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         );
       })()}
       <MyDayView me={me} tasks={tasks} projects={projects} today={today} isAdmin={false} isManager={false} isTeamLeader={false} onEditTask={onEditTask} compact/>
-      <MonthBirthdayWidget users={users} today={today}/>
+      <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+        <MonthBirthdayWidget users={users} today={today}/>
+        <MonthHolidayWidget today={today}/>
+      </div>
       {/* Filter bar */}
       {(()=>{
         const allA=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -15064,7 +15158,12 @@ export default function App(){
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&<MonthBirthdayWidget users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&(
+          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+            <MonthBirthdayWidget users={users} today={today}/>
+            <MonthHolidayWidget today={today}/>
+          </div>
+        )}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
