@@ -1327,6 +1327,135 @@ function PersonalStats({me,tasks,projects}){
     </div>
   );
 }
+function EmployeeOfMonthBanner({me,today}){
+  const [eom,setEom]=useState(null);
+  const monthStr=today.slice(0,7);
+  const monthName=new Date(today+"T00:00:00").toLocaleString("default",{month:"long"});
+  const yr=today.slice(0,4);
+  useEffect(()=>{
+    function fetch_(){
+      supabase.from("employee_of_month").select("*").eq("month",monthStr).maybeSingle()
+        .then(({data})=>setEom(data||null));
+    }
+    fetch_();
+    const ch=supabase.channel("eom-banner-"+Date.now())
+      .on("postgres_changes",{event:"*",schema:"public",table:"employee_of_month"},()=>fetch_())
+      .subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[monthStr]);
+  if(!eom)return null;
+  const isMe=me&&(me.id===eom.user_id||me.name===eom.user_name);
+  const GOLD="#f59e0b";
+  if(isMe){
+    return(
+      <div style={{background:"linear-gradient(135deg,#f59e0b,#f97316,#ec4899)",borderRadius:18,padding:"26px 32px",marginBottom:14,display:"flex",alignItems:"center",gap:20,boxShadow:"0 6px 32px #f59e0b44",flexWrap:"wrap",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",right:-20,top:-20,fontSize:120,opacity:0.08,lineHeight:1,pointerEvents:"none"}}>⭐</div>
+        <div style={{width:64,height:64,borderRadius:16,background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <span style={{fontSize:36}}>🌟</span>
+        </div>
+        <div style={{flex:1,minWidth:200,position:"relative"}}>
+          <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🏅 RDS Techserv — Employee of the Month</div>
+          <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Congratulations, "+me.name+"! 🌟"}</div>
+          <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",marginTop:6}}>{"You are the Employee of the Month for "+monthName+" "+yr+"! The team is proud of you! 🎉"}</div>
+          {eom.reason&&<div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:4,fontStyle:"italic"}}>"{eom.reason}"</div>}
+        </div>
+        <div style={{fontSize:48}}>🏆</div>
+      </div>
+    );
+  }
+  return(
+    <div style={{background:`linear-gradient(135deg,${C.card},${GOLD}0a)`,border:`2px solid ${GOLD}55`,borderRadius:14,padding:"16px 22px",marginBottom:14,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:`0 2px 12px ${GOLD}22`}}>
+      <div style={{width:52,height:52,borderRadius:"50%",background:`linear-gradient(135deg,${GOLD},#f97316)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>⭐</div>
+      <div style={{flex:1,minWidth:160}}>
+        <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:".08em",textTransform:"uppercase",marginBottom:2}}>🏅 Employee of the Month · {monthName} {yr}</div>
+        <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{eom.user_name}</div>
+        {eom.reason&&<div style={{fontSize:12,color:C.t2,marginTop:2,fontStyle:"italic"}}>"{eom.reason}"</div>}
+        <div style={{fontSize:11,color:C.t3,marginTop:3}}>{"Picked by "+eom.picked_by_name}</div>
+      </div>
+      <div style={{fontSize:40}}>🏆</div>
+    </div>
+  );
+}
+function EOMPickerWidget({me,users,today}){
+  const [eom,setEom]=useState(null);
+  const [picking,setPicking]=useState(false);
+  const [pickId,setPickId]=useState("");
+  const [reason,setReason]=useState("");
+  const [busy,setBusy]=useState(false);
+  const monthStr=today.slice(0,7);
+  const monthName=new Date(today+"T00:00:00").toLocaleString("default",{month:"long"});
+  const yr=today.slice(0,4);
+  const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false);
+  useEffect(()=>{
+    supabase.from("employee_of_month").select("*").eq("month",monthStr).maybeSingle()
+      .then(({data})=>setEom(data||null));
+  },[monthStr]);
+  async function save(){
+    if(!pickId)return;
+    setBusy(true);
+    const emp=emps.find(u=>u.id===pickId);
+    if(!emp){setBusy(false);return;}
+    const payload={user_id:emp.id,user_name:emp.name,month:monthStr,picked_by:me.username,picked_by_name:me.name,reason:reason.trim()||null};
+    await supabase.from("employee_of_month").upsert(payload,{onConflict:"month"});
+    setEom({...payload});
+    setPicking(false);setPickId("");setReason("");
+    setBusy(false);
+  }
+  const GOLD="#f59e0b";
+  return(
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontWeight:800,fontSize:14,color:C.t1}}>🏅 Employee of the Month — {monthName} {yr}</div>
+        <button onClick={()=>{setPicking(true);setPickId(eom?.user_id||"");setReason(eom?.reason||"");}}
+          style={{background:GOLD,color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+          {eom?"✏️ Change":"+ Pick"}
+        </button>
+      </div>
+      {eom?(
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:GOLD+"10",border:`1px solid ${GOLD}44`,borderRadius:10}}>
+          <span style={{fontSize:28}}>🌟</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,fontSize:15,color:C.t1}}>{eom.user_name}</div>
+            {eom.reason&&<div style={{fontSize:12,color:C.t2,fontStyle:"italic",marginTop:2}}>"{eom.reason}"</div>}
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>Picked by {eom.picked_by_name}</div>
+          </div>
+          <span style={{fontSize:32}}>🏆</span>
+        </div>
+      ):(
+        <div style={{fontSize:13,color:C.t3}}>No employee selected for this month yet.</div>
+      )}
+      {picking&&(
+        <div style={{position:"fixed",inset:0,background:"#0009",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setPicking(false);}}>
+          <div style={{background:C.card,borderRadius:16,padding:28,width:420,maxWidth:"95vw",boxShadow:"0 20px 60px #0006"}}>
+            <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:20}}>🏅 Pick Employee of the Month</div>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:.4,marginBottom:6}}>Employee</div>
+              <select value={pickId} onChange={e=>setPickId(e.target.value)}
+                style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13}}>
+                <option value="">— Select Employee —</option>
+                {emps.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>(
+                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                ))}
+              </select>
+            </div>
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:.4,marginBottom:6}}>Reason (optional)</div>
+              <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="e.g. Outstanding performance this month..."
+                style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13,boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setPicking(false)} style={{padding:"9px 20px",borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.t2,fontSize:13,cursor:"pointer"}}>Cancel</button>
+              <button onClick={save} disabled={busy||!pickId}
+                style={{padding:"9px 22px",borderRadius:8,border:"none",background:GOLD,color:"#fff",fontSize:13,fontWeight:700,cursor:busy||!pickId?"not-allowed":"pointer",opacity:busy||!pickId?0.6:1}}>
+                {busy?"Saving…":"🌟 Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function HolidayBanner({today}){
   const [hols,setHols]=useState([]);
   useEffect(()=>{
@@ -15247,8 +15376,10 @@ export default function App(){
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&<HolidayBanner today={today}/>}
+        {view==="dashboard"&&!isClient&&<EmployeeOfMonthBanner me={me} today={today}/>}
         {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader||isFinance)&&<EOMPickerWidget me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&(
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             <MonthBirthdayWidget users={users} today={today}/>
