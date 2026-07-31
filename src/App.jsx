@@ -1599,13 +1599,22 @@ function MonthHolidayWidget({today}){
 }
 function MonthBirthdayWidget({users,today}){
   const [showAll,setShowAll]=useState(false);
+  const [fetched,setFetched]=useState([]);
   const currentMonth=parseInt(today.slice(5,7),10);
   const todayMD=today.slice(5);
-  const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_birth&&u.is_active!==false);
+  // Self-fetch so it works for all roles regardless of what's in the users prop
+  useEffect(()=>{
+    supabase.from("users").select("id,name,role,date_of_birth,is_active")
+      .not("role","in","(Admin,Client)")
+      .neq("is_active",false)
+      .then(({data})=>setFetched(data||[]));
+  },[]);
+  // Prefer self-fetched data; fall back to prop if fetch not yet complete
+  const src=fetched.length>0?fetched:(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false);
+  const emps=src.filter(u=>u.date_of_birth);
   const monthBdays=emps
     .filter(u=>parseInt((u.date_of_birth||"").split("-")[1],10)===currentMonth)
     .sort((a,b)=>parseInt((a.date_of_birth||"").split("-")[2],10)-parseInt((b.date_of_birth||"").split("-")[2],10));
-  if(monthBdays.length===0&&emps.length===0)return null;
   const monthName=MONTH_NAMES[currentMonth-1];
   // Group all employees by birth month for popup
   const byMonth=Array.from({length:12},(_,i)=>({
