@@ -8466,7 +8466,7 @@ function AttendanceReminderBanner({attRec,me}){
   const day=ist.getDay(); // 0=Sun, 6=Sat
   const hour=ist.getHours();
   const min=ist.getMinutes();
-  const isWeekday=day>=1&&day<=5;
+  const isWeekday=day>=1&&day<=6; // Mon–Sat, only Sunday off
   const isPast10=(hour>10)||(hour===10&&min>=0);
   const notClockedIn=!attRec||attRec.logout_at;
   if(!isWeekday||!isPast10||!notClockedIn||dismissed)return null;

@@ -1,5 +1,5 @@
 // attendance-reminder.cjs
-// Run at 10:00 AM IST on weekdays via Task Scheduler
+// Run at 10:00 AM IST Mon–Sat via Task Scheduler
 // Finds all employees with no attendance record today → emails HR
 
 const { createClient } = require("@supabase/supabase-js");
@@ -21,8 +21,8 @@ function dayOfWeek(){
 async function main(){
   const today=todayIST();
   const day=new Date().toLocaleString("en-US",{timeZone:"Asia/Kolkata",weekday:"short"});
-  // Skip weekends
-  if(day==="Sat"||day==="Sun"){console.log("Weekend — skipping");return;}
+  // Only Sunday is off
+  if(day==="Sun"){console.log("Sunday — skipping");return;}
 
   // Get all active employees (not Admin, not Client)
   const {data:allUsers}=await sb.from("users").select("id,name,role,email,is_active")
