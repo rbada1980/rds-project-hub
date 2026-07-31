@@ -1625,7 +1625,7 @@ function MonthBirthdayWidget({users,today}){
   })).filter(g=>g.members.length>0);
   return(
     <>
-      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 20px",marginBottom:20}}>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 20px",marginBottom:20,flex:1,minWidth:0}}>
         <div style={{fontWeight:800,fontSize:14,color:C.t1,marginBottom:12}}>🎂 Birthdays in {monthName}</div>
         {monthBdays.length===0?(
           <div style={{fontSize:12,color:C.t3}}>No birthdays this month.</div>
