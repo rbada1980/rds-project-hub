@@ -8397,38 +8397,6 @@ function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClo
   );
 }
 // ─── AttendanceStats ──────────────────────────────────────────────────────────
-// shift cutoff times (IST hour:min after which reminder shows)
-const SHIFT_CUTOFF={morning:{h:7,m:30},general:{h:10,m:0},afternoon:{h:15,m:0}};
-const SHIFT_LABEL={morning:"Morning Shift (starts 6 AM)",general:"General Shift (starts 9 AM)",afternoon:"Afternoon Shift (starts 2 PM)"};
-function AttendanceReminderBanner({attRec,me}){
-  const shift=(me?.shift||"general");
-  const cutoff=SHIFT_CUTOFF[shift]||SHIFT_CUTOFF.general;
-  const [now,setNow]=useState(()=>new Date());
-  const [dismissed,setDismissed]=useState(false);
-  useEffect(()=>{const id=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(id);},[]);
-  const ist=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Kolkata"}));
-  const day=ist.getDay();
-  const hour=ist.getHours();
-  const min=ist.getMinutes();
-  const isWorkDay=day>=1&&day<=6; // Mon–Sat only
-  const isPastCutoff=(hour>cutoff.h)||(hour===cutoff.h&&min>=cutoff.m);
-  const notClockedIn=!attRec||attRec.logout_at;
-  if(!isWorkDay||!isPastCutoff||!notClockedIn||dismissed)return null;
-  const cutoffStr=`${String(cutoff.h).padStart(2,"0")}:${String(cutoff.m).padStart(2,"0")} AM`;
-  return(
-    <div style={{background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"2px solid #f59e0b",borderRadius:14,padding:"14px 20px",marginBottom:16,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 2px 12px #f59e0b22"}}>
-      <span style={{fontSize:28,flexShrink:0}}>⏰</span>
-      <div style={{flex:1,minWidth:180}}>
-        <div style={{fontWeight:800,fontSize:14,color:"#92400e"}}>Attendance Not Marked!</div>
-        <div style={{fontSize:12,color:"#78350f",marginTop:2}}>It's past {cutoffStr} and you haven't clocked in today. Please mark your attendance.</div>
-      </div>
-      <button onClick={()=>setDismissed(true)}
-        style={{padding:"7px 12px",borderRadius:8,border:"1px solid #f59e0b88",background:"transparent",color:"#92400e",fontSize:12,cursor:"pointer",flexShrink:0}}>
-        Dismiss
-      </button>
-    </div>
-  );
-}
 function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   const [tick,setTick]=useState(0);
   const [modal,setModal]=useState(null);
@@ -10610,75 +10578,6 @@ function LiveTimerBar({timer,onPause,onStop}){
 // BACKUP, DISASTER RECOVERY & BUSINESS CONTINUITY CENTER
 // ══════════════════════════════════════════════════════════
 // ── Audit Log Page (Phase 3) ─────────────────────────────────
-
-// ─── Shift Management Widget (HR only) ────────────────────────────────────────
-const SHIFT_INFO={
-  morning:{label:"Morning",time:"6 AM – 2 PM",color:"#0ea5e9",emoji:"🌅"},
-  general:{label:"General",time:"9 AM – 6 PM",color:"#8b5cf6",emoji:"☀️"},
-  afternoon:{label:"Afternoon",time:"2 PM – 10 PM",color:"#f97316",emoji:"🌆"},
-};
-function ShiftManagementWidget({users,today}){
-  const [month,setMonth]=useState(today.slice(0,7)); // YYYY-MM
-  const [saving,setSaving]=useState({});
-  const [saved,setSaved]=useState({});
-  const employees=useMemo(()=>
-    (users||[]).filter(u=>u.role&&u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false)
-      .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
-  ,[users]);
-  async function changeShift(userId,newShift){
-    setSaving(p=>({...p,[userId]:true}));
-    const{error}=await supabase.from("users").update({shift:newShift}).eq("id",userId);
-    setSaving(p=>({...p,[userId]:false}));
-    if(!error){setSaved(p=>({...p,[userId]:true}));setTimeout(()=>setSaved(p=>({...p,[userId]:false})),2000);}
-  }
-  const monthName=new Date(month+"-15").toLocaleString("en-IN",{month:"long",year:"numeric"});
-  const grouped={morning:employees.filter(u=>u.shift==="morning"),general:employees.filter(u=>!u.shift||u.shift==="general"),afternoon:employees.filter(u=>u.shift==="afternoon")};
-  return(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:24,borderTop:"3px solid #8b5cf6"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10,marginBottom:16}}>
-        <div>
-          <div style={{fontWeight:800,fontSize:15,color:C.t1}}>🔄 Monthly Shift Assignment</div>
-          <div style={{fontSize:12,color:C.t3,marginTop:2}}>Set each employee's shift for {monthName}. Changes apply immediately.</div>
-        </div>
-        <input type="month" value={month} onChange={e=>setMonth(e.target.value)}
-          style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13,fontWeight:600}}/>
-      </div>
-      {/* Summary pills */}
-      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
-        {Object.entries(SHIFT_INFO).map(([k,s])=>(
-          <div key={k} style={{background:s.color+"18",border:`1px solid ${s.color}44`,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,color:s.color}}>
-            {s.emoji} {s.label} — {grouped[k]?.length||0} employees
-          </div>
-        ))}
-      </div>
-      {/* Employee list */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
-        {employees.map(u=>{
-          const cur=u.shift||"general";
-          const info=SHIFT_INFO[cur]||SHIFT_INFO.general;
-          return(
-            <div key={u.id} style={{background:C.bg,border:`1px solid ${info.color}33`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:36,height:36,borderRadius:10,background:info.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{info.emoji}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:13,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name}</div>
-                <div style={{fontSize:11,color:C.t3}}>{u.role}</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                <select value={cur} disabled={saving[u.id]}
-                  onChange={e=>changeShift(u.id,e.target.value)}
-                  style={{padding:"5px 8px",borderRadius:7,border:`1px solid ${info.color}`,background:C.card,color:info.color,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                  {Object.entries(SHIFT_INFO).map(([k,s])=><option key={k} value={k}>{s.emoji} {s.label} ({s.time})</option>)}
-                </select>
-                {saving[u.id]&&<span style={{fontSize:12,color:C.t3}}>⏳</span>}
-                {saved[u.id]&&<span style={{fontSize:13,color:"#22c55e"}}>✓</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ─── HR & Finance Dashboard ────────────────────────────────────────────────────
 function HRFinanceDashboard({me,users,tasks,projects,clients}){
