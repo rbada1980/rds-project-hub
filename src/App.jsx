@@ -15380,22 +15380,27 @@ export default function App(){
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&isFinance&&<EOMPickerWidget me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&(
-          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            <MonthBirthdayWidget users={users} today={today}/>
-            <MonthHolidayWidget today={today}/>
-          </div>
-        )}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
-          <TeamLeaderDashboard
-            me={me} tasks={tasks} projects={accessibleProjects} today={today}
-            onEditTask={t=>{set(t);stm(true);}}
-            onDeleteTask={delTask}
-            onViewProject={pid=>navTo('list',pid)}
-            onClientClick={(cl)=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-            onOpenTaskModal={(title,tl)=>ssm({title,tasks:tl})}
-          />
+          <>
+            <TeamLeaderDashboard
+              me={me} tasks={tasks} projects={accessibleProjects} today={today}
+              onEditTask={t=>{set(t);stm(true);}}
+              onDeleteTask={delTask}
+              onViewProject={pid=>navTo('list',pid)}
+              onClientClick={(cl)=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
+              onOpenTaskModal={(title,tl)=>ssm({title,tasks:tl})}
+            />
+            <HolidayBanner today={today}/>
+            <EmployeeOfMonthBanner me={me} today={today}/>
+            <BirthdayBanner me={me} users={users} today={today}/>
+            <WorkAnniversaryBanner me={me} users={users} today={today}/>
+            <EOMPickerWidget me={me} users={users} today={today}/>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+              <MonthBirthdayWidget users={users} today={today}/>
+              <MonthHolidayWidget today={today}/>
+            </div>
+          </>
         )}
         {view==="dashboard"&&isFinance&&(
           <HRFinanceDashboard me={me} users={users} tasks={tasks} projects={accessibleProjects} clients={clients}/>
@@ -15752,6 +15757,10 @@ export default function App(){
             <BirthdayBanner me={me} users={users} today={today}/>
             <WorkAnniversaryBanner me={me} users={users} today={today}/>
             <EOMPickerWidget me={me} users={users} today={today}/>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+              <MonthBirthdayWidget users={users} today={today}/>
+              <MonthHolidayWidget today={today}/>
+            </div>
             {!isAdmin&&<MyDayView me={me} tasks={activeDashTasks} projects={accessibleProjects} today={today} isAdmin={isAdmin} isManager={isManager} isTeamLeader={isTeamLeader} onEditTask={t=>{set(t);stm(true);}} compact/>}
             {/* ── Clean Filter Bar ── */}
             <div style={{background:C.card,border:`1px solid ${hasDashFilter?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:20}}>
