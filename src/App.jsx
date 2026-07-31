@@ -1353,35 +1353,94 @@ function HolidayBanner({today}){
     </div>
   );
 }
+const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function MonthBirthdayWidget({users,today}){
+  const [showAll,setShowAll]=useState(false);
   const currentMonth=parseInt(today.slice(5,7),10);
   const todayMD=today.slice(5);
   const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_birth&&u.is_active!==false);
   const monthBdays=emps
     .filter(u=>parseInt((u.date_of_birth||"").split("-")[1],10)===currentMonth)
     .sort((a,b)=>parseInt((a.date_of_birth||"").split("-")[2],10)-parseInt((b.date_of_birth||"").split("-")[2],10));
-  if(monthBdays.length===0)return null;
-  const monthName=new Date(today+"T00:00:00").toLocaleString("default",{month:"long"});
+  if(monthBdays.length===0&&emps.length===0)return null;
+  const monthName=MONTH_NAMES[currentMonth-1];
+  // Group all employees by birth month for popup
+  const byMonth=Array.from({length:12},(_,i)=>({
+    month:i+1,
+    name:MONTH_NAMES[i],
+    members:emps.filter(u=>parseInt((u.date_of_birth||"").split("-")[1],10)===i+1)
+      .sort((a,b)=>parseInt((a.date_of_birth||"").split("-")[2],10)-parseInt((b.date_of_birth||"").split("-")[2],10))
+  })).filter(g=>g.members.length>0);
   return(
-    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 20px",marginBottom:20}}>
-      <div style={{fontWeight:800,fontSize:14,color:C.t1,marginBottom:12}}>🎂 Birthdays in {monthName}</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-        {monthBdays.map(u=>{
-          const day=parseInt((u.date_of_birth||"").split("-")[2],10);
-          const isToday=(u.date_of_birth||"").slice(5)===todayMD;
-          const isPast=day<new Date().getDate();
-          return(
-            <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,background:isToday?"#ec489914":C.bg,border:`1px solid ${isToday?"#ec489966":C.border}`,borderRadius:9,padding:"7px 12px",opacity:isPast&&!isToday?0.6:1}}>
-              <span style={{fontSize:16}}>{isToday?"🎉":"🎂"}</span>
-              <div>
-                <div style={{fontWeight:700,fontSize:12,color:C.t1}}>{u.name}</div>
-                <div style={{fontSize:11,color:isToday?"#ec4899":C.t3,fontWeight:isToday?700:400}}>{isToday?"Today! 🎉":`${monthName} ${day}`}</div>
-              </div>
-            </div>
-          );
-        })}
+    <>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 20px",marginBottom:20}}>
+        <div style={{fontWeight:800,fontSize:14,color:C.t1,marginBottom:12}}>🎂 Birthdays in {monthName}</div>
+        {monthBdays.length===0?(
+          <div style={{fontSize:12,color:C.t3}}>No birthdays this month.</div>
+        ):(
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
+            {monthBdays.map(u=>{
+              const day=parseInt((u.date_of_birth||"").split("-")[2],10);
+              const isToday=(u.date_of_birth||"").slice(5)===todayMD;
+              const isPast=day<new Date().getDate();
+              return(
+                <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,background:isToday?"#ec489914":C.bg,border:`1px solid ${isToday?"#ec489966":C.border}`,borderRadius:9,padding:"7px 12px",opacity:isPast&&!isToday?0.6:1}}>
+                  <span style={{fontSize:16}}>{isToday?"🎉":"🎂"}</span>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:12,color:C.t1}}>{u.name}</div>
+                    <div style={{fontSize:11,color:isToday?"#ec4899":C.t3,fontWeight:isToday?700:400}}>{isToday?"Today! 🎉":`${monthName} ${day}`}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <button onClick={()=>setShowAll(true)} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t2,fontSize:12,fontWeight:700,cursor:"pointer",marginTop:4}}>
+          🎂 View All Member Birthdays
+        </button>
       </div>
-    </div>
+      {showAll&&(
+        <div style={{position:"fixed",inset:0,background:"#0009",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setShowAll(false);}}>
+          <div style={{background:C.card,borderRadius:18,padding:28,width:520,maxWidth:"95vw",maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px #0006"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+              <div style={{fontWeight:900,fontSize:17,color:C.t1}}>🎂 All Member Birthdays</div>
+              <button onClick={()=>setShowAll(false)} style={{background:"transparent",border:"none",fontSize:20,cursor:"pointer",color:C.t2,lineHeight:1}}>✕</button>
+            </div>
+            <div style={{overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:18}}>
+              {byMonth.length===0?(
+                <div style={{textAlign:"center",color:C.t3,fontSize:13,padding:"40px 0"}}>No birthdays added yet.</div>
+              ):byMonth.map(g=>(
+                <div key={g.month}>
+                  <div style={{fontWeight:800,fontSize:12,color:C.accent,letterSpacing:".08em",textTransform:"uppercase",marginBottom:8,paddingBottom:4,borderBottom:`1px solid ${C.border}`}}>
+                    {g.name} {g.month===currentMonth&&<span style={{fontWeight:700,fontSize:11,color:"#ec4899",background:"#ec489914",borderRadius:4,padding:"1px 7px",marginLeft:6}}>This Month</span>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {g.members.map(u=>{
+                      const day=parseInt((u.date_of_birth||"").split("-")[2],10);
+                      const isToday=(u.date_of_birth||"").slice(5)===todayMD;
+                      return(
+                        <div key={u.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:9,background:isToday?"#ec489910":C.bg,border:`1px solid ${isToday?"#ec489944":C.border}`}}>
+                          <div style={{width:34,height:34,borderRadius:"50%",background:isToday?"linear-gradient(135deg,#ec4899,#f43f5e)":"#ec489918",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isToday?18:14,fontWeight:900,color:isToday?"#fff":"#ec4899",flexShrink:0}}>
+                            {isToday?"🎉":u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:700,fontSize:13,color:C.t1}}>{u.name}</div>
+                            <div style={{fontSize:11,color:C.t3}}>{u.role}</div>
+                          </div>
+                          <div style={{fontSize:12,fontWeight:700,color:isToday?"#ec4899":C.t2,textAlign:"right"}}>
+                            {isToday?"🎉 Today!":`${g.name} ${day}`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 function BirthdayBanner({me,users,today}){
@@ -1448,7 +1507,7 @@ function BirthdayBanner({me,users,today}){
     </div>
   );
 }
-function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject}){
+function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject,users}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   // `projects` prop = accessibleProjects (already filtered to only this user's projects in parent)
@@ -13641,6 +13700,7 @@ function MyDayView({me,tasks,projects,today,isAdmin,isManager,isTeamLeader,onEdi
       {!compact&&section("Due Today","📅","#f59e0b",dueToday)}
       {!compact&&section("In Progress","🔄",C.blue,inProgress)}
       {!compact&&section("Due Soon","⏳",C.teal,dueSoon)}
+      {!compact&&<MonthBirthdayWidget users={users} today={today}/>}
     </div>
   );
 }
@@ -15004,7 +15064,7 @@ export default function App(){
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&<BirthdayBanner me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&<MonthBirthdayWidget users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&(isAdmin||isManager||isTeamLeader)&&<MonthBirthdayWidget users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <TeamLeaderDashboard
@@ -15022,6 +15082,7 @@ export default function App(){
         {view==="dashboard"&&!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&!isFinance&&(
           <UserDashboard
             me={me} tasks={tasks} projects={accessibleProjects} clients={clients} today={today}
+            users={users}
             onEditTask={()=>{}}
             onViewProject={pid=>navTo('list',pid)}
           />
