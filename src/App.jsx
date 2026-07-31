@@ -8455,6 +8455,60 @@ function AttendanceBar({attRec,attBreak,onStartBreak,onEndBreak,onClockOut,onClo
   );
 }
 // ─── AttendanceStats ──────────────────────────────────────────────────────────
+function AttendanceReminderBanner({attRec,me}){
+  const [now,setNow]=useState(()=>new Date());
+  const [dismissed,setDismissed]=useState(false);
+  const [notified,setNotified]=useState(false);
+  const [notifying,setNotifying]=useState(false);
+  useEffect(()=>{const id=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(id);},[]);
+  // Only show on weekdays (Mon–Fri), after 10:00 AM IST, if not clocked in
+  const ist=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Kolkata"}));
+  const day=ist.getDay(); // 0=Sun, 6=Sat
+  const hour=ist.getHours();
+  const min=ist.getMinutes();
+  const isWeekday=day>=1&&day<=5;
+  const isPast10=(hour>10)||(hour===10&&min>=0);
+  const notClockedIn=!attRec||attRec.logout_at;
+  if(!isWeekday||!isPast10||!notClockedIn||dismissed)return null;
+  async function notifyHR(){
+    setNotifying(true);
+    try{
+      const html=`<div style="font-family:sans-serif;padding:20px">
+        <h2 style="color:#f97316">⚠️ Attendance Alert</h2>
+        <p><b>${me.name}</b> (${me.role}) has not marked attendance today (${ist.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}) as of ${ist.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})} IST.</p>
+        <p>Please follow up.</p>
+        <p style="color:#888;font-size:12px">— RDS Projects Auto Alert</p>
+      </div>`;
+      await fetch("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({to:"lavanya@rdstechserv.com",subject:`⚠️ Attendance Not Marked — ${me.name}`,html})});
+      setNotified(true);
+    }catch(e){}
+    setNotifying(false);
+  }
+  return(
+    <div style={{background:"linear-gradient(135deg,#fef3c7,#fde68a)",border:"2px solid #f59e0b",borderRadius:14,padding:"14px 20px",marginBottom:16,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 2px 12px #f59e0b22"}}>
+      <span style={{fontSize:28,flexShrink:0}}>⏰</span>
+      <div style={{flex:1,minWidth:180}}>
+        <div style={{fontWeight:800,fontSize:14,color:"#92400e"}}>Attendance Not Marked!</div>
+        <div style={{fontSize:12,color:"#78350f",marginTop:2}}>It's past 10:00 AM and you haven't clocked in today. Please mark your attendance.</div>
+      </div>
+      <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap"}}>
+        {!notified?(
+          <button onClick={notifyHR} disabled={notifying}
+            style={{padding:"7px 14px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontSize:12,fontWeight:700,cursor:notifying?"wait":"pointer",opacity:notifying?0.7:1}}>
+            {notifying?"Sending…":"📧 Notify HR"}
+          </button>
+        ):(
+          <span style={{fontSize:12,fontWeight:700,color:"#065f46",background:"#d1fae5",borderRadius:8,padding:"7px 12px"}}>✅ HR Notified</span>
+        )}
+        <button onClick={()=>setDismissed(true)}
+          style={{padding:"7px 12px",borderRadius:8,border:"1px solid #f59e0b88",background:"transparent",color:"#92400e",fontSize:12,cursor:"pointer"}}>
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
 function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   const [tick,setTick]=useState(0);
   const [modal,setModal]=useState(null);
@@ -15383,6 +15437,7 @@ export default function App(){
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&isFinance&&<EOMPickerWidget me={me} users={users} today={today}/>}
+        {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceReminderBanner attRec={attRec} me={me}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <>
