@@ -1377,7 +1377,10 @@ function MonthHolidayWidget({today}){
     const poll=setInterval(fetchHols,60000);
     const onFocus=()=>fetchHols();
     window.addEventListener("focus",onFocus);
-    return()=>{clearInterval(poll);window.removeEventListener("focus",onFocus);};
+    const ch=supabase.channel("holidays-widget-"+Date.now())
+      .on("postgres_changes",{event:"*",schema:"public",table:"holidays"},()=>fetchHols())
+      .subscribe();
+    return()=>{clearInterval(poll);window.removeEventListener("focus",onFocus);supabase.removeChannel(ch);};
   },[]);
   const monthHols=holidays.filter(h=>(h.date||"").slice(5,7)===today.slice(5,7));
   const byMonth=Array.from({length:12},(_,i)=>({
