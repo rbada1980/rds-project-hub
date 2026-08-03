@@ -76,7 +76,8 @@ const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
 const fmtD=v=>{if(!v)return"—";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 // Global DD/MM/YYYY formatter for any date string or Date object
-const fmtDDMMYYYY=v=>{if(!v)return"—";const s=(v instanceof Date?v.toISOString():String(v)).slice(0,10);if(s.length<10)return"—";return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
+// IST-safe: plain YYYY-MM-DD strings sliced directly; timestamps/Date objects converted via IST locale
+const fmtDDMMYYYY=v=>{if(!v)return"—";if(typeof v==="string"&&/^\d{4}-\d{2}-\d{2}/.test(v)){const s=v.slice(0,10);return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);}const d=new Date(v);if(isNaN(d))return"—";const s=d.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});if(s.length<10)return"—";return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 
 
 function Av({name,size=28}){
@@ -1700,7 +1701,7 @@ function MonthBirthdayWidget({users,today}){
 function BirthdayBanner({me,users,today}){
   const todayMD=today.slice(5);
   const tmr=new Date(today+"T00:00:00");tmr.setDate(tmr.getDate()+1);
-  const tomorrowMD=tmr.toISOString().slice(0,10).slice(5);
+  const tomorrowMD=tmr.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"}).slice(5);
   const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_birth&&u.is_active!==false);
   const todayBdays=emps.filter(u=>(u.date_of_birth||"").slice(5)===todayMD);
   const tomorrowBdays=emps.filter(u=>(u.date_of_birth||"").slice(5)===tomorrowMD);
@@ -1765,7 +1766,7 @@ function WorkAnniversaryBanner({me,users,today}){
   const todayMD=today.slice(5);
   const currentYear=parseInt(today.slice(0,4),10);
   const tmr=new Date(today+"T00:00:00");tmr.setDate(tmr.getDate()+1);
-  const tomorrowMD=tmr.toISOString().slice(0,10).slice(5);
+  const tomorrowMD=tmr.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"}).slice(5);
   const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.date_of_joining&&u.is_active!==false);
   function yrs(doj){return currentYear-parseInt((doj||"").slice(0,4),10);}
   const todayAnni=emps.filter(u=>(u.date_of_joining||"").slice(5)===todayMD&&yrs(u.date_of_joining)>0);
@@ -10211,7 +10212,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
   const [timeLogs,setTimeLogs]=useState([]);
   const [attendance,setAttendance]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [month,setMonth]=useState(new Date().toISOString().slice(0,7));
+  const [month,setMonth]=useState(new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"}).slice(0,7));
 
   const projMap={};projects.forEach(p=>{projMap[p.id]=p;});
   const taskMap={};tasks.forEach(t=>{taskMap[t.id]=t;});
