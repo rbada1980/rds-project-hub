@@ -1721,14 +1721,14 @@ app.get("/api/cron-daily", async (req, res) => {
   const force = req.query.force === "true";
 
   if (!force) {
-    // Check IST hour — only allow between 1:00 AM and 1:45 AM IST
+    // Check IST hour — only allow between 8:00 AM and 8:45 AM IST
     const nowIST    = new Date(Date.now() + 5.5 * 3600 * 1000);
     const hourIST   = nowIST.getUTCHours();   // 0–23 in IST
     const minIST    = nowIST.getUTCMinutes();
-    const inWindow  = hourIST === 1 && minIST <= 45;
+    const inWindow  = hourIST === 8 && minIST <= 45;
     if (!inWindow) {
-      console.log(`[cron-daily] Skipped — called at ${hourIST}:${String(minIST).padStart(2,"0")} IST (outside 1 AM window). PC startup trigger suppressed.`);
-      return res.json({ skipped: true, reason: "Outside 1:00–1:45 AM IST window. PC startup call suppressed." });
+      console.log(`[cron-daily] Skipped — called at ${hourIST}:${String(minIST).padStart(2,"0")} IST (outside 8 AM window). PC startup trigger suppressed.`);
+      return res.json({ skipped: true, reason: "Outside 8:00–8:45 AM IST window. PC startup call suppressed." });
     }
   }
 
