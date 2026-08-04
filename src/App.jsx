@@ -4534,7 +4534,7 @@ function exportSubmissionList(projects,tasks,today){
   const wsStr=localDateStr(ws);
   const weStr=localDateStr(we);
   const ds=v=>v?String(v).slice(0,10):null;
-  const inRange=(t,from,to)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to);};
+  const inRange=(t,from,to)=>{const d=ds(t.client_sub_date)||ds(t.due_date);return !!(d&&d>=from&&d<=to);};
   const todayTasks=tasks.filter(t=>inRange(t,today,today));
   const weekTasks=tasks.filter(t=>inRange(t,wsStr,weStr)&&!inRange(t,today,today));
   const safe=`Submission List - ${today}`;
@@ -4666,8 +4666,9 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       if(isDone(t.status)) return false;
       return !!(d2&&d2>=f&&d2<=to);
     }
-    const inWindow=(d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to);
-    return !!inWindow;
+    // Use client_sub_date if set; fall back to due_date only when client_sub_date is absent
+    const d=d1||d2;
+    return !!(d&&d>=f&&d<=to);
   };
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
@@ -4687,15 +4688,15 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   // Summary stats (always shown regardless of period)
   // Overdue: tasks with any past date that are NOT completed
   const overdueCount=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-  const todayCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===today)||(d2&&d2===today);}).length;
-  const tomorrowCount=allTasks.filter(t=>{const tm=addDays(today,1);const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===tm)||(d2&&d2===tm);}).length;
-  const thisWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);const ms=mondayOf(today);const se=sundayOf(today);return(d1&&d1>=ms&&d1<=se)||(d2&&d2>=ms&&d2<=se);}).length;
+  const todayCount=allTasks.filter(t=>{const d=ds(t.client_sub_date)||ds(t.due_date);return d&&d===today;}).length;
+  const tomorrowCount=allTasks.filter(t=>{const tm=addDays(today,1);const d=ds(t.client_sub_date)||ds(t.due_date);return d&&d===tm;}).length;
+  const thisWeekCount=allTasks.filter(t=>{const d=ds(t.client_sub_date)||ds(t.due_date);const ms=mondayOf(today);const se=sundayOf(today);return d&&d>=ms&&d<=se;}).length;
   const nextWeekStart=addDays(mondayOf(today),7);
   const nextWeekEnd=addDays(nextWeekStart,6);
-  const nextWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=nextWeekStart&&d1<=nextWeekEnd)||(d2&&d2>=nextWeekStart&&d2<=nextWeekEnd);}).length;
+  const nextWeekCount=allTasks.filter(t=>{const d=ds(t.client_sub_date)||ds(t.due_date);return d&&d>=nextWeekStart&&d<=nextWeekEnd;}).length;
   const nextMonthStart=(()=>{const d=new Date();return localDateStr(new Date(d.getFullYear(),d.getMonth()+1,1));})();
   const nextMonthEnd=(()=>{const d=new Date();return localDateStr(new Date(d.getFullYear(),d.getMonth()+2,0));})();
-  const nextMonthCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=nextMonthStart&&d1<=nextMonthEnd)||(d2&&d2>=nextMonthStart&&d2<=nextMonthEnd);}).length;
+  const nextMonthCount=allTasks.filter(t=>{const d=ds(t.client_sub_date)||ds(t.due_date);return d&&d>=nextMonthStart&&d<=nextMonthEnd;}).length;
   const noDatesCount=allTasks.filter(t=>!hasDate(t)).length;
 
   const statusColor=s=>s==="Completed"?"#16a34a":s==="In Progress"?"#2563eb":s==="Not Yet Started"?"#64748b":"#f59e0b";
