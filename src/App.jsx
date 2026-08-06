@@ -14369,6 +14369,27 @@ export default function App(){
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
+  // ── Stale-data guard: every 60s check DB task count vs in-memory count ───
+  // If they differ (missed realtime events while tab was backgrounded/offline),
+  // silently re-fetch everything so the user never sees missing tasks.
+  useEffect(()=>{
+    if(!me||IS_LOCAL)return;
+    const iv=setInterval(async()=>{
+      try{
+        const{count,error}=await supabase.from("tasks").select("*",{count:"exact",head:true});
+        if(error||count==null)return;
+        st(prev=>{
+          if(prev.length!==count){
+            // counts differ — reload silently
+            loadAll();
+          }
+          return prev;
+        });
+      }catch(_){}
+    },60000);
+    return()=>clearInterval(iv);
+  },[me]);
+
   // ── Live updates ──────────────────────────────────────────────
   // Online: Supabase Realtime WebSocket (instant)
   // LAN:    SSE from server.js via createLocalClient channel (instant)
