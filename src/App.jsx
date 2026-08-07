@@ -4534,7 +4534,7 @@ function exportSubmissionList(projects,tasks,today){
   const wsStr=localDateStr(ws);
   const weStr=localDateStr(we);
   const ds=v=>v?String(v).slice(0,10):null;
-  const inRange=(t,from,to)=>{const d=ds(t.client_sub_date)||ds(t.due_date);return !!(d&&d>=from&&d<=to);};
+  const inRange=(t,from,to)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return !!((d1&&d1>=from&&d1<=to)||(d2&&d2>=from&&d2<=to));};
   const todayTasks=tasks.filter(t=>inRange(t,today,today));
   const weekTasks=tasks.filter(t=>inRange(t,wsStr,weStr)&&!inRange(t,today,today));
   const safe=`Submission List - ${today}`;
@@ -4666,9 +4666,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       if(isDone(t.status)) return false;
       return !!(d2&&d2>=f&&d2<=to);
     }
-    // Use client_sub_date if set; fall back to due_date only when client_sub_date is absent
-    const d=d1||d2;
-    return !!(d&&d>=f&&d<=to);
+    // True OR: show task if EITHER client_sub_date OR due_date falls in range
+    return !!((d1&&d1>=f&&d1<=to)||(d2&&d2>=f&&d2<=to));
   };
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
