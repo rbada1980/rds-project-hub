@@ -14376,10 +14376,11 @@ export default function App(){
     const iv=setInterval(async()=>{
       try{
         const{count,error}=await supabase.from("tasks").select("*",{count:"exact",head:true});
-        if(error||count==null)return;
+        // Guard: ignore errors, null counts, or count=0 (network glitch returning empty)
+        if(error||count==null||count===0)return;
         st(prev=>{
-          if(prev.length!==count){
-            // counts differ — reload silently
+          // Only reload if count differs AND prev has data (never wipe on error)
+          if(prev.length>0&&prev.length!==count){
             loadAll();
           }
           return prev;
