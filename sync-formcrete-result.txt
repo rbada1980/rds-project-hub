@@ -1,0 +1,4 @@
+Sync run: 2026-08-11T05:48:50.217Z
+INSERT: 1 OK / 0 FAIL
+UPDATE: 465 OK / 0 FAIL / 9 skipped (status-case-only, no real change)
+All succeeded.

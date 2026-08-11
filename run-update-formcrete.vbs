@@ -1,4 +1,3 @@
 Dim sh : Set sh = CreateObject("WScript.Shell")
-sh.Run "cmd /c cd /d C:\Users\HP\rds-project-hub && node write-formcrete-excel.cjs > formcrete-update-result.txt 2>&1", 0, True
-sh.Run "cmd /c cd /d C:\Users\HP\rds-project-hub && node update-formcrete.cjs >> formcrete-update-result.txt 2>&1", 0, True
-MsgBox "Done! Check formcrete-update-result.txt", 64, "Formcrete Import"
+sh.Run "cmd /c cd /d C:\Users\HP\rds-project-hub && node sync-formcrete-final.cjs > sync-stdout.txt 2>&1", 0, True
+MsgBox "Sync complete! Check sync-formcrete-result.txt", 64, "Formcrete Sync"

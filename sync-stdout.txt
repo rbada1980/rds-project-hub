@@ -1,0 +1,24 @@
+=== FORMCRETE SYNC (v2 — fixed status mapping) ===
+Diff generated: 2026-08-11T05:33:09.743Z
+To INSERT: 1, To UPDATE: 474
+
+OK INSERT: Maintenance bldg revised contract dwgs
+
+Processing 474 update candidates...
+  ... 50/474 processed
+  ... 100/474 processed
+  ... 150/474 processed
+  ... 200/474 processed
+  ... 250/474 processed
+  ... 300/474 processed
+  ... 350/474 processed
+  ... 400/474 processed
+  ... 450/474 processed
+
+========== SYNC RESULT ==========
+INSERT:  1 OK  0 FAIL
+UPDATE:  465 OK  0 FAIL  9 skipped (status-case-only)
+
+All operations succeeded.
+
+Result saved to sync-formcrete-result.txt
