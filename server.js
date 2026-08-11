@@ -22,6 +22,22 @@ const cron     = require("node-cron");
 const PDFDocument = require("pdfkit");
 const { runSync } = require("./sync.cjs");
 
+// ── Sync helpers (module scope — accessible to middleware + HTTPS listener) ──
+let _syncBusy = false;
+let _pendingSync = null;
+async function doSync(label) {
+  if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
+  _syncBusy = true;
+  try { await runSync(); }
+  catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
+  finally { _syncBusy = false; }
+}
+// Called after each local write — debounced 500ms so rapid saves don't pile up
+function queueSync() {
+  if (_pendingSync) clearTimeout(_pendingSync);
+  _pendingSync = setTimeout(() => { _pendingSync = null; doSync("write-trigger"); }, 500);
+}
+
 // ── Web Push (VAPID) ─────────────────────────────────────────
 // Keys generated once — shared between offline + online
 const VAPID_PUBLIC_KEY  = "BMTLOA2w7j72nZQd64u_WR2dNKpDcdDiAP92vs_BJY7l2v23qQaw9Xbwimu4Y62U2rjJ9A0rSNM1SYS_6wBDHq4";
@@ -116,6 +132,14 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 // ── Middleware ───────────────────────────────────────────────
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+// ── Write-triggered sync: sync within 500ms of any successful mutation ──────
+app.use((req, res, next) => {
+  if (["POST","PUT","PATCH","DELETE"].includes(req.method)) {
+    res.on("finish", () => { if (res.statusCode >= 200 && res.statusCode < 400) queueSync(); });
+  }
+  next();
+});
 
 // ── SSE — Server-Sent Events for instant LAN live updates ───
 const sseClients = new Map();
@@ -1934,17 +1958,9 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
       console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
       console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
 
-      let _syncBusy = false;
-      async function doSync(label) {
-        if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
-        _syncBusy = true;
-        try { await runSync(); }
-        catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
-        finally { _syncBusy = false; }
-      }
       setInterval(() => doSync("10s"), 10000);
       cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
-      console.log("🔄 Auto-sync: every 10s + 2:00 AM IST daily\n");
+      console.log("🔄 Auto-sync: every 10s + on-write (500ms debounce) + 2:00 AM IST daily\n");
       setTimeout(() => doSync("startup"), 30000);
     });
   } catch (e) {
