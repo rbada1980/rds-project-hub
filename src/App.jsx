@@ -5666,12 +5666,17 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 }
 
 function AnalyticsCenter({projects,tasks,users,clients,today,members}){
-  const projectById=new Map(projects.map(p=>[p.id,p]));
   const isMobile=useMobile();
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
 
-  const pct=id=>{const pt=tasks.filter(t=>t.project_id===id);return pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;};
+  // Period filter — apply to tasks before all KPI computations
+  const ds=v=>v?String(v).slice(0,10):null;
+  const periodDays={"all":0,"quarter":90,"month":30,"week":7}[period]||0;
+  const periodCutoff=periodDays>0?(()=>{const d=new Date(today);d.setDate(d.getDate()-periodDays);return d.toISOString().slice(0,10);})():null;
+  const periodTasks=periodCutoff?tasks.filter(t=>{const d=ds(t.due_date)||ds(t.client_sub_date);return d&&d>=periodCutoff;}):tasks;
+
+  const pct=id=>{const pt=periodTasks.filter(t=>t.project_id===id);return pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;};
   const openModal=(title,list,type="tasks")=>{if(list&&list.length>0)setModal({title,type,list});};
   const openProj=(title,list)=>openModal(title,list,"projects");
   const openClients=(title,list)=>openModal(title,list,"clients");
@@ -5681,32 +5686,31 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const totalProj=projects.length;
   const activeProjList=projects.filter(p=>pct(p.id)<100);
   const activeProj=activeProjList.length;
-  const compProjList=projects.filter(p=>pct(p.id)>=100&&tasks.some(t=>t.project_id===p.id));
+  const compProjList=projects.filter(p=>pct(p.id)>=100&&periodTasks.some(t=>t.project_id===p.id));
   const compProj=compProjList.length;
   const totalCl=clients.length;
-  const totalEmp=users.length;
-  const openTasksList=tasks.filter(t=>!isDone(t.status));
+  const totalEmp=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).length;
+  const openTasksList=periodTasks.filter(t=>!isDone(t.status));
   const openTasks=openTasksList.length;
-  const compTasks=tasks.filter(t=>isDone(t.status)).length;
-  const ds=v=>v?String(v).slice(0,10):null;
-  const overdue=tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length;
-  const inProg=tasks.filter(t=>t.status==="In Progress").length;
-  const compRate=tasks.length?Math.round(compTasks/tasks.length*100):0;
+  const compTasks=periodTasks.filter(t=>isDone(t.status)).length;
+  const overdue=periodTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length;
+  const inProg=periodTasks.filter(t=>t.status==="In Progress").length;
+  const compRate=periodTasks.length?Math.round(compTasks/periodTasks.length*100):0;
 
   // Task status breakdown
-  const statusBD=ALL_STATUSES.map(s=>({label:s,value:tasks.filter(t=>t.status===s).length,color:getStatusColor(s),tasks:tasks.filter(t=>t.status===s)})).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
+  const statusBD=ALL_STATUSES.map(s=>({label:s,value:periodTasks.filter(t=>t.status===s).length,color:getStatusColor(s),tasks:periodTasks.filter(t=>t.status===s)})).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
 
   // Project health
-  const notStartedProj=projects.filter(p=>!tasks.some(t=>t.project_id===p.id));
+  const notStartedProj=projects.filter(p=>!periodTasks.some(t=>t.project_id===p.id));
   const projHealth=[
-    {label:"Active",value:activeProj,color:"#3b82f6",projects:activeProjList,tasks:tasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))},
-    {label:"Completed",value:compProj,color:"#22c55e",projects:compProjList,tasks:tasks.filter(t=>compProjList.some(p=>p.id===t.project_id))},
+    {label:"Active",value:activeProj,color:"#3b82f6",projects:activeProjList,tasks:periodTasks.filter(t=>activeProjList.some(p=>p.id===t.project_id))},
+    {label:"Completed",value:compProj,color:"#22c55e",projects:compProjList,tasks:periodTasks.filter(t=>compProjList.some(p=>p.id===t.project_id))},
     {label:"Not Started",value:Math.max(0,totalProj-activeProj-compProj),color:C.t3,projects:notStartedProj,tasks:[]},
   ].filter(d=>d.value>0);
 
   // Team performance
   const teamPerf=members.map(name=>{
-    const mt=tasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
+    const mt=periodTasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
     const done=mt.filter(t=>isDone(t.status)).length;
     const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
     return{name,total:mt.length,done,overdueTasks:ov,overdue:ov.length,allTasks:mt,pct:mt.length?Math.round(done/mt.length*100):0};
@@ -5715,7 +5719,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   // Client portfolio
   const clientPortfolio=clients.map(c=>{
     const cp=projects.filter(p=>p.client===c.name);
-    const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));
+    const ct=periodTasks.filter(t=>cp.some(p=>p.id===t.project_id));
     const doneTasks=ct.filter(t=>isDone(t.status));
     const ovTasks=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
     return{name:c.name,projects:cp.length,tasks:ct.length,done:doneTasks.length,doneTasks,overdue:ovTasks.length,ovTasks,allTasks:ct,pct:ct.length?Math.round(doneTasks.length/ct.length*100):0};
@@ -5723,10 +5727,10 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
 
   // Priority distribution
   const priColors={"Critical":C.red,"High":"#f97316","Medium":"#eab308","Low":C.green};
-  const priData=["Critical","High","Medium","Low"].map(p=>({label:p,value:tasks.filter(t=>t.priority===p).length,color:priColors[p],tasks:tasks.filter(t=>t.priority===p)})).filter(d=>d.value>0);
+  const priData=["Critical","High","Medium","Low"].map(p=>({label:p,value:periodTasks.filter(t=>t.priority===p).length,color:priColors[p],tasks:periodTasks.filter(t=>t.priority===p)})).filter(d=>d.value>0);
 
   // Overdue by assignee
-  const overdueByA=members.map(name=>({name,count:tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return t.assignee===name&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length,tasks:tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return t.assignee===name&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);})})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
+  const overdueByA=members.map(name=>({name,count:periodTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return t.assignee===name&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length,tasks:periodTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return t.assignee===name&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);})})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
 
   // ── Sub-components ──────────────────────────────────────────────────────────
   const ACard=({icon,label,value,sub,color,onClick,taskList,projList,clientList,memberList})=>{
@@ -5953,7 +5957,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
       </div>
 
       {modal&&modal.type==="tasks"&&<StatTaskModal title={modal.title} tasks={modal.list} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)}/>}
-      {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={tasks} today={today} onClose={()=>setModal(null)}/>}
+      {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={periodTasks} today={today} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="clients"&&<AnalyticsClientModal title={modal.title} clientList={modal.list} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="members"&&<AnalyticsMemberModal title={modal.title} memberList={modal.list} tasks={tasks} onClose={()=>setModal(null)}/>}
     </div>
