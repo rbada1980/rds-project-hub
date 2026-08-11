@@ -1733,30 +1733,30 @@ function BirthdayBanner({me,users,today}){
       )}
       {/* Colleague birthdays today */}
       {todayBdays.filter(u=>me&&u.id!==me.id).map(u=>(
-        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},${RDS_ORANGE}0a)`,border:`2px solid ${RDS_ORANGE}55`,borderRadius:14,padding:"16px 22px",marginBottom:10,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:`0 2px 12px ${RDS_ORANGE}22`}}>
+        <div key={u.id} style={{background:"#000",border:`2px solid ${RDS_ORANGE}55`,borderRadius:14,padding:"16px 22px",marginBottom:10,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:`0 2px 12px ${RDS_ORANGE}22`}}>
           {/* Avatar circle */}
           <div style={{width:52,height:52,borderRadius:"50%",background:`linear-gradient(135deg,${RDS_ORANGE},#ea580c)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",flexShrink:0}}>
             {u.name.charAt(0).toUpperCase()}
           </div>
           <div style={{flex:1,minWidth:160}}>
             <div style={{fontSize:11,fontWeight:700,color:RDS_ORANGE,letterSpacing:".08em",textTransform:"uppercase",marginBottom:2}}>🎂 Birthday Today · RDS Techserv</div>
-            <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{"Wish "+u.name+" a Happy Birthday!"}</div>
-            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role}</div>
+            <div style={{fontSize:17,fontWeight:800,color:"#fff"}}>{"Wish "+u.name+" a Happy Birthday!"}</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginTop:2}}>{u.role}</div>
           </div>
-          <div style={{background:`linear-gradient(135deg,${RDS_ORANGE},#ea580c)`,color:"#fff",borderRadius:10,padding:"10px 20px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0,boxShadow:`0 2px 8px ${RDS_ORANGE}44`}}>
+          <div style={{background:RDS_ORANGE,color:"#fff",borderRadius:10,padding:"10px 20px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0,boxShadow:`0 2px 8px ${RDS_ORANGE}44`}}>
             {"🥳 Happy Birthday "+u.name.split(" ")[0]+"!"}
           </div>
         </div>
       ))}
       {/* Tomorrow's birthdays */}
       {tomorrowBdays.filter(u=>me&&u.id!==me.id).map(u=>(
-        <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#fff7ed)`,border:`1px solid ${RDS_ORANGE}44`,borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
-          <div style={{width:42,height:42,borderRadius:"50%",background:RDS_ORANGE+"22",border:`1px solid ${RDS_ORANGE}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🎁</div>
+        <div key={u.id} style={{background:"#000",border:`1px solid ${RDS_ORANGE}44`,borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <div style={{width:42,height:42,borderRadius:"50%",background:RDS_ORANGE+"33",border:`1px solid ${RDS_ORANGE}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🎁</div>
           <div style={{flex:1,minWidth:160}}>
-            <div style={{fontSize:13,fontWeight:700,color:RDS_ORANGE}}>{"🗓️ Tomorrow — "+u.name+"'s Birthday!"}</div>
-            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role+" · Prepare your wishes for tomorrow! 🎂"}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{"🗓️ Tomorrow — "+u.name+"'s Birthday!"}</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginTop:2}}>{u.role+" · Prepare your wishes for tomorrow! 🎂"}</div>
           </div>
-          <div style={{fontSize:11,fontWeight:600,color:RDS_ORANGE,background:RDS_ORANGE+"15",borderRadius:8,padding:"5px 12px",border:`1px solid ${RDS_ORANGE}33`}}>Tomorrow</div>
+          <div style={{fontSize:11,fontWeight:600,color:"#fff",background:RDS_ORANGE,borderRadius:8,padding:"5px 12px"}}>Tomorrow</div>
         </div>
       ))}
     </div>
