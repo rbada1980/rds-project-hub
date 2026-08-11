@@ -5693,7 +5693,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const openTasksList=periodTasks.filter(t=>!isDone(t.status));
   const openTasks=openTasksList.length;
   const compTasks=periodTasks.filter(t=>isDone(t.status)).length;
-  const overdue=periodTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);}).length;
+  const overdue=periodTasks.filter(t=>{const d=ds(t.due_date);return d&&d<today&&!isDone(t.status);}).length;
   const inProg=periodTasks.filter(t=>t.status==="In Progress").length;
   const compRate=periodTasks.length?Math.round(compTasks/periodTasks.length*100):0;
 
@@ -5730,7 +5730,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
   const priData=["Critical","High","Medium","Low"].map(p=>({label:p,value:periodTasks.filter(t=>t.priority===p).length,color:priColors[p],tasks:periodTasks.filter(t=>t.priority===p)})).filter(d=>d.value>0);
 
   // Overdue by assignee
-  const isOverdueFor=(t,name)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(t.assignee===name||t.detailer===name||t.checker===name)&&((d1&&d1<today)||(d2&&d2<today))&&!isDone(t.status);};
+  const isOverdueFor=(t,name)=>{const d=ds(t.due_date);return(t.assignee===name||t.detailer===name||t.checker===name)&&d&&d<today&&!isDone(t.status);};
   const overdueByA=members.map(name=>({name,count:periodTasks.filter(t=>isOverdueFor(t,name)).length,tasks:periodTasks.filter(t=>isOverdueFor(t,name))})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
 
   // ── Sub-components ──────────────────────────────────────────────────────────
