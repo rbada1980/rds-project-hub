@@ -17,13 +17,21 @@ const cors           = require("cors");
 const path           = require("path");
 const multer         = require("multer");
 const fs             = require("fs");
+const https          = require("https");
 const { v4: uuidv4 } = require("uuid");
 const cron           = require("node-cron");
 const { runSync }    = require("./sync.cjs");
 const { exec }       = require("child_process");
 
 const app  = express();
-const PORT = 8080;
+const PORT = 8443;
+
+// ── HTTPS certs ──────────────────────────────────────────────
+const CERT_DIR = path.join(__dirname, "certs");
+const httpsOptions = {
+  key:  fs.readFileSync(path.join(CERT_DIR, "key.pem")),
+  cert: fs.readFileSync(path.join(CERT_DIR, "cert.pem")),
+};
 
 // ── PostgreSQL pool ──────────────────────────────────────────
 const pool = new Pool({
@@ -1249,10 +1257,10 @@ app.get("/install-cert", function(req, res) {
 // START
 // =============================================================
 
-app.listen(PORT, "0.0.0.0", function() {
-  console.log("\n RDS Server running on port " + PORT);
-  console.log("   http://localhost:" + PORT);
-  console.log("   http://192.168.0.159:" + PORT + "  <- Office LAN");
+https.createServer(httpsOptions, app).listen(PORT, "0.0.0.0", function() {
+  console.log("\n🔒 RDS Server running (HTTPS) on port " + PORT);
+  console.log("   https://localhost:" + PORT);
+  console.log("   https://192.168.0.159:" + PORT + "  <- Office LAN");
   console.log("\n Database: rds_local (PostgreSQL 16)");
   console.log(" Uploads:  " + UPLOAD_DIR);
 
