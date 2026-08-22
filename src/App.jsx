@@ -68,8 +68,8 @@ function applyTheme(mode){
 // Apply saved theme on page load
 if(typeof window!=="undefined"&&_initTheme==="light"){document.body.classList.add("rds-light");document.body.style.background=LIGHT_C.bg;}
 const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client","HR & Finance"];
-const ALL_STATUSES=["Not Yet Started","In Progress","In Process","Review","Completed"];
-const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"In Process":C.blue,"Review":C.purple,"Done":C.green,"To Be Started":C.t3,"Completed":C.green};
+const ALL_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
+const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
@@ -1029,7 +1029,7 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
 function MobileKMove({task,onDrop}){
   const isMobile=useMobile();
   if(!isMobile)return null;
-  const COLS=["Not Yet Started","In Progress","In Process","Review","Completed"];
+  const COLS=["Not Yet Started","In Progress","Completed","On Hold"];
   return(
     <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
       {COLS.filter(c=>c!==task.status).map(c=>(
@@ -4436,7 +4436,7 @@ function exportAnalyticsReport(projects,tasks,users,clients,today){
   const overdueList=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).sort((a,b)=>a.due_date>b.due_date?1:-1);
 
   // Status color map
-  const statusColors={"Done":"#16a34a","Completed":"#16a34a","Review":"#2563eb","In Progress":"#7c3aed","In Process":"#7c3aed","To Do":"#64748b","Not Yet Started":"#94a3b8","To Be Started":"#94a3b8","On Hold":"#dc2626"};
+  const statusColors={"Done":"#16a34a","Completed":"#16a34a","In Progress":"#7c3aed","To Do":"#64748b","Not Yet Started":"#94a3b8","To Be Started":"#94a3b8","On Hold":"#dc2626"};
 
   // Percent bar helper (text-based)
   const pBar=p=>`${"█".repeat(Math.round(p/10))}${"░".repeat(10-Math.round(p/10))} ${p}%`;
@@ -5213,7 +5213,7 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
 const WF_TRIGGERS=[["status_changed","Status Changes To"],["task_assigned","Task Assigned"],["task_created","Task Created"]];
 const WF_ACTIONS=[["notify_checker","Notify Checker"],["notify_assignee","Notify Assignee"],["notify_role","Notify Role"],["change_status","Change Status To"]];
 const WF_ROLES=["Admin","Manager","Team Leader","Rebar","Client"];
-const ALL_WF_STATUSES=["Not Yet Started","In Progress","In Process","Review","Completed"];
+const ALL_WF_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
 
 function EmailDigestCard(){
@@ -14990,7 +14990,7 @@ export default function App(){
       showToast("Portal account created ✓");
     }
   }
-  const kanbanCols=["Not Yet Started","In Progress","In Process","Review","Completed"];
+  const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
   const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"],["announcements","📢","Announcements"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
