@@ -573,28 +573,30 @@ function EditProjectForm({project,onSave,onClose,saving,users,clients,requireDat
 }
 function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}){
   const [tab,st]=useState("list");
-  const [f,sf]=useState({name:"",email:"",phone:"",address:"",portal_username:"",portal_password:"Client@RDS2026"});
+  const [f,sf]=useState({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});
   const [editId,sei]=useState(null);
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [cq,scq]=useState("");
   const [selClients,setSC]=useState(new Set());
   const s=k=>v=>sf(p=>({...p,[k]:v}));
+  const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false);
   function toUn(str){return(str||"").toLowerCase().trim().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");}
   function startEdit(c){
     sei(c.id);
     const pu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===c.name.toLowerCase());
-    sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||"",portal_username:pu?.username||toUn(c.name),portal_password:""});
+    sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||"",team_leader:c.team_leader||"",portal_username:pu?.username||toUn(c.name),portal_password:""});
     st("add");
   }
-  function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",portal_username:"",portal_password:"Client@RDS2026"});se("");}
+  function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
+    if(!f.team_leader){se("Please select a Team Leader.");return;}
     if(!f.portal_username.trim()){se("Portal username is required.");return;}
     setSaving(true);
     try{
-      if(editId){await onEdit(editId,{name:f.name,email:f.email,phone:f.phone,address:f.address});}
-      else{await onAdd({name:f.name,email:f.email,phone:f.phone,address:f.address});}
+      if(editId){await onEdit(editId,{name:f.name,email:f.email,phone:f.phone,address:f.address,team_leader:f.team_leader});}
+      else{await onAdd({name:f.name,email:f.email,phone:f.phone,address:f.address,team_leader:f.team_leader});}
       await onSavePortal(f.name,f.portal_username,f.portal_password||null);
       reset();st("list");
     }catch(e){se("Error: "+e.message);}
@@ -639,6 +641,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
                     <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                      {c.team_leader&&<span style={{color:C.accent,fontWeight:600}}>👑 {c.team_leader}</span>}
                       {c.email&&<span>✉ {c.email}</span>}
                       {c.phone&&<span>📞 {c.phone}</span>}
                       {c.address&&<span>📍 {c.address}</span>}
@@ -666,8 +669,19 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
             <div style={{flex:1}}><FInput label="Email" value={f.email} onChange={s("email")} placeholder="e.g. info@formcrete.com" type="email"/></div>
           </div>
           <div style={{display:"flex",gap:16}}>
+            <div style={{flex:1}}>
+              <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.red}}>*</span></label>
+              <select value={f.team_leader} onChange={e=>sf(p=>({...p,team_leader:e.target.value}))}
+                style={{width:"100%",background:C.surface,border:`1px solid ${f.team_leader?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.team_leader?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",boxSizing:"border-box"}}>
+                <option value="">— Select Team Leader —</option>
+                {teamLeaders.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+            </div>
             <div style={{flex:1}}><FInput label="Phone" value={f.phone} onChange={s("phone")} placeholder="e.g. +1 234 567 8900"/></div>
+          </div>
+          <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}><FInput label="Address" value={f.address} onChange={s("address")} placeholder="e.g. Miami, FL"/></div>
+            <div style={{flex:1}}/>
           </div>
           {/* Portal Access */}
           <div style={{marginTop:14,padding:"14px 16px",background:C.teal+"11",border:`1px solid ${C.teal}44`,borderRadius:10}}>
@@ -14963,8 +14977,8 @@ export default function App(){
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){const delU=users.find(u=>u.id===id)||null;await logAudit(me,"user",id,delU?.name||id,null,"delete",delU,null);await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
-  async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
-  async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
+  async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
+  async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
   async function deleteClient(id){
     const cl=clients.find(c=>c.id===id);
     await supabase.from("clients").delete().eq("id",id);

@@ -108,6 +108,8 @@ async function runMigrations() {
     `CREATE INDEX IF NOT EXISTS holidays_date_idx ON holidays (date)`,
     // ── Employee active/inactive ──────────────────────────────────
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true`,
+    // ── Client team leader ────────────────────────────────────────
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS team_leader TEXT DEFAULT ''`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); } catch(e) { console.warn("Migration skipped:", e.message); }

@@ -256,7 +256,7 @@ async function pushTable({ table, conflict, pushConflict, excludeFromRow = [], s
         const supaTime = supaTimestamps[row.id];
         if (!supaTime) return true;              // not in Supabase yet → push
         if (!row.updated_at) return true;        // no local timestamp → push
-        return new Date(row.updated_at) >= new Date(supaTime);
+        return new Date(row.updated_at) > new Date(supaTime);
       });
       const skipped = before - toPush.length;
       if (skipped > 0)
