@@ -1960,9 +1960,9 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
       console.log(`\n📦 Database: rds_local (PostgreSQL 16)`);
       console.log(`📁 Uploads:  ${UPLOAD_DIR}\n`);
 
-      setInterval(() => doSync("10s"), 10000);
+      setInterval(() => doSync("60s"), 60000);  // 60s interval — reduces realtime events 6x vs old 10s
       cron.schedule("0 2 * * *", () => doSync("2AM"), { timezone: "Asia/Kolkata" });
-      console.log("🔄 Auto-sync: every 10s + on-write (500ms debounce) + 2:00 AM IST daily\n");
+      console.log("🔄 Auto-sync: every 60s + on-write (500ms debounce) + 2:00 AM IST daily\n");
       setTimeout(() => doSync("startup"), 30000);
     });
   } catch (e) {
