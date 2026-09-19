@@ -1352,8 +1352,8 @@ function EmployeeOfMonthBanner({me,today}){
   const yr=today.slice(0,4);
   useEffect(()=>{
     function fetch_(){
-      supabase.from("employee_of_month").select("*").eq("month",monthStr).maybeSingle()
-        .then(({data})=>setEom(data||null));
+      supabase.from("employee_of_month").select("*").eq("month",monthStr).limit(1)
+        .then(({data})=>setEom((data&&data[0])||null));
     }
     fetch_();
     const ch=supabase.channel("eom-banner-"+Date.now())
@@ -1405,8 +1405,8 @@ function EOMPickerWidget({me,users,today}){
   const yr=today.slice(0,4);
   const emps=(users||[]).filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false);
   useEffect(()=>{
-    supabase.from("employee_of_month").select("*").eq("month",monthStr).maybeSingle()
-      .then(({data})=>setEom(data||null));
+    supabase.from("employee_of_month").select("*").eq("month",monthStr).limit(1)
+      .then(({data})=>setEom((data&&data[0])||null));
   },[monthStr]);
   async function save(){
     if(!pickId)return;
@@ -1623,7 +1623,7 @@ function MonthBirthdayWidget({users,today}){
   // Self-fetch so it works for all roles regardless of what's in the users prop
   useEffect(()=>{
     supabase.from("users").select("id,name,role,date_of_birth,is_active")
-      .not("role","in","(Admin,Client)")
+      .neq("role","Admin").neq("role","Client")
       .neq("is_active",false)
       .then(({data})=>setFetched(data||[]));
   },[]);
@@ -7821,13 +7821,192 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:0}}>
         {!isHideTimeLogs&&tabBtn("timelogs","⏱ Time Logs")}
         {tabBtn("comments","💬 Comments")}
+        {tabBtn("revisions","🔁 Revisions")}
         {!isClient&&tabBtn("history","📋 History")}
       </div>
       <div style={{padding:"4px 0"}}>
         {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
         {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
+        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me}/>}
         {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me}/>}
       </div>
+    </div>
+  );
+}
+
+// ── Task Revisions ────────────────────────────────────────────
+const REV_STATUS_CLR={
+  "Not Yet Started":C=>C.t3,
+  "In Progress":    C=>C.blue||"#3b82f6",
+  "Completed":      C=>C.green,
+  "On Hold":        C=>C.orange||"#f97316",
+};
+const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
+const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
+
+function TaskRevisions({taskId,me}){
+  const isClient=me?.role==="Client";
+  const canAdd=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
+  const [revisions,setRevisions]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [showForm,setShowForm]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:""};
+  const [form,setForm]=useState(blankForm);
+
+  useEffect(()=>{load();},[taskId]);
+
+  async function load(){
+    setLoading(true);
+    try{
+      if(IS_LOCAL){
+        const r=await fetch(LOCAL_BASE+"/api/task-revisions?task_id="+taskId);
+        const j=await r.json();
+        setRevisions(Array.isArray(j.data)?j.data:[]);
+      } else {
+        const{data}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
+        setRevisions(data||[]);
+      }
+    }catch(e){}
+    setLoading(false);
+  }
+
+  function openAdd(){setForm(blankForm);setEditId(null);setShowForm(true);}
+  function openEdit(rev){
+    setForm({status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||""});
+    setEditId(rev.id);setShowForm(true);
+  }
+
+  async function saveRevision(){
+    if(!form.status){return;}
+    setSaving(true);
+    try{
+      if(editId){
+        // UPDATE
+        if(IS_LOCAL){
+          await fetch(LOCAL_BASE+"/api/task-revisions/"+editId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});
+        } else {
+          await supabase.from("task_revisions").update({...form,updated_at:new Date().toISOString()}).eq("id",editId);
+        }
+      } else {
+        // INSERT
+        const payload={task_id:taskId,...form,created_by:me?.name||me?.username||"Unknown"};
+        if(IS_LOCAL){
+          await fetch(LOCAL_BASE+"/api/task-revisions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        } else {
+          await supabase.from("task_revisions").insert(payload);
+        }
+      }
+      setShowForm(false);
+      await load();
+    }catch(e){}
+    setSaving(false);
+  }
+
+  function fmtDate(d){
+    if(!d)return null;
+    return new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+  }
+  function fmtTime(ts){
+    const d=new Date(ts);
+    const now=new Date();
+    const diffDays=Math.floor((now-d)/86400000);
+    const t=d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});
+    if(diffDays===0)return"Today, "+t;
+    if(diffDays===1)return"Yesterday, "+t;
+    return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short"})+", "+t;
+  }
+
+  if(loading)return<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:13}}>Loading revisions…</div>;
+
+  return(
+    <div style={{padding:"14px 0"}}>
+      {/* Add Revision button */}
+      {canAdd&&!showForm&&(
+        <div style={{marginBottom:16}}>
+          <button onClick={openAdd} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            + Add Revision
+          </button>
+        </div>
+      )}
+
+      {/* Add / Edit form */}
+      {showForm&&(
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px",marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:12}}>
+            {editId?"Edit Revision":"New Revision"}
+          </div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Status *</div>
+              <select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}
+                style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+                {VALID_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Client Sub Date</div>
+              <input type="date" value={form.client_sub_date} onChange={e=>setForm(p=>({...p,client_sub_date:e.target.value}))}
+                style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Notes (what changed?)</div>
+            <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}
+              rows={3} placeholder="Describe the client's revision request…"
+              style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button onClick={()=>setShowForm(false)} disabled={saving}
+              style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 14px",fontSize:13,color:C.t2,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+            <button onClick={saveRevision} disabled={saving||!form.status}
+              style={{background:C.accent,color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.6:1}}>
+              {saving?"Saving…":"Save Revision"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Revision list */}
+      {!revisions.length&&!showForm&&(
+        <div style={{textAlign:"center",color:C.t3,fontSize:13,padding:"24px 0"}}>
+          No revisions yet. Click "Add Revision" when a client sends changes after completion.
+        </div>
+      )}
+      {revisions.map((rev,i)=>{
+        const clrFn=REV_STATUS_CLR[rev.status]||(()=>C.t3);
+        const clr=clrFn(C);
+        return(
+          <div key={rev.id} style={{display:"flex",gap:12,marginBottom:i<revisions.length-1?12:0,padding:"12px 14px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,position:"relative"}}>
+            {/* Timeline dot */}
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:clr+"22",border:`2px solid ${clr}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>
+                {REV_STATUS_ICON[rev.status]||"🔁"}
+              </div>
+              {i<revisions.length-1&&<div style={{width:2,flex:1,minHeight:20,background:C.border,marginTop:4}}/>}
+            </div>
+            {/* Content */}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                <span style={{fontWeight:700,fontSize:13,color:C.t1}}>Revision {rev.revision_number}</span>
+                <span style={{fontSize:11,fontWeight:700,color:clr,background:clr+"18",borderRadius:12,padding:"2px 9px"}}>{rev.status}</span>
+                {rev.client_sub_date&&(
+                  <span style={{fontSize:11,color:C.t3}}>📅 {fmtDate(rev.client_sub_date)}</span>
+                )}
+                {canAdd&&(
+                  <button onClick={()=>openEdit(rev)} style={{marginLeft:"auto",background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 10px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                )}
+              </div>
+              {rev.notes&&<div style={{fontSize:12,color:C.t2,lineHeight:1.55,marginBottom:4}}>{rev.notes}</div>}
+              <div style={{fontSize:11,color:C.t3}}>
+                {rev.created_by&&<span>by <b style={{color:C.t2}}>{rev.created_by}</b> · </span>}
+                {fmtTime(rev.created_at)}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

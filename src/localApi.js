@@ -13,6 +13,7 @@ class QueryBuilder {
     this._filters = [];
     this._orderBy = [];
     this._limitN  = null;
+    this._offsetN = null;
     this._data    = null;
     this._conflict= null;
     this._isSingle= false;
@@ -52,8 +53,21 @@ class QueryBuilder {
     this._orderBy.push({ col, ascending: opts.ascending !== false });
     return this;
   }
-  limit(n)  { this._limitN = n; return this; }
-  single()  { this._isSingle = true; return this; }
+  limit(n)       { this._limitN = n; return this; }
+  offset(n)      { this._offsetN = n; return this; }
+  range(from, to){ this._limitN = to - from + 1; this._offsetN = from; return this; }
+  single()       { this._isSingle = true; return this; }
+  maybeSingle()  { this._isSingle = true; return this; }
+  not(col, op, val) {
+    // .not("role","in","(Admin,Client)") → push a "not_in" filter
+    if (op === "in") {
+      const arr = String(val).replace(/^\(|\)$/g,"").split(",").map(s=>s.trim());
+      this._filters.push({ col, op: "not_in", val: arr });
+    } else {
+      this._filters.push({ col, op: "not_"+op, val });
+    }
+    return this;
+  }
 
   // ── Make builder await-able (thenable) ────────────────────
   then(resolve, reject) { return this._exec().then(resolve, reject); }
@@ -72,6 +86,7 @@ class QueryBuilder {
           filters:  this._filters,
           order:    this._orderBy,
           limit:    this._limitN,
+          offset:   this._offsetN,
           data:     this._data,
           conflict: this._conflict,
           single:   this._isSingle,

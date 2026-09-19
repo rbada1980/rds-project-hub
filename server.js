@@ -110,6 +110,19 @@ async function runMigrations() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true`,
     // ── Client team leader ────────────────────────────────────────
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS team_leader TEXT DEFAULT ''`,
+    // ── Task Revisions ────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS task_revisions (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      task_id         UUID NOT NULL,
+      revision_number INTEGER NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'Not Yet Started',
+      notes           TEXT,
+      client_sub_date DATE,
+      created_by      TEXT,
+      created_at      TIMESTAMPTZ DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS task_revisions_task_idx ON task_revisions (task_id)`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); } catch(e) { console.warn("Migration skipped:", e.message); }
@@ -1233,13 +1246,14 @@ function fixPgDates(rows) {
 // ═════════════════════════════════════════════════════════════
 
 app.post("/api/rpc", async (req, res) => {
-  const { table, op, columns = "*", filters = [], order = [], limit: limitN, data, single } = req.body;
+  const { table, op, columns = "*", filters = [], order = [], limit: limitN, offset: offsetN, data, single } = req.body;
 
   const RPC_TABLES = new Set([
     "users","clients","projects","tasks","task_files","task_comments",
     "notifications","announcements","workflows",
     "war_room_messages","war_room_pins","war_room_reactions",
-    "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs","audit_logs","holidays"
+    "war_room_reads","war_room_scheduled","settings","attendance","breaks","time_logs","audit_logs","holidays",
+    "employee_of_month","task_revisions"
   ]);
   if (!RPC_TABLES.has(table)) return res.json({ data: null, error: { message: "Unknown table: " + table } });
 
@@ -1258,14 +1272,20 @@ app.post("/api/rpc", async (req, res) => {
           if (f.val === true)  return `"${f.col}" IS TRUE`;
           if (f.val === false) return `"${f.col}" IS FALSE`;
         }
+        if (f.op === "not_in") {
+          const arr = Array.isArray(f.val) ? f.val : [f.val];
+          const phs = arr.map(v => { vals.push(v); return `$${vals.length}`; });
+          return `"${f.col}" NOT IN (${phs.join(",")})`;
+        }
         vals.push(f.val);
         const ph = `$${vals.length}`;
-        if (f.op === "eq")  return `"${f.col}"=${ph}`;
-        if (f.op === "neq") return `"${f.col}"!=${ph}`;
-        if (f.op === "gt")  return `"${f.col}">${ph}`;
-        if (f.op === "gte") return `"${f.col}">=${ph}`;
-        if (f.op === "lt")  return `"${f.col}"<${ph}`;
-        if (f.op === "lte") return `"${f.col}"<=${ph}`;
+        if (f.op === "eq")     return `"${f.col}"=${ph}`;
+        if (f.op === "neq")    return `"${f.col}"!=${ph}`;
+        if (f.op === "gt")     return `"${f.col}">${ph}`;
+        if (f.op === "gte")    return `"${f.col}">=${ph}`;
+        if (f.op === "lt")     return `"${f.col}"<${ph}`;
+        if (f.op === "lte")    return `"${f.col}"<=${ph}`;
+        if (f.op === "not_eq") return `"${f.col}"!=${ph}`;
         return null;
       }).filter(Boolean);
       return clauses.length ? " WHERE " + clauses.join(" AND ") : "";
@@ -1277,7 +1297,9 @@ app.post("/api/rpc", async (req, res) => {
     }
 
     function buildLimit() {
-      return limitN ? ` LIMIT ${parseInt(limitN)}` : "";
+      let s = limitN ? ` LIMIT ${parseInt(limitN)}` : "";
+      if (offsetN) s += ` OFFSET ${parseInt(offsetN)}`;
+      return s;
     }
 
     // ── SELECT ──
@@ -1492,6 +1514,53 @@ app.get("/api/audit-logs", async (req, res) => {
   } catch (e) { res.json({ error: e.message }); }
 });
 
+
+// ═════════════════════════════════════════════════════════════
+// TASK REVISIONS — GET /api/task-revisions  POST /api/task-revisions  PATCH /api/task-revisions/:id
+// ═════════════════════════════════════════════════════════════
+app.get("/api/task-revisions", async (req, res) => {
+  try {
+    const { task_id } = req.query;
+    if (!task_id) return res.json({ data: [] });
+    const r = await pool.query(
+      `SELECT * FROM task_revisions WHERE task_id=$1 ORDER BY revision_number ASC`,
+      [task_id]
+    );
+    res.json({ data: r.rows });
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+app.post("/api/task-revisions", async (req, res) => {
+  try {
+    const { task_id, status, notes, client_sub_date, created_by } = req.body;
+    // auto-increment revision_number for this task
+    const cnt = await pool.query(
+      `SELECT COALESCE(MAX(revision_number),0)+1 AS next FROM task_revisions WHERE task_id=$1`,
+      [task_id]
+    );
+    const revision_number = cnt.rows[0].next;
+    const r = await pool.query(
+      `INSERT INTO task_revisions (task_id, revision_number, status, notes, client_sub_date, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [task_id, revision_number, status||"Not Yet Started", notes||null,
+       client_sub_date||null, created_by||null]
+    );
+    res.json({ data: r.rows[0] });
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+app.patch("/api/task-revisions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes, client_sub_date } = req.body;
+    const r = await pool.query(
+      `UPDATE task_revisions SET status=$1, notes=$2, client_sub_date=$3, updated_at=NOW()
+       WHERE id=$4 RETURNING *`,
+      [status, notes||null, client_sub_date||null, id]
+    );
+    res.json({ data: r.rows[0] });
+  } catch (e) { res.json({ error: e.message }); }
+});
 
 // ═════════════════════════════════════════════════════════════
 // INVOICE PDF GENERATOR — POST /api/invoice-pdf
