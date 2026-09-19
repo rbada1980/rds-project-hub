@@ -421,9 +421,9 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           </select>
         </div>
         <div style={col}>
-          <RLabel text="Checker *"/>
+          <RLabel text="Checker"/>
           <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
-            style={{width:"100%",background:C.surface,border:`1px solid ${f.checker?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
             <option value="">— Select Checker —</option>
             {members.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
@@ -450,14 +450,14 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           {initial.client_comment&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",lineHeight:1.5,borderTop:initial.client_approval?`1px solid ${C.teal}22`:"none",paddingTop:initial.client_approval?8:0}}>"{initial.client_comment}"</div>}
         </div>
       )}
-      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker)&&(
+      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status)&&(
         <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
-          ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status",!f.checker&&"Checker"].filter(Boolean).join(", ")}
+          ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status"].filter(Boolean).join(", ")}
         </div>
       )}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||!f.checker)?0.5:1}}>
+        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status)?0.5:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
