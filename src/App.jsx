@@ -437,9 +437,6 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       <div className="rds-form-row" style={row}>
         <div style={{...col,maxWidth:200}}><FInput label="Det. Wt. (Tons)" value={f.det_weight} onChange={s("det_weight")} type="number" placeholder="e.g. 12.5"/></div>
       </div>
-      <div className="rds-form-row" style={row}>
-        <div style={col}><FInput label="Tags (comma-separated)" value={f.tags} onChange={s("tags")}/></div>
-      </div>
       {(initial.client_approval||initial.client_comment)&&(
         <div style={{background:C.teal+"0d",border:`1px solid ${C.teal}33`,borderRadius:10,padding:"14px 16px",marginBottom:12}}>
           <div style={{fontSize:11,fontWeight:700,color:C.teal,marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>🏢 Client Feedback</div>
@@ -7810,7 +7807,7 @@ function GroupedEntry({entries,fmtTime}){
 }
 
 // ── Task Tab Panel (Time Logs | Comments | History) ──────────
-function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users}){
+function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users,historyKey}){
   const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
   const [tab,setTab]=useState(isHideTimeLogs?"comments":"timelogs");
   const tabBtn=(key,label)=>(
@@ -7828,7 +7825,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
         {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
         {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
         {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status}/>}
-        {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me}/>}
+        {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me} historyKey={historyKey}/>}
       </div>
     </div>
   );
@@ -8041,13 +8038,13 @@ function TaskRevisions({taskId,me,taskStatus}){
 }
 
 // ── Task History (Audit Log) ─────────────────────────────────
-function TaskHistory({taskId,me}){
+function TaskHistory({taskId,me,historyKey}){
   const isClient=me?.role==="Client";
   if(isClient)return null;
   const [logs,setLogs]=useState([]);
   const [loading,setLoading]=useState(true);
 
-  useEffect(()=>{loadHistory();},[taskId]);
+  useEffect(()=>{loadHistory();},[taskId,historyKey]);
 
   async function loadHistory(){
     setLoading(true);
@@ -14217,6 +14214,7 @@ export default function App(){
   const [activePid,sap]     = useState(null);
   const [activeClient,sac]  = useState(null);
   const [taskModal,stm]     = useState(false);
+  const [histSeed,setHistSeed] = useState(0);
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
   const [clientModal,scm]   = useState(false);
@@ -15083,7 +15081,7 @@ export default function App(){
           }
         }
       }catch(e){showToast("Error: "+e.message,false);}
-      ssv(false);set(et=>et?{...et,status:f.status}:et);// stay open after status update
+      ssv(false);set(et=>et?{...et,status:f.status}:et);setHistSeed(s=>s+1);// stay open after status update
       return;
     }
     // ── Admin / Manager: require due_date ──
@@ -15155,7 +15153,7 @@ export default function App(){
         }
       // Close only for new task creation; stay open when editing existing task
       if(!editTask){stm(false);set(null);}
-      else{set(et=>et?{...et,...payload,status:f.status}:et);}// refresh editTask with saved data
+      else{set(et=>et?{...et,...payload,status:f.status}:et);setHistSeed(s=>s+1);}// refresh editTask + history
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
@@ -16439,7 +16437,7 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
-          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users}/>}
+          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed}/>}
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
