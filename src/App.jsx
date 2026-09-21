@@ -7841,12 +7841,6 @@ const REV_STATUS_CLR={
 const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
 const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
-function revLetter(n){
-  // 1→A, 2→B … 26→Z, 27→AA, 28→AB …
-  let s="",num=n;
-  while(num>0){s=String.fromCharCode(64+(num%26||26))+s;num=Math.floor((num-1)/26);}
-  return s;
-}
 function TaskRevisions({taskId,me,taskStatus}){
   const isClient=me?.role==="Client";
   const isStaff=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
@@ -7955,8 +7949,8 @@ function TaskRevisions({taskId,me,taskStatus}){
         <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px",marginBottom:16}}>
           <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:12}}>
             {editId
-              ?`Edit Rev ${revLetter(revisions.find(r=>r.id===editId)?.revision_number||1)}`
-              :`New Revision — Rev ${revLetter(revisions.length+1)}`}
+              ?`Edit Rev ${revisions.find(r=>r.id===editId)?.revision_number||1}`
+              :`New Revision — Rev ${revisions.length+1}`}
           </div>
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
             <div style={{flex:1,minWidth:140}}>
@@ -8012,7 +8006,7 @@ function TaskRevisions({taskId,me,taskStatus}){
             {/* Content */}
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
-                <span style={{fontWeight:700,fontSize:13,color:C.t1}}>Rev {revLetter(rev.revision_number)}</span>
+                <span style={{fontWeight:700,fontSize:13,color:C.t1}}>Rev {rev.revision_number}</span>
                 <span style={{fontSize:11,fontWeight:700,color:clr,background:clr+"18",borderRadius:12,padding:"2px 9px"}}>{rev.status}</span>
                 {rev.client_sub_date&&(
                   <span style={{fontSize:11,color:C.t3}}>📅 {fmtDate(rev.client_sub_date)}</span>
