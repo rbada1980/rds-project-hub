@@ -7827,7 +7827,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{padding:"4px 0"}}>
         {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
         {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
-        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me}/>}
+        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status}/>}
         {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me}/>}
       </div>
     </div>
@@ -7844,9 +7844,9 @@ const REV_STATUS_CLR={
 const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
 const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
-function TaskRevisions({taskId,me}){
+function TaskRevisions({taskId,me,taskStatus}){
   const isClient=me?.role==="Client";
-  const canAdd=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
+  const canAdd=(me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee")&&taskStatus==="Completed";
   const [revisions,setRevisions]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
@@ -7973,7 +7973,9 @@ function TaskRevisions({taskId,me}){
       {/* Revision list */}
       {!revisions.length&&!showForm&&(
         <div style={{textAlign:"center",color:C.t3,fontSize:13,padding:"24px 0"}}>
-          No revisions yet. Click "Add Revision" when a client sends changes after completion.
+          {taskStatus==="Completed"
+            ? `No revisions yet. Click "+ Add Revision" when the client sends changes.`
+            : "Revisions can be added once the task is marked Completed."}
         </div>
       )}
       {revisions.map((rev,i)=>{
