@@ -15083,7 +15083,7 @@ export default function App(){
           }
         }
       }catch(e){showToast("Error: "+e.message,false);}
-      ssv(false);stm(false);set(null);
+      ssv(false);set(et=>et?{...et,status:f.status}:et);// stay open after status update
       return;
     }
     // ── Admin / Manager: require due_date ──
@@ -15153,7 +15153,9 @@ export default function App(){
           else if(wf.action_type==="notify_role"){targetIds=users.filter(u=>u.role===wf.action_target&&u.id!==me.id).map(u=>u.id);}
           if(targetIds.length)await createNotif(targetIds,"workflow","Workflow: "+wf.name,f.title+(proj2?" in "+proj2.name:""),"task",editTask?.id||null,me.id);
         }
-      stm(false);set(null);
+      // Close only for new task creation; stay open when editing existing task
+      if(!editTask){stm(false);set(null);}
+      else{set(et=>et?{...et,...payload,status:f.status}:et);}// refresh editTask with saved data
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
