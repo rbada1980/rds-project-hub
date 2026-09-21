@@ -7886,6 +7886,18 @@ function TaskRevisions({taskId,me,taskStatus}){
     setEditId(rev.id);setShowForm(true);
   }
 
+  async function deleteRevision(id){
+    if(!window.confirm("Delete this revision?"))return;
+    try{
+      if(IS_LOCAL){
+        await fetch(LOCAL_BASE+"/api/task-revisions/"+id,{method:"DELETE"});
+      } else {
+        await supabase.from("task_revisions").delete().eq("id",id);
+      }
+      await load();
+    }catch(e){console.error("Revision delete error:",e.message);}
+  }
+
   async function saveRevision(){
     if(!form.status){return;}
     setSaving(true);
@@ -8009,7 +8021,10 @@ function TaskRevisions({taskId,me,taskStatus}){
                   <span style={{fontSize:11,color:C.t3}}>📅 {fmtDate(rev.client_sub_date)}</span>
                 )}
                 {canEditRev&&(
-                  <button onClick={()=>openEdit(rev)} style={{marginLeft:"auto",background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 10px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                  <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                    <button onClick={()=>openEdit(rev)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 10px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                    <button onClick={()=>deleteRevision(rev.id)} style={{background:"none",border:`1px solid ${C.red}55`,borderRadius:6,padding:"2px 10px",fontSize:11,color:C.red,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+                  </div>
                 )}
               </div>
               {rev.notes&&<div style={{fontSize:12,color:C.t2,lineHeight:1.55,marginBottom:4}}>{rev.notes}</div>}

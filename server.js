@@ -1562,6 +1562,13 @@ app.patch("/api/task-revisions/:id", async (req, res) => {
   } catch (e) { res.json({ error: e.message }); }
 });
 
+app.delete("/api/task-revisions/:id", async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM task_revisions WHERE id=$1`, [req.params.id]);
+    res.json({ data: null, error: null });
+  } catch (e) { res.json({ error: e.message }); }
+});
+
 // ═════════════════════════════════════════════════════════════
 // INVOICE PDF GENERATOR — POST /api/invoice-pdf
 // Accepts structured billing data, returns a real .pdf file
