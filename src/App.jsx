@@ -7821,7 +7821,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:0}}>
         {!isHideTimeLogs&&tabBtn("timelogs","⏱ Time Logs")}
         {tabBtn("comments","💬 Comments")}
-        {tabBtn("revisions","🔁 Revisions")}
+        {task?.status==="Completed"&&tabBtn("revisions","🔁 Revisions")}
         {!isClient&&tabBtn("history","📋 History")}
       </div>
       <div style={{padding:"4px 0"}}>
@@ -7852,7 +7852,9 @@ function revLetter(n){
 }
 function TaskRevisions({taskId,me,taskStatus}){
   const isClient=me?.role==="Client";
-  const canAdd=(me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee")&&taskStatus==="Completed";
+  const isStaff=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
+  const canAdd=isStaff&&taskStatus==="Completed";// Add only when Completed
+  const canEditRev=isStaff;// Edit existing revisions always allowed
   const [revisions,setRevisions]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
@@ -8006,7 +8008,7 @@ function TaskRevisions({taskId,me,taskStatus}){
                 {rev.client_sub_date&&(
                   <span style={{fontSize:11,color:C.t3}}>📅 {fmtDate(rev.client_sub_date)}</span>
                 )}
-                {canAdd&&(
+                {canEditRev&&(
                   <button onClick={()=>openEdit(rev)} style={{marginLeft:"auto",background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 10px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
                 )}
               </div>
