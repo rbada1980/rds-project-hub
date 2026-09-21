@@ -7890,17 +7890,19 @@ function TaskRevisions({taskId,me}){
           await supabase.from("task_revisions").update({...form,updated_at:new Date().toISOString()}).eq("id",editId);
         }
       } else {
-        // INSERT
-        const payload={task_id:taskId,...form,created_by:me?.name||me?.username||"Unknown"};
+        // INSERT — calculate next revision_number first
+        const revNum=revisions.length+1;
+        const payload={task_id:taskId,...form,revision_number:revNum,created_by:me?.name||me?.username||"Unknown"};
         if(IS_LOCAL){
           await fetch(LOCAL_BASE+"/api/task-revisions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
         } else {
-          await supabase.from("task_revisions").insert(payload);
+          const{error}=await supabase.from("task_revisions").insert(payload);
+          if(error)throw new Error(error.message);
         }
       }
       setShowForm(false);
       await load();
-    }catch(e){}
+    }catch(e){console.error("Revision save error:",e.message);}
     setSaving(false);
   }
 
