@@ -15200,7 +15200,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -15558,7 +15558,7 @@ export default function App(){
           </div>
         )}
         {view==="billing"&&(isAdmin||isFinance||isClient)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me} isClient={isClient} isFinance={isFinance}/>
-}{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
+}{view==="auditlog"&&isAdmin&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<BirthdayBanner me={me} users={users} today={today}/>}
