@@ -14745,9 +14745,8 @@ export default function App(){
 
   function fireNotif(title,body,id){
     // 1. Nav badge
-    setNavBadges(prev=>({...prev,warroom:(prev.warroom||0)+1}));
-    // 2. Toast (when not on warroom page)
-    if(viewRef.current!=="warroom"){
+    // 2. Toast
+    if(true){
       sToast({msg:`${title}: ${(body||"📎 media").slice(0,80)}`,ok:true});
       setTimeout(()=>sToast(null),6000);
     }
@@ -15208,7 +15207,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"],["announcements","📢","Announcements"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["warroom","💬","Messages"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"],["announcements","📢","Announcements"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["announcements","📢","Announcements"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -15269,7 +15268,7 @@ export default function App(){
         </div>
       </aside>
 
-      <main className="rds-main" style={{flex:1,minWidth:0,padding:24,overflowY:view==="warroom"?"hidden":"auto",overflowX:"hidden",height:"100vh",boxSizing:"border-box",paddingBottom:view==="warroom"?24:isMobile?80:24}}>
+      <main className="rds-main" style={{flex:1,minWidth:0,padding:24,overflowY:"auto",overflowX:"hidden",height:"100vh",boxSizing:"border-box",paddingBottom:isMobile?80:24}}>
         <div className="rds-topbar" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,gap:8,flexWrap:"wrap"}}>
           <div className="rds-topbar-left" style={{display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<div style={{width:34,height:34,borderRadius:8,background:"#000",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
@@ -16205,13 +16204,6 @@ export default function App(){
             users={users}
             projects={accessibleProjects}
             canPost={isAdmin||isManager}
-          />
-        )}
-        {view==="warroom"&&!isClient&&(
-          <WarRoomPage
-            me={me}
-            projects={accessibleProjects}
-            users={users}
           />
         )}
         {view==="kanban"&&(
