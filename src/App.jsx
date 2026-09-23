@@ -15568,10 +15568,8 @@ export default function App(){
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<HolidayBanner today={today}/>}
-        {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<EmployeeOfMonthBanner me={me} today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
-        {view==="dashboard"&&isFinance&&<EOMPickerWidget me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isTeamLeader&&(
           <>
@@ -15584,10 +15582,8 @@ export default function App(){
               onOpenTaskModal={(title,tl)=>ssm({title,tasks:tl})}
             />
             <HolidayBanner today={today}/>
-            <EmployeeOfMonthBanner me={me} today={today}/>
             <BirthdayBanner me={me} users={users} today={today}/>
             <WorkAnniversaryBanner me={me} users={users} today={today}/>
-            <EOMPickerWidget me={me} users={users} today={today}/>
             <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
               <MonthBirthdayWidget users={users} today={today}/>
               <MonthHolidayWidget today={today}/>
@@ -15597,7 +15593,6 @@ export default function App(){
         {view==="dashboard"&&isFinance&&(
           <>
             <HolidayBanner today={today}/>
-            <EmployeeOfMonthBanner me={me} today={today}/>
             <BirthdayBanner me={me} users={users} today={today}/>
             <WorkAnniversaryBanner me={me} users={users} today={today}/>
             <HRFinanceDashboard me={me} users={users} tasks={tasks} projects={accessibleProjects} clients={clients}/>
@@ -15955,10 +15950,8 @@ export default function App(){
             })()}
             {/* ── Birthday / Holiday / Anniversary / EOM — shown below charts for Admin/Manager/TL ── */}
             <HolidayBanner today={today}/>
-            <EmployeeOfMonthBanner me={me} today={today}/>
             <BirthdayBanner me={me} users={users} today={today}/>
             <WorkAnniversaryBanner me={me} users={users} today={today}/>
-            <EOMPickerWidget me={me} users={users} today={today}/>
             <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
               <MonthBirthdayWidget users={users} today={today}/>
               <MonthHolidayWidget today={today}/>
