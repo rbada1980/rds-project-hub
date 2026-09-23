@@ -1,40 +1,40 @@
 {
-  "timestamp": "2026-09-23T06:43:07.246Z",
-  "ist_time": "2026-09-23 12:13:07 IST",
-  "duration_sec": 5,
-  "total_synced": 0,
-  "total_pushed": 0,
-  "total_pulled": 0,
-  "total_failed": 1323,
-  "status": "failed",
+  "timestamp": "2026-09-23T06:57:07.382Z",
+  "ist_time": "2026-09-23 12:27:07 IST",
+  "duration_sec": 8.1,
+  "total_synced": 2891,
+  "total_pushed": 937,
+  "total_pulled": 1954,
+  "total_failed": 38,
+  "status": "partial",
   "tables": [
     {
       "table": "users",
       "synced": 0,
       "failed": 38,
       "total": 38,
-      "pulled": 0
+      "pulled": 38
     },
     {
       "table": "clients",
-      "synced": 0,
-      "failed": 4,
+      "synced": 4,
+      "failed": 0,
       "total": 4,
-      "pulled": 0
+      "pulled": 4
     },
     {
       "table": "projects",
       "synced": 0,
-      "failed": 148,
+      "failed": 0,
       "total": 148,
-      "pulled": 0
+      "pulled": 148
     },
     {
       "table": "tasks",
-      "synced": 0,
-      "failed": 1028,
+      "synced": 828,
+      "failed": 0,
       "total": 1028,
-      "pulled": 0
+      "pulled": 1028
     },
     {
       "table": "task_files",
@@ -58,7 +58,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 0
+      "pulled": 657
     },
     {
       "table": "announcements",
@@ -70,10 +70,10 @@
     },
     {
       "table": "workflows",
-      "synced": 0,
-      "failed": 3,
+      "synced": 3,
+      "failed": 0,
       "total": 3,
-      "pulled": 0
+      "pulled": 3
     },
     {
       "table": "war_room_messages",
@@ -81,7 +81,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 0
+      "pulled": 23
     },
     {
       "table": "war_room_pins",
@@ -101,10 +101,10 @@
     },
     {
       "table": "war_room_reads",
-      "synced": 0,
-      "failed": 30,
+      "synced": 30,
+      "failed": 0,
       "total": 30,
-      "pulled": 0
+      "pulled": 30
     },
     {
       "table": "war_room_scheduled",
@@ -116,22 +116,22 @@
     },
     {
       "table": "settings",
-      "synced": 0,
-      "failed": 23,
+      "synced": 23,
+      "failed": 0,
       "total": 23,
-      "pulled": 0
+      "pulled": 23
     },
     {
       "table": "attendance",
-      "synced": 0,
-      "failed": 46,
+      "synced": 46,
+      "failed": 0,
       "total": 46,
       "pulled": 0
     },
     {
       "table": "breaks",
-      "synced": 0,
-      "failed": 3,
+      "synced": 3,
+      "failed": 0,
       "total": 3,
       "pulled": 0
     },
