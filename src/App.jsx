@@ -3986,11 +3986,11 @@ async function createNotif(userIds,type,title,description,entityType=null,entity
 // ── Audit Log helper ─────────────────────────────────────────
 // Tracked fields and their display labels
 const AUDIT_FIELDS = {
-  title:"Title", status:"Status", priority:"Priority", assignee:"Assignee",
-  detailer:"Detailer", checker:"Checker", due_date:"Due Date",
-  client_sub_date:"Client Sub Date", client:"Client", scope:"Scope", tags:"Tags",
-  // user fields
-  name:"Name", username:"Username", role:"Role", email:"Email", client_name:"Client Name",
+  // Only log important task changes
+  status:"Status", assignee:"Assignee", priority:"Priority",
+  due_date:"Due Date", checker:"Checker", detailer:"Detailer",
+  // user role changes
+  role:"Role",
 };
 async function logAudit(actor, entity_type, entity_id, entity_label, project_id, action, oldObj, newObj){
   const rows = [];
@@ -13069,7 +13069,9 @@ function AuditLogPage({users,projects,me}){
   async function load(){
     setLoading(true);setPage(0);
     try{
-      let q=supabase.from("audit_logs").select("*").order("created_at",{ascending:false}).limit(500);
+      // Always restrict to last 30 days
+      const thirtyDaysAgo=new Date();thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
+      let q=supabase.from("audit_logs").select("*").order("created_at",{ascending:false}).gte("created_at",thirtyDaysAgo.toISOString()).limit(500);
       if(fActor!=="all")q=q.eq("actor_id",fActor);
       if(fProject!=="all")q=q.eq("project_id",fProject);
       if(fEntity!=="all")q=q.eq("entity_type",fEntity);
