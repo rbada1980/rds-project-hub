@@ -7847,6 +7847,8 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
   const blankForm={status:"Not Yet Started",notes:"",client_sub_date:""};
   const [form,setForm]=useState(blankForm);
 
+  const taskStatusRef=useRef(taskStatus);
+  useEffect(()=>{taskStatusRef.current=taskStatus;},[taskStatus]);
   useEffect(()=>{load();},[taskId]);
 
   async function load(){
@@ -7865,7 +7867,8 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
       // Auto-sync: if latest revision status differs from task status, update task
       if(revs.length&&onStatusChange){
         const latest=revs[revs.length-1];
-        if(latest.status&&latest.status!==taskStatus){
+        const currentStatus=taskStatusRef.current;
+        if(latest.status&&latest.status!==currentStatus){
           await onStatusChange(latest.status);
         }
       }
@@ -16415,7 +16418,11 @@ export default function App(){
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
           {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onStatusChange={async(newStatus)=>{
-            await supabase.from("tasks").update({status:newStatus}).eq("id",editTask.id);
+            if(IS_LOCAL){
+              await fetch(LOCAL_BASE+"/api/tasks/"+editTask.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:newStatus})});
+            } else {
+              await supabase.from("tasks").update({status:newStatus}).eq("id",editTask.id);
+            }
             st(ts=>ts.map(t=>t.id===editTask.id?{...t,status:newStatus}:t));
             set(et=>et?{...et,status:newStatus}:et);
           }}/>}
