@@ -16450,6 +16450,7 @@ export default function App(){
               })}
             </div>
           ):(
+          <div style={{background:"#ff000022",padding:"4px 12px",fontSize:11,color:"#c00",marginBottom:4,borderRadius:4}}>DEBUG: allRevisions.length={allRevisions.length} | IS_LOCAL={String(IS_LOCAL)}</div>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto",scrollbarWidth:"none"}} className="rds-tasklist-wrap">
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.bg}}>
