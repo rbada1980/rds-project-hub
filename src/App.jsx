@@ -348,6 +348,8 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
     scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
+  // Sync status from outside (e.g. revision auto-update) when parent editTask.status changes
+  useEffect(()=>{if(initial.status)sf(p=>({...p,status:initial.status}));},[initial.status]);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function onAssigneeChange(v){
     sf(p=>({...p,assignee:v,detailer:p.detailer===p.assignee||p.detailer===""?v:p.detailer}));
