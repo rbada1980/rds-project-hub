@@ -7852,13 +7852,22 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
   async function load(){
     setLoading(true);
     try{
+      let revs=[];
       if(IS_LOCAL){
         const r=await fetch(LOCAL_BASE+"/api/task-revisions?task_id="+taskId);
         const j=await r.json();
-        setRevisions(Array.isArray(j.data)?j.data:[]);
+        revs=Array.isArray(j.data)?j.data:[];
       } else {
         const{data}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
-        setRevisions(data||[]);
+        revs=data||[];
+      }
+      setRevisions(revs);
+      // Auto-sync: if latest revision status differs from task status, update task
+      if(revs.length&&onStatusChange){
+        const latest=revs[revs.length-1];
+        if(latest.status&&latest.status!==taskStatus){
+          await onStatusChange(latest.status);
+        }
       }
     }catch(e){}
     setLoading(false);
