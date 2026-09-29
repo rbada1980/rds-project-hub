@@ -14630,12 +14630,16 @@ export default function App(){
         const j=await r.json();
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
-        // Cloud: use per-task .eq() queries (same as TaskRevisions component - proven to work)
+        // Cloud: sequential batches of 100 task IDs to avoid overwhelming Supabase
         if(taskList&&taskList.length>0){
-          const results=await Promise.all(
-            taskList.map(t=>supabase.from("task_revisions").select("*").eq("task_id",t.id).order("revision_number",{ascending:true}))
-          );
-          setAllRevisions(results.flatMap(r=>r.data||[]));
+          const ids=taskList.map(t=>t.id);
+          const all=[];
+          for(let i=0;i<ids.length;i+=100){
+            const batch=ids.slice(i,i+100);
+            const{data}=await supabase.from("task_revisions").select("*").in("task_id",batch).order("revision_number",{ascending:true});
+            if(data&&data.length>0)all.push(...data);
+          }
+          setAllRevisions(all);
         }
       }
     }catch(e){console.error("loadAllRevisions:",e.message);}
