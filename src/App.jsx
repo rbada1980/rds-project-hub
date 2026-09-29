@@ -348,8 +348,6 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
     scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
-  // Sync status from outside (e.g. revision auto-update) when parent editTask.status changes
-  useEffect(()=>{if(initial.status)sf(p=>({...p,status:initial.status}));},[initial.status]);
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function onAssigneeChange(v){
     sf(p=>({...p,assignee:v,detailer:p.detailer===p.assignee||p.detailer===""?v:p.detailer}));
@@ -1070,6 +1068,39 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
       </div>
       {tasks.map(t=><KCard key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
     </div>
+  );
+}
+// Revision sub-row displayed below a task row in the task list
+function RevisionRow({rev,task,project,hideClient,showCb,onReview}){
+  const td={padding:"4px 7px",borderBottom:`1px solid ${C.border}`,background:C.bg+"99"};
+  const clr=getStatusColor(rev.status);
+  const colSpan=showCb?1:0;// just determines if checkbox cell is present
+  return(
+    <tr style={{borderLeft:`3px solid ${clr}44`,opacity:.92}}>
+      {showCb&&<td style={{...td,width:36}}/>}
+      <td style={{...td,maxWidth:160,minWidth:90}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,paddingLeft:10}}>
+          <span style={{color:C.t3,fontSize:11}}>↳</span>
+          <span style={{color:C.t2,fontSize:11,fontWeight:600}}>Rev {rev.revision_number}</span>
+          {rev.notes&&<span style={{color:C.t3,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>· {rev.notes}</span>}
+        </div>
+      </td>
+      <td style={{...td,maxWidth:90}}><span style={{color:C.t3,fontSize:11}}>{project?.name||"—"}</span></td>
+      {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.t3,fontSize:11}}>{task.client||"—"}</span></td>}
+      <td style={{...td,maxWidth:110,width:100}}>
+        <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{rev.status}</span>
+      </td>
+      <td style={td}><span style={{color:C.t3,fontSize:10}}>—</span></td>
+      <td style={td}><span style={{color:C.t3,fontSize:10}}>{task.assignee||"—"}</span></td>
+      <td style={td}><span style={{color:C.t3,fontSize:10}}>—</span></td>
+      <td style={td}>
+        {rev.client_sub_date
+          ?<span style={{color:C.teal,fontSize:10}}>🗓 {rev.client_sub_date}</span>
+          :<span style={{color:C.t3,fontSize:10}}>—</span>}
+      </td>
+      {!onReview&&<td style={td}/>}
+      {onReview&&<td style={td}/>}
+    </tr>
   );
 }
 function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
@@ -7802,7 +7833,7 @@ function GroupedEntry({entries,fmtTime}){
 }
 
 // ── Task Tab Panel (Time Logs | Comments | History) ──────────
-function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users,historyKey,onStatusChange}){
+function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users,historyKey,onRevisionChange}){
   const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
   const [tab,setTab]=useState(isHideTimeLogs?"comments":"timelogs");
   const tabBtn=(key,label)=>(
@@ -7819,7 +7850,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{padding:"4px 0"}}>
         {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
         {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
-        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status} onStatusChange={onStatusChange}/>}
+        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status} onRevisionChange={onRevisionChange}/>}
         {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me} historyKey={historyKey}/>}
       </div>
     </div>
@@ -7836,10 +7867,10 @@ const REV_STATUS_CLR={
 const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
 const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
-function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
+function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
   const isClient=me?.role==="Client";
   const isStaff=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
-  const canAdd=isStaff&&taskStatus==="Completed";// Add only when Completed
+  const canAdd=isStaff&&taskStatus==="Completed";// Add only when main task is Completed
   const canEditRev=isStaff;// Edit existing revisions always allowed
   const [revisions,setRevisions]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -7849,8 +7880,6 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
   const blankForm={status:"Not Yet Started",notes:"",client_sub_date:""};
   const [form,setForm]=useState(blankForm);
 
-  const taskStatusRef=useRef(taskStatus);
-  useEffect(()=>{taskStatusRef.current=taskStatus;},[taskStatus]);
   useEffect(()=>{load();},[taskId]);
 
   async function load(){
@@ -7866,14 +7895,7 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
         revs=data||[];
       }
       setRevisions(revs);
-      // Auto-sync: if latest revision status differs from task status, update task
-      if(revs.length&&onStatusChange){
-        const latest=revs[revs.length-1];
-        const currentStatus=taskStatusRef.current;
-        if(latest.status&&latest.status!==currentStatus){
-          await onStatusChange(latest.status);
-        }
-      }
+      // Revisions are independent — they do NOT change the main task's status
     }catch(e){}
     setLoading(false);
   }
@@ -7893,6 +7915,7 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
         await supabase.from("task_revisions").delete().eq("id",id);
       }
       await load();
+      if(onRevisionChange) onRevisionChange(taskId);
     }catch(e){console.error("Revision delete error:",e.message);}
   }
 
@@ -7918,10 +7941,9 @@ function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
           if(error)throw new Error(error.message);
         }
       }
-      // Update parent task status to match latest revision status
-      if(onStatusChange) await onStatusChange(form.status);
       setShowForm(false);
       await load();
+      if(onRevisionChange) onRevisionChange(taskId);
     }catch(e){console.error("Revision save error:",e.message);}
     setSaving(false);
   }
@@ -14211,6 +14233,7 @@ export default function App(){
   const [users,su]          = useState([]);
   const [projects,sp]       = useState([]);
   const [tasks,st]          = useState([]);
+  const [allRevisions,setAllRevisions] = useState([]);
   const [workflows,swf]     = useState([]);
   const [clients,scl]       = useState([]);
   const [loading,sl]        = useState(false);
@@ -14594,8 +14617,36 @@ export default function App(){
         ]);
         su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);swf(wf||[]);
       }
+      // Load all revisions (for task list view)
+      await loadAllRevisions();
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
+  }
+  async function loadAllRevisions(){
+    try{
+      if(IS_LOCAL){
+        const r=await fetch(LOCAL_BASE+"/api/task-revisions");
+        const j=await r.json();
+        setAllRevisions(Array.isArray(j.data)?j.data:[]);
+      }else{
+        const{data}=await supabase.from("task_revisions").select("*").order("task_id").order("revision_number",{ascending:true}).limit(5000);
+        setAllRevisions(data||[]);
+      }
+    }catch(e){}
+  }
+  // Reload revisions for a single task after add/edit/delete
+  async function reloadRevisionsForTask(taskId){
+    try{
+      if(IS_LOCAL){
+        const r=await fetch(LOCAL_BASE+"/api/task-revisions?task_id="+taskId);
+        const j=await r.json();
+        const fresh=Array.isArray(j.data)?j.data:[];
+        setAllRevisions(prev=>[...prev.filter(rv=>rv.task_id!==taskId),...fresh]);
+      }else{
+        const{data}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
+        setAllRevisions(prev=>[...prev.filter(rv=>rv.task_id!==taskId),...(data||[])]);
+      }
+    }catch(e){}
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
@@ -16351,11 +16402,12 @@ export default function App(){
           </div>}
           {isMobile?(
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.map(t=>{
+              {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.flatMap(t=>{
                 const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                 const apv=t.client_approval||"Pending Review";
-                return(
+                const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id);
+                const mainCard=(
                   <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
                       <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
@@ -16378,6 +16430,21 @@ export default function App(){
                     </div>
                   </div>
                 );
+                const revCards=taskRevs.map(rv=>{
+                  const clr=getStatusColor(rv.status);
+                  return(
+                    <div key={"rev-"+rv.id} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px 8px 18px",borderLeft:`3px solid ${clr}`,marginTop:-4,marginLeft:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        <span style={{color:C.t3,fontSize:10}}>↳</span>
+                        <span style={{fontSize:11,fontWeight:700,color:C.t2}}>Rev {rv.revision_number}</span>
+                        <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase"}}>{rv.status}</span>
+                        {rv.client_sub_date&&<span style={{fontSize:10,color:C.teal}}>🗓 {rv.client_sub_date}</span>}
+                      </div>
+                      {rv.notes&&<div style={{fontSize:10,color:C.t3,marginTop:3,paddingLeft:12}}>"{rv.notes}"</div>}
+                    </div>
+                  );
+                });
+                return[mainCard,...revCards];
               })}
             </div>
           ):(
@@ -16392,7 +16459,7 @@ export default function App(){
                 </th>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).map(t=><TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>)}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id);return[<TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>, ...taskRevs.map(rv=><RevisionRow key={"rev-"+rv.id} rev={rv} task={t} project={projectById.get(t.project_id)} hideClient={isClient} showCb={!!canEdit} onReview={isClient?t=>setCRT(t):null}/>)];})}</tbody>
             </table>
           </div>
           )}
@@ -16419,15 +16486,7 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
-          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onStatusChange={async(newStatus)=>{
-            if(IS_LOCAL){
-              await fetch(LOCAL_BASE+"/api/tasks/"+editTask.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:newStatus})});
-            } else {
-              await supabase.from("tasks").update({status:newStatus}).eq("id",editTask.id);
-            }
-            st(ts=>ts.map(t=>t.id===editTask.id?{...t,status:newStatus}:t));
-            set(et=>et?{...et,status:newStatus}:et);
-          }}/>}
+          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}

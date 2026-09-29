@@ -1547,12 +1547,20 @@ app.get("/api/audit-logs", async (req, res) => {
 app.get("/api/task-revisions", async (req, res) => {
   try {
     const { task_id } = req.query;
-    if (!task_id) return res.json({ data: [] });
-    const r = await pool.query(
-      `SELECT * FROM task_revisions WHERE task_id=$1 ORDER BY revision_number ASC`,
-      [task_id]
-    );
-    res.json({ data: r.rows });
+    if (task_id) {
+      // Filter by task
+      const r = await pool.query(
+        `SELECT * FROM task_revisions WHERE task_id=$1 ORDER BY revision_number ASC`,
+        [task_id]
+      );
+      return res.json({ data: r.rows });
+    } else {
+      // Return all revisions (used for initial task list load)
+      const r = await pool.query(
+        `SELECT * FROM task_revisions ORDER BY task_id, revision_number ASC`
+      );
+      return res.json({ data: r.rows });
+    }
   } catch (e) { res.json({ error: e.message }); }
 });
 
