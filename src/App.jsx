@@ -14623,37 +14623,27 @@ export default function App(){
     sl(false);
   }
   async function loadAllRevisions(taskList){
-    // Load revisions per-task using .eq() — same query that works in TaskRevisions component
-    // Do NOT filter by status — check ALL tasks so nothing is missed
     try{
-      const tList=(taskList||tasks).filter(t=>t&&t.id);
-      if(!tList.length){setAllRevisions([]);return;}
-      // Run per-task queries in parallel (batched in groups of 20)
-      const BATCH=20;
-      const allRevs=[];
-      for(let i=0;i<tList.length;i+=BATCH){
-        const chunk=tList.slice(i,i+BATCH);
-        const results=await Promise.all(chunk.map(t=>supabase.from("task_revisions").select("*").eq("task_id",t.id).order("revision_number",{ascending:true})));
-        results.forEach(({data})=>{if(data&&data.length)allRevs.push(...data);});
+      if(IS_LOCAL){
+        // Local: single API call returns all revisions
+        const r=await fetch(LOCAL_BASE+"/api/task-revisions");
+        const j=await r.json();
+        setAllRevisions(Array.isArray(j.data)?j.data:[]);
+      }else{
+        // Cloud: single Supabase query with no filter (let RLS handle it)
+        const{data}=await supabase.from("task_revisions").select("*").order("task_id").order("revision_number",{ascending:true}).limit(5000);
+        setAllRevisions(data||[]);
       }
-      setAllRevisions(allRevs);
     }catch(e){console.error("loadAllRevisions:",e.message);}
   }
   // Reload revisions for a single task after add/edit/delete
   async function reloadRevisionsForTask(taskId){
     try{
-      const{data,error}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
-      if(error){console.error("reloadRevisionsForTask error:",error.message);return;}
+      const{data}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
       setAllRevisions(prev=>[...prev.filter(rv=>String(rv.task_id)!==String(taskId)),...(data||[])]);
-    }catch(e){console.error("reloadRevisionsForTask catch:",e.message);}
+    }catch(e){}
   }
   useEffect(()=>{if(me)loadAll();},[me]);
-  // Retry loading revisions whenever tasks state settles (handles race conditions)
-  useEffect(()=>{
-    if(tasks.length>0&&allRevisions.length===0){
-      loadAllRevisions(tasks);
-    }
-  },[tasks]);
 
   // ── Stale-data guard: every 60s check DB task count vs in-memory count ───
   // If they differ (missed realtime events while tab was backgrounded/offline),
