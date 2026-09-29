@@ -16450,7 +16450,6 @@ export default function App(){
               })}
             </div>
           ):(
-          <div style={{background:"#ff000022",padding:"4px 12px",fontSize:11,color:"#c00",marginBottom:4,borderRadius:4}}>DEBUG: allRevisions.length={allRevisions.length} | IS_LOCAL={String(IS_LOCAL)}</div>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto",scrollbarWidth:"none"}} className="rds-tasklist-wrap">
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead><tr style={{background:C.bg}}>
@@ -16462,7 +16461,7 @@ export default function App(){
                 </th>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
+              <tbody><tr><td colSpan={canEdit?10:9} style={{background:"#ff000033",padding:"2px 8px",fontSize:10,color:"#900"}}>DBG revs={allRevisions.length} local={String(IS_LOCAL)} tasks={tasks.length}</td></tr>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
                 const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 // Show latest revision's status as the effective status badge in the list
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
