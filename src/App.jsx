@@ -14630,9 +14630,26 @@ export default function App(){
         const j=await r.json();
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
-        // Cloud: single Supabase query with no filter (let RLS handle it)
-        const{data}=await supabase.from("task_revisions").select("*").order("task_id").order("revision_number",{ascending:true}).limit(5000);
-        setAllRevisions(data||[]);
+        // Cloud: fetch all revisions
+        const{data,error}=await supabase.from("task_revisions").select("*").order("revision_number",{ascending:true}).limit(5000);
+        if(error){console.error("task_revisions RLS/query error:",error.message,error.code);}
+        if(data&&data.length>0){
+          setAllRevisions(data);
+        } else {
+          // Fallback: per-task fetch using taskList
+          console.warn("bulk revisions empty, falling back to per-task fetch, tasks:",taskList?.length);
+          if(taskList&&taskList.length>0){
+            const batches=[];
+            for(let i=0;i<taskList.length;i+=20){
+              const chunk=taskList.slice(i,i+20);
+              const ids=chunk.map(t=>t.id);
+              batches.push(supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}));
+            }
+            const results=await Promise.all(batches);
+            const all=results.flatMap(r=>r.data||[]);
+            setAllRevisions(all);
+          }
+        }
       }
     }catch(e){console.error("loadAllRevisions:",e.message);}
   }
