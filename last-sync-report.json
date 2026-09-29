@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-09-29T08:48:50.550Z",
-  "ist_time": "2026-09-29 14:18:50 IST",
-  "duration_sec": 7.6,
-  "total_synced": 3322,
-  "total_pushed": 1326,
-  "total_pulled": 1996,
+  "timestamp": "2026-09-29T10:09:03.020Z",
+  "ist_time": "2026-09-29 15:39:03 IST",
+  "duration_sec": 6.3,
+  "total_synced": 3400,
+  "total_pushed": 1336,
+  "total_pulled": 2064,
   "total_failed": 0,
   "status": "success",
   "tables": [
@@ -24,17 +24,17 @@
     },
     {
       "table": "projects",
-      "synced": 149,
+      "synced": 150,
       "failed": 0,
-      "total": 149,
-      "pulled": 149
+      "total": 150,
+      "pulled": 150
     },
     {
       "table": "tasks",
-      "synced": 1030,
+      "synced": 1039,
       "failed": 0,
-      "total": 1030,
-      "pulled": 1030
+      "total": 1039,
+      "pulled": 1039
     },
     {
       "table": "task_files",
@@ -58,7 +58,7 @@
       "failed": 0,
       "total": 0,
       "note": "pull-only",
-      "pulled": 696
+      "pulled": 754
     },
     {
       "table": "announcements",
