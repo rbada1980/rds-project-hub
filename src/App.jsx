@@ -14604,6 +14604,7 @@ export default function App(){
         const taskPids=new Set(myTasks.map(tt=>tt.project_id));
         const myProjects=(p||[]).filter(proj=>taskPids.has(proj.id));
         sp(myProjects); st(myTasks); scl([]);
+        await loadAllRevisions(myTasks);
       }else{
         const [[u,p,cl,wf],t]=await Promise.all([
           Promise.all([
@@ -14615,23 +14616,27 @@ export default function App(){
           fetchAllTasks(),
         ]);
         su(u||[]);sp(p||[]);st(t||[]);scl(cl||[]);swf(wf||[]);
+        // Load revisions using the fresh task list (pass task IDs to avoid RLS issues)
+        await loadAllRevisions(t||[]);
       }
-      // Load all revisions (for task list view)
-      await loadAllRevisions();
     }catch(e){showToast("Failed to load: "+e.message,false);}
     sl(false);
   }
-  async function loadAllRevisions(){
+  async function loadAllRevisions(taskList){
+    // taskList: freshly loaded tasks (don't rely on React state which is async)
     try{
       if(IS_LOCAL){
         const r=await fetch(LOCAL_BASE+"/api/task-revisions");
         const j=await r.json();
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
-        const{data}=await supabase.from("task_revisions").select("*").order("task_id").order("revision_number",{ascending:true}).limit(5000);
+        // Use .in() with task IDs to stay within RLS policy boundaries
+        const ids=(taskList||tasks).map(t=>t.id).filter(Boolean);
+        if(!ids.length){setAllRevisions([]);return;}
+        const{data}=await supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}).limit(5000);
         setAllRevisions(data||[]);
       }
-    }catch(e){}
+    }catch(e){console.error("loadAllRevisions error:",e.message);}
   }
   // Reload revisions for a single task after add/edit/delete
   async function reloadRevisionsForTask(taskId){
