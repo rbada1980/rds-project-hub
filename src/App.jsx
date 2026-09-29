@@ -7800,7 +7800,7 @@ function GroupedEntry({entries,fmtTime}){
 }
 
 // ── Task Tab Panel (Time Logs | Comments | History) ──────────
-function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users,historyKey}){
+function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,timerPause,timerStop,users,historyKey,onStatusChange}){
   const isHideTimeLogs=me?.role==="Admin"||me?.username===SUPER_ADMIN;
   const [tab,setTab]=useState(isHideTimeLogs?"comments":"timelogs");
   const tabBtn=(key,label)=>(
@@ -7817,7 +7817,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{padding:"4px 0"}}>
         {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
         {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
-        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status}/>}
+        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status} onStatusChange={onStatusChange}/>}
         {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me} historyKey={historyKey}/>}
       </div>
     </div>
@@ -7834,7 +7834,7 @@ const REV_STATUS_CLR={
 const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
 const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
-function TaskRevisions({taskId,me,taskStatus}){
+function TaskRevisions({taskId,me,taskStatus,onStatusChange}){
   const isClient=me?.role==="Client";
   const isStaff=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
   const canAdd=isStaff&&taskStatus==="Completed";// Add only when Completed
@@ -7904,6 +7904,8 @@ function TaskRevisions({taskId,me,taskStatus}){
           if(error)throw new Error(error.message);
         }
       }
+      // Update parent task status to match latest revision status
+      if(onStatusChange) await onStatusChange(form.status);
       setShowForm(false);
       await load();
     }catch(e){console.error("Revision save error:",e.message);}
@@ -16403,7 +16405,11 @@ export default function App(){
             <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
             <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
           }
-          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed}/>}
+          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onStatusChange={async(newStatus)=>{
+            await supabase.from("tasks").update({status:newStatus}).eq("id",editTask.id);
+            st(ts=>ts.map(t=>t.id===editTask.id?{...t,status:newStatus}:t));
+            set(et=>et?{...et,status:newStatus}:et);
+          }}/>}
         </Modal>
       )}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}

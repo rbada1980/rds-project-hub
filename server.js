@@ -23,20 +23,46 @@ const PDFDocument = require("pdfkit");
 const { runSync } = require("./sync.cjs");
 
 // ── Sync helpers (module scope — accessible to middleware + HTTPS listener) ──
-let _syncBusy = false;
+let _syncBusy    = false;
 let _pendingSync = null;
+let _syncFailed  = false; // true when last sync failed (Supabase restricted/down)
+
 async function doSync(label) {
   if (_syncBusy) { console.log(`[Sync] ${label} — skipped (already running)`); return; }
   _syncBusy = true;
-  try { await runSync(); }
-  catch (e) { console.error(`[Sync] ${label} error:`, e.message); }
-  finally { _syncBusy = false; }
+  try {
+    await runSync();
+    if (_syncFailed) {
+      console.log(`[Sync] ✅ Supabase back online — all pending changes pushed.`);
+      _syncFailed = false;
+    }
+  } catch (e) {
+    console.error(`[Sync] ${label} error:`, e.message);
+    _syncFailed = true; // mark as failed — retry loop will pick it up
+  } finally {
+    _syncBusy = false;
+  }
 }
+
 // Called after each local write — debounced 500ms so rapid saves don't pile up
 function queueSync() {
   if (_pendingSync) clearTimeout(_pendingSync);
-  _pendingSync = setTimeout(() => { _pendingSync = null; doSync("write-trigger"); }, 500);
+  _pendingSync = setTimeout(() => { _pendingSync = null; doSync("write-trigger"); }, 60000);
 }
+
+// ── Retry loop — runs every 5 minutes ────────────────────────
+// If last sync failed (Supabase restricted/down), keeps retrying automatically.
+// Also catches any writes that were missed while Supabase was unavailable.
+setInterval(() => {
+  if (_syncFailed) {
+    console.log(`[Sync] 🔄 Retrying failed sync (Supabase was restricted)...`);
+    doSync("retry-loop");
+  }
+}, 2 * 60 * 1000); // every 2 minutes
+
+// ── Startup sync — runs 15s after server starts ───────────────
+// Ensures any changes made while server was offline are pushed immediately.
+setTimeout(() => doSync("startup"), 15000);
 
 // ── Web Push (VAPID) ─────────────────────────────────────────
 // Keys generated once — shared between offline + online
