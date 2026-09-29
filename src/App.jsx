@@ -14624,17 +14624,15 @@ export default function App(){
   }
   async function loadAllRevisions(taskList){
     // Load revisions per-task using .eq() — same query that works in TaskRevisions component
+    // Do NOT filter by status — check ALL tasks so nothing is missed
     try{
       const tList=(taskList||tasks).filter(t=>t&&t.id);
       if(!tList.length){setAllRevisions([]);return;}
-      // Only query tasks that are Completed (only Completed tasks can have revisions)
-      const completedTasks=tList.filter(t=>t.status==="Completed");
-      if(!completedTasks.length){setAllRevisions([]);return;}
-      // Run per-task queries in parallel (batched in groups of 20 to avoid flooding)
+      // Run per-task queries in parallel (batched in groups of 20)
       const BATCH=20;
       const allRevs=[];
-      for(let i=0;i<completedTasks.length;i+=BATCH){
-        const chunk=completedTasks.slice(i,i+BATCH);
+      for(let i=0;i<tList.length;i+=BATCH){
+        const chunk=tList.slice(i,i+BATCH);
         const results=await Promise.all(chunk.map(t=>supabase.from("task_revisions").select("*").eq("task_id",t.id).order("revision_number",{ascending:true})));
         results.forEach(({data})=>{if(data&&data.length)allRevs.push(...data);});
       }
