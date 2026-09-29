@@ -14628,12 +14628,15 @@ export default function App(){
       if(IS_LOCAL){
         const r=await fetch(LOCAL_BASE+"/api/task-revisions");
         const j=await r.json();
+        console.log("[loadAllRevisions LOCAL] fetched:",j.data?.length,"revisions");
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
         // Use .in() with task IDs to stay within RLS policy boundaries
         const ids=(taskList||tasks).map(t=>t.id).filter(Boolean);
+        console.log("[loadAllRevisions CLOUD] task IDs count:",ids.length);
         if(!ids.length){setAllRevisions([]);return;}
-        const{data}=await supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}).limit(5000);
+        const{data,error}=await supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}).limit(5000);
+        console.log("[loadAllRevisions CLOUD] result:",data?.length,"revisions, error:",error?.message);
         setAllRevisions(data||[]);
       }
     }catch(e){console.error("loadAllRevisions error:",e.message);}
@@ -14645,12 +14648,14 @@ export default function App(){
         const r=await fetch(LOCAL_BASE+"/api/task-revisions?task_id="+taskId);
         const j=await r.json();
         const fresh=Array.isArray(j.data)?j.data:[];
+        console.log("[reloadRevisionsForTask LOCAL] task:",taskId,"fresh revs:",fresh.length);
         setAllRevisions(prev=>[...prev.filter(rv=>rv.task_id!==taskId),...fresh]);
       }else{
-        const{data}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
+        const{data,error}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
+        console.log("[reloadRevisionsForTask CLOUD] task:",taskId,"data:",data?.length,"error:",error?.message);
         setAllRevisions(prev=>[...prev.filter(rv=>rv.task_id!==taskId),...(data||[])]);
       }
-    }catch(e){}
+    }catch(e){console.error("reloadRevisionsForTask error:",e.message);}
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
