@@ -14630,17 +14630,10 @@ export default function App(){
         const j=await r.json();
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
-        // Cloud: sequential batches of 100 task IDs to avoid overwhelming Supabase
-        if(taskList&&taskList.length>0){
-          const ids=taskList.map(t=>t.id);
-          const all=[];
-          for(let i=0;i<ids.length;i+=100){
-            const batch=ids.slice(i,i+100);
-            const{data}=await supabase.from("task_revisions").select("*").in("task_id",batch).order("revision_number",{ascending:true});
-            if(data&&data.length>0)all.push(...data);
-          }
-          setAllRevisions(all);
-        }
+        // Cloud: single query — RLS disabled, anon has SELECT grant, fetch all at once
+        const{data,error}=await supabase.from("task_revisions").select("*").order("revision_number",{ascending:true});
+        console.log("loadAllRevisions cloud:",data?.length,"rows, error:",error?.message);
+        setAllRevisions(data||[]);
       }
     }catch(e){console.error("loadAllRevisions:",e.message);}
   }
