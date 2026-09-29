@@ -14623,39 +14623,22 @@ export default function App(){
     sl(false);
   }
   async function loadAllRevisions(taskList){
-    // taskList: freshly loaded tasks (don't rely on React state which is async)
+    // Use the same supabase client for both local and cloud (on local it goes via /api/rpc)
     try{
-      if(IS_LOCAL){
-        const r=await fetch(LOCAL_BASE+"/api/task-revisions");
-        const j=await r.json();
-        console.log("[loadAllRevisions LOCAL] fetched:",j.data?.length,"revisions");
-        setAllRevisions(Array.isArray(j.data)?j.data:[]);
-      }else{
-        // Use .in() with task IDs to stay within RLS policy boundaries
-        const ids=(taskList||tasks).map(t=>t.id).filter(Boolean);
-        console.log("[loadAllRevisions CLOUD] task IDs count:",ids.length);
-        if(!ids.length){setAllRevisions([]);return;}
-        const{data,error}=await supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}).limit(5000);
-        console.log("[loadAllRevisions CLOUD] result:",data?.length,"revisions, error:",error?.message);
-        setAllRevisions(data||[]);
-      }
-    }catch(e){console.error("loadAllRevisions error:",e.message);}
+      const ids=(taskList||tasks).map(t=>t.id).filter(Boolean);
+      if(!ids.length){setAllRevisions([]);return;}
+      const{data,error}=await supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}).limit(5000);
+      if(error){console.error("loadAllRevisions error:",error.message);setAllRevisions([]);return;}
+      setAllRevisions(data||[]);
+    }catch(e){console.error("loadAllRevisions catch:",e.message);}
   }
   // Reload revisions for a single task after add/edit/delete
   async function reloadRevisionsForTask(taskId){
     try{
-      if(IS_LOCAL){
-        const r=await fetch(LOCAL_BASE+"/api/task-revisions?task_id="+taskId);
-        const j=await r.json();
-        const fresh=Array.isArray(j.data)?j.data:[];
-        console.log("[reloadRevisionsForTask LOCAL] task:",taskId,"fresh revs:",fresh.length);
-        setAllRevisions(prev=>[...prev.filter(rv=>rv.task_id!==taskId),...fresh]);
-      }else{
-        const{data,error}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
-        console.log("[reloadRevisionsForTask CLOUD] task:",taskId,"data:",data?.length,"error:",error?.message);
-        setAllRevisions(prev=>[...prev.filter(rv=>rv.task_id!==taskId),...(data||[])]);
-      }
-    }catch(e){console.error("reloadRevisionsForTask error:",e.message);}
+      const{data,error}=await supabase.from("task_revisions").select("*").eq("task_id",taskId).order("revision_number",{ascending:true});
+      if(error){console.error("reloadRevisionsForTask error:",error.message);return;}
+      setAllRevisions(prev=>[...prev.filter(rv=>String(rv.task_id)!==String(taskId)),...(data||[])]);
+    }catch(e){console.error("reloadRevisionsForTask catch:",e.message);}
   }
   useEffect(()=>{if(me)loadAll();},[me]);
 
@@ -16415,7 +16398,7 @@ export default function App(){
                 const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                 const apv=t.client_approval||"Pending Review";
-                const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id).sort((a,b)=>a.revision_number-b.revision_number);
+                const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                 const dispStatus=latestRev?latestRev.status:t.status;
                 const dispClr=getStatusColor(dispStatus);
@@ -16479,7 +16462,7 @@ export default function App(){
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
               <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
-                const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id).sort((a,b)=>a.revision_number-b.revision_number);
+                const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 // Show latest revision's status as the effective status badge in the list
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                 const displayTask=latestRev?{...t,status:latestRev.status}:t;
