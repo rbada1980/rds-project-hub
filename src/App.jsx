@@ -1070,36 +1070,35 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
     </div>
   );
 }
-// Revision sub-row displayed below a task row in the task list
-function RevisionRow({rev,task,project,hideClient,showCb,onReview}){
-  const td={padding:"4px 7px",borderBottom:`1px solid ${C.border}`,background:C.bg+"99"};
-  const clr=getStatusColor(rev.status);
-  const colSpan=showCb?1:0;// just determines if checkbox cell is present
+// Revision flow bar — single row spanning full width showing status chain
+// Main (Completed) ➜ Rev 1 (In Progress) ➜ Rev 2 (Completed) …
+function RevisionFlowBar({task,revisions,colSpan}){
+  const mainClr=getStatusColor(task.status);
   return(
-    <tr style={{borderLeft:`3px solid ${clr}44`,opacity:.92}}>
-      {showCb&&<td style={{...td,width:36}}/>}
-      <td style={{...td,maxWidth:160,minWidth:90}}>
-        <div style={{display:"flex",alignItems:"center",gap:5,paddingLeft:10}}>
-          <span style={{color:C.t3,fontSize:11}}>↳</span>
-          <span style={{color:C.t2,fontSize:11,fontWeight:600}}>Rev {rev.revision_number}</span>
-          {rev.notes&&<span style={{color:C.t3,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>· {rev.notes}</span>}
+    <tr>
+      <td colSpan={colSpan} style={{padding:"0 0 6px 0",borderBottom:`1px solid ${C.border}`,background:"transparent"}}>
+        <div style={{display:"flex",alignItems:"center",gap:0,paddingLeft:14,flexWrap:"wrap",rowGap:4}}>
+          {/* Main task node */}
+          <div style={{display:"flex",alignItems:"center",gap:4,background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 8px"}}>
+            <span style={{fontSize:10,color:C.t3,fontWeight:600}}>Main</span>
+            <span style={{background:mainClr+"22",color:mainClr,border:`1px solid ${mainClr}44`,borderRadius:3,padding:"0px 5px",fontSize:9,fontWeight:700,textTransform:"uppercase"}}>{task.status}</span>
+          </div>
+          {/* Revision nodes */}
+          {revisions.map(rev=>{
+            const clr=getStatusColor(rev.status);
+            return(
+              <div key={rev.id} style={{display:"flex",alignItems:"center",gap:0}}>
+                <span style={{color:C.t3,fontSize:12,padding:"0 4px",userSelect:"none"}}>➜</span>
+                <div style={{display:"flex",alignItems:"center",gap:4,background:clr+"10",border:`1px solid ${clr}44`,borderRadius:6,padding:"2px 8px"}}>
+                  <span style={{fontSize:10,color:C.t2,fontWeight:700}}>Rev {rev.revision_number}</span>
+                  <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:3,padding:"0px 5px",fontSize:9,fontWeight:700,textTransform:"uppercase"}}>{rev.status}</span>
+                  {rev.notes&&<span style={{fontSize:9,color:C.t3,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={rev.notes}>{rev.notes}</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </td>
-      <td style={{...td,maxWidth:90}}><span style={{color:C.t3,fontSize:11}}>{project?.name||"—"}</span></td>
-      {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.t3,fontSize:11}}>{task.client||"—"}</span></td>}
-      <td style={{...td,maxWidth:110,width:100}}>
-        <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{rev.status}</span>
-      </td>
-      <td style={td}><span style={{color:C.t3,fontSize:10}}>—</span></td>
-      <td style={td}><span style={{color:C.t3,fontSize:10}}>{task.assignee||"—"}</span></td>
-      <td style={td}><span style={{color:C.t3,fontSize:10}}>—</span></td>
-      <td style={td}>
-        {rev.client_sub_date
-          ?<span style={{color:C.teal,fontSize:10}}>🗓 {rev.client_sub_date}</span>
-          :<span style={{color:C.t3,fontSize:10}}>—</span>}
-      </td>
-      {!onReview&&<td style={td}/>}
-      {onReview&&<td style={td}/>}
     </tr>
   );
 }
@@ -16406,9 +16405,12 @@ export default function App(){
                 const proj=projectById.get(t.project_id);
                 const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
                 const apv=t.client_approval||"Pending Review";
-                const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id);
+                const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id).sort((a,b)=>a.revision_number-b.revision_number);
+                const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
+                const dispStatus=latestRev?latestRev.status:t.status;
+                const dispClr=getStatusColor(dispStatus);
                 const mainCard=(
-                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
+                  <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:dispClr}`}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
                       <span style={{fontSize:13,fontWeight:700,color:C.t1,flex:1,lineHeight:1.3}}>{t.title}</span>
                       {isClient
@@ -16419,32 +16421,39 @@ export default function App(){
                     {isClient&&<div style={{marginBottom:6}}><span style={{fontSize:11,fontWeight:700,color:APPROVAL_CLR[apv]||C.t3,background:(APPROVAL_CLR[apv]||C.t3)+"18",padding:"3px 10px",borderRadius:20}}>{APPROVAL_ICON[apv]} {apv}</span></div>}
                     {proj&&<div style={{fontSize:11,color:C.teal,fontWeight:600,marginBottom:4}}>📁 {proj.name}</div>}
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,fontWeight:700,color:getStatusColor(t.status)}}>{t.status}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:dispClr}}>{dispStatus}</span>
                       {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
                       {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{fmtD(t.due_date)}</span>}
                     </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:taskRevs.length?6:0}}>
                       {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
                       {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ <b>Detailer:</b> {t.detailer}</span>}
                       {t.checker&&<span style={{fontSize:10,color:C.t2}}>✅ <b>Checker:</b> {t.checker}</span>}
                     </div>
+                    {/* Revision flow chart inside the card */}
+                    {taskRevs.length>0&&(
+                      <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",rowGap:3,paddingTop:6,borderTop:`1px solid ${C.border}`,marginTop:4}}>
+                        <div style={{display:"flex",alignItems:"center",gap:4,background:C.bg,border:`1px solid ${C.border}`,borderRadius:5,padding:"2px 7px"}}>
+                          <span style={{fontSize:9,color:C.t3,fontWeight:600}}>Main</span>
+                          <span style={{background:getStatusColor(t.status)+"22",color:getStatusColor(t.status),borderRadius:3,padding:"0px 4px",fontSize:8,fontWeight:700,textTransform:"uppercase"}}>{t.status}</span>
+                        </div>
+                        {taskRevs.map(rv=>{
+                          const rc=getStatusColor(rv.status);
+                          return(
+                            <div key={rv.id} style={{display:"flex",alignItems:"center",gap:0}}>
+                              <span style={{color:C.t3,fontSize:10,padding:"0 3px"}}>➜</span>
+                              <div style={{display:"flex",alignItems:"center",gap:4,background:rc+"10",border:`1px solid ${rc}44`,borderRadius:5,padding:"2px 7px"}}>
+                                <span style={{fontSize:9,color:C.t2,fontWeight:700}}>Rev {rv.revision_number}</span>
+                                <span style={{background:rc+"22",color:rc,borderRadius:3,padding:"0px 4px",fontSize:8,fontWeight:700,textTransform:"uppercase"}}>{rv.status}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
-                const revCards=taskRevs.map(rv=>{
-                  const clr=getStatusColor(rv.status);
-                  return(
-                    <div key={"rev-"+rv.id} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px 8px 18px",borderLeft:`3px solid ${clr}`,marginTop:-4,marginLeft:10}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                        <span style={{color:C.t3,fontSize:10}}>↳</span>
-                        <span style={{fontSize:11,fontWeight:700,color:C.t2}}>Rev {rv.revision_number}</span>
-                        <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase"}}>{rv.status}</span>
-                        {rv.client_sub_date&&<span style={{fontSize:10,color:C.teal}}>🗓 {rv.client_sub_date}</span>}
-                      </div>
-                      {rv.notes&&<div style={{fontSize:10,color:C.t3,marginTop:3,paddingLeft:12}}>"{rv.notes}"</div>}
-                    </div>
-                  );
-                });
-                return[mainCard,...revCards];
+                return[mainCard];
               })}
             </div>
           ):(
@@ -16459,7 +16468,16 @@ export default function App(){
                 </th>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id);return[<TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={t=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?t=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>, ...taskRevs.map(rv=><RevisionRow key={"rev-"+rv.id} rev={rv} task={t} project={projectById.get(t.project_id)} hideClient={isClient} showCb={!!canEdit} onReview={isClient?t=>setCRT(t):null}/>)];})}</tbody>
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
+                const taskRevs=allRevisions.filter(rv=>rv.task_id===t.id).sort((a,b)=>a.revision_number-b.revision_number);
+                // Show latest revision's status as the effective status badge in the list
+                const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
+                const displayTask=latestRev?{...t,status:latestRev.status}:t;
+                const colCount=(canEdit?1:0)+(isClient?9:10);
+                const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount}/>);
+                return rows;
+              })}</tbody>
             </table>
           </div>
           )}
