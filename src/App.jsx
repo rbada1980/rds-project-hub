@@ -14623,14 +14623,23 @@ export default function App(){
     sl(false);
   }
   async function loadAllRevisions(taskList){
-    // Use the same supabase client for both local and cloud (on local it goes via /api/rpc)
+    // Load revisions per-task using .eq() — same query that works in TaskRevisions component
     try{
-      const ids=(taskList||tasks).map(t=>t.id).filter(Boolean);
-      if(!ids.length){setAllRevisions([]);return;}
-      const{data,error}=await supabase.from("task_revisions").select("*").in("task_id",ids).order("revision_number",{ascending:true}).limit(5000);
-      if(error){console.error("loadAllRevisions error:",error.message);setAllRevisions([]);return;}
-      setAllRevisions(data||[]);
-    }catch(e){console.error("loadAllRevisions catch:",e.message);}
+      const tList=(taskList||tasks).filter(t=>t&&t.id);
+      if(!tList.length){setAllRevisions([]);return;}
+      // Only query tasks that are Completed (only Completed tasks can have revisions)
+      const completedTasks=tList.filter(t=>t.status==="Completed");
+      if(!completedTasks.length){setAllRevisions([]);return;}
+      // Run per-task queries in parallel (batched in groups of 20 to avoid flooding)
+      const BATCH=20;
+      const allRevs=[];
+      for(let i=0;i<completedTasks.length;i+=BATCH){
+        const chunk=completedTasks.slice(i,i+BATCH);
+        const results=await Promise.all(chunk.map(t=>supabase.from("task_revisions").select("*").eq("task_id",t.id).order("revision_number",{ascending:true})));
+        results.forEach(({data})=>{if(data&&data.length)allRevs.push(...data);});
+      }
+      setAllRevisions(allRevs);
+    }catch(e){console.error("loadAllRevisions:",e.message);}
   }
   // Reload revisions for a single task after add/edit/delete
   async function reloadRevisionsForTask(taskId){
@@ -14641,6 +14650,12 @@ export default function App(){
     }catch(e){console.error("reloadRevisionsForTask catch:",e.message);}
   }
   useEffect(()=>{if(me)loadAll();},[me]);
+  // Retry loading revisions whenever tasks state settles (handles race conditions)
+  useEffect(()=>{
+    if(tasks.length>0&&allRevisions.length===0){
+      loadAllRevisions(tasks);
+    }
+  },[tasks]);
 
   // ── Stale-data guard: every 60s check DB task count vs in-memory count ───
   // If they differ (missed realtime events while tab was backgrounded/offline),
@@ -16461,7 +16476,7 @@ export default function App(){
                 </th>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
-              <tbody><tr><td colSpan={canEdit?10:9} style={{background:"#ff000033",padding:"2px 8px",fontSize:10,color:"#900"}}>DBG revs={allRevisions.length} local={String(IS_LOCAL)} tasks={tasks.length}</td></tr>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
+              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
                 const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 // Show latest revision's status as the effective status badge in the list
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
