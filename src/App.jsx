@@ -1072,7 +1072,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
 }
 // Revision flow bar — single row spanning full width showing status chain
 // Main (Completed) ➜ Rev 1 (In Progress) ➜ Rev 2 (Completed) …
-function RevisionFlowBar({task,revisions,colSpan}){
+function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
   const mainClr=getStatusColor(task.status);
   return(
     <tr>
@@ -1082,10 +1082,13 @@ function RevisionFlowBar({task,revisions,colSpan}){
           <div style={{display:"flex",alignItems:"center",gap:4,background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 8px"}}>
             <span style={{fontSize:10,color:C.t3,fontWeight:600}}>Main</span>
             <span style={{background:mainClr+"22",color:mainClr,border:`1px solid ${mainClr}44`,borderRadius:3,padding:"0px 5px",fontSize:9,fontWeight:700,textTransform:"uppercase"}}>{task.status}</span>
+            {task.due_date&&<span style={{fontSize:9,color:C.t3}}>📅 {fmtD(task.due_date)}</span>}
           </div>
           {/* Revision nodes */}
           {revisions.map(rev=>{
             const clr=getStatusColor(rev.status);
+            const revDate=rev.client_sub_date||"";
+            const datesDiffer=revDate&&revDate!==task.due_date;
             return(
               <div key={rev.id} style={{display:"flex",alignItems:"center",gap:0}}>
                 <span style={{color:C.t3,fontSize:12,padding:"0 4px",userSelect:"none"}}>➜</span>
@@ -1093,6 +1096,14 @@ function RevisionFlowBar({task,revisions,colSpan}){
                   <span style={{fontSize:10,color:C.t2,fontWeight:700}}>Rev {rev.revision_number}</span>
                   <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:3,padding:"0px 5px",fontSize:9,fontWeight:700,textTransform:"uppercase"}}>{rev.status}</span>
                   {rev.notes&&<span style={{fontSize:9,color:C.t3,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={rev.notes}>{rev.notes}</span>}
+                  {revDate&&<span style={{fontSize:9,color:C.teal,fontWeight:600}}>📅 {fmtD(revDate)}</span>}
+                  {revDate&&onSyncDate&&datesDiffer&&(
+                    <button onClick={e=>{e.stopPropagation();onSyncDate(task.id,revDate,rev.revision_number);}}
+                      title={`Update task due date to Rev ${rev.revision_number} date (${fmtD(revDate)})`}
+                      style={{background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,borderRadius:4,padding:"1px 6px",fontSize:8,fontWeight:800,cursor:"pointer",fontFamily:"inherit",lineHeight:"14px",flexShrink:0}}>
+                      ↑ Sync Date
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -3766,7 +3777,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
     </div>
   );
 }
-function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,allRevisions=[]}){
+function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,allRevisions=[],onSyncDate=null}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const [q,sq]=useState("");
   const [fProj,sfp]=useState("All");
@@ -3863,7 +3874,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
                     <td style={{padding:"10px 14px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEdit(t)} title="Edit task"/>}</td>
                   </tr>
                 ];
-                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={8}/>);
+                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={8} onSyncDate={canEdit?onSyncDate:null}/>);
                 return rows;
               })}</tbody>
             </table>
@@ -15251,6 +15262,7 @@ export default function App(){
     if(pcu?.id&&pcu.id!==me.id)await createNotif([pcu.id],"project_assigned",`Project created: ${f.name}`,`A new project has been set up for your account${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
   await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function syncRevDate(taskId,revDate,revNum){const{data,error}=await supabase.from("tasks").update({due_date:revDate}).eq("id",taskId).select().single();if(error){showToast("Update failed: "+error.message,false);return;}if(data)st(ts=>ts.map(t=>t.id===taskId?{...t,due_date:revDate}:t));showToast(`Due date synced to Rev ${revNum} date ✓`);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;const delProj=accessibleProjects.find(p=>p.id===id);await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {data,error}=await supabase.from("users").update(updates).eq("id",id).select().single();if(error)throw new Error(error.message);if(data){su(us=>us.map(u=>u.id===id?data:u));await logAudit(me,"user",id,data.name,null,"update",oldUser,data);}showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
@@ -16499,7 +16511,7 @@ export default function App(){
                 const displayTask=latestRev?{...t,status:latestRev.status}:t;
                 const colCount=(canEdit?1:0)+(isClient?9:10);
                 const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
-                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount}/>);
+                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                 return rows;
               })}</tbody>
             </table>
@@ -16515,7 +16527,7 @@ export default function App(){
         else if(type==="user"){sfa(data.name);sv("list");sap(null);}
         else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
       }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)} allRevisions={allRevisions}/>}
+      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)} allRevisions={allRevisions} onSyncDate={syncRevDate}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
 
