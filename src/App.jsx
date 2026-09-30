@@ -15647,26 +15647,7 @@ export default function App(){
         {view==="dashboard"&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<BirthdayBanner me={me} users={users} today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<WorkAnniversaryBanner me={me} users={users} today={today}/>}
-        {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
-        {view==="dashboard"&&isTeamLeader&&(
-          <>
-            <TeamLeaderDashboard
-              me={me} tasks={tasks} projects={accessibleProjects} today={today}
-              onEditTask={t=>{set(t);stm(true);}}
-              onDeleteTask={delTask}
-              onViewProject={pid=>navTo('list',pid)}
-              onClientClick={(cl)=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
-              onOpenTaskModal={(title,tl)=>ssm({title,tasks:tl})}
-            />
-            <HolidayBanner today={today}/>
-            <BirthdayBanner me={me} users={users} today={today}/>
-            <WorkAnniversaryBanner me={me} users={users} today={today}/>
-            <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-              <MonthBirthdayWidget users={users} today={today}/>
-              <MonthHolidayWidget today={today}/>
-            </div>
-          </>
-        )}
+        {view==="dashboard"&&!isClient&&!isAdmin&&!isManager&&!isTeamLeader&&<AttendanceStats stats={attStats} attRec={attRec} attBreak={attBreak} me={me} isAdmin={isAdmin} isManager={isManager}/>}
         {view==="dashboard"&&isFinance&&(
           <>
             <HolidayBanner today={today}/>
@@ -15694,7 +15675,7 @@ export default function App(){
             onUpdateTask={t=>st(ts=>ts.map(x=>x.id===t.id?t:x))}
           />
         )}
-        {view==="dashboard"&&(isAdmin||isManager)&&(
+        {view==="dashboard"&&(isAdmin||isManager||isTeamLeader)&&(
           <>
             {/* ── Role Banner ── */}
             {isAdmin&&(
@@ -15735,9 +15716,28 @@ export default function App(){
                 </div>
               </div>
             )}
+            {isTeamLeader&&(
+              <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.teal}11 100%)`,border:`1px solid ${C.teal}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,borderLeft:`4px solid ${C.teal}`}}>
+                <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.teal,fontWeight:800}}>{(me.name[0]||"T").toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>Team Leader Dashboard</h2>
+                  <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back, {me.name} · Overseeing {accessibleProjects.length} project{accessibleProjects.length!==1?"s":""}</p>
+                </div>
+                <div className="rds-dash-banner-stats" style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                  {[{l:"Projects",v:accessibleProjects.length,c:C.teal,k:"projects"},{l:"Team Size",v:[...new Set(dashTasks.map(t=>t.assignee).filter(Boolean))].length,c:C.blue,k:"team"},{l:"In Progress",v:dashTasks.filter(t=>t.status==="In Progress").length,c:C.accent,k:"inprogress"},{l:"Completion",v:(dashTasks.length?Math.round(dashTasks.filter(t=>isDone(t.status)).length/dashTasks.length*100):0)+"%",c:C.green,k:"completed"}].map(s=>(
+                    <div key={s.l} onClick={()=>setDSM(s.k)} style={{background:s.c+"15",border:`1px solid ${s.c}33`,borderRadius:10,padding:"10px 16px",textAlign:"center",minWidth:64,cursor:"pointer",transition:"transform .15s,box-shadow .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.06)";e.currentTarget.style.boxShadow=`0 0 0 2px ${s.c}55`;}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";}}>
+                      <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div>
+                      <div style={{fontSize:10,color:C.t3,marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* ── Quick Navigation Panel ── */}
         {view==="dashboard"&&(isAdmin||isManager||isTeamLeader)&&(()=>{
-              const isAdminOrMgr=isAdmin||isManager;
+              const isAdminOrMgr=isAdmin||isManager||isTeamLeader;
               const allQnClients=isAdminOrMgr?[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort():[];
               const qnClientProjects=qnClient?accessibleProjects.filter(p=>(p.client||"Unassigned")===qnClient):accessibleProjects;
               // shared button style
