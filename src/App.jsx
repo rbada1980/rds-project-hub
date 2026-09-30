@@ -14277,6 +14277,7 @@ export default function App(){
   const [dashClient,sdsc]   = useState("All");
   const [dashTask,sdst]     = useState("All");
   const [dashStatus,sdsst]  = useState("All");
+  const [dashRevision,sdsrev]= useState("All");
   // ── Attendance ──
   const attRecRef=useRef(null);
   const [attRec,sattRec]=useState(null);
@@ -15047,7 +15048,7 @@ export default function App(){
     return true;
   }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
-  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All";
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
     if(dashUser!=="All"&&t.assignee!==dashUser)return false;
@@ -15055,8 +15056,9 @@ export default function App(){
     if(dashTask!=="All"&&t.id!==dashTask)return false;
     if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
     if(dashClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
+    if(dashRevision==="Has Revisions"&&!allRevisions.some(rv=>String(rv.task_id)===String(t.id)))return false;
     return true;
-  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById]);
+  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions]);
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -16056,7 +16058,12 @@ export default function App(){
                   <option value="All">All Statuses</option>
                   {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
+                {/* 6. Revision Tasks */}
+                <select value={dashRevision} onChange={e=>sdsrev(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashRevision!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashRevision!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Tasks</option>
+                  <option value="Has Revisions">Revision Tasks</option>
+                </select>
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");sdsrev("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
               </div>
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
