@@ -15059,6 +15059,17 @@ export default function App(){
     if(dashRevision==="Has Revisions"&&!allRevisions.some(rv=>String(rv.task_id)===String(t.id)))return false;
     return true;
   }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions]);
+  // Effective status per task — uses latest revision's status if task has revisions
+  const dashEffStatus=useMemo(()=>{
+    const m=new Map();
+    const list=hasDashFilter?filteredDashTasks:dashTasks;
+    list.forEach(t=>{
+      const rv=allRevisions.filter(r=>String(r.task_id)===String(t.id));
+      const latest=rv.length?rv.reduce((a,b)=>a.revision_number>b.revision_number?a:b):null;
+      m.set(t.id,latest?latest.status:t.status);
+    });
+    return m;
+  },[filteredDashTasks,dashTasks,hasDashFilter,allRevisions]);
   if(!me) return <Login onLogin={sm}/>;
   if(loading) return(
     <div style={{height:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -15963,10 +15974,10 @@ export default function App(){
             {/* ── Charts: Status Donut + Client Bar ── */}
             {(()=>{
               const sData=[
-                {label:"Not Yet Started",value:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length,color:C.t3},
-                {label:"In Progress",value:activeDashTasks.filter(t=>t.status==="In Progress").length,color:C.blue},
-                {label:"Review",value:activeDashTasks.filter(t=>t.status==="Review").length,color:C.purple},
-                {label:"Completed",value:activeDashTasks.filter(t=>isDone(t.status)).length,color:C.green},
+                {label:"Not Yet Started",value:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length,color:C.t3},
+                {label:"In Progress",value:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length,color:C.blue},
+                {label:"Review",value:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="Review").length,color:C.purple},
+                {label:"Completed",value:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length,color:C.green},
               ].filter(d=>d.value>0);
               const cNames=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned"))].sort();
               const cData=cNames.map(c=>{
@@ -15976,9 +15987,9 @@ export default function App(){
                 return{label:c,value:ct.length,color:`hsl(${hue},60%,55%)`};
               }).filter(d=>d.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
               const getStatusTasks=s=>{
-                if(s.label==="Completed")return activeDashTasks.filter(t=>isDone(t.status));
-                if(s.label==="Not Yet Started")return activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started");
-                return activeDashTasks.filter(t=>t.status===s.label);
+                if(s.label==="Completed")return activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status));
+                if(s.label==="Not Yet Started")return activeDashTasks.filter(t=>{const st=dashEffStatus.get(t.id)||t.status;return st==="Not Yet Started"||st==="To Be Started";});
+                return activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)===s.label);
               };
               return(
                 <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:20,marginTop:8}}>
@@ -16070,9 +16081,9 @@ export default function App(){
                         {/* ── Stat Cards ── */}
             <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>t.status==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>t.status==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started")})}/>
+              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status))})}/>
+              <Stat label="In Progress" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress")})}/>
+              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";})})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
