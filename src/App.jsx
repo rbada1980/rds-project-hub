@@ -15608,6 +15608,7 @@ export default function App(){
                 );
               })()}
             </div>}
+            {canEdit&&activePid&&<button onClick={()=>sep(accessibleProjects.find(p=>p.id===activePid)||null)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.t2,borderColor:C.t2}}>✏️ Edit Project</button>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>spm(true)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.green,borderColor:C.green}}>＋ New Project</button>}
             {canEdit&&<button className="rds-new-task-btn" onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
