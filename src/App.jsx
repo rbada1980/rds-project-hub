@@ -14630,14 +14630,10 @@ export default function App(){
         const j=await r.json();
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
-        // Cloud: per-task queries (same approach as task detail panel — proven to work)
-        if(!taskList||!taskList.length){setAllRevisions([]);return;}
-        const results=await Promise.all(
-          taskList.map(t=>supabase.from("task_revisions").select("*").eq("task_id",t.id).order("revision_number",{ascending:true}))
-        );
-        const all=results.flatMap(r=>r.data||[]);
-        console.log("loadAllRevisions cloud per-task:",all.length,"rows across",taskList.length,"tasks");
-        setAllRevisions(all);
+        // Cloud: bulk select — anon key has SELECT grant, RLS disabled on task_revisions
+        const{data,error}=await supabase.from("task_revisions").select("*").order("revision_number",{ascending:true});
+        console.log("loadAllRevisions cloud bulk:",data?.length,"rows, error:",error?.message);
+        setAllRevisions(data||[]);
       }
     }catch(e){console.error("loadAllRevisions:",e.message);}
   }

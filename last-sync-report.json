@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-09-30T06:42:46.018Z",
-  "ist_time": "2026-09-30 12:12:46 IST",
-  "duration_sec": 7.1,
-  "total_synced": 3464,
-  "total_pushed": 1346,
+  "timestamp": "2026-09-30T07:12:46.219Z",
+  "ist_time": "2026-09-30 12:42:46 IST",
+  "duration_sec": 5,
+  "total_synced": 3113,
+  "total_pushed": 995,
   "total_pulled": 2118,
   "total_failed": 0,
   "status": "success",
@@ -24,14 +24,14 @@
     },
     {
       "table": "projects",
-      "synced": 151,
+      "synced": 0,
       "failed": 0,
       "total": 151,
       "pulled": 151
     },
     {
       "table": "tasks",
-      "synced": 1048,
+      "synced": 848,
       "failed": 0,
       "total": 1048,
       "pulled": 1048
