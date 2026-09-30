@@ -16071,7 +16071,7 @@ export default function App(){
                 </select>
                 {/* 6. Revision Tasks */}
                 <select value={dashRevision} onChange={e=>sdsrev(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashRevision!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashRevision!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="All">All Tasks</option>
+                  <option value="All">All Revisions</option>
                   <option value="Has Revisions">Revision Tasks</option>
                 </select>
                 {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");sdsrev("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
