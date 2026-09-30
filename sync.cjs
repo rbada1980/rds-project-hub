@@ -64,6 +64,7 @@ const TABLE_CONFIG = [
   { table: "attendance",         conflict: "id", pushConflict: "user_id,date", skipPull: true },
   { table: "breaks",             conflict: "id", excludeFromRow: ["created_at"], skipPull: true },
   { table: "time_logs",          conflict: "id" },
+  { table: "task_revisions",     conflict: "id" },
 ];
 
 // ── Helper: get local column names & types ───────────────────
