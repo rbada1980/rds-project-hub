@@ -3862,6 +3862,8 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
                 const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                 const dispStatus=latestRev?latestRev.status:t.status;
+                const dispDate=latestRev?.client_sub_date||t.due_date;
+                const ovDisp=dispDate&&dispDate<today&&!isDone(dispStatus);
                 const rows=[
                   <tr key={t.id} style={{borderBottom:taskRevs.length?`1px solid ${C.border}33`:`1px solid ${C.border}`,background:hi?"#f9731610":"transparent"}}>
                     <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
@@ -3870,7 +3872,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(dispStatus)}>{dispStatus}</Bdg></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:ovDisp?C.red:C.t3,fontSize:12,fontWeight:ovDisp?700:400}}>{fmtD(dispDate)}{ovDisp?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEdit(t)} title="Edit task"/>}</td>
                   </tr>
                 ];
@@ -16508,7 +16510,7 @@ export default function App(){
                 const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 // Show latest revision's status as the effective status badge in the list
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
-                const displayTask=latestRev?{...t,status:latestRev.status}:t;
+                const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                 const colCount=(canEdit?1:0)+(isClient?9:10);
                 const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                 if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
