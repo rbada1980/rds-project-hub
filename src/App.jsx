@@ -16119,7 +16119,10 @@ export default function App(){
                       style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${p.color}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
                         <span style={{fontSize:13,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                        <span style={{fontSize:13,fontWeight:800,color:p.color,flexShrink:0}}>{pv}%</span>
+                        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                          {canEdit&&<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>}
+                          <span style={{fontSize:13,fontWeight:800,color:p.color}}>{pv}%</span>
+                        </div>
                       </div>
                       <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
                         <div style={{height:"100%",width:`${pv}%`,background:p.color,borderRadius:2}}/>
