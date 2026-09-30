@@ -3766,7 +3766,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
     </div>
   );
 }
-function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true}){
+function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,allRevisions=[]}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const [q,sq]=useState("");
   const [fProj,sfp]=useState("All");
@@ -3844,22 +3844,27 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true})
                   <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,color:C.t3,fontWeight:700,textTransform:"uppercase",borderBottom:`1px solid ${C.border}`}}>{h}</th>
                 ))}</tr>
               </thead>
-              <tbody>{shown.map(t=>{
+              <tbody>{shown.flatMap(t=>{
                 const pj=projectById.get(t.project_id);
                 const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
                 const hi=q&&(t.title.toLowerCase().includes(q.toLowerCase())||(pj?.name||"").toLowerCase().includes(q.toLowerCase())||(t.assignee||"").toLowerCase().includes(q.toLowerCase()));
-                return(
-                  <tr key={t.id} style={{borderBottom:`1px solid ${C.border}`,background:hi?"#f9731610":"transparent"}}>
+                const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
+                const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
+                const dispStatus=latestRev?latestRev.status:t.status;
+                const rows=[
+                  <tr key={t.id} style={{borderBottom:taskRevs.length?`1px solid ${C.border}33`:`1px solid ${C.border}`,background:hi?"#f9731610":"transparent"}}>
                     <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.client||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(dispStatus)}>{dispStatus}</Bdg></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
                     <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEdit(t)} title="Edit task"/>}</td>
                   </tr>
-                );
+                ];
+                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={8}/>);
+                return rows;
               })}</tbody>
             </table>
           )}
@@ -5702,7 +5707,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
   );
 }
 
-function AnalyticsCenter({projects,tasks,users,clients,today,members}){
+function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevisions=[]}){
   const isMobile=useMobile();
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
@@ -5994,7 +5999,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members}){
         </Panel>
       </div>
 
-      {modal&&modal.type==="tasks"&&<StatTaskModal title={modal.title} tasks={modal.list} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)}/>}
+      {modal&&modal.type==="tasks"&&<StatTaskModal title={modal.title} tasks={modal.list} projects={projects} today={today} canEdit={false} onEdit={()=>{}} onClose={()=>setModal(null)} allRevisions={allRevisions}/>}
       {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={periodTasks} today={today} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="clients"&&<AnalyticsClientModal title={modal.title} clientList={modal.list} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="members"&&<AnalyticsMemberModal title={modal.title} memberList={modal.list} tasks={tasks} onClose={()=>setModal(null)}/>}
@@ -16233,7 +16238,7 @@ export default function App(){
           <ClientFeedbackPage tasks={tasks} projects={accessibleProjects} users={users} onEditTask={t=>{set(t);stm(true);}}/>
         )}
         {view==="analytics"&&(isAdmin||isManager||isTeamLeader)&&(
-          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members}/>
+          <AnalyticsCenter projects={accessibleProjects} tasks={tasks} users={users} clients={clients} today={today} members={members} allRevisions={allRevisions}/>
         )}
         {view==="workflows"&&isAdmin&&(
           <WorkflowsPage workflows={workflows} onAdd={addWorkflow} onUpdate={updateWorkflow} onDelete={deleteWorkflow} onToggle={toggleWorkflow} users={users} saving={saving}/>
@@ -16488,7 +16493,7 @@ export default function App(){
         else if(type==="user"){sfa(data.name);sv("list");sap(null);}
         else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
       }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)}/>}
+      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)} allRevisions={allRevisions}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
 
