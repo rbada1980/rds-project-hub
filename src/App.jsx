@@ -14259,6 +14259,7 @@ export default function App(){
   const [activePid,sap]     = useState(null);
   const [activeClient,sac]  = useState(null);
   const [taskModal,stm]     = useState(false);
+  const [taskNavList,stnl]  = useState([]);
   const [histSeed,setHistSeed] = useState(0);
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
@@ -16512,7 +16513,7 @@ export default function App(){
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                 const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                 const colCount=(canEdit?1:0)+(isClient?9:10);
-                const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl([...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)));}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                 if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                 return rows;
               })}</tbody>
@@ -16529,22 +16530,41 @@ export default function App(){
         else if(type==="user"){sfa(data.name);sv("list");sap(null);}
         else if(type==="client"){sac(data.name);sv("clientprojects");sap(null);}
       }} onClose={()=>setCmdOpen(false)}/>}
-      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);}} onClose={()=>ssm(null)} allRevisions={allRevisions} onSyncDate={syncRevDate}/>}
+      {statModal&&<StatTaskModal title={statModal.title} tasks={statModal.tasks} projects={projects} today={today} canEdit={canEdit} onEdit={t=>{set(t);stm(true);ssm(null);stnl(statModal.tasks||[]);}} onClose={()=>ssm(null)} allRevisions={allRevisions} onSyncDate={syncRevDate}/>}
       {clientModal&&<ClientsModal clients={clients} users={users} onAdd={addClient} onEdit={editClient} onDelete={deleteClient} onSavePortal={savePortal} onClose={()=>scm(false)}/>}
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
 
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
-      {taskModal&&(
-        <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={()=>{stm(false);set(null);}} wide={canEdit}>
-          {(canEdit||!editTask)?
-            <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving} requireDates={canEdit}/>:
-            <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={()=>{stm(false);set(null);}} saving={saving}/>
-          }
-          {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
-        </Modal>
-      )}
+      {taskModal&&(()=>{
+        const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
+        const canPrevTask=taskNavIdx>0;
+        const canNextTask=taskNavIdx>=0&&taskNavIdx<taskNavList.length-1;
+        const closeTask=()=>{stm(false);set(null);stnl([]);};
+        return(
+          <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={closeTask} wide={canEdit}>
+            {editTask&&taskNavList.length>1&&(
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:12,padding:"6px 2px 2px"}}>
+                <button onClick={()=>{if(canPrevTask)set(taskNavList[taskNavIdx-1]);}} disabled={!canPrevTask}
+                  style={{background:canPrevTask?C.accent+"18":"transparent",border:`1px solid ${canPrevTask?C.accent+"55":C.border}`,color:canPrevTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canPrevTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canPrevTask?1:0.45}}>
+                  ← Prev Task
+                </button>
+                <span style={{fontSize:11,color:C.t3,fontWeight:500,whiteSpace:"nowrap"}}>{taskNavIdx+1} / {taskNavList.length}</span>
+                <button onClick={()=>{if(canNextTask)set(taskNavList[taskNavIdx+1]);}} disabled={!canNextTask}
+                  style={{background:canNextTask?C.accent+"18":"transparent",border:`1px solid ${canNextTask?C.accent+"55":C.border}`,color:canNextTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canNextTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canNextTask?1:0.45}}>
+                  Next Task →
+                </button>
+              </div>
+            )}
+            {(canEdit||!editTask)?
+              <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
+              <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
+            }
+            {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
+          </Modal>
+        );
+      })()}
       {projModal&&(<Modal title="New Project" onClose={()=>spm(false)}><ProjectForm onSave={saveProject} onClose={()=>spm(false)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {canEdit&&<BulkBar selTasks={selTasks} selProjects={selProjects} onClear={()=>{clearSel();setBSO(false);}} onBulkDelete={bulkDelete} onBulkAction={type=>setBM(type)}/>}
       {canEdit&&bulkModal&&<BulkActionModal type={bulkModal} count={selTasks.size} members={members} onApply={applyBulkAction} onClose={()=>setBM(null)}/>}
