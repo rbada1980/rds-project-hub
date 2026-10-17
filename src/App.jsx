@@ -16239,7 +16239,7 @@ export default function App(){
                     const gd=gt.filter(t=>isDone(t.status)).length;
                     const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
                     const gpct=gt.length?Math.round(gd/gt.length*100):0;
-                    const [gopen,setGOpen]=React.useState(true);
+                    const [gopen,setGOpen]=useState(true);
                     return(
                       <div key={gname} style={{marginBottom:22}}>
                         <div onClick={()=>setGOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.card,border:`1px solid ${gov>0?C.red+"55":C.teal+"44"}`,borderRadius:gopen?"12px 12px 0 0":"12px",cursor:"pointer",userSelect:"none",marginBottom:0}}>
