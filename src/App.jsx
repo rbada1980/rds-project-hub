@@ -14591,7 +14591,7 @@ export default function App(){
     let from=0;
     const PAGE=1000;
     while(true){
-      const {data,error}=await supabase.from("tasks").select("*").order("created_at").range(from,from+PAGE-1);
+      const {data,error}=await supabase.from("tasks").select("id,project_id,title,client,status,priority,assignee,due_date,tags,created_at,updated_at,detailer,checker,scope,client_sub_date,client_approval,client_comment,det_weight,notes").order("created_at").range(from,from+PAGE-1);
       if(error||!data||data.length===0)break;
       all=all.concat(data);
       if(data.length<PAGE)break;
