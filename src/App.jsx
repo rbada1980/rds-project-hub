@@ -14825,7 +14825,7 @@ export default function App(){
 
   // wr-global realtime removed — polling fallback below handles war room message notifications.
 
-  // Polling fallback every 3s on notifications table — most reliable path
+  // Polling fallback every 30s on notifications table — reduced from 3s to save API quota
   // sendMessage() already inserts into notifications for every recipient
   useEffect(()=>{
     if(!me||isClient)return;
@@ -14852,7 +14852,7 @@ export default function App(){
           }
         });
       }catch{}
-    },3000);
+    },30000);
     return()=>clearInterval(interval);
   },[me,isClient]);
 
