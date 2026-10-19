@@ -3991,44 +3991,6 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// NOTIFICATION SYSTEM
-// ─────────────────────────────────────────────────────────────────────────────
-const NOTIF_META={
-  task_assigned:        {icon:"📋",color:"#2563eb",label:"Task Assigned"},
-  task_completed:       {icon:"✅",color:"#16a34a",label:"Task Completed"},
-  task_deadline:        {icon:"⏰",color:"#ea580c",label:"Deadline Updated"},
-  task_reviewed:        {icon:"🔍",color:"#7c3aed",label:"Task Reviewed"},
-  task_status:          {icon:"🔄",color:"#0891b2",label:"Status Updated"},
-  project_assigned:     {icon:"📁",color:"#0891b2",label:"Project Assigned"},
-  project_updated:      {icon:"📊",color:"#2563eb",label:"Project Updated"},
-  project_milestone:    {icon:"🏆",color:"#f59e0b",label:"Milestone"},
-  deliverable_uploaded: {icon:"📦",color:"#16a34a",label:"Deliverable Uploaded"},
-  file_uploaded:        {icon:"📎",color:"#7c3aed",label:"File Uploaded"},
-  client_assigned:      {icon:"🏢",color:"#0891b2",label:"Client Assigned"},
-  system_alert:         {icon:"⚠️",color:"#ef4444",label:"System Alert"},
-  announcement:         {icon:"📢",color:"#f59e0b",label:"Announcement"},
-  war_room_message:     {icon:"💬",color:"#0d9488",label:"Message"},
-};
-
-function timeAgo(dateStr){
-  const diff=Date.now()-new Date(dateStr).getTime();
-  const m=Math.floor(diff/60000);
-  if(m<1)return"just now";
-  if(m<60)return`${m}m ago`;
-  const h=Math.floor(m/60);
-  if(h<24)return`${h}h ago`;
-  const d=Math.floor(h/24);
-  if(d<7)return`${d}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
-}
-
-async function createNotif(userIds,type,title,description,entityType=null,entityId=null,createdBy=null){
-  const ids=(Array.isArray(userIds)?userIds:[userIds]).filter(Boolean);
-  if(!ids.length)return;
-  const rows=ids.map(uid=>({user_id:uid,type,title,description,entity_type:entityType,entity_id:entityId,created_by:createdBy}));
-  await supabase.from("notifications").insert(rows);
-}
-
 // ── Audit Log helper ─────────────────────────────────────────
 // Tracked fields and their display labels
 const AUDIT_FIELDS = {
@@ -4064,347 +4026,6 @@ async function logAudit(actor, entity_type, entity_id, entity_label, project_id,
     }
   }catch(e){console.warn("logAudit error:",e.message);}
 }
-
-function NotifCard({n,onRead,onUnread,onDelete,onPin}){
-  const meta=NOTIF_META[n.type]||{icon:"🔔",color:C.accent};
-  const [hov,setHov]=useState(false);
-  return(
-    <div
-      onMouseEnter={()=>{setHov(true);if(!n.is_read)onRead(n.id);}}
-      onMouseLeave={()=>setHov(false)}
-      style={{display:"flex",gap:10,padding:"10px 14px",
-        background:hov?C.surface:n.is_read?"transparent":meta.color+"0d",
-        borderLeft:`3px solid ${n.is_read&&!hov?"transparent":meta.color}`,
-        transition:"all .12s",cursor:"pointer",position:"relative"}}
-    >
-      <div style={{width:36,height:36,borderRadius:10,background:meta.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>
-        {meta.icon}
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-          <span style={{fontSize:12,fontWeight:n.is_read?500:700,color:C.t1,lineHeight:1.35}}>{n.title}</span>
-          {!n.is_read&&<span style={{width:7,height:7,borderRadius:"50%",background:meta.color,flexShrink:0,marginTop:4}}/>}
-        </div>
-        {n.description&&<p style={{margin:"3px 0 0",fontSize:11,color:C.t2,lineHeight:1.45,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{n.description}</p>}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:5}}>
-          <span style={{fontSize:10,color:C.t3}}>{timeAgo(n.created_at)}</span>
-          {hov&&(
-            <div style={{display:"flex",gap:4}}>
-              <button onClick={e=>{e.stopPropagation();n.is_read?onUnread(n.id):onRead(n.id);}} title={n.is_read?"Mark unread":"Mark read"}
-                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 6px",fontSize:10,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
-                {n.is_read?"◯":"●"}
-              </button>
-              <button onClick={e=>{e.stopPropagation();onPin(n.id,!n.is_pinned);}} title={n.is_pinned?"Unpin":"Pin"}
-                style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 6px",fontSize:10,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
-                {n.is_pinned?"📌":"📍"}
-              </button>
-              <button onClick={e=>{e.stopPropagation();onDelete(n.id);}} title="Delete"
-                style={{background:"none",border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 6px",fontSize:10,color:C.red,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NotifSection({label,items,onRead,onUnread,onDelete,onPin}){
-  if(!items.length)return null;
-  return(
-    <>
-      <div style={{padding:"8px 14px 3px",fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.07em",background:C.surface+"88"}}>{label}</div>
-      {items.map(n=><NotifCard key={n.id} n={n} onRead={onRead} onUnread={onUnread} onDelete={onDelete} onPin={onPin}/>)}
-    </>
-  );
-}
-
-function NotificationCenter({me,onBadgeChange}){
-  const [open,setOpen]=useState(false);
-  const [notifs,setNotifs]=useState([]);
-  const [tab,setTab]=useState("all");
-  const [showSettings,setShowSettings]=useState(false);
-  const [soundOn,setSoundOn]=useState(()=>{try{return localStorage.getItem("rds_notif_sound")!=="off";}catch{return true;}});
-  const drawerRef=useRef();
-  const bellRef=useRef();
-  const userId=me?.id;
-
-  // ── CSS animations (injected once) ──
-  const [popups,setPopups]=useState([]); // in-app toast popups
-  useEffect(()=>{
-    if(document.getElementById("notif-css"))return;
-    const s=document.createElement("style");
-    s.id="notif-css";
-    s.textContent=`
-      @keyframes notifSlideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-      @keyframes notifSlideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(110%);opacity:0}}
-      @keyframes notifPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
-      @keyframes notifPopIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
-      .notif-drawer{animation:notifSlideIn .22s cubic-bezier(.22,1,.36,1)}
-      .notif-badge{animation:notifPulse 2s ease-in-out infinite}
-      .notif-popup{animation:notifPopIn .28s cubic-bezier(.22,1,.36,1)}
-      .notif-popup-out{animation:notifSlideOut .22s ease-in forwards}
-    `;
-    document.head.appendChild(s);
-  },[]);
-
-  function showPopup(n){
-    const pid=Date.now();
-    setPopups(prev=>[{...n,_pid:pid},...prev.slice(0,3)]);
-    setTimeout(()=>dismissPopup(pid),5000);
-  }
-  function dismissPopup(pid){
-    setPopups(prev=>prev.filter(p=>p._pid!==pid));
-  }
-
-  // ── soundOn ref so channel doesn't recreate on toggle ──
-  const soundOnRef=useRef(soundOn);
-  useEffect(()=>{soundOnRef.current=soundOn;},[soundOn]);
-
-  // ── Load notifications ──
-  useEffect(()=>{if(userId)loadNotifs();},[userId]);
-
-  // Notifications realtime removed — using polling fallback (every 3s) instead.
-  // This prevents Supabase Realtime quota from being exceeded.
-
-  // ── Close drawer on outside click ──
-  useEffect(()=>{
-    if(!open)return;
-    function handle(e){
-      if(drawerRef.current&&!drawerRef.current.contains(e.target)&&bellRef.current&&!bellRef.current.contains(e.target))setOpen(false);
-    }
-    document.addEventListener("mousedown",handle);
-    return()=>document.removeEventListener("mousedown",handle);
-  },[open]);
-
-  async function loadNotifs(){
-    if(!userId)return;
-    const cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-    const{data,error}=await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id",userId)
-      .gte("created_at",cutoff)
-      .order("created_at",{ascending:false})
-      .limit(150);
-    if(error){console.error("[Notif] Load error:",error.message,"— Did you run notifications_migration.sql in Supabase?");return;}
-    if(data){
-      setNotifs(data);
-      onBadgeChange?.({
-        warroom:data.filter(n=>!n.is_read&&(n.type==="war_room_message"||n.type==="mention")).length,
-        announcements:data.filter(n=>!n.is_read&&n.type==="announcement").length
-      });
-    }
-  }
-
-  function playNotifSound(){
-    try{
-      const ctx=new(window.AudioContext||window.webkitAudioContext)();
-      const osc=ctx.createOscillator();const gain=ctx.createGain();
-      osc.connect(gain);gain.connect(ctx.destination);
-      osc.frequency.value=880;osc.type="sine";
-      gain.gain.setValueAtTime(0,ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.25,ctx.currentTime+0.01);
-      gain.gain.linearRampToValueAtTime(0,ctx.currentTime+0.35);
-      osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.35);
-    }catch{}
-  }
-
-  async function markRead(id){
-    setNotifs(prev=>prev.map(n=>n.id===id?{...n,is_read:true}:n));
-    await supabase.from("notifications").update({is_read:true}).eq("id",id);
-  }
-  async function markUnread(id){
-    setNotifs(prev=>prev.map(n=>n.id===id?{...n,is_read:false}:n));
-    await supabase.from("notifications").update({is_read:false}).eq("id",id);
-  }
-  async function markAllRead(){
-    const ids=notifs.filter(n=>!n.is_read).map(n=>n.id);
-    if(!ids.length)return;
-    setNotifs(prev=>prev.map(n=>({...n,is_read:true})));
-    await supabase.from("notifications").update({is_read:true}).in("id",ids);
-  }
-  async function deleteNotif(id){
-    setNotifs(prev=>prev.filter(n=>n.id!==id));
-    await supabase.from("notifications").delete().eq("id",id);
-  }
-  async function pinNotif(id,pin){
-    setNotifs(prev=>prev.map(n=>n.id===id?{...n,is_pinned:pin}:n));
-    await supabase.from("notifications").update({is_pinned:pin}).eq("id",id);
-  }
-  function toggleSound(){const v=!soundOn;setSoundOn(v);localStorage.setItem("rds_notif_sound",v?"on":"off");}
-  async function requestBrowserPermission(){
-    if("Notification"in window){const p=await Notification.requestPermission();if(p==="granted")alert("Browser notifications enabled!");}
-  }
-
-  const unreadCount=notifs.filter(n=>!n.is_read).length;
-  const todayStr=localDateStr();
-  const weekAgo=localDateStr(new Date(Date.now()-7*24*60*60*1000));
-
-  const base=tab==="unread"?notifs.filter(n=>!n.is_read):tab==="pinned"?notifs.filter(n=>n.is_pinned):notifs;
-  const pinned=base.filter(n=>n.is_pinned&&tab!=="pinned");
-  const unread=base.filter(n=>!n.is_read&&!n.is_pinned);
-  const todayRead=base.filter(n=>n.is_read&&!n.is_pinned&&n.created_at.slice(0,10)===todayStr);
-  const thisWeek=base.filter(n=>n.is_read&&!n.is_pinned&&n.created_at.slice(0,10)<todayStr&&n.created_at.slice(0,10)>=weekAgo);
-  const earlier=base.filter(n=>n.is_read&&!n.is_pinned&&n.created_at.slice(0,10)<weekAgo);
-
-  const ops={onRead:markRead,onUnread:markUnread,onDelete:deleteNotif,onPin:pinNotif};
-
-  return(
-    <>
-      {/* ── Bell Button ── */}
-      <div ref={bellRef} style={{position:"relative"}}>
-        <button onClick={()=>setOpen(v=>!v)}
-          style={{...GBtn,padding:"7px 11px",position:"relative",
-            background:open?C.accent+"22":"transparent",
-            borderColor:open?C.accent:C.border}}
-          title="Notifications"
-        >
-          <span className={unreadCount>0?"rds-bell-ring":""} style={{fontSize:18,lineHeight:1,display:"inline-block"}}>🔔</span>
-          {unreadCount>0&&(
-            <span className="notif-badge" style={{
-              position:"absolute",top:1,right:1,
-              minWidth:17,height:17,borderRadius:9,
-              background:C.red,color:"#fff",
-              fontSize:9,fontWeight:800,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              padding:"0 3px",lineHeight:1,border:`2px solid ${C.bg}`
-            }}>
-              {unreadCount>99?"99+":unreadCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ── In-app popup toasts (bottom-right, stacked) ── */}
-      {popups.map((p,i)=>{
-        const meta=NOTIF_META[p.type]||{icon:"🔔",color:C.accent};
-        return(
-          <div key={p._pid} className="notif-popup" style={{
-            position:"fixed",bottom:24+(i*90),right:24,width:320,zIndex:1100,
-            background:C.card,border:`1px solid ${meta.color}55`,borderLeft:`4px solid ${meta.color}`,
-            borderRadius:12,boxShadow:"0 8px 32px #00000099",
-            display:"flex",gap:10,padding:"12px 14px",alignItems:"flex-start",
-            cursor:"pointer"
-          }} onClick={()=>{dismissPopup(p._pid);markRead(p.id);setOpen(true);}}>
-            <div style={{width:34,height:34,borderRadius:9,background:meta.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>
-              {meta.icon}
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t1,lineHeight:1.3,marginBottom:2}}>{p.title}</div>
-              {p.description&&<div style={{fontSize:11,color:C.t2,lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.description}</div>}
-              <div style={{fontSize:10,color:meta.color,marginTop:3,fontWeight:600}}>just now · click to view</div>
-            </div>
-            <button onClick={e=>{e.stopPropagation();dismissPopup(p._pid);}} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:14,padding:0,lineHeight:1,flexShrink:0}}>✕</button>
-          </div>
-        );
-      })}
-
-      {/* ── Notification Drawer ── */}
-      {open&&(
-        <div ref={drawerRef} className="notif-drawer" style={{
-          position:"fixed",top:0,right:0,width:390,height:"100vh",
-          background:C.card,borderLeft:`1px solid ${C.border}`,
-          boxShadow:"-16px 0 60px #00000099",zIndex:1000,
-          display:"flex",flexDirection:"column",overflow:"hidden"
-        }}>
-          {/* Header */}
-          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.border}`,flexShrink:0,background:C.card}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:16,fontWeight:800,color:C.t1}}>🔔 Notifications</span>
-                {unreadCount>0&&<span style={{background:C.red,color:"#fff",borderRadius:10,padding:"2px 8px",fontSize:10,fontWeight:800}}>{unreadCount} unread</span>}
-              </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                {unreadCount>0&&(
-                  <button onClick={markAllRead}
-                    style={{...GBtn,padding:"4px 10px",fontSize:11,color:C.teal,borderColor:C.teal}}>✓ All read</button>
-                )}
-                <button onClick={()=>setShowSettings(v=>!v)}
-                  style={{...GBtn,padding:"5px 9px",fontSize:13,background:showSettings?C.accent+"22":"transparent",borderColor:showSettings?C.accent:C.border}}
-                  title="Settings">⚙</button>
-                <button onClick={()=>setOpen(false)}
-                  style={{...GBtn,padding:"5px 9px",fontSize:13}} title="Close">✕</button>
-              </div>
-            </div>
-            {/* Tabs */}
-            <div style={{display:"flex",gap:4}}>
-              {[["all","All"],["unread",`Unread${unreadCount>0?` (${unreadCount})`:""}`],["pinned","📌 Pinned"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setTab(v)}
-                  style={{border:"none",borderRadius:7,padding:"5px 13px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all .12s",
-                    background:tab===v?C.accent:"transparent",color:tab===v?"#fff":C.t3}}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Settings panel */}
-          {showSettings&&(
-            <div style={{padding:"12px 16px",background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
-              <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.07em"}}>Notification Settings</div>
-              <div style={{display:"flex",flexDirection:"column",gap:9}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:12,color:C.t2}}>🔊 Sound Alerts</span>
-                  <button onClick={toggleSound} style={{...GBtn,padding:"3px 10px",fontSize:11,
-                    background:soundOn?C.green+"22":"transparent",color:soundOn?C.green:C.t3,borderColor:soundOn?C.green:C.border}}>
-                    {soundOn?"ON":"OFF"}
-                  </button>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:12,color:C.t2}}>🌐 Browser Notifications</span>
-                  <button onClick={requestBrowserPermission} style={{...GBtn,padding:"3px 10px",fontSize:11,
-                    background:typeof Notification!=="undefined"&&Notification.permission==="granted"?C.green+"22":"transparent",
-                    color:typeof Notification!=="undefined"&&Notification.permission==="granted"?C.green:C.t3,
-                    borderColor:typeof Notification!=="undefined"&&Notification.permission==="granted"?C.green:C.border}}>
-                    {typeof Notification!=="undefined"&&Notification.permission==="granted"?"Enabled ✓":"Enable"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Notification list */}
-          <div style={{flex:1,overflowY:"auto"}}>
-            {base.length===0?(
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60%",gap:14}}>
-                <span style={{fontSize:44}}>🔕</span>
-                <div style={{textAlign:"center"}}>
-                  <div style={{color:C.t2,fontSize:13,fontWeight:600,marginBottom:4}}>
-                    {tab==="unread"?"All caught up!":tab==="pinned"?"No pinned notifications":"No notifications yet"}
-                  </div>
-                  <div style={{color:C.t3,fontSize:11}}>
-                    {tab==="unread"?"No unread notifications":"Notifications will appear here"}
-                  </div>
-                </div>
-              </div>
-            ):(
-              <div style={{paddingBottom:16}}>
-                {tab==="pinned"&&<NotifSection label="📌 Pinned" items={base} {...ops}/>}
-                {tab!=="pinned"&&(
-                  <>
-                    {pinned.length>0&&<NotifSection label="📌 Pinned" items={pinned} {...ops}/>}
-                    {unread.length>0&&<NotifSection label="Unread" items={unread} {...ops}/>}
-                    {todayRead.length>0&&<NotifSection label="Today" items={todayRead} {...ops}/>}
-                    {thisWeek.length>0&&<NotifSection label="This Week" items={thisWeek} {...ops}/>}
-                    {earlier.length>0&&<NotifSection label="Earlier" items={earlier} {...ops}/>}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,background:C.surface+"88"}}>
-            <div style={{fontSize:10,color:C.t3,textAlign:"center"}}>
-              Showing last 30 days · {notifs.length} notification{notifs.length!==1?"s":""}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS EXCEL EXPORT
@@ -6005,13 +5626,6 @@ function AnnouncementsPage({me,users,projects,canPost}){
     }).select().single();
     if(!error&&data){
       // notify all users
-      const rows=users.filter(u=>u.username!==me.username).map(u=>({
-        user_id:u.id,type:"announcement",
-        title:`📢 ${me.name}: ${form.title.trim().slice(0,60)}`,
-        description:form.body.trim().slice(0,120),
-        entity_type:"announcement",entity_id:data.id,created_by:me.username
-      }));
-      if(rows.length)await supabase.from("notifications").insert(rows);
       setShowForm(false);setForm({title:"",body:"",scope:"company",project_id:""});
     }
     setSaving(false);
@@ -6848,16 +6462,6 @@ function WarRoomPage({me,projects,users}){
     const clientUser=clients.find(c=>c.username===capturedCid);
     const clientDisplayN=clientUser?.client_name||clientUser?.name||capturedCid;
     const snippet=(msgBody||"📎 media").slice(0,80);
-    const recipientBase=users.filter(u=>u.username!==me.username&&(u.username===capturedCid||u.role!=="Client"));
-    const allUsers=notifyAll?users.filter(u=>u.username!==me.username):recipientBase;
-    if(allUsers.length){
-      await supabase.from("notifications").insert(allUsers.map(u=>({user_id:u.id,type:"war_room_message",title:`💬 ${me.name} in ${clientDisplayN}`,description:snippet,entity_type:"war_room",entity_id:capturedCid,created_by:me.username})));
-    }
-    if(mentions.filter(m=>m!=="here"&&m!=="all").length){
-      const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({user_id:u.id,type:"mention",title:`💬 ${me.name} mentioned you in ${clientDisplayN}`,description:snippet,entity_type:"war_room",entity_id:capturedCid,created_by:me.username}));
-      if(rows.length)await supabase.from("notifications").insert(rows);
-    }
-    if(inserted){const _pu=mentions.filter(m=>m!=="here"&&m!=="all").length?users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username):allUsers.map(u=>u.username);if(_pu.length)fetch(LOCAL_BASE+"/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:_pu,title:"💬 "+clientDisplayN,body:snippet,employee:me.name,type:mentions.filter(m=>m!=="here"&&m!=="all").length?"Mention":"War Room Message",url:"/"})}).catch(()=>{});}
     setSending(false);
   }
 
@@ -8161,14 +7765,6 @@ function TaskComments({taskId,projectId,me,users}){
     if(!error&&data){
       setComments(prev=>[...prev,data]);
       if(mentions.length){
-        const rows=users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>({
-          user_id:u.id,type:"mention",
-          title:`💬 ${me.name} mentioned you in a task comment`,
-          description:input.trim().slice(0,100),
-          entity_type:"task",entity_id:taskId,created_by:me.username
-        }));
-        if(rows.length)await supabase.from("notifications").insert(rows);
-        fetch(LOCAL_BASE+"/api/push/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usernames:users.filter(u=>mentions.includes(u.username)&&u.username!==me.username).map(u=>u.username),title:"💬 Task Mention",body:input.trim().slice(0,80),employee:me.name,type:"Mention",url:"/"})}).catch(()=>{});
       }
       setInput("");setMentionOpen(false);
     }
@@ -14209,7 +13805,6 @@ export default function App(){
   const [exportOpen,setExportOpen] = useState(false);
   const [exportSec,setExportSec] = useState(null);
   const exportRef = useRef();
-  const [navBadges,setNavBadges] = useState({});
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
   const [searchTask,sst]    = useState("");
@@ -14250,7 +13845,6 @@ export default function App(){
   const prevViewRef         = useRef('dashboard');
   const initialParsed       = useRef(false);
   const initialPath         = useRef(window.location.pathname);
-  const hasPushSubRef       = useRef(false); // true once push subscription confirmed active
   const [isMobile,setIM]    = useState(()=>window.innerWidth<768);
   const [sideOpen,setSO]    = useState(false);
   useEffect(()=>{const h=()=>setIM(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
@@ -14741,120 +14335,13 @@ export default function App(){
   }
 
   useEffect(()=>{if(me&&me.role!=="Client"){loadAttendance();loadAttStats();}},[me]);
-  // ── Global chat notifications ──
   const viewRef=useRef(view);
   useEffect(()=>{viewRef.current=view;},[view]);
-  const lastNotifPollRef=useRef(null); // ISO timestamp — tracks last polled notification
-  const seenNotifIds=useRef(new Set());
 
-  function fireNotif(title,body,id){
-    // 1. Nav badge
-    // 2. Toast
-    if(true){
-      sToast({msg:`${title}: ${(body||"📎 media").slice(0,80)}`,ok:true});
-      setTimeout(()=>sToast(null),6000);
-    }
-    // 3. Sound
-    try{
-      const ctx=new(window.AudioContext||window.webkitAudioContext)();
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.frequency.value=880;o.type="sine";
-      g.gain.setValueAtTime(0,ctx.currentTime);
-      g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+0.01);
-      g.gain.linearRampToValueAtTime(0,ctx.currentTime+0.35);
-      o.start(ctx.currentTime);o.stop(ctx.currentTime+0.35);
-    }catch{}
-    // 4. Browser OS notification
-    // Skip if push subscription is active — the server's web-push already delivers the OS notification.
-    // Showing one here too causes a duplicate. Fall back to showing one only when push is not set up.
-    if(!hasPushSubRef.current&&typeof Notification!=="undefined"&&Notification.permission==="granted"){
-      try{
-        const tag="wr-"+(id||Date.now());
-        if("serviceWorker" in navigator && navigator.serviceWorker.controller){
-          navigator.serviceWorker.ready.then(reg=>{
-            reg.showNotification(title,{body:body||"New message",icon:"/logo.png",badge:"/logo.png",image:"/logo.png",tag,requireInteraction:true,renotify:true,actions:[{action:"view",title:"👁 View Now"},{action:"dismiss",title:"✕ Dismiss"}],vibrate:[300,100,300]});
-          }).catch(()=>{try{new Notification(title,{body:body||"New message",icon:"/logo.png",tag,requireInteraction:true});}catch{}});
-        }else{
-          new Notification(title,{body:body||"New message",icon:"/logo.png",tag,requireInteraction:true});
-        }
-      }catch{}
-    }
-  }
 
-  // -- Service Worker + Web Push subscription
-  useEffect(()=>{
-    if(!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js").then(async reg=>{
-      if(!me) return;
-      let perm = Notification.permission;
-      if(perm === "default") perm = await Notification.requestPermission();
-      if(perm !== "granted") return;
-      try {
-        const keyRes = await fetch(LOCAL_BASE + "/api/push/vapid-public-key");
-        const { key } = await keyRes.json();
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: _urlB64ToUint8(key),
-        });
-        await fetch(LOCAL_BASE + "/api/push/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: me.username, subscription: sub.toJSON() }),
-        });
-        hasPushSubRef.current = true; // push subscription confirmed — suppress duplicate OS notif in fireNotif
-      } catch(e){ console.log("[push]", e.message); }
-    }).catch(()=>{});
-  },[me]);
 
-  function _urlB64ToUint8(b64){
-    const pad = "=".repeat((4 - b64.length%4)%4);
-    const raw = atob((b64+pad).replace(/-/g,"+").replace(/_/g,"/"));
-    return Uint8Array.from(raw, c=>c.charCodeAt(0));
-  }
 
-  // Auto-request browser notification permission once (3s after login)
-  useEffect(()=>{
-    if(!me||isClient)return;
-    if(typeof Notification==="undefined")return;
-    if(Notification.permission==="default"){
-      const t=setTimeout(()=>Notification.requestPermission(),3000);
-      return()=>clearTimeout(t);
-    }
-  },[me,isClient]);
 
-  // wr-global realtime removed — polling fallback below handles war room message notifications.
-
-  // Polling fallback every 30s on notifications table — reduced from 3s to save API quota
-  // sendMessage() already inserts into notifications for every recipient
-  useEffect(()=>{
-    if(!me||isClient)return;
-    if(!lastNotifPollRef.current)lastNotifPollRef.current=new Date().toISOString();
-    const interval=setInterval(async()=>{
-      try{
-        const since=lastNotifPollRef.current;
-        const{data,error}=await supabase.from("notifications")
-          .select("id,type,title,description,created_at")
-          .eq("user_id",me.id)
-          .in("type",["war_room_message","mention","client_review"])
-          .gt("created_at",since)
-          .order("created_at",{ascending:true})
-          .limit(10);
-        if(error||!data||!data.length)return;
-        lastNotifPollRef.current=data[data.length-1].created_at;
-        data.forEach(n=>{
-          const key="notif-"+n.id;
-          if(seenNotifIds.current.has(key))return;
-          seenNotifIds.current.add(key);
-          fireNotif(n.title||"💬 New message",n.description,n.id);
-          if(n.type==="client_review"){
-            setNavBadges(prev=>({...prev,clientfeedback:(prev.clientfeedback||0)+1}));
-          }
-        });
-      }catch{}
-    },30000);
-    return()=>clearInterval(interval);
-  },[me,isClient]);
 
   // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
   useEffect(()=>{
@@ -15040,11 +14527,6 @@ export default function App(){
         const targets=users.filter(u=>u.role==="Admin"||u.role==="Manager"||u.role==="Team Leader").map(u=>u.id);
         if(targets.length){
           const snippet=comment?` · "${comment.slice(0,60)}${comment.length>60?"…":""}"`:"";
-          await createNotif(targets,"client_review",
-            `Client Review: ${clientReviewTask.title}`,
-            `${me.client_name||me.name} marked "${approval}"${snippet}${proj?` · ${proj.name}`:""}`,
-            "task",clientReviewTask.id,me.id
-          );
         }
       }
       setCRT(null);
@@ -15072,7 +14554,6 @@ export default function App(){
           const assigneeUser=users.find(u=>u.name===editTask.assignee||u.username===editTask.assignee);
           if(f.status==="Completed"){
             const mgrs=users.filter(u=>(u.role==="Admin"||u.role==="Manager")&&u.id!==me.id).map(u=>u.id);
-            if(mgrs.length)await createNotif(mgrs,"task_completed",`Task completed: ${editTask.title}`,`Marked done by ${me.name}${proj?` · ${proj.name}`:""}`, "task",editTask.id,me.id);
           }
         }
       }catch(e){showToast("Error: "+e.message,false);}
@@ -15108,29 +14589,12 @@ export default function App(){
         showToast("Task updated ✓");
         // ── Audit: log field changes ──
         await logAudit(me,"task",editTask.id,f.title,pid,"update",editTask,f);
-        if(f.status!==editTask.status){
-          if(f.status==="Completed"){
-            // In-app: notify admins/managers on completion
-            const mgrs=users.filter(u=>(u.role==="Admin"||u.role==="Manager")&&u.id!==me.id).map(u=>u.id);
-            if(mgrs.length)await createNotif(mgrs,"task_completed",`Task completed: ${f.title}`,`Marked done by ${me.name}${proj?` · ${proj.name}`:""}`, "task",editTask.id,me.id);
-          }else{
-            // In-app: notify assignee of status change
-            if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_status",`Task status updated: ${f.title}`,`Status changed to ${f.status} by ${me.name}`, "task",editTask.id,me.id);
-          }
-        }
-        if(f.assignee&&f.assignee!==editTask.assignee){
-          if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_assigned",`You've been assigned: ${f.title}`,`Reassigned by ${me.name}${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",editTask.id,me.id);
-        }
       }else{
         const {data}=await supabase.from("tasks").insert(payload).select().single();
         if(data)st(ts=>[...ts,data]);
         showToast("Task created ✓");
         // ── Audit: log task creation ──
         if(data)await logAudit(me,"task",data.id,data.title,pid,"create",null,data);
-        // ── In-app notifications ──
-        if(assigneeUser?.id&&assigneeUser.id!==me.id)await createNotif([assigneeUser.id],"task_assigned",`New task assigned: ${f.title}`,`Assigned by ${me.name}${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
-        if(detailerUser?.id&&detailerUser.id!==me.id)await createNotif([detailerUser.id],"task_assigned",`Detailing assigned: ${f.title}`,`You are the detailer${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
-        if(checkerUser?.id&&checkerUser.id!==me.id)await createNotif([checkerUser.id],"task_assigned",`QC assigned: ${f.title}`,`You are the checker${proj?` · ${proj.name}`:""}${f.due_date?` · Due ${f.due_date}`:""}`, "task",data?.id,me.id);
       }
         // workflow engine
         for(const wf of workflows.filter(w=>w.is_active)){
@@ -15144,7 +14608,6 @@ export default function App(){
           if(wf.action_type==="notify_checker"){const cu=users.find(u=>u.name===f.checker||u.username===f.checker);if(cu&&cu.id!==me.id)targetIds=[cu.id];}
           else if(wf.action_type==="notify_assignee"){const au=users.find(u=>u.name===f.assignee||u.username===f.assignee);if(au&&au.id!==me.id)targetIds=[au.id];}
           else if(wf.action_type==="notify_role"){targetIds=users.filter(u=>u.role===wf.action_target&&u.id!==me.id).map(u=>u.id);}
-          if(targetIds.length)await createNotif(targetIds,"workflow","Workflow: "+wf.name,f.title+(proj2?" in "+proj2.name:""),"task",editTask?.id||null,me.id);
         }
       // Close only for new task creation; stay open when editing existing task
       if(!editTask){stm(false);set(null);}
@@ -15169,13 +14632,7 @@ export default function App(){
     }
   }
   async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projectById.get(task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
-  async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);const pcu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===(f.client||"").toLowerCase());
-    // In-app: notify assigned users
-    const assignedIds=(f.assigned_users||[]).map(uname=>users.find(u=>u.username===uname||u.name===uname)?.id).filter(id=>id&&id!==me.id);
-    if(assignedIds.length)await createNotif(assignedIds,"project_assigned",`New project assigned: ${f.name}`,`You've been added to ${f.name}${f.client?` · Client: ${f.client}`:""}${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
-    // Notify client
-    if(pcu?.id&&pcu.id!==me.id)await createNotif([pcu.id],"project_assigned",`Project created: ${f.name}`,`A new project has been set up for your account${f.deadline?` · Deadline: ${f.deadline}`:""}`, "project",data.id,me.id);
-  await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function syncRevDate(taskId,revDate,revNum){const{data,error}=await supabase.from("tasks").update({due_date:revDate}).eq("id",taskId).select().single();if(error){showToast("Update failed: "+error.message,false);return;}if(data)st(ts=>ts.map(t=>t.id===taskId?{...t,due_date:revDate}:t));showToast(`Due date synced to Rev ${revNum} date ✓`);}
   async function deleteProject(id){if(!canEdit)return;if(!window.confirm("Delete this project and all its tasks?"))return;const delProj=accessibleProjects.find(p=>p.id===id);await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);await supabase.from("tasks").delete().eq("project_id",id);await supabase.from("projects").delete().eq("id",id);sp(ps=>ps.filter(p=>p.id!==id));st(ts=>ts.filter(t=>t.project_id!==id));if(activePid===id)sap(null);showToast("Project deleted ✓");}
@@ -15229,20 +14686,13 @@ export default function App(){
         </div>
         <div style={{padding:"0 12px",flex:1,overflow:"auto"}}>
           {navs.map(([k,ico,lbl])=>{
-            const badge=navBadges[k]||0;
             return(
               <button key={k} onClick={()=>{
                 navTo(k,k==='list'?activePid:null);
                 if(isMobile)setSO(false);
-                if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));
               }} style={{...sel(view===k&&!(view==="kanban"&&activeClient)),position:"relative"}}>
                 <span style={{fontSize:16}}>{ico}</span>
                 <span style={{flex:1}}>{lbl}</span>
-                {badge>0&&(
-                  <span style={{background:k==="announcements"?"#f59e0b":C.teal,color:"#fff",borderRadius:10,fontSize:10,fontWeight:800,padding:"1px 6px",minWidth:18,textAlign:"center",lineHeight:"16px",display:"inline-block"}}>
-                    {badge>99?"99+":badge}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -15295,7 +14745,6 @@ export default function App(){
           </div>
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             <button onClick={toggleTheme} title={theme==="dark"?"Switch to Light Mode":"Switch to Dark Mode"} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",fontSize:16,cursor:"pointer",color:C.t2,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>{theme==="dark"?"☀️":"🌙"}</button>
-            {!isClient&&<NotificationCenter me={me} onBadgeChange={b=>setNavBadges(prev=>({...prev,...b}))}/>}
             {!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn} canClockInOnline={isManager||isTeamLeader||isFinance}/>}
             {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
             <span className="rds-topbar-filters" style={{display:"contents"}}></span>
@@ -16619,12 +16068,10 @@ export default function App(){
     {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
       <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
               style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
               <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
               <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              {badge>0&&<span style={{position:"absolute",top:4,right:8,background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{badge>9?"9+":badge}</span>}
+              
             </button>
           );})}
           <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
@@ -16636,13 +16083,11 @@ export default function App(){
       </div>
     </div>}
     <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const badge=navBadges[k]||0;const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);if(badge>0)setNavBadges(prev=>({...prev,[k]:0}));setShowMore(false);}}
           style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
           {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
           <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
           <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          {badge>0&&<span style={{position:"absolute",top:4,right:"calc(50% - 20px)",background:C.red,color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>{badge>9?"9+":badge}</span>}
+          
         </button>
       );})}
       {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
