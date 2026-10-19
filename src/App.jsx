@@ -1396,10 +1396,6 @@ function EmployeeOfMonthBanner({me,today}){
         .then(({data})=>setEom((data&&data[0])||null));
     }
     fetch_();
-    const ch=supabase.channel("eom-banner-"+Date.now())
-      .on("postgres_changes",{event:"*",schema:"public",table:"employee_of_month"},()=>fetch_())
-      .subscribe();
-    return()=>supabase.removeChannel(ch);
   },[monthStr]);
   if(!eom)return null;
   const isMe=me&&(me.id===eom.user_id||me.name===eom.user_name);
@@ -4167,52 +4163,8 @@ function NotificationCenter({me,onBadgeChange}){
   // ── Load notifications ──
   useEffect(()=>{if(userId)loadNotifs();},[userId]);
 
-  // ── Realtime subscription — NO server-side filter (custom auth doesn't support it)
-  //    Filter client-side by comparing user_id ──
-  useEffect(()=>{
-    if(!userId)return;
-    const uid=String(userId);
-    const channel=supabase
-      .channel(`notifs-${uid}-${Date.now()}`)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications'},payload=>{
-        if(!payload.new||String(payload.new.user_id)!==uid)return;
-        setNotifs(prev=>{
-          const next=[payload.new,...prev];
-          onBadgeChange?.({
-            warroom:next.filter(n=>!n.is_read&&(n.type==="war_room_message"||n.type==="mention")).length,
-            announcements:next.filter(n=>!n.is_read&&n.type==="announcement").length
-          });
-          return next;
-        });
-        if(soundOnRef.current)playNotifSound();
-        showPopup(payload.new);
-        // Browser OS notification (works only when page is in background)
-        if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
-          try{new Notification(payload.new.title,{body:payload.new.description||"",icon:"/favicon.svg"});}catch(e){console.warn("[Notif] Browser notification failed:",e);}
-        }
-      })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications'},payload=>{
-        if(!payload.new||String(payload.new.user_id)!==uid)return;
-        setNotifs(prev=>{
-          const next=prev.map(n=>n.id===payload.new.id?payload.new:n);
-          onBadgeChange?.({
-            warroom:next.filter(n=>!n.is_read&&(n.type==="war_room_message"||n.type==="mention")).length,
-            announcements:next.filter(n=>!n.is_read&&n.type==="announcement").length
-          });
-          return next;
-        });
-      })
-      .on('postgres_changes',{event:'DELETE',schema:'public',table:'notifications'},payload=>{
-        // DELETE only has payload.old.id (no user_id without REPLICA IDENTITY FULL)
-        // safe to filter by id — we only store current user's notifs in state
-        if(payload.old?.id)setNotifs(prev=>prev.filter(n=>n.id!==payload.old.id));
-      })
-      .subscribe((status,err)=>{
-        if(err)console.error("[Notif] Realtime error:",err);
-        else console.log("[Notif] Realtime status:",status);
-      });
-    return()=>{ try{supabase.removeChannel(channel);}catch{} };
-  },[userId]);
+  // Notifications realtime removed — using polling fallback (every 3s) instead.
+  // This prevents Supabase Realtime quota from being exceeded.
 
   // ── Close drawer on outside click ──
   useEffect(()=>{
@@ -6035,14 +5987,7 @@ function AnnouncementsPage({me,users,projects,canPost}){
   const [tab,setTab]=useState("all"); // all | company | project
 
   useEffect(()=>{loadAnns();},[]);
-  useEffect(()=>{
-    const ch=supabase.channel("anns-rt-"+Date.now())
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"announcements"},p=>{
-        setAnns(prev=>[p.new,...prev]);
-      })
-      .subscribe();
-    return ()=>supabase.removeChannel(ch);
-  },[]);
+  // Announcements realtime removed — use loadAnns() for manual refresh.
 
   async function loadAnns(){
     const{data}=await supabase.from("announcements").select("*")
@@ -6639,21 +6584,13 @@ function WarRoomPage({me,projects,users}){
       setTimeout(()=>{endRef.current?.scrollIntoView({behavior:"instant"});setNewMsgCount(0);},100);
       if(data?.length)await loadReactions(data.map(m=>m.id));
     })();
-    ch=supabase.channel("warroom-"+cid+"-"+Date.now())
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"war_room_messages"},p=>{
-        if(p.new?.client_id!==cid)return;appendNew([p.new],cid);
-      })
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"war_room_messages"},p=>{
-        if(p.new?.client_id!==cid)return;
-        setMessages(prev=>prev.map(m=>m.id===p.new.id?{...m,...p.new}:m));
-      })
-      .subscribe();
+    // warroom postgres_changes removed — polling every 5s handles new messages
     poll=setInterval(async()=>{
       const since=lastMsgAtRef.current;if(!since)return;
       const{data}=await supabase.from("war_room_messages").select("*").eq("client_id",cid).gt("created_at",since).order("created_at",{ascending:true}).limit(50);
       appendNew(data,cid);
     },5000);
-    return()=>{supabase.removeChannel(ch);clearInterval(poll);};
+    return()=>{clearInterval(poll);};
   },[activePid]);
 
   // ── Presence / typing indicator ──
@@ -14692,21 +14629,10 @@ export default function App(){
   // Online: Supabase Realtime WebSocket (instant)
   // LAN:    SSE from server.js via createLocalClient channel (instant)
   // Both paths use the same code — localClient mirrors the Supabase channel API
+  // Realtime postgres_changes removed — was exceeding Supabase quota.
+  // Data loads fresh on login via loadAll(). Use manual refresh if needed.
   useEffect(()=>{
     if(!me)return;
-    const ch=supabase.channel("rds-live")
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"tasks"},   (p)=>st(prev=>[...prev,p.new]))
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"tasks"},   (p)=>st(prev=>prev.map(t=>t.id===p.new.id?{...t,...p.new}:t)))
-      .on("postgres_changes",{event:"DELETE",schema:"public",table:"tasks"},   (p)=>st(prev=>prev.filter(t=>t.id!==p.old.id)))
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"projects"},(p)=>sp(prev=>[...prev,p.new]))
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"projects"},(p)=>sp(prev=>prev.map(r=>r.id===p.new.id?{...r,...p.new}:r)))
-      .on("postgres_changes",{event:"DELETE",schema:"public",table:"projects"},(p)=>sp(prev=>prev.filter(r=>r.id!==p.old.id)))
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"clients"}, (p)=>scl(prev=>[...prev,p.new]))
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"clients"}, (p)=>scl(prev=>prev.map(c=>c.id===p.new.id?{...c,...p.new}:c)))
-      .on("postgres_changes",{event:"DELETE",schema:"public",table:"clients"}, (p)=>scl(prev=>prev.filter(c=>c.id!==p.old.id)))
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"users"},   (p)=>su(prev=>prev.map(u=>u.id===p.new.id?{...u,...p.new}:u)))
-      .subscribe();
-    return()=>supabase.removeChannel(ch);
   },[me]);
   // ── Attendance functions ──────────────────────────────────────────────────
   // ── Attendance helpers — route through supabase client so offline LAN site ──
@@ -14897,21 +14823,7 @@ export default function App(){
     }
   },[me,isClient]);
 
-  // Realtime — war_room_messages direct (instant when Supabase delivers)
-  useEffect(()=>{
-    if(!me||isClient)return;
-    const ch=supabase
-      .channel("wr-global-"+me.username)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'war_room_messages'},p=>{
-        const msg=p.new;
-        if(!msg||msg.author===me.username)return;
-        seenNotifIds.current.add("msg-"+msg.id);
-        const sender=msg.author_name||msg.author;
-        fireNotif(`💬 ${sender}`,msg.body,msg.id);
-      })
-      .subscribe();
-    return()=>{try{supabase.removeChannel(ch);}catch{}};
-  },[me,isClient]);
+  // wr-global realtime removed — polling fallback below handles war room message notifications.
 
   // Polling fallback every 3s on notifications table — most reliable path
   // sendMessage() already inserts into notifications for every recipient
