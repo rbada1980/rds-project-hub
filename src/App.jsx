@@ -6023,7 +6023,6 @@ function GanttPage({projects,tasks,today,onSelectProject}){
   );
 }
 function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,timerStart=null,timerPause=null,timerStop=null}){
-  if(me?.role==="Admin"||me?.username===SUPER_ADMIN)return null;
   const [logs,setLogs]=useState([]);
   const [showForm,setShowForm]=useState(false);
   // Local tick for live timer display within this component
@@ -6048,6 +6047,8 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
   const [saving,setSaving]=useState(false);
 
   useEffect(()=>{loadLogs();},[taskId]);
+
+  if(me?.role==="Admin"||me?.username===SUPER_ADMIN)return null;
 
   async function loadLogs(){
     const res=await fetch(SUPA_URL+"/rest/v1/time_logs?task_id=eq."+taskId+"&order=logged_date.desc,created_at.desc&select=*",{headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
@@ -6571,11 +6572,12 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
 // ── Task History (Audit Log) ─────────────────────────────────
 function TaskHistory({taskId,me,historyKey}){
   const isClient=me?.role==="Client";
-  if(isClient)return null;
   const [logs,setLogs]=useState([]);
   const [loading,setLoading]=useState(true);
 
   useEffect(()=>{loadHistory();},[taskId,historyKey]);
+
+  if(isClient)return null;
 
   async function loadHistory(){
     setLoading(true);
