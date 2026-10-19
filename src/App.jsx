@@ -14541,32 +14541,35 @@ export default function App(){
               })}
                   </div>
                 );}
-                return(<>
-                  {hasGroups&&Object.entries(grpd).sort((a,b)=>a[0].localeCompare(b[0])).map(([gname,gprojs])=>{
-                    const gt=tasks.filter(t=>gprojs.some(p=>p.id===t.project_id));
-                    const gd=gt.filter(t=>isDone(t.status)).length;
-                    const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
-                    const gpct=gt.length?Math.round(gd/gt.length*100):0;
-                    const [gopen,setGOpen]=useState(true);
-                    return(
-                      <div key={gname} style={{marginBottom:22}}>
-                        <div onClick={()=>setGOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.card,border:`1px solid ${gov>0?C.red+"55":C.teal+"44"}`,borderRadius:gopen?"12px 12px 0 0":"12px",cursor:"pointer",userSelect:"none",marginBottom:0}}>
-                          <span style={{fontSize:14,fontWeight:700,color:C.teal,transition:"transform .18s",display:"inline-block",transform:gopen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{gname}</div>
-                            <div style={{fontSize:11,color:C.t3,marginTop:2}}>{gprojs.length} project{gprojs.length!==1?"s":""} · {gt.length} tasks</div>
-                          </div>
-                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                            <span style={{fontSize:13,fontWeight:800,color:gpct>=80?C.green:gpct>=50?C.accent:C.red}}>{gpct}%</span>
-                            {gov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 8px"}}>⚠ {gov} overdue</span>}
-                          </div>
+                function ProjectGroupCard({gname,gprojs}){
+                  const gt=tasks.filter(t=>gprojs.some(p=>p.id===t.project_id));
+                  const gd=gt.filter(t=>isDone(t.status)).length;
+                  const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                  const gpct=gt.length?Math.round(gd/gt.length*100):0;
+                  const [gopen,setGOpen]=useState(true);
+                  return(
+                    <div style={{marginBottom:22}}>
+                      <div onClick={()=>setGOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",background:C.card,border:`1px solid ${gov>0?C.red+"55":C.teal+"44"}`,borderRadius:gopen?"12px 12px 0 0":"12px",cursor:"pointer",userSelect:"none",marginBottom:0}}>
+                        <span style={{fontSize:14,fontWeight:700,color:C.teal,transition:"transform .18s",display:"inline-block",transform:gopen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>{gname}</div>
+                          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{gprojs.length} project{gprojs.length!==1?"s":""} · {gt.length} tasks</div>
                         </div>
-                        {gopen&&<div style={{border:`1px solid ${C.teal}44`,borderTop:"none",borderRadius:"0 0 12px 12px",padding:"16px 16px 4px 16px",background:"#ffffff08",marginBottom:4}}>
-                          <ProjGrid projs={gprojs}/>
-                        </div>}
+                        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                          <span style={{fontSize:13,fontWeight:800,color:gpct>=80?C.green:gpct>=50?C.accent:C.red}}>{gpct}%</span>
+                          {gov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 8px"}}>⚠ {gov} overdue</span>}
+                        </div>
                       </div>
-                    );
-                  })}
+                      {gopen&&<div style={{border:`1px solid ${C.teal}44`,borderTop:"none",borderRadius:"0 0 12px 12px",padding:"16px 16px 4px 16px",background:"#ffffff08",marginBottom:4}}>
+                        <ProjGrid projs={gprojs}/>
+                      </div>}
+                    </div>
+                  );
+                }
+                return(<>
+                  {hasGroups&&Object.entries(grpd).sort((a,b)=>a[0].localeCompare(b[0])).map(([gname,gprojs])=>(
+                    <ProjectGroupCard key={gname} gname={gname} gprojs={gprojs}/>
+                  ))}
                   {ungrouped.length>0&&<>
                     {hasGroups&&<h3 style={{margin:"4px 0 14px",fontSize:13,fontWeight:700,color:C.t3,letterSpacing:".05em",textTransform:"uppercase"}}>Ungrouped Projects</h3>}
                     <ProjGrid projs={ungrouped}/>
