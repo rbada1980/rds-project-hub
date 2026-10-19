@@ -6072,7 +6072,6 @@ function WarRoomPage({me,projects,users}){
   const [msgMenuId,setMsgMenuId]=useState(null);
   const [editingMsgId,setEditingMsgId]=useState(null);
   const [editBody,setEditBody]=useState("");
-  const [typingUsers,setTypingUsers]=useState([]);
   const [previewFile,setPreviewFile]=useState(null);
   const [isScrolledUp,setIsScrolledUp]=useState(false);
   const [newMsgCount,setNewMsgCount]=useState(0);
@@ -6094,11 +6093,9 @@ function WarRoomPage({me,projects,users}){
   const fileInputRef=useRef();
   const lastMsgAtRef=useRef(null);
   const scrollAreaRef=useRef();
-  const presenceChRef=useRef(null);
   const recorderRef=useRef(null);
   const audioChunksRef=useRef([]);
   const recordTimerRef=useRef(null);
-  const typingTimerRef=useRef(null);
   const prevMsgCountRef=useRef(0);
   // ── Constants ──
   const EMOJIS=["👍","❤️","😂","😮","😢","👏","🔥","✅"];
@@ -6207,19 +6204,6 @@ function WarRoomPage({me,projects,users}){
     return()=>{clearInterval(poll);};
   },[activePid]);
 
-  // ── Presence / typing indicator ──
-  useEffect(()=>{
-    if(!activePid){setTypingUsers([]);return;}
-    const cid=activePid;
-    const ch=supabase.channel("typing-"+cid,{config:{presence:{key:me.username}}})
-      .on("presence",{event:"sync"},()=>{
-        const state=ch.presenceState();
-        const typing=Object.entries(state).filter(([k,v])=>k!==me.username&&v[0]?.typing).map(([,v])=>({name:v[0].name,username:v[0].username}));
-        setTypingUsers(typing);
-      }).subscribe(async(s)=>{if(s==="SUBSCRIBED")await ch.track({username:me.username,name:me.name,typing:false});});
-    presenceChRef.current=ch;
-    return()=>{supabase.removeChannel(ch);presenceChRef.current=null;};
-  },[activePid]);
 
   // ── Load pins ──
   useEffect(()=>{
@@ -6268,15 +6252,6 @@ function WarRoomPage({me,projects,users}){
     if(atBottom){setNewMsgCount(0);markRead();}
   }
 
-  // ── Typing signal ──
-  async function sendTypingSignal(){
-    if(!presenceChRef.current)return;
-    await presenceChRef.current.track({username:me.username,name:me.name,typing:true});
-    clearTimeout(typingTimerRef.current);
-    typingTimerRef.current=setTimeout(async()=>{
-      await presenceChRef.current?.track({username:me.username,name:me.name,typing:false});
-    },2000);
-  }
 
   // ── Reactions ──
   async function toggleReaction(msgId,emoji){
@@ -6394,7 +6369,6 @@ function WarRoomPage({me,projects,users}){
   // ── Mention / Emoji ──
   function handleInput(e){
     const val=e.target.value;setInput(val);
-    sendTypingSignal();
     const cursor=e.target.selectionStart;
     const textBefore=val.slice(0,cursor);
     const match=textBefore.match(/@(\w*)$/);
@@ -6908,15 +6882,6 @@ function WarRoomPage({me,projects,users}){
 
               {/* ── BELOW MESSAGES ── */}
 
-              {/* Typing indicator */}
-              {typingUsers.length>0&&(
-                <div style={{padding:"4px 20px",background:C.bg,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                  <div style={{display:"flex",gap:3,alignItems:"center"}}>
-                    {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.teal,animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite`}}/>)}
-                  </div>
-                  <span style={{fontSize:11,color:C.t3,fontStyle:"italic"}}>{typingUsers.map(u=>u.name).join(", ")} {typingUsers.length===1?"is":"are"} typing…</span>
-                </div>
-              )}
 
               {/* Media preview */}
               {mediaFile&&(
