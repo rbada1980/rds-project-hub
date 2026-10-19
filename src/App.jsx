@@ -16068,10 +16068,11 @@ export default function App(){
     {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
       <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
+          {navs.slice(4).map(([k,ico,lbl])=>{const active=view===k;return(
+            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);setShowMore(false);}}
               style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
               <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
               <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-              
             </button>
           );})}
           <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
@@ -16083,6 +16084,8 @@ export default function App(){
       </div>
     </div>}
     <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
+      {navs.slice(0,4).map(([k,ico,lbl])=>{const active=view===k;return(
+        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);setShowMore(false);}}
           style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
           {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
           <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
