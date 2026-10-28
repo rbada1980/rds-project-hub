@@ -14403,14 +14403,13 @@ export default function App(){
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
                         {/* ── Stat Cards ── */}
-            <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:16,marginBottom:24}}>
+            <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
               <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
               <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status))})}/>
               <Stat label="In Progress" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress")})}/>
               <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";})})}/>
               <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
               <Stat label="On Hold" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold").length} sub="on hold" color="#f59e0b" onClick={()=>ssm({title:"On Hold Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold")})}/>
-              <Stat label="Revision" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="Review").length} sub="under revision" color="#8b5cf6" onClick={()=>ssm({title:"Revision Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="Review")})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
             {(()=>{
