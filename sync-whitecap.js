@@ -245,7 +245,8 @@ async function main() {
         const changes = {};
         let needsUpdate = false;
 
-        if (existing.status !== et.status) {
+        // Never downgrade a manually-Completed task via Excel sync
+        if (existing.status !== et.status && existing.status !== "Completed") {
           changes.status = et.status;
           needsUpdate = true;
           stats.statusFixed++;
