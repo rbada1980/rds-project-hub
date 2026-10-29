@@ -14870,10 +14870,10 @@ export default function App(){
               </div>
             )}
             {(canEdit||!editTask)?
-              <TaskForm initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
-              <UserTaskEditForm task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
+              <TaskForm key={editTask?.id||'new'} initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
+              <UserTaskEditForm key={editTask?.id} task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
             }
-            {editTask&&<TaskTabPanel taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
+            {editTask&&<TaskTabPanel key={editTask.id} taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
           </Modal>
         );
       })()}
