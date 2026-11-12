@@ -13126,7 +13126,7 @@ export default function App(){
       }else{
         const [[u,p,cl,wf],t]=await Promise.all([
           Promise.all([
-            supabase.from("users").select("*").order("name").limit(2000),
+            supabase.from("users").select("*").neq("is_active",false).order("name").limit(2000),
             supabase.from("projects").select("*").order("name").limit(2000),
             supabase.from("clients").select("*").order("name").limit(2000),
             supabase.from("workflows").select("*").order("created_at").limit(2000),
