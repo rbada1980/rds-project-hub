@@ -12759,6 +12759,7 @@ export default function App(){
   const [activeClient,sac]  = useState(null);
   const [taskModal,stm]     = useState(false);
   const [taskNavList,stnl]  = useState([]);
+  const [taskFormKey,setTFK]= useState(0);
   const [histSeed,setHistSeed] = useState(0);
   const [projModal,spm]     = useState(false);
   const [userModal,sum]     = useState(false);
@@ -14874,20 +14875,20 @@ export default function App(){
           <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={closeTask} wide={canEdit}>
             {editTask&&taskNavList.length>1&&(
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:12,padding:"6px 2px 2px"}}>
-                <button onClick={()=>{if(canPrevTask)set(taskNavList[taskNavIdx-1]);}} disabled={!canPrevTask}
+                <button onClick={()=>{if(canPrevTask){set(taskNavList[taskNavIdx-1]);setTFK(k=>k+1);}}} disabled={!canPrevTask}
                   style={{background:canPrevTask?C.accent+"18":"transparent",border:`1px solid ${canPrevTask?C.accent+"55":C.border}`,color:canPrevTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canPrevTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canPrevTask?1:0.45}}>
                   ← Prev Task
                 </button>
                 <span style={{fontSize:11,color:C.t3,fontWeight:500,whiteSpace:"nowrap"}}>{taskNavIdx+1} / {taskNavList.length}</span>
-                <button onClick={()=>{if(canNextTask)set(taskNavList[taskNavIdx+1]);}} disabled={!canNextTask}
+                <button onClick={()=>{if(canNextTask){set(taskNavList[taskNavIdx+1]);setTFK(k=>k+1);}}} disabled={!canNextTask}
                   style={{background:canNextTask?C.accent+"18":"transparent",border:`1px solid ${canNextTask?C.accent+"55":C.border}`,color:canNextTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canNextTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canNextTask?1:0.45}}>
                   Next Task →
                 </button>
               </div>
             )}
             {(canEdit||!editTask)?
-              <TaskForm key={editTask?.id||'new'} initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
-              <UserTaskEditForm key={editTask?.id} task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
+              <TaskForm key={taskFormKey} initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
+              <UserTaskEditForm key={taskFormKey} task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
             }
             {editTask&&<TaskTabPanel key={editTask.id} taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
           </Modal>
