@@ -774,7 +774,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
       {tab==="list"&&(()=>{
-        const nonClientUsers=users.filter(u=>u.role!=="Client");
+        const nonClientUsers=users.filter(u=>u.role!=="Client"&&u.is_active!==false);
         const shownUsers=nonClientUsers.filter(u=>{
           if(uRole!=="All"&&u.role!==uRole)return false;
           if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.email||"").toLowerCase().includes(uq.toLowerCase()))return false;
@@ -13456,7 +13456,7 @@ export default function App(){
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-  const members=users.map(u=>u.name);
+  const members=users.filter(u=>u.is_active!==false).map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
   const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold";});
