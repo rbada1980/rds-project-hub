@@ -1133,7 +1133,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
   const [h,sh]=useState(false);
   const td={padding:"5px 7px",borderBottom:`1px solid ${C.border}`};
   const today=localDateStr();
-  const overdue=task.due_date&&task.due_date<today&&!isDone(task.status);
+  const overdue=task.due_date&&task.due_date<today&&!isDone(task.status)&&task.status!=="On Hold";
   const showCb=!!onSelect;
   const apv=task.client_approval||"Pending Review";
   const apvClr=APPROVAL_CLR[apv]||C.t3;
@@ -1907,7 +1907,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
   const total=myTasks.length;
   const done=myTasks.filter(t=>isDone(t.status)).length;
   const inprog=myTasks.filter(t=>t.status==="In Progress").length;
-  const overdueList=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+  const overdueList=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold"&&t.status!=="On Hold");
   const overdue=overdueList.length;
   const notStarted=myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const filteredTasks=statusFilter===null?[]:statusFilter==="All"?myTasks:statusFilter==="Overdue"?overdueList:statusFilter==="Not Yet Started"?myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started"):myTasks.filter(t=>t.status===statusFilter);
@@ -1944,7 +1944,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
       {uStatModal&&(()=>{
         const completedTasks=myTasks.filter(t=>isDone(t.status));
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
-        const od=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+        const od=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold");
         const uModalData={
           utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
           ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
@@ -2091,7 +2091,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
             :<div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
               {filteredTasks.map(t=>{
                 const proj=projectById.get(t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                 return(
                   <div key={t.id} onClick={()=>{ssf(null);onEditTask(t);}}
                     style={{background:C.surface,border:`1px solid ${isOv?C.red+"66":C.border}`,borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background .12s"}}
@@ -2124,7 +2124,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
           const pd=pt.filter(t=>isDone(t.status)).length;
           const pip=pt.filter(t=>t.status==="In Progress").length;
           const pnd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
-          const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+          const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
           // Overall project %
           const allDone=allPt.filter(t=>isDone(t.status)).length;
           const overallPct=allPt.length?Math.round(allDone/allPt.length*100):0;
@@ -2225,14 +2225,14 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
   const allTasks=tasks.filter(t=>projects.some(p=>p.id===t.project_id));
 
   const baseTasks=tab==="detailer"?detailerTasks:tab==="checker"?checkerTasks:allTasks;
-  const shown=statusF==="All"?baseTasks:statusF==="Overdue"?baseTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)):baseTasks.filter(t=>t.status===statusF);
+  const shown=statusF==="All"?baseTasks:statusF==="Overdue"?baseTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold"):baseTasks.filter(t=>t.status===statusF);
 
   // Unique assignees in my scope (for team overview)
   const teamMembers=[...new Set(allTasks.map(t=>t.assignee).filter(Boolean))].sort();
 
   const totalAll=allTasks.length;
   const doneAll=allTasks.filter(t=>isDone(t.status)).length;
-  const overdueAll=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const overdueAll=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
   const pct=totalAll?Math.round(doneAll/totalAll*100):0;
 
   const tabStyle=(id)=>({
@@ -2277,7 +2277,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
           tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${fmtD(t.due_date)}`,dot:isDone(t.status)?C.green:C.blue};})},
           tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
-          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
+          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=tlModalData[tlStatModal];if(!md)return null;
         return(<div onClick={()=>setTSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -2308,7 +2308,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         <Stat label="Total Tasks" value={totalAll} sub="all projects" color={"#8b5cf6"} onClick={()=>onOpenTaskModal("📋 Total Tasks",allTasks)}/>
         <Stat label="My Detailing" value={detailerTasks.length} sub="I'm detailer" color={C.blue} onClick={()=>onOpenTaskModal("✏️ My Detailing",detailerTasks)}/>
         <Stat label="My QC/Checking" value={checkerTasks.length} sub="I'm checker" color={C.teal} onClick={()=>onOpenTaskModal("✅ My QC/Checking",checkerTasks)}/>
-        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>onOpenTaskModal("⚠️ Overdue Tasks",allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)))}/>
+        <Stat label="Overdue" value={overdueAll} sub="need attention" color={C.red} onClick={()=>onOpenTaskModal("⚠️ Overdue Tasks",allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold"))}/>
       </div>
 
       {/* TL Client QuickNav Popup */}
@@ -2344,7 +2344,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                       const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
                       const pc=p.color||C.blue;
                       const isAct=actP?.id===p.id;
-                      const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                      const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                       return(
                         <div key={p.id} onClick={()=>setTLCP(p)} style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s"}}>
                           <div style={{fontSize:12,fontWeight:isAct?800:600,color:isAct?C.t1:C.t2,marginBottom:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
@@ -2369,7 +2369,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                     {actP&&actT.length===0&&<div style={{color:C.t3,fontSize:14,textAlign:"center",padding:"60px 0",opacity:.6}}>No tasks match</div>}
                     {actT.map((t,i)=>{
                       const sc=getStatusColor(t.status);
-                      const od=t.due_date&&t.due_date<today&&!isDone(t.status);
+                      const od=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                       return(
                         <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}} onMouseLeave={e=>{e.currentTarget.style.background=C.card;}}>
                           <div style={{width:24,height:24,borderRadius:"50%",background:sc+"20",border:`1px solid ${sc}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sc,flexShrink:0}}>{i+1}</div>
@@ -2410,7 +2410,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                 const cc=clColors[i%clColors.length];
                 const cP=projects.filter(p=>(p.client||"")===cl);
                 const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
-                const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                 return(
                   <div key={cl} onClick={()=>{setTLCM(cl);setTLCP(null);setTLCS("");}}
                     style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
@@ -2511,7 +2511,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
           :<div style={{padding:"16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
             {shown.map(t=>{
               const proj=projectById.get(t.project_id);
-              const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+              const isOv=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
               const iAmDetailer=matchesMe(t.detailer);
               const iAmChecker=matchesMe(t.checker);
               const myRole=iAmDetailer&&iAmChecker?"Detailer · QC":iAmDetailer?"Detailer":iAmChecker?"QC Check":"—";
@@ -2597,7 +2597,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
             const cTasks=tasks.filter(t=>cProjects.some(p=>p.id===t.project_id));
             const cDone=cTasks.filter(t=>isDone(t.status)).length;
             const cIP=cTasks.filter(t=>t.status==="In Progress").length;
-            const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+            const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
             const pct=cTasks.length?Math.round(cDone/cTasks.length*100):0;
             const hue=client.charCodeAt(0)*23%360;
             const clr=`hsl(${hue},60%,50%)`;
@@ -2630,7 +2630,7 @@ function ClientOverview({projects,tasks,onSelectClient,clients}){
           const cDone=cTasks.filter(t=>isDone(t.status)).length;
           const cIP=cTasks.filter(t=>t.status==="In Progress").length;
           const cTodo=cTasks.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
-          const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+          const cOv=cTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
           const pct=cTasks.length?Math.round(cDone/cTasks.length*100):0;
           const hue=client.charCodeAt(0)*23%360;
           const clr=`hsl(${hue},60%,50%)`;
@@ -2702,7 +2702,7 @@ function exportExcel(projects,tasks,label="Report"){
   const review=tasks.filter(t=>t.status==="Review").length;
   const notStart=tasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const cancl=tasks.filter(t=>t.status==="job canceled").length;
-  const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
 
   // ── build styled HTML workbook ─────────────────────────────────────────────
   const css=`
@@ -2787,7 +2787,7 @@ function exportExcel(projects,tasks,label="Report"){
     ${tasks.map((t,i)=>{
       const proj=projectById.get(t.project_id);
       const sc=statusClass(t.status,t.due_date);
-      const ovd=t.due_date&&t.due_date<today&&!isDone(t.status);
+      const ovd=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
       return`<tr>
         <td class="${sc} center">${i+1}</td>
         <td class="${sc}">${proj?.name||""}</td>
@@ -2812,7 +2812,7 @@ function exportExcel(projects,tasks,label="Report"){
       if(!pt.length)return"";
       const pd=pt.filter(t=>isDone(t.status)).length;
       const pip=pt.filter(t=>t.status==="In Progress").length;
-      const povd=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+      const povd=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
       const cp=pt.length?Math.round((pd/pt.length)*100):0;
       return`<tr class="${i%2===0?"row1":"row2"}">
         <td class="bold">${(p.name||"").replace(/&/g,"&amp;")}</td>
@@ -2836,7 +2836,7 @@ function exportExcel(projects,tasks,label="Report"){
     ut.forEach((t,i)=>{
       const proj=projectById.get(t.project_id);
       const sc=statusClass(t.status,t.due_date);
-      const ovd=t.due_date&&t.due_date<today&&!isDone(t.status);
+      const ovd=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
       html+=`<tr class="${i%2===0?"row1":"row2"}">
         <td class="center">${i+1}</td>
         <td>${proj?.name||""}</td>
@@ -2861,7 +2861,7 @@ function exportExcel(projects,tasks,label="Report"){
     cp.forEach(p=>{
       tasks.filter(t=>t.project_id===p.id).forEach((t,i)=>{
         const sc=statusClass(t.status,t.due_date);
-        const ovd=t.due_date&&t.due_date<today&&!isDone(t.status);
+        const ovd=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
         html+=`<tr class="${i%2===0?"row1":"row2"}">
           <td>${(p.name||"").replace(/&/g,"&amp;")}</td>
           <td class="bold">${(t.title||"").replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td>
@@ -3385,7 +3385,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   const total=myTasks.length;
   const done=myTasks.filter(t=>isDone(t.status)).length;
   const inprog=myTasks.filter(t=>t.status==="In Progress").length;
-  const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
   const notStarted=myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
   const pct=total?Math.round(done/total*100):0;
   const allAssignees=[...new Set(myTasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -3492,7 +3492,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
           const pd=pt.filter(t=>isDone(t.status)).length;
           const pip=pt.filter(t=>t.status==="In Progress").length;
           const pnd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
-          const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+          const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
           const pp=pt.length?Math.round(pd/pt.length*100):0;
           const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
           return(
@@ -3607,7 +3607,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
             const pip=allPt.filter(t=>t.status==="In Progress").length;
             const ptd=allPt.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
             const pv=allPt.length?Math.round(pd/allPt.length*100):0;
-            const overduePt=allPt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+            const overduePt=allPt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold");
             const isExpanded=hasFilter||expanded[p.id];
             return(
               <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,borderLeft:`5px solid ${p.color}`,overflow:"hidden"}}>
@@ -3654,7 +3654,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
                           </tr>
                         </thead>
                         <tbody>{matchedPt.map(t=>{
-                          const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+                          const ov=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                           return(
                             <tr key={t.id} style={{borderTop:`1px solid ${C.border}`}}>
                               <td style={{padding:"9px 16px"}}>
@@ -3869,7 +3869,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
               </thead>
               <tbody>{shown.flatMap(t=>{
                 const pj=projectById.get(t.project_id);
-                const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const ov=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                 const hi=q&&(t.title.toLowerCase().includes(q.toLowerCase())||(pj?.name||"").toLowerCase().includes(q.toLowerCase())||(t.assignee||"").toLowerCase().includes(q.toLowerCase()));
                 const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
@@ -4053,7 +4053,7 @@ function exportAnalyticsReport(projects,tasks,users,clients,today){
   const compProj=projects.filter(p=>pct(p.id)>=100&&tasks.some(t=>t.project_id===p.id)).length;
   const openTasks=tasks.filter(t=>!isDone(t.status)).length;
   const compTasks=tasks.filter(t=>isDone(t.status)).length;
-  const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const overdue=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
   const inProg=tasks.filter(t=>t.status==="In Progress").length;
   const compRate=tasks.length?Math.round(compTasks/tasks.length*100):0;
   const statusBD=ALL_STATUSES.map(s=>({label:s,count:tasks.filter(t=>t.status===s).length})).filter(d=>d.count>0).sort((a,b)=>b.count-a.count);
@@ -4061,19 +4061,19 @@ function exportAnalyticsReport(projects,tasks,users,clients,today){
   const teamPerf=members.map(name=>{
     const mt=tasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
     const done=mt.filter(t=>isDone(t.status)).length;
-    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
     return{name,total:mt.length,done,overdue:ov,pct:mt.length?Math.round(done/mt.length*100):0};
   }).filter(u=>u.total>0).sort((a,b)=>b.pct-a.pct);
   const clientPortfolio=clients.map(c=>{
     const cp=projects.filter(p=>p.client===c.name);
     const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));
     const done=ct.filter(t=>isDone(t.status)).length;
-    const ov=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+    const ov=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
     return{name:c.name,projects:cp.length,tasks:ct.length,done,overdue:ov,pct:ct.length?Math.round(done/ct.length*100):0};
   }).filter(c=>c.projects>0).sort((a,b)=>b.tasks-a.tasks);
   const priColors={"Critical":"#dc2626","High":"#ea580c","Medium":"#ca8a04","Low":"#16a34a"};
   const priData=["Critical","High","Medium","Low"].map(p=>({label:p,count:tasks.filter(t=>t.priority===p).length,color:priColors[p]})).filter(d=>d.count>0);
-  const overdueList=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).sort((a,b)=>a.due_date>b.due_date?1:-1);
+  const overdueList=tasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").sort((a,b)=>a.due_date>b.due_date?1:-1);
 
   // Status color map
   const statusColors={"Done":"#16a34a","Completed":"#16a34a","In Progress":"#7c3aed","To Do":"#64748b","Not Yet Started":"#94a3b8","To Be Started":"#94a3b8","On Hold":"#dc2626"};
@@ -4186,7 +4186,7 @@ function exportSubmissionList(projects,tasks,today){
     html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Client</th><th class="hdr">Status</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Client Sub Date</th><th class="hdr">Due Date</th></tr>`;
     list.forEach((t,i)=>{
       const proj=projectById.get(t.project_id);
-      const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+      const ov=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
       html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
     });
@@ -4243,7 +4243,7 @@ function exportSubmissionListByPeriod(projects,tasks,period,today){
     html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Client</th><th class="hdr">Status</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Client Sub Date</th><th class="hdr">Due Date</th></tr>`;
     filtered.forEach((t,i)=>{
       const proj=projectById.get(t.project_id);
-      const ov=t.due_date&&t.due_date<today&&!isDone(t.status);
+      const ov=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
       html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
     });
@@ -4326,7 +4326,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   // Summary stats (always shown regardless of period)
   // Overdue: tasks with any past date that are NOT completed
-  const overdueCount=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+  const overdueCount=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
   const todayCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return (d1&&d1===today)||(d2&&d2===today);}).length;
   const tomorrowCount=allTasks.filter(t=>{const tm=addDays(today,1);const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return (d1&&d1===tm)||(d2&&d2===tm);}).length;
   const thisWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);const ms=mondayOf(today);const se=sundayOf(today);return (d1&&d1>=ms&&d1<=se)||(d2&&d2>=ms&&d2<=se);}).length;
@@ -4344,7 +4344,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   const TaskRow=({t})=>{
     const proj=scopedProjects.find(p=>p.id===t.project_id);
-    const isOverdue=t.due_date&&t.due_date<today&&!isDone(t.status);
+    const isOverdue=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
     return(
       <tr style={{borderBottom:`1px solid ${C.border}`,transition:"background .12s"}}
         onMouseEnter={e=>e.currentTarget.style.background=C.surface}
@@ -4584,7 +4584,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
             <div style={{padding:"10px"}}>
               {periodTasks.map(t=>{
                 const proj=scopedProjects.find(p=>p.id===t.project_id);
-                const isOverdue=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const isOverdue=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                 return(
                   <div key={t.id} style={{background:C.surface,border:`1px solid ${isOverdue?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`3px solid ${statusColor(t.status)}`}}>
                     <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:4,lineHeight:1.3}}>{t.title}</div>
@@ -4618,7 +4618,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
               <div>
                 {groupEntries.map(([grpName,grpTasks])=>{
                   const done=grpTasks.filter(t=>isDone(t.status)).length;
-                  const overdue=grpTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                  const overdue=grpTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                   const pct=grpTasks.length?Math.round(done/grpTasks.length*100):0;
                   const isUng=grpName==="(Ungrouped)";
                   return(
@@ -4720,7 +4720,7 @@ function AnalyticsProjModal({title,projList,tasks,today,onClose}){
                 const pt=tasks.filter(t=>t.project_id===p.id);
                 const done=pt.filter(t=>isDone(t.status)).length;
                 const ip=pt.filter(t=>t.status==="In Progress").length;
-                const ov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                const ov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                 const pc=pctP(p.id);
                 const ovDL=p.deadline&&p.deadline<today&&pc<100;
                 return(
@@ -5343,7 +5343,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
   const teamPerf=members.map(name=>{
     const mt=periodTasks.filter(t=>t.assignee===name||t.detailer===name||t.checker===name);
     const done=mt.filter(t=>isDone(t.status)).length;
-    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+    const ov=mt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold");
     return{name,total:mt.length,done,overdueTasks:ov,overdue:ov.length,allTasks:mt,pct:mt.length?Math.round(done/mt.length*100):0};
   }).filter(u=>u.total>0).sort((a,b)=>b.pct-a.pct);
 
@@ -5352,7 +5352,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
     const cp=projects.filter(p=>p.client===c.name);
     const ct=periodTasks.filter(t=>cp.some(p=>p.id===t.project_id));
     const doneTasks=ct.filter(t=>isDone(t.status));
-    const ovTasks=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+    const ovTasks=ct.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold");
     return{name:c.name,projects:cp.length,tasks:ct.length,done:doneTasks.length,doneTasks,overdue:ovTasks.length,ovTasks,allTasks:ct,pct:ct.length?Math.round(doneTasks.length/ct.length*100):0};
   }).filter(c=>c.projects>0).sort((a,b)=>b.tasks-a.tasks);
 
@@ -13459,7 +13459,7 @@ export default function App(){
   const members=users.map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
-  const overdueTasks=activeDashTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status));
+  const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold";});
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
   function navTo(v,pid=null,client=null){
     // Access guard: clients can only access dashboard and list views (read-only)
@@ -14100,7 +14100,7 @@ export default function App(){
                       const cP=accessibleProjects.filter(p=>(p.client||"Unassigned")===cl);
                       const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
                       const pct=cT.length?Math.round(cT.filter(t=>isDone(t.status)).length/cT.length*100):0;
-                      const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                      const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                       return(
                         <div key={cl} onClick={()=>{setQnClient(cl);setQnProject(null);setQnSearch("");setQnFilterEmployee("all");setQnFilterStatus("all");}}
                           style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
@@ -14235,7 +14235,7 @@ export default function App(){
                               const pct=pt.length?Math.round(pt.filter(t=>isDone(t.status)).length/pt.length*100):0;
                               const pc=p.color||C.blue;
                               const isAct=activeProj?.id===p.id;
-                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                              const od=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                               return(
                                 <div key={p.id} onClick={()=>setQnProject(p)}
                                   style={{padding:"10px 12px",borderRadius:10,marginBottom:4,cursor:"pointer",background:isAct?pc+"25":C.card,border:`1px solid ${isAct?pc:C.border}`,borderLeft:`3px solid ${pc}`,transition:"all .12s",position:"relative"}}>
@@ -14276,7 +14276,7 @@ export default function App(){
                             {activeTasks.map((t,i)=>{
                               const tDispStatus=qnNormStatus(t.status);
                               const sc=getStatusColor(tDispStatus);
-                              const od=t.due_date&&t.due_date<today&&!isDone(t.status);
+                              const od=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                               return(
                                 <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"9px 12px":"11px 16px",background:C.card,borderRadius:10,border:`1px solid ${od?C.red+"55":C.border}`,borderLeft:`3px solid ${sc}`,transition:"all .15s"}}
                                   onMouseEnter={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.boxShadow=`0 2px 10px ${sc}20`;}}
@@ -14455,7 +14455,7 @@ export default function App(){
                   const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                   const pd=pt.filter(t=>isDone(t.status)).length;
                   const pip=pt.filter(t=>t.status==="In Progress").length;
-                  const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                  const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                   return(
                     <div key={p.id} onClick={()=>navTo('list',p.id)}
                       style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${p.color}`}}>
@@ -14504,7 +14504,7 @@ export default function App(){
                 const pd=pt.filter(t=>isDone(t.status)).length;
                 const pip=pt.filter(t=>t.status==="In Progress").length;
                 const ptd=pt.filter(t=>t.status==="To Be Started"||t.status==="Not Yet Started").length;
-                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                 const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                 const projSelected=selProjects.has(p.id);
                 return(
@@ -14562,7 +14562,7 @@ export default function App(){
                 function ProjectGroupCard({gname,gprojs}){
                   const gt=tasks.filter(t=>gprojs.some(p=>p.id===t.project_id));
                   const gd=gt.filter(t=>isDone(t.status)).length;
-                  const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)).length;
+                  const gov=gt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                   const gpct=gt.length?Math.round(gd/gt.length*100):0;
                   const [gopen,setGOpen]=useState(true);
                   return(
@@ -14653,7 +14653,7 @@ export default function App(){
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       {colTasks.map(t=>{
                         const proj=projectById.get(t.project_id);
-                        const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                        const isOv=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                         const canEditTask=canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker));
                         return(
                           <div key={t.id} style={{background:C.card,border:`1px solid ${isOv?C.red+"55":C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${isOv?C.red:getStatusColor(t.status)}`}}>
@@ -14771,7 +14771,7 @@ export default function App(){
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtered.length===0?<div style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</div>:filtered.flatMap(t=>{
                 const proj=projectById.get(t.project_id);
-                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status);
+                const isOv=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
                 const apv=t.client_approval||"Pending Review";
                 const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
