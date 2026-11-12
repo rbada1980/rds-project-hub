@@ -348,6 +348,22 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
     scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
+  // Reset form whenever the task being edited changes (e.g. Prev/Next navigation)
+  useEffect(()=>{
+    const pid=initial.project_id||projects[0]?.id||"";
+    const assignee=initial.assignee||"";
+    sf({
+      project_id:pid,
+      custNo:"",custName:"",title:initial.title||"",
+      client:initial.client||(projects.find(p=>p.id===pid)?.client||""),
+      status:initial.status||"Not Yet Started",priority:initial.priority||"Medium",
+      assignee,due_date:initial.due_date||"",
+      tags:(initial.tags||[]).join(", "),files:initial.files||[],
+      detailer:initial.detailer||assignee,checker:initial.checker||"",
+      scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",
+      det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
+    });
+  },[initial.id]);// eslint-disable-line react-hooks/exhaustive-deps
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   function onAssigneeChange(v){
     sf(p=>({...p,assignee:v,detailer:p.detailer===p.assignee||p.detailer===""?v:p.detailer}));
