@@ -54,19 +54,7 @@ const LIGHT_C={
   sideBg:"#1a2035",sideActive:"#252d42",sideBorder:"#2e3a52",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
   shadow:"0 2px 8px rgba(0,0,0,0.10),0 0 0 1px rgba(0,0,0,0.06)",
 };
-const _initTheme=(typeof window!=="undefined"?localStorage.getItem("rds_theme")||"dark":"dark");
-const C={...(_initTheme==="light"?LIGHT_C:DARK_C)};
-function applyTheme(mode){
-  const src=mode==="light"?LIGHT_C:DARK_C;
-  Object.keys(src).forEach(k=>{C[k]=src[k];});
-  if(typeof window!=="undefined"){
-    document.body.style.background=C.bg;
-    if(mode==="light")document.body.classList.add("rds-light");
-    else document.body.classList.remove("rds-light");
-  }
-}
-// Apply saved theme on page load
-if(typeof window!=="undefined"&&_initTheme==="light"){document.body.classList.add("rds-light");document.body.style.background=LIGHT_C.bg;}
+const C={...DARK_C};
 const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client","HR & Finance"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
@@ -12744,8 +12732,6 @@ export default function App(){
     document.documentElement.style.padding="0";
   },[]);
   const [me,sm] = useState(()=>{try{const s=localStorage.getItem("rds_user");return s?JSON.parse(s):null;}catch{return null;}});
-  const [theme,setTheme]=useState(_initTheme);
-  function toggleTheme(){const next=theme==="dark"?"light":"dark";applyTheme(next);localStorage.setItem("rds_theme",next);setTheme(next);}
   const [users,su]          = useState([]);
   const [projects,sp]       = useState([]);
   const [tasks,st]          = useState([]);
@@ -13708,8 +13694,7 @@ export default function App(){
             </div>
           </div>
           <div className="rds-topbar-right" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <button onClick={toggleTheme} title={theme==="dark"?"Switch to Light Mode":"Switch to Dark Mode"} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",fontSize:16,cursor:"pointer",color:C.t2,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>{theme==="dark"?"☀️":"🌙"}</button>
-            {!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn} canClockInOnline={isManager||isTeamLeader||isFinance}/>}
+{!isClient&&!isAdmin&&<AttendanceBar attRec={attRec} attBreak={attBreak} onStartBreak={attStartBreak} onEndBreak={attEndBreak} onClockOut={attClockOut} onClockIn={attClockIn} canClockInOnline={isManager||isTeamLeader||isFinance}/>}
             {isMobile&&<button onClick={()=>setCmdOpen(true)} title="Search" style={{background:"#ef444415",border:"1px solid #ef444440",borderRadius:8,padding:"7px 10px",color:"#ef4444",fontSize:20,cursor:"pointer",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🔍</button>}
             <span className="rds-topbar-filters" style={{display:"contents"}}></span>
             {isClient&&(()=>{const cp=accessibleProjects;const ct=tasks.filter(t=>cp.some(p=>p.id===t.project_id));return(<button className="rds-export-btn" onClick={()=>exportExcel(cp,ct,`${me.client_name||me.name} - Project Report`)} style={{...GBtn,display:"flex",alignItems:"center",gap:6,padding:"9px 12px",fontSize:13}}>📊 <span className="rds-export-label">Export</span></button>);})()}
