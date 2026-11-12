@@ -13536,12 +13536,14 @@ export default function App(){
       const checkerUser=f.checker?users.find(u=>u.name===f.checker.split("/")[0].trim()):null;
       const detailerUser=f.detailer?users.find(u=>u.name===f.detailer.split("/")[0].trim()):null;
       if(editTask){
+        // ── Fetch current DB state BEFORE updating for accurate audit old_value ──
+        const {data:taskBeforeUpdate}=await supabase.from("tasks").select("status,assignee,priority,due_date,checker,detailer").eq("id",editTask.id).single();
         const {data,error:updateErr}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
         if(updateErr){showToast("Update failed: "+updateErr.message,false);ssv(false);return;}
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
         showToast("Task updated ✓");
-        // ── Audit: log field changes ──
-        await logAudit(me,"task",editTask.id,f.title,pid,"update",editTask,f);
+        // ── Audit: log field changes (use DB state before update as old, actual saved data as new) ──
+        await logAudit(me,"task",editTask.id,f.title,pid,"update",taskBeforeUpdate||editTask,data||{...editTask,...payload});
       }else{
         const {data}=await supabase.from("tasks").insert(payload).select().single();
         if(data)st(ts=>[...ts,data]);
