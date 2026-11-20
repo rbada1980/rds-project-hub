@@ -329,7 +329,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
   const initAssignee=initial.assignee||"";
   const initDS=initial.detailer_status||"Not Yet Started";
   const initCS=initial.checker_status||"Not Yet Started";
-  const initAutoStatus=(initDS==="Completed"&&initCS==="Completed")?"Completed":(initDS==="On Hold"||initCS==="On Hold")?"On Hold":(initDS==="In Progress"||initCS==="In Progress")?"In Progress":"Not Yet Started";
+  const initAutoStatus=initDS===initCS?initDS:"In Progress";
   const [f,sf]=useState({
     project_id:initPid,
     custNo:"",custName:"",title:initial.title||"",client:initClient,
@@ -348,7 +348,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       project_id:pid,
       custNo:"",custName:"",title:initial.title||"",
       client:initial.client||(projects.find(p=>p.id===pid)?.client||""),
-      status:(()=>{const ds=initial.detailer_status||"Not Yet Started";const cs=initial.checker_status||"Not Yet Started";return(ds==="Completed"&&cs==="Completed")?"Completed":(ds==="On Hold"||cs==="On Hold")?"On Hold":(ds==="In Progress"||cs==="In Progress")?"In Progress":"Not Yet Started";})(),priority:initial.priority||"Medium",
+      status:(()=>{const ds=initial.detailer_status||"Not Yet Started";const cs=initial.checker_status||"Not Yet Started";return ds===cs?ds:"In Progress";})(),priority:initial.priority||"Medium",
       assignee,due_date:initial.due_date||"",
       tags:(initial.tags||[]).join(", "),files:initial.files||[],
       detailer:initial.detailer||assignee,checker:initial.checker||"",
@@ -358,10 +358,8 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     });
   },[initial.id]);// eslint-disable-line react-hooks/exhaustive-deps
   function computeAutoStatus(ds,cs){
-    if(ds==="Completed"&&cs==="Completed")return"Completed";
-    if(ds==="On Hold"||cs==="On Hold")return"On Hold";
-    if(ds==="In Progress"||cs==="In Progress")return"In Progress";
-    return"Not Yet Started";
+    if(ds===cs)return ds; // Both same → use that status
+    return"In Progress";  // Any mix → In Progress
   }
   const s=k=>v=>sf(p=>{
     const next={...p,[k]:v};
