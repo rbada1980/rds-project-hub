@@ -380,7 +380,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const detailerOptions=users.filter(u=>u.is_active!==false&&(u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
+  const detailerOptions=users.filter(u=>u.is_active!==false&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader")).map(u=>u.name).filter(Boolean).sort();
+  const checkerOptions=users.filter(u=>u.is_active!==false&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
   // Validation extras
   const assigneeEqualsDetailer=f.assignee&&f.detailer&&f.assignee===f.detailer;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
@@ -473,7 +474,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">— Select Checker —</option>
-              {members.map(m=><option key={m} value={m}>{m}</option>)}
+              {(checkerOptions.length?checkerOptions:members).map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
