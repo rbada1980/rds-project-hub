@@ -322,7 +322,7 @@ function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
     </Modal>
   );
 }
-function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,requireDates=false}){
+function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClose,saving,requireDates=false}){
   const [custom,setCustom]=useState(false);
   const initPid=initial.project_id||projects[0]?.id||"";
   const initClient=initial.client||(projects.find(p=>p.id===initPid)?.client||"");
@@ -370,12 +370,18 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     return next;
   });
   function onAssigneeChange(v){
-    sf(p=>({...p,assignee:v,detailer:p.detailer===p.assignee||p.detailer===""?v:p.detailer}));
+    // Don't auto-set detailer to assignee anymore (they must be different)
+    sf(p=>({...p,assignee:v,detailer:p.detailer===v?"":p.detailer}));
   }
   function onProjectChange(pid){
     const proj=projects.find(p=>p.id===pid);
     sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
   }
+  // Team Leaders only for Assignee
+  const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false).map(u=>u.name).filter(Boolean).sort();
+  const assigneeOptions=teamLeaders.length?teamLeaders:members;
+  // Validation extras
+  const assigneeEqualsDetailer=f.assignee&&f.detailer&&f.assignee===f.detailer;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
   const col={flex:1,minWidth:0},row={display:"flex",gap:16,flexWrap:"wrap"};
   return(
@@ -421,8 +427,8 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
             <RLabel text="Assignee *"/>
             <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <option value="">— Select Assignee —</option>
-              {members.map(m=><option key={m} value={m}>{m}</option>)}
+              <option value="">— Select Team Leader —</option>
+              {assigneeOptions.map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
         </div>
@@ -443,11 +449,11 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
         {/* Detailer + Detailer Status side by side */}
         <div style={{...col,display:"flex",gap:8}}>
           <div style={{flex:1,minWidth:0}}>
-            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer <span style={{color:C.t3,fontWeight:400}}>(defaults to assignee)</span></label>
+            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer *</label>
             <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <option value="">— None —</option>
-              {members.map(m=><option key={m} value={m}>{m}</option>)}
+              style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <option value="">— Select Detailer —</option>
+              {members.filter(m=>m!==f.assignee).map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -497,14 +503,15 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           {initial.client_comment&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",lineHeight:1.5,borderTop:initial.client_approval?`1px solid ${C.teal}22`:"none",paddingTop:initial.client_approval?8:0}}>"{initial.client_comment}"</div>}
         </div>
       )}
-      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)&&(
+      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status||assigneeEqualsDetailer)&&(
         <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
-          ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status",(!f.checker&&!isEdit)&&"Checker",!f.client_sub_date&&"Client Sub Date",!f.detailer_status&&"Detailer Status",!f.checker_status&&"Checker Status"].filter(Boolean).join(", ")}
+          {assigneeEqualsDetailer?<div>⚠ Assignee and Detailer cannot be the same person</div>:null}
+          {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)&&<div>⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.detailer&&"Detailer",!f.status&&"Status",(!f.checker&&!isEdit)&&"Checker",!f.client_sub_date&&"Client Sub Date",!f.detailer_status&&"Detailer Status",!f.checker_status&&"Checker Status"].filter(Boolean).join(", ")}</div>}
         </div>
       )}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)?0.5:1}}>
+        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status||assigneeEqualsDetailer} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status||assigneeEqualsDetailer)?0.5:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
@@ -15180,7 +15187,7 @@ export default function App(){
               </div>
             )}
             {(canEdit||!editTask)?
-              <TaskForm key={taskFormKey} initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
+              <TaskForm key={taskFormKey} initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} users={users} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
               <UserTaskEditForm key={taskFormKey} task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
             }
             {editTask&&<TaskTabPanel key={editTask.id} taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
