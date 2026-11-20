@@ -12771,6 +12771,7 @@ export default function App(){
   const [showMore,setShowMore] = useState(false);
   const [saving,ssv]        = useState(false);
   const [dashSearch,sdss]   = useState("");
+  const [projSearch,setProjSearch] = useState("");
   const [dashUser,sdsu]     = useState("All");
   const [dashProject,sdsp]  = useState("All");
   const [dashClient,sdsc]   = useState("All");
@@ -13635,7 +13636,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:(isManager||isTeamLeader)?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -14718,6 +14719,69 @@ export default function App(){
                 onEdit={p=>sep(p)} onDelete={p=>deleteProject(p.id)}
                 onEditTask={t=>{set(t);stm(true);}}
               />
+            </div>
+          );
+        })()}
+        {view==="projects"&&(isAdmin||isManager||isTeamLeader)&&(()=>{
+          const filteredProjs=accessibleProjects.filter(p=>projSearch?p.name.toLowerCase().includes(projSearch.toLowerCase())||(p.client||"").toLowerCase().includes(projSearch.toLowerCase()):true);
+          return(
+            <div>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
+                <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>📁 Projects</h2>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <input placeholder="🔍 Search projects…" value={projSearch} onChange={e=>setProjSearch(e.target.value)}
+                    style={{background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",width:200}}/>
+                  {canEdit&&<button onClick={()=>spm(true)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.green,borderColor:C.green}}>＋ New Project</button>}
+                </div>
+              </div>
+              {/* Project grid */}
+              {filteredProjs.length===0?(
+                <div style={{textAlign:"center",padding:"60px 20px",color:C.t3,fontSize:14}}>
+                  {accessibleProjects.length===0?"No projects yet. Click + New Project to create one.":"No projects match your search."}
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18}}>
+                  {filteredProjs.map(p=>{
+                    const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
+                    const pd=pt.filter(t=>isDone(t.status)).length;
+                    const pip=pt.filter(t=>t.status==="In Progress").length;
+                    const ptd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
+                    const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
+                    return(
+                      <div key={p.id} onClick={()=>navTo('list',p.id)}
+                        style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
+                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
+                          <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
+                          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                            {canEdit&&(<>
+                              <IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
+                              <IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
+                            </>)}
+                            <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 10px",fontSize:13,fontWeight:800}}>{pv}%</span>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
+                          {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>🏢 {p.client}</span>}
+                          {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 {p.deadline}</span>}
+                        </div>
+                        <Pb v={pv} color={p.color} h={6}/>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:12}}>
+                          {[{l:"Done",v:pd,c:C.green},{l:"Running",v:pip,c:C.blue},{l:"Pending",v:ptd,c:C.t3},{l:"Overdue",v:pov,c:pov>0?C.red:C.t3}].map(s=>(
+                            <div key={s.l} style={{background:s.c+"15",borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                              <div style={{fontSize:18,fontWeight:800,color:s.c}}>{s.v}</div>
+                              <div style={{fontSize:10,color:C.t3,marginTop:1}}>{s.l}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} tasks →</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })()}
