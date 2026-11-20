@@ -14994,17 +14994,20 @@ export default function App(){
         const closeTask=()=>{stm(false);set(null);stnl([]);};
         return(
           <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={closeTask} wide={canEdit}>
-            {editTask&&taskNavList.length>1&&(
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:12,padding:"6px 2px 2px"}}>
-                <button onClick={()=>{if(canPrevTask){set(taskNavList[taskNavIdx-1]);setTFK(k=>k+1);}}} disabled={!canPrevTask}
+            {editTask&&(
+              <div style={{display:"flex",alignItems:"center",justifyContent:taskNavList.length>1?"space-between":"flex-end",gap:8,marginBottom:12,padding:"6px 2px 2px"}}>
+                {taskNavList.length>1&&<button onClick={()=>{if(canPrevTask){set(taskNavList[taskNavIdx-1]);setTFK(k=>k+1);}}} disabled={!canPrevTask}
                   style={{background:canPrevTask?C.accent+"18":"transparent",border:`1px solid ${canPrevTask?C.accent+"55":C.border}`,color:canPrevTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canPrevTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canPrevTask?1:0.45}}>
                   ← Prev Task
-                </button>
-                <span style={{fontSize:11,color:C.t3,fontWeight:500,whiteSpace:"nowrap"}}>{taskNavIdx+1} / {taskNavList.length}</span>
-                <button onClick={()=>{if(canNextTask){set(taskNavList[taskNavIdx+1]);setTFK(k=>k+1);}}} disabled={!canNextTask}
-                  style={{background:canNextTask?C.accent+"18":"transparent",border:`1px solid ${canNextTask?C.accent+"55":C.border}`,color:canNextTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canNextTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canNextTask?1:0.45}}>
-                  Next Task →
-                </button>
+                </button>}
+                {taskNavList.length>1&&<span style={{fontSize:11,color:C.t3,fontWeight:500,whiteSpace:"nowrap"}}>{taskNavIdx+1} / {taskNavList.length}</span>}
+                <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:"auto"}}>
+                  {canEdit&&<button onClick={async()=>{if(!window.confirm("Delete this task? This cannot be undone."))return;const tid=editTask.id;closeTask();await supabase.from("tasks").delete().eq("id",tid);st(ts=>ts.filter(t=>t.id!==tid));showToast("Task deleted ✓");}} style={{background:C.red+"18",border:`1px solid ${C.red}55`,color:C.red,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s",flexShrink:0}}>🗑 Delete Task</button>}
+                  {taskNavList.length>1&&<button onClick={()=>{if(canNextTask){set(taskNavList[taskNavIdx+1]);setTFK(k=>k+1);}}} disabled={!canNextTask}
+                    style={{background:canNextTask?C.accent+"18":"transparent",border:`1px solid ${canNextTask?C.accent+"55":C.border}`,color:canNextTask?C.accent:C.t3,borderRadius:7,padding:"5px 14px",fontSize:12,fontWeight:700,cursor:canNextTask?"pointer":"not-allowed",fontFamily:"inherit",transition:"all .15s",flexShrink:0,opacity:canNextTask?1:0.45}}>
+                    Next Task →
+                  </button>}
+                </div>
               </div>
             )}
             {(canEdit||!editTask)?
