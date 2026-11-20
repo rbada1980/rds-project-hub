@@ -327,14 +327,17 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
   const initPid=initial.project_id||projects[0]?.id||"";
   const initClient=initial.client||(projects.find(p=>p.id===initPid)?.client||"");
   const initAssignee=initial.assignee||"";
+  const initDS=initial.detailer_status||"Not Yet Started";
+  const initCS=initial.checker_status||"Not Yet Started";
+  const initAutoStatus=(initDS==="Completed"&&initCS==="Completed")?"Completed":(initDS==="On Hold"||initCS==="On Hold")?"On Hold":(initDS==="In Progress"||initCS==="In Progress")?"In Progress":"Not Yet Started";
   const [f,sf]=useState({
     project_id:initPid,
     custNo:"",custName:"",title:initial.title||"",client:initClient,
-    status:initial.status||"Not Yet Started",priority:initial.priority||"Medium",
+    status:initAutoStatus,priority:initial.priority||"Medium",
     assignee:initAssignee,due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
-    detailer_status:initial.detailer_status||"Not Yet Started",checker_status:initial.checker_status||"Not Yet Started",
+    detailer_status:initDS,checker_status:initCS,
     scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
   // Reset form whenever the task being edited changes (e.g. Prev/Next navigation)
@@ -345,7 +348,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       project_id:pid,
       custNo:"",custName:"",title:initial.title||"",
       client:initial.client||(projects.find(p=>p.id===pid)?.client||""),
-      status:initial.status||"Not Yet Started",priority:initial.priority||"Medium",
+      status:(()=>{const ds=initial.detailer_status||"Not Yet Started";const cs=initial.checker_status||"Not Yet Started";return(ds==="Completed"&&cs==="Completed")?"Completed":(ds==="On Hold"||cs==="On Hold")?"On Hold":(ds==="In Progress"||cs==="In Progress")?"In Progress":"Not Yet Started";})(),priority:initial.priority||"Medium",
       assignee,due_date:initial.due_date||"",
       tags:(initial.tags||[]).join(", "),files:initial.files||[],
       detailer:initial.detailer||assignee,checker:initial.checker||"",
@@ -354,7 +357,19 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
     });
   },[initial.id]);// eslint-disable-line react-hooks/exhaustive-deps
-  const s=k=>v=>sf(p=>({...p,[k]:v}));
+  function computeAutoStatus(ds,cs){
+    if(ds==="Completed"&&cs==="Completed")return"Completed";
+    if(ds==="On Hold"||cs==="On Hold")return"On Hold";
+    if(ds==="In Progress"||cs==="In Progress")return"In Progress";
+    return"Not Yet Started";
+  }
+  const s=k=>v=>sf(p=>{
+    const next={...p,[k]:v};
+    if(k==="detailer_status"||k==="checker_status"){
+      next.status=computeAutoStatus(k==="detailer_status"?v:p.detailer_status,k==="checker_status"?v:p.checker_status);
+    }
+    return next;
+  });
   function onAssigneeChange(v){
     sf(p=>({...p,assignee:v,detailer:p.detailer===p.assignee||p.detailer===""?v:p.detailer}));
   }
@@ -412,7 +427,14 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
             </select>
           </div>
         </div>
-        <div style={col}><FSelect label="Status *" value={f.status} onChange={s("status")} options={ALL_STATUSES}/></div>
+        <div style={col}>
+          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Status <span style={{color:C.t3,fontWeight:400,fontSize:11}}>(auto)</span></label>
+          <div style={{background:C.surface,border:`2px solid ${STATUS_CLR[f.status]||C.border}`,borderRadius:8,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_CLR[f.status]||C.t3,flexShrink:0,display:"inline-block"}}/>
+            <span style={{color:STATUS_CLR[f.status]||C.t1,fontWeight:700,fontSize:14}}>{f.status}</span>
+            <span style={{color:C.t3,fontSize:11,marginLeft:"auto"}}>auto</span>
+          </div>
+        </div>
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FSelect label="Priority" value={f.priority} onChange={s("priority")} options={["High","Medium","Low"]}/></div>
