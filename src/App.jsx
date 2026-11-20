@@ -329,7 +329,8 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
   const initAssignee=initial.assignee||"";
   const initDS=initial.detailer_status||"Not Yet Started";
   const initCS=initial.checker_status||"Not Yet Started";
-  const initAutoStatus=initDS===initCS?initDS:"In Progress";
+  // For new tasks: auto-compute; for existing tasks: preserve saved status
+  const initAutoStatus=initial.id?(initial.status||"Not Yet Started"):(initDS===initCS?initDS:"In Progress");
   const [f,sf]=useState({
     project_id:initPid,
     custNo:"",custName:"",title:initial.title||"",client:initClient,
@@ -348,7 +349,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       project_id:pid,
       custNo:"",custName:"",title:initial.title||"",
       client:initial.client||(projects.find(p=>p.id===pid)?.client||""),
-      status:(()=>{const ds=initial.detailer_status||"Not Yet Started";const cs=initial.checker_status||"Not Yet Started";return ds===cs?ds:"In Progress";})(),priority:initial.priority||"Medium",
+      status:initial.status||"Not Yet Started",priority:initial.priority||"Medium",
       assignee,due_date:initial.due_date||"",
       tags:(initial.tags||[]).join(", "),files:initial.files||[],
       detailer:initial.detailer||assignee,checker:initial.checker||"",
