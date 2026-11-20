@@ -1228,7 +1228,6 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,readonly,canDelete
         <td style={{...td,width:80}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
           {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
           {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",color:isStarred?"#f59e0b":"#94a3b8",opacity:isStarred?1:(h?.9:.6),transition:"all .15s",lineHeight:1}}>{isStarred?"★":"☆"}</button>}
-          {!readonly&&onMove&&<IBtn icon="↗" onClick={e=>{e.stopPropagation();onMove(task);}} title="Move to another project" color={C.teal}/>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
         </div></td>
@@ -12888,7 +12887,6 @@ export default function App(){
   const [exportSec,setExportSec] = useState(null);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
-  const [moveTaskTarget,setMoveTaskTarget] = useState(null);
   const [editProject,sep]   = useState(null);
   const [searchTask,sst]    = useState("");
   const [searchProj,ssp]    = useState("");
@@ -15138,7 +15136,7 @@ export default function App(){
                   const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                   const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                   const colCount=(canEdit?2:0)+(isClient?9:10);
-                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}} onMove={canEdit?setMoveTaskTarget:null} onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}}onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                   if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                   return rows;
                 });
@@ -15161,7 +15159,6 @@ export default function App(){
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
 
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {moveTaskTarget&&<MoveTaskModal task={moveTaskTarget} projects={accessibleProjects} onMove={doMoveTask} onClose={()=>setMoveTaskTarget(null)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
       {taskModal&&(()=>{
