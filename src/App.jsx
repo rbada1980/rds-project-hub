@@ -775,6 +775,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
   const [uRole,sur]=useState("All");
+  const [showInactive,setShowInactive]=useState(false);
   const [selUsers,setSU]=useState(new Set());
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
@@ -816,7 +817,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
       {tab==="list"&&(()=>{
-        const nonClientUsers=users.filter(u=>u.role!=="Client"&&u.is_active!==false&&u.username!=="srilalitha");
+        const nonClientUsers=users.filter(u=>u.role!=="Client"&&u.username!=="srilalitha"&&(showInactive?true:u.is_active!==false));
         const shownUsers=nonClientUsers.filter(u=>{
           if(uRole!=="All"&&u.role!==uRole)return false;
           if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.email||"").toLowerCase().includes(uq.toLowerCase()))return false;
@@ -835,6 +836,9 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                 <option value="All">All Roles</option>
                 {ROLES.filter(r=>r!=="Client").map(r=><option key={r} value={r}>{r}</option>)}
               </select>
+              <button onClick={()=>setShowInactive(v=>!v)} style={{background:showInactive?C.accent+"22":"transparent",border:`1px solid ${showInactive?C.accent:C.border}`,color:showInactive?C.accent:C.t2,borderRadius:7,padding:"7px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",fontWeight:showInactive?700:400}}>
+                {showInactive?"● Inactive":"○ Inactive"}
+              </button>
               {(uq||uRole!=="All")&&<button onClick={()=>{suq("");sur("All");}} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t2,borderRadius:7,padding:"7px 12px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
               <span style={{color:C.t3,fontSize:12,whiteSpace:"nowrap"}}>{shownUsers.length}/{nonClientUsers.length}</span>
             </div>
