@@ -1117,7 +1117,7 @@ function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
     </tr>
   );
 }
-function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
+function TRow({task,project,onEdit,onDelete,onMove,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
   const td={padding:"5px 7px",borderBottom:`1px solid ${C.border}`};
   const today=localDateStr();
@@ -1157,6 +1157,7 @@ function TRow({task,project,onEdit,onDelete,readonly,canDelete=true,selected=fal
         <td style={{...td,width:80}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
           {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
           {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",color:isStarred?"#f59e0b":"#94a3b8",opacity:isStarred?1:(h?.9:.6),transition:"all .15s",lineHeight:1}}>{isStarred?"★":"☆"}</button>}
+          {!readonly&&onMove&&<IBtn icon="↗" onClick={e=>{e.stopPropagation();onMove(task);}} title="Move to another project" color={C.teal}/>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
         </div></td>
@@ -6377,6 +6378,38 @@ const REV_STATUS_CLR={
 };
 const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
 const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
+
+// ── Move Task Modal ──────────────────────────────────────────────────────────
+function MoveTaskModal({task,projects,onMove,onClose}){
+  const others=projects.filter(p=>p.id!==task.project_id);
+  const [destId,setDestId]=useState(others[0]?.id||"");
+  const [saving,setSaving]=useState(false);
+  async function go(){
+    if(!destId)return;
+    setSaving(true);
+    await onMove(task,destId);
+    setSaving(false);
+  }
+  return(
+    <Modal title="Move Task to Another Project" onClose={onClose}>
+      <div style={{padding:"4px 0 16px"}}>
+        <div style={{fontSize:13,color:C.t2,marginBottom:16}}>Moving: <b style={{color:C.t1}}>{task.title}</b></div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Destination Project *</div>
+        <select value={destId} onChange={e=>setDestId(e.target.value)}
+          style={{width:"100%",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:8,padding:"10px 12px",fontSize:13,color:C.t1,fontFamily:"inherit",cursor:"pointer",outline:"none",marginBottom:20}}>
+          <option value="">— Select project —</option>
+          {others.map(p=><option key={p.id} value={p.id}>{p.name}{p.client?` (${p.client})`:""}</option>)}
+        </select>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onClose} disabled={saving} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 18px",fontSize:13,color:C.t2,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+          <button onClick={go} disabled={saving||!destId} style={{background:C.teal,color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving||!destId?0.6:1}}>
+            {saving?"Moving…":"Move Task ↗"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const isClient=me?.role==="Client";
@@ -12784,6 +12817,7 @@ export default function App(){
   const [exportSec,setExportSec] = useState(null);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
+  const [moveTaskTarget,setMoveTaskTarget] = useState(null);
   const [editProject,sep]   = useState(null);
   const [searchTask,sst]    = useState("");
   const [searchProj,ssp]    = useState("");
@@ -13597,6 +13631,16 @@ export default function App(){
     ssv(false);
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
+  async function doMoveTask(task,destProjectId){
+    if(!canEdit)return;
+    const destProj=accessibleProjects.find(p=>p.id===destProjectId);
+    const {error}=await supabase.from("tasks").update({project_id:destProjectId}).eq("id",task.id);
+    if(error){showToast("Move failed: "+error.message,false);return;}
+    st(ts=>ts.map(t=>t.id===task.id?{...t,project_id:destProjectId}:t));
+    await logAudit(me,"task",task.id,task.title,task.project_id,"update",{project_id:task.project_id},{project_id:destProjectId});
+    setMoveTaskTarget(null);
+    showToast(`Task moved to "${destProj?.name||destProjectId}" ✓`);
+  }
   async function addWorkflow(f){ssv(true);try{const {data}=await supabase.from("workflows").insert([f]).select().single();if(data)swf(ws=>[...ws,data]);showToast("Rule created");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateWorkflow(id,f){ssv(true);try{const {data}=await supabase.from("workflows").update(f).eq("id",id).select().single();if(data)swf(ws=>ws.map(w=>w.id===id?data:w));showToast("Rule updated");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function deleteWorkflow(id){await supabase.from("workflows").delete().eq("id",id);swf(ws=>ws.filter(w=>w.id!==id));showToast("Rule deleted");}
@@ -14988,7 +15032,7 @@ export default function App(){
                 const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                 const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                 const colCount=(canEdit?1:0)+(isClient?9:10);
-                const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl([...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)));}} onDelete={canEdit?delTask:()=>{}} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl([...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)));}} onDelete={canEdit?delTask:()=>{}} onMove={canEdit?setMoveTaskTarget:null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                 if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                 return rows;
               })}</tbody>
@@ -15010,6 +15054,7 @@ export default function App(){
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
 
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
+      {moveTaskTarget&&<MoveTaskModal task={moveTaskTarget} projects={accessibleProjects} onMove={doMoveTask} onClose={()=>setMoveTaskTarget(null)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
       {taskModal&&(()=>{
