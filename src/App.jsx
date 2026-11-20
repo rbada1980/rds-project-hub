@@ -334,6 +334,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
     assignee:initAssignee,due_date:initial.due_date||"",
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
+    detailer_status:initial.detailer_status||"Not Yet Started",checker_status:initial.checker_status||"Not Yet Started",
     scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
   // Reset form whenever the task being edited changes (e.g. Prev/Next navigation)
@@ -348,6 +349,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       assignee,due_date:initial.due_date||"",
       tags:(initial.tags||[]).join(", "),files:initial.files||[],
       detailer:initial.detailer||assignee,checker:initial.checker||"",
+      detailer_status:initial.detailer_status||"Not Yet Started",checker_status:initial.checker_status||"Not Yet Started",
       scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",
       det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
     });
@@ -431,6 +433,22 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
             style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
             <option value="">— Select Checker —</option>
             {members.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="rds-form-row" style={row}>
+        <div style={col}>
+          <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status</label>
+          <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
+            style={{width:"100%",background:C.surface,border:`1px solid ${STATUS_CLR[f.detailer_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+            {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
+          </select>
+        </div>
+        <div style={col}>
+          <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status</label>
+          <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
+            style={{width:"100%",background:C.surface,border:`1px solid ${STATUS_CLR[f.checker_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+            {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
           </select>
         </div>
       </div>
@@ -1150,9 +1168,15 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,readonly,canDelete
       <td style={{...td,maxWidth:110,width:100}}><span style={{background:getStatusColor(task.status)+"22",color:getStatusColor(task.status),border:`1px solid ${getStatusColor(task.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{task.status}</span></td>
       <td style={{...td,maxWidth:70,width:65}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"—"}</span></td>
       <td style={{...td,maxWidth:85}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>—</span>}</td>
-      <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
-        {task.detailer?<span style={{color:C.t2,fontSize:10}}>✏ {task.detailer}</span>:null}
-        {task.checker?<span style={{color:"#8b5cf6",fontSize:10}}>✓ {task.checker}</span>:null}
+      <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+        {task.detailer?<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+          <span style={{color:C.teal,fontSize:10}}>✏ {task.detailer}</span>
+          {task.detailer_status&&<span style={{fontSize:9,fontWeight:700,color:STATUS_CLR[task.detailer_status]||C.t3,background:(STATUS_CLR[task.detailer_status]||C.t3)+"18",borderRadius:4,padding:"1px 5px",whiteSpace:"nowrap"}}>{task.detailer_status}</span>}
+        </div>:null}
+        {task.checker?<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+          <span style={{color:"#8b5cf6",fontSize:10}}>✓ {task.checker}</span>
+          {task.checker_status&&<span style={{fontSize:9,fontWeight:700,color:STATUS_CLR[task.checker_status]||C.t3,background:(STATUS_CLR[task.checker_status]||C.t3)+"18",borderRadius:4,padding:"1px 5px",whiteSpace:"nowrap"}}>{task.checker_status}</span>}
+        </div>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>—</span>}
         {task.det_weight!=null&&<span style={{color:C.t3,fontSize:9,marginTop:1}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})} T</span>}
       </div></td>
@@ -13637,14 +13661,14 @@ export default function App(){
         }
         else{pid=exists.id;}
       }
-      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",scope:f.scope||"",client_sub_date:f.client_sub_date||null,det_weight:f.det_weight!==''&&f.det_weight!==null&&f.det_weight!==undefined?parseFloat(f.det_weight):null};
+      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",detailer_status:f.detailer_status||"Not Yet Started",checker_status:f.checker_status||"Not Yet Started",scope:f.scope||"",client_sub_date:f.client_sub_date||null,det_weight:f.det_weight!==''&&f.det_weight!==null&&f.det_weight!==undefined?parseFloat(f.det_weight):null};
       const proj=projects.find(p=>p.id===pid);
       const assigneeUser=users.find(u=>u.username===f.assignee||u.name===f.assignee);
       const checkerUser=f.checker?users.find(u=>u.name===f.checker.split("/")[0].trim()):null;
       const detailerUser=f.detailer?users.find(u=>u.name===f.detailer.split("/")[0].trim()):null;
       if(editTask){
         // ── Fetch current DB state BEFORE updating for accurate audit old_value ──
-        const {data:taskBeforeUpdate}=await supabase.from("tasks").select("status,assignee,priority,due_date,checker,detailer").eq("id",editTask.id).single();
+        const {data:taskBeforeUpdate}=await supabase.from("tasks").select("status,assignee,priority,due_date,checker,detailer,checker_status,detailer_status").eq("id",editTask.id).single();
         const {data,error:updateErr}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
         if(updateErr){showToast("Update failed: "+updateErr.message,false);ssv(false);return;}
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
