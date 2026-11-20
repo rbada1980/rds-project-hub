@@ -6361,7 +6361,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{padding:"4px 0"}}>
         {tab==="timelogs"&&!isHideTimeLogs&&<TaskTimeLogs taskId={taskId} projectId={projectId} me={me} isClient={isClient} task={task} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop}/>}
         {tab==="comments"&&<TaskComments taskId={taskId} projectId={projectId} me={me} users={users}/>}
-        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status} onRevisionChange={onRevisionChange}/>}
+        {tab==="revisions"&&<TaskRevisions taskId={taskId} me={me} taskStatus={task?.status} onRevisionChange={onRevisionChange} users={users}/>}
         {tab==="history"&&!isClient&&<TaskHistory taskId={taskId} me={me} historyKey={historyKey}/>}
       </div>
     </div>
@@ -6378,7 +6378,7 @@ const REV_STATUS_CLR={
 const REV_STATUS_ICON={"Not Yet Started":"⬜","In Progress":"🔵","Completed":"✅","On Hold":"⏸"};
 const VALID_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
-function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
+function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const isClient=me?.role==="Client";
   const isStaff=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
   const canAdd=isStaff&&taskStatus==="Completed";// Add only when main task is Completed
@@ -6388,7 +6388,8 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
   const [showForm,setShowForm]=useState(false);
   const [saving,setSaving]=useState(false);
   const [editId,setEditId]=useState(null);
-  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:""};
+  const staffNames=users.filter(u=>u.role!=="Client").map(u=>u.name||u.username).filter(Boolean).sort();
+  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",checker:""};
   const [form,setForm]=useState(blankForm);
 
   useEffect(()=>{load();},[taskId]);
@@ -6413,7 +6414,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
 
   function openAdd(){setForm(blankForm);setEditId(null);setShowForm(true);}
   function openEdit(rev){
-    setForm({status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||""});
+    setForm({status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",checker:rev.checker||""});
     setEditId(rev.id);setShowForm(true);
   }
 
@@ -6508,6 +6509,24 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
                 style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
             </div>
           </div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.teal,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Detailer</div>
+              <select value={form.detailer} onChange={e=>setForm(p=>({...p,detailer:e.target.value}))}
+                style={{width:"100%",background:C.bg,border:`1px solid ${form.detailer?C.teal:C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.detailer?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+                <option value="">— Select Detailer —</option>
+                {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Checker</div>
+              <select value={form.checker} onChange={e=>setForm(p=>({...p,checker:e.target.value}))}
+                style={{width:"100%",background:C.bg,border:`1px solid ${form.checker?C.accent:C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.checker?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+                <option value="">— Select Checker —</option>
+                {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          </div>
           <div style={{marginBottom:12}}>
             <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Notes (what changed?)</div>
             <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}
@@ -6560,6 +6579,12 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange}){
                   </div>
                 )}
               </div>
+              {(rev.detailer||rev.checker)&&(
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:4}}>
+                  {rev.detailer&&<span style={{fontSize:11,color:C.teal,fontWeight:600}}>✏️ Detailer: {rev.detailer}</span>}
+                  {rev.checker&&<span style={{fontSize:11,color:C.accent,fontWeight:600}}>✔ Checker: {rev.checker}</span>}
+                </div>
+              )}
               {rev.notes&&<div style={{fontSize:12,color:C.t2,lineHeight:1.55,marginBottom:4}}>{rev.notes}</div>}
               <div style={{fontSize:11,color:C.t3}}>
                 {rev.created_by&&<span>by <b style={{color:C.t2}}>{rev.created_by}</b> · </span>}
