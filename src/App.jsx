@@ -419,37 +419,41 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
         <div style={col}><FInput label={requireDates?"Due Date *":"Due Date"} value={f.due_date} onChange={s("due_date")} type="date"/></div>
       </div>
       <div className="rds-form-row" style={row}>
-        <div style={col}>
-          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer <span style={{color:C.t3,fontWeight:400}}>(defaults to assignee)</span></label>
-          <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
-            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-            <option value="">— None —</option>
-            {members.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
+        {/* Detailer + Detailer Status side by side */}
+        <div style={{...col,display:"flex",gap:8}}>
+          <div style={{flex:1,minWidth:0}}>
+            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer <span style={{color:C.t3,fontWeight:400}}>(defaults to assignee)</span></label>
+            <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <option value="">— None —</option>
+              {members.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status</label>
+            <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`2px solid ${STATUS_CLR[f.detailer_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
+            </select>
+          </div>
         </div>
-        <div style={col}>
-          <RLabel text={isEdit?"Checker":"Checker *"}/>
-          <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
-            style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-            <option value="">— Select Checker —</option>
-            {members.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-      </div>
-      <div className="rds-form-row" style={row}>
-        <div style={col}>
-          <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status</label>
-          <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
-            style={{width:"100%",background:C.surface,border:`1px solid ${STATUS_CLR[f.detailer_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-            {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
-          </select>
-        </div>
-        <div style={col}>
-          <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status</label>
-          <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
-            style={{width:"100%",background:C.surface,border:`1px solid ${STATUS_CLR[f.checker_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-            {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
-          </select>
+        {/* Checker + Checker Status side by side */}
+        <div style={{...col,display:"flex",gap:8}}>
+          <div style={{flex:1,minWidth:0}}>
+            <RLabel text={isEdit?"Checker":"Checker *"}/>
+            <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <option value="">— Select Checker —</option>
+              {members.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status</label>
+            <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
+              style={{width:"100%",background:C.surface,border:`2px solid ${STATUS_CLR[f.checker_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
+            </select>
+          </div>
         </div>
       </div>
       <div className="rds-form-row" style={row}>
