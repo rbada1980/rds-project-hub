@@ -327,8 +327,8 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
   const initPid=initial.project_id||projects[0]?.id||"";
   const initClient=initial.client||(projects.find(p=>p.id===initPid)?.client||"");
   const initAssignee=initial.assignee||"";
-  const initDS=initial.detailer_status||"Not Yet Started";
-  const initCS=initial.checker_status||"Not Yet Started";
+  const initDS=initial.detailer_status||(initial.id?"Not Yet Started":"");
+  const initCS=initial.checker_status||(initial.id?"Not Yet Started":"");
   // For new tasks: auto-compute; for existing tasks: preserve saved status
   const initAutoStatus=initial.id?(initial.status||"Not Yet Started"):(initDS===initCS?initDS:"In Progress");
   const [f,sf]=useState({
@@ -353,7 +353,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       assignee,due_date:initial.due_date||"",
       tags:(initial.tags||[]).join(", "),files:initial.files||[],
       detailer:initial.detailer||assignee,checker:initial.checker||"",
-      detailer_status:initial.detailer_status||"Not Yet Started",checker_status:initial.checker_status||"Not Yet Started",
+      detailer_status:initial.detailer_status||(initial.id?"Not Yet Started":""),checker_status:initial.checker_status||(initial.id?"Not Yet Started":""),
       scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",
       det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
     });
@@ -451,9 +451,10 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status</label>
+            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status *</label>
             <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`2px solid ${STATUS_CLR[f.detailer_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              style={{width:"100%",background:C.surface,border:`2px solid ${f.detailer_status?STATUS_CLR[f.detailer_status]||C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              <option value="">— Select —</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
           </div>
@@ -469,9 +470,10 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status</label>
+            <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status *</label>
             <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`2px solid ${STATUS_CLR[f.checker_status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              style={{width:"100%",background:C.surface,border:`2px solid ${f.checker_status?STATUS_CLR[f.checker_status]||C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              <option value="">— Select —</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
           </div>
@@ -479,7 +481,7 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
-        <div style={col}><FInput label="Client Sub Date" value={f.client_sub_date} onChange={s("client_sub_date")} type="date"/></div>
+        <div style={col}><FInput label="Client Sub Date *" value={f.client_sub_date} onChange={s("client_sub_date")} type="date" required/></div>
       </div>
       <div className="rds-form-row" style={row}>
         <div style={{...col,maxWidth:200}}><FInput label="Det. Wt. (Tons)" value={f.det_weight} onChange={s("det_weight")} type="number" placeholder="e.g. 12.5"/></div>
@@ -495,14 +497,14 @@ function TaskForm({initial={},projects,members,clients=[],onSave,onClose,saving,
           {initial.client_comment&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",lineHeight:1.5,borderTop:initial.client_approval?`1px solid ${C.teal}22`:"none",paddingTop:initial.client_approval?8:0}}>"{initial.client_comment}"</div>}
         </div>
       )}
-      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit))&&(
+      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)&&(
         <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
-          ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status",(!f.checker&&!isEdit)&&"Checker"].filter(Boolean).join(", ")}
+          ⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.status&&"Status",(!f.checker&&!isEdit)&&"Checker",!f.client_sub_date&&"Client Sub Date",!f.detailer_status&&"Detailer Status",!f.checker_status&&"Checker Status"].filter(Boolean).join(", ")}
         </div>
       )}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit))?0.5:1}}>
+        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)?0.5:1}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
