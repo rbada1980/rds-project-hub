@@ -1117,20 +1117,32 @@ function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
     </tr>
   );
 }
-function TRow({task,project,onEdit,onDelete,onMove,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
+function TRow({task,project,onEdit,onDelete,onMove,onDragTask,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
+  const [dragging,setDragging]=useState(false);
+  const [dragOver,setDragOver]=useState(false);
   const td={padding:"5px 7px",borderBottom:`1px solid ${C.border}`};
   const today=localDateStr();
   const overdue=task.due_date&&task.due_date<today&&!isDone(task.status)&&task.status!=="On Hold";
   const showCb=!!onSelect;
   const apv=task.client_approval||"Pending Review";
   const apvClr=APPROVAL_CLR[apv]||C.t3;
+  const canDrag=!!onDragTask&&!readonly;
   return(
     <tr onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
+      draggable={canDrag}
+      onDragStart={canDrag?e=>{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",task.id);setDragging(true);}:undefined}
+      onDragEnd={canDrag?()=>{setDragging(false);setDragOver(false);}:undefined}
+      onDragOver={canDrag?e=>{e.preventDefault();e.dataTransfer.dropEffect="move";setDragOver(true);}:undefined}
+      onDragLeave={canDrag?()=>setDragOver(false):undefined}
+      onDrop={canDrag?e=>{e.preventDefault();setDragOver(false);const draggedId=e.dataTransfer.getData("text/plain");if(draggedId&&draggedId!==task.id)onDragTask(draggedId,task.id);}:undefined}
       onClick={onReview?()=>onReview(task):showCb?()=>onSelect(task.id):undefined}
-      style={{background:selected?C.accent+"14":h?C.surface:"transparent",transition:"background .12s",cursor:(onReview||showCb)?"pointer":"default"}}>
+      style={{background:dragOver?C.accent+"28":dragging?"transparent":selected?C.accent+"14":h?C.surface:"transparent",transition:"background .12s",cursor:(onReview||showCb)?"pointer":"default",opacity:dragging?0.4:1,borderTop:dragOver?`2px solid ${C.accent}`:undefined}}>
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
+      </td>}
+      {canDrag&&<td style={{...td,width:20,padding:"5px 2px",textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+        <span style={{color:C.t3,fontSize:14,cursor:"grab",lineHeight:1,userSelect:"none"}} title="Drag to reorder">⠿</span>
       </td>}
       <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
       <td style={{...td,maxWidth:90}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
@@ -12852,6 +12864,38 @@ export default function App(){
   const [starredTasks,setStarredTasks]=useState(()=>{try{const u=JSON.parse(localStorage.getItem("rds_user")||"{}");return new Set(JSON.parse(localStorage.getItem("rds_starred_"+(u.id||""))||"[]"));}catch{return new Set();}});
   function togglePin(taskId){setPinnedTasks(prev=>{const n=new Set(prev);n.has(taskId)?n.delete(taskId):n.add(taskId);try{localStorage.setItem("rds_pinned_"+(me?.id||""),JSON.stringify([...n]));}catch{}return n;});}
   function toggleStar(taskId){setStarredTasks(prev=>{const n=new Set(prev);n.has(taskId)?n.delete(taskId):n.add(taskId);try{localStorage.setItem("rds_starred_"+(me?.id||""),JSON.stringify([...n]));}catch{}return n;});}
+  // Task ordering per project — stored in localStorage
+  const [taskOrderMap,setTaskOrderMap]=useState(()=>{try{return JSON.parse(localStorage.getItem("rds_task_order")||"{}");}catch{return {};}});
+  const dragOverId=useRef(null);
+  function applyTaskOrder(list,pid){
+    const key=pid||"all";
+    const order=taskOrderMap[key];
+    if(!order||!order.length)return list;
+    const orderMap=new Map(order.map((id,i)=>[id,i]));
+    return [...list].sort((a,b)=>{
+      const ai=orderMap.has(a.id)?orderMap.get(a.id):99999;
+      const bi=orderMap.has(b.id)?orderMap.get(b.id):99999;
+      return ai-bi;
+    });
+  }
+  function saveTaskOrder(pid,orderedIds){
+    const key=pid||"all";
+    setTaskOrderMap(prev=>{
+      const next={...prev,[key]:orderedIds};
+      try{localStorage.setItem("rds_task_order",JSON.stringify(next));}catch{}
+      return next;
+    });
+  }
+  function handleTaskDrop(draggedId,overId,list,pid){
+    if(draggedId===overId)return;
+    const ids=list.map(t=>t.id);
+    const from=ids.indexOf(draggedId);
+    const to=ids.indexOf(overId);
+    if(from===-1||to===-1)return;
+    ids.splice(from,1);
+    ids.splice(to,0,draggedId);
+    saveTaskOrder(pid,ids);
+  }
   const [logo,sLogo]        = useState(null);
   const [selTasks,setSelTasks]   = useState(new Set());
   const [selProjects,setSelProjs]= useState(new Set());
@@ -15026,16 +15070,20 @@ export default function App(){
                 </th>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
-              <tbody>{filtered.length===0?<tr><td colSpan={canEdit?10:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>:[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)).flatMap(t=>{
-                const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
-                // Show latest revision's status as the effective status badge in the list
-                const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
-                const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
-                const colCount=(canEdit?1:0)+(isClient?9:10);
-                const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl([...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0)));}} onDelete={canEdit?delTask:()=>{}} onMove={canEdit?setMoveTaskTarget:null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
-                if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
-                return rows;
-              })}</tbody>
+              <tbody>{(()=>{
+                if(filtered.length===0)return<tr><td colSpan={canEdit?11:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>;
+                const pinSorted=[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0));
+                const ordered=canEdit?applyTaskOrder(pinSorted,activePid):pinSorted;
+                return ordered.flatMap(t=>{
+                  const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
+                  const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
+                  const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
+                  const colCount=(canEdit?2:0)+(isClient?9:10);
+                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}} onMove={canEdit?setMoveTaskTarget:null} onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                  if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
+                  return rows;
+                });
+              })()}</tbody>
             </table>
           </div>
           )}
