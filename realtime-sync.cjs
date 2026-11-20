@@ -43,6 +43,13 @@ const pool = new Pool({
 // ── Tables to sync ────────────────────────────────────────────
 const SYNC_TABLES = ["tasks", "projects", "users", "clients"];
 
+// Tables to PUSH (local PG → Supabase).
+// "users" is intentionally excluded: user edits (role, email, etc.)
+// are made via the admin UI which writes directly to Supabase.
+// Pushing local PG → Supabase for users would overwrite those saves.
+// Users are still PULLED from Supabase → local PG via Realtime.
+const PUSH_TABLES = ["tasks", "projects", "clients"];
+
 // Date-only columns (serialize without time component to avoid IST offset)
 const DATE_COLS = new Set(["due_date", "client_sub_date", "deadline", "date_of_joining", "date_of_birth"]);
 
@@ -114,7 +121,7 @@ function saveCursors() {
 // Finds rows with updated_at newer than last push cursor.
 // ═══════════════════════════════════════════════════════════════
 async function pushChanges() {
-  for (const table of SYNC_TABLES) {
+  for (const table of PUSH_TABLES) {
     try {
       // On first run per table: look back 60s to catch up after a restart
       const since = lastPushTime[table] || new Date(Date.now() - 60000).toISOString();
