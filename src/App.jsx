@@ -380,6 +380,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
+  const detailerOptions=users.filter(u=>u.is_active!==false&&(u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
   // Validation extras
   const assigneeEqualsDetailer=f.assignee&&f.detailer&&f.assignee===f.detailer;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
@@ -453,7 +454,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">— Select Detailer —</option>
-              {members.filter(m=>m!==f.assignee).map(m=><option key={m} value={m}>{m}</option>)}
+              {(detailerOptions.length?detailerOptions:members).filter(m=>m!==f.assignee).map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
