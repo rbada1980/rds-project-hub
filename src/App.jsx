@@ -1170,7 +1170,7 @@ function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
     </tr>
   );
 }
-function TRow({task,project,onEdit,onDelete,onMove,onDragTask,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
+function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDown,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
   const [dragging,setDragging]=useState(false);
   const [dragOver,setDragOver]=useState(false);
@@ -1194,8 +1194,14 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,readonly,canDelete
       {showCb&&<td style={{...td,width:36,paddingRight:8}} onClick={e=>{e.stopPropagation();onSelect(task.id);}}>
         <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",margin:"0 auto"}}>{selected?"✓":""}</div>
       </td>}
-      {canDrag&&<td style={{...td,width:20,padding:"5px 2px",textAlign:"center"}} onClick={e=>e.stopPropagation()}>
-        <span style={{color:C.t3,fontSize:14,cursor:"grab",lineHeight:1,userSelect:"none"}} title="Drag to reorder">⠿</span>
+      {canDrag&&<td style={{...td,width:44,padding:"2px 2px",textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",gap:2}}>
+          <div style={{display:"flex",flexDirection:"column",gap:1}}>
+            <button onClick={e=>{e.stopPropagation();if(onMoveUp)onMoveUp(task.id);}} disabled={!onMoveUp} title="Move up" style={{background:"none",border:"none",cursor:onMoveUp?"pointer":"default",color:onMoveUp?C.t2:C.t3+"44",fontSize:9,lineHeight:1,padding:"1px 2px",opacity:onMoveUp?1:0.3}}>▲</button>
+            <button onClick={e=>{e.stopPropagation();if(onMoveDown)onMoveDown(task.id);}} disabled={!onMoveDown} title="Move down" style={{background:"none",border:"none",cursor:onMoveDown?"pointer":"default",color:onMoveDown?C.t2:C.t3+"44",fontSize:9,lineHeight:1,padding:"1px 2px",opacity:onMoveDown?1:0.3}}>▼</button>
+          </div>
+          <span style={{color:C.t3,fontSize:14,cursor:"grab",lineHeight:1,userSelect:"none"}} title="Drag to reorder">⠿</span>
+        </div>
       </td>}
       <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
       <td style={{...td,maxWidth:90}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
@@ -15136,7 +15142,8 @@ export default function App(){
                   const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                   const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                   const colCount=(canEdit?2:0)+(isClient?9:10);
-                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}}onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                  const idx=ordered.indexOf(t);
+                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}}onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                   if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                   return rows;
                 });
