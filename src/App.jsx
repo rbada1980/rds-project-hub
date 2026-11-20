@@ -12772,6 +12772,9 @@ export default function App(){
   const [saving,ssv]        = useState(false);
   const [dashSearch,sdss]   = useState("");
   const [projSearch,setProjSearch] = useState("");
+  const [projFClient,setProjFClient] = useState("All");
+  const [projFStatus,setProjFStatus] = useState("All");
+  const [projFEmp,setProjFEmp]     = useState("All");
   const [dashUser,sdsu]     = useState("All");
   const [dashProject,sdsp]  = useState("All");
   const [dashClient,sdsc]   = useState("All");
@@ -14723,22 +14726,67 @@ export default function App(){
           );
         })()}
         {view==="projects"&&(isAdmin||isManager||isTeamLeader)&&(()=>{
-          const filteredProjs=accessibleProjects.filter(p=>projSearch?p.name.toLowerCase().includes(projSearch.toLowerCase())||(p.client||"").toLowerCase().includes(projSearch.toLowerCase()):true);
+          // Build filter options
+          const projClientList=[...new Set(accessibleProjects.map(p=>p.client||"").filter(Boolean))].sort();
+          const projEmpList=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
+          const hasFilter=projSearch||projFClient!=="All"||projFStatus!=="All"||projFEmp!=="All";
+          const clearFilters=()=>{setProjSearch("");setProjFClient("All");setProjFStatus("All");setProjFEmp("All");};
+          const filteredProjs=accessibleProjects.filter(p=>{
+            const pt=tasks.filter(t=>t.project_id===p.id);
+            if(projSearch&&!p.name.toLowerCase().includes(projSearch.toLowerCase())&&!(p.client||"").toLowerCase().includes(projSearch.toLowerCase()))return false;
+            if(projFClient!=="All"&&(p.client||"")!==projFClient)return false;
+            if(projFEmp!=="All"&&!pt.some(t=>t.assignee===projFEmp))return false;
+            if(projFStatus!=="All"){
+              if(projFStatus==="Overdue"&&!pt.some(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold"))return false;
+              if(projFStatus==="Completed"&&!pt.every(t=>isDone(t.status)))return false;
+              if(projFStatus==="In Progress"&&!pt.some(t=>t.status==="In Progress"))return false;
+              if(projFStatus==="Not Yet Started"&&!pt.some(t=>t.status==="Not Yet Started"||t.status==="To Be Started"))return false;
+              if(projFStatus==="On Hold"&&!pt.some(t=>t.status==="On Hold"))return false;
+            }
+            return true;
+          });
+          const fSel=active=>({flex:"1 1 140px",minWidth:0,background:C.surface,border:`1px solid ${active?C.accent:C.border}`,borderRadius:8,padding:"8px 10px",color:active?C.accent:C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
           return(
             <div>
               {/* Header */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
-                <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>📁 Projects</h2>
-                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                  <input placeholder="🔍 Search projects…" value={projSearch} onChange={e=>setProjSearch(e.target.value)}
-                    style={{background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",width:200}}/>
-                  {canEdit&&<button onClick={()=>spm(true)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.green,borderColor:C.green}}>＋ New Project</button>}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <h2 style={{margin:0,fontSize:20,fontWeight:800,color:C.t1}}>📁 Projects</h2>
+                  <span style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}44`,borderRadius:20,padding:"2px 10px",fontSize:12,fontWeight:700}}>{filteredProjs.length} / {accessibleProjects.length}</span>
+                </div>
+                {canEdit&&<button onClick={()=>spm(true)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.green,borderColor:C.green}}>＋ New Project</button>}
+              </div>
+              {/* Advanced Filter Bar */}
+              <div style={{background:C.card,border:`1px solid ${hasFilter?C.accent:C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:20}}>
+                <input placeholder="🔍 Search by project name or client…" value={projSearch} onChange={e=>setProjSearch(e.target.value)}
+                  style={{width:"100%",background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+                  {/* Client filter */}
+                  <select value={projFClient} onChange={e=>setProjFClient(e.target.value)} style={fSel(projFClient!=="All")}>
+                    <option value="All">All Clients</option>
+                    {projClientList.map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {/* Status filter */}
+                  <select value={projFStatus} onChange={e=>setProjFStatus(e.target.value)} style={fSel(projFStatus!=="All")}>
+                    <option value="All">All Statuses</option>
+                    <option value="In Progress">Has In Progress</option>
+                    <option value="Not Yet Started">Has Not Yet Started</option>
+                    <option value="Completed">All Completed</option>
+                    <option value="Overdue">Has Overdue</option>
+                    <option value="On Hold">Has On Hold</option>
+                  </select>
+                  {/* Employee filter */}
+                  <select value={projFEmp} onChange={e=>setProjFEmp(e.target.value)} style={fSel(projFEmp!=="All")}>
+                    <option value="All">All Employees</option>
+                    {projEmpList.map(e=><option key={e} value={e}>{e}</option>)}
+                  </select>
+                  {hasFilter&&<button onClick={clearFilters} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
                 </div>
               </div>
               {/* Project grid */}
               {filteredProjs.length===0?(
                 <div style={{textAlign:"center",padding:"60px 20px",color:C.t3,fontSize:14}}>
-                  {accessibleProjects.length===0?"No projects yet. Click + New Project to create one.":"No projects match your search."}
+                  {accessibleProjects.length===0?"No projects yet. Click + New Project to create one.":"No projects match your filters."}
                 </div>
               ):(
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18}}>
@@ -14748,6 +14796,7 @@ export default function App(){
                     const pip=pt.filter(t=>t.status==="In Progress").length;
                     const ptd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
                     const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
+                    const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                     return(
                       <div key={p.id} onClick={()=>navTo('list',p.id)}
                         style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
@@ -14763,9 +14812,10 @@ export default function App(){
                             <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 10px",fontSize:13,fontWeight:800}}>{pv}%</span>
                           </div>
                         </div>
-                        <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
+                        <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
                           {p.client&&<span style={{fontSize:12,color:C.teal,fontWeight:600}}>🏢 {p.client}</span>}
-                          {p.deadline&&<span style={{fontSize:12,color:C.t3}}>📅 {p.deadline}</span>}
+                          {p.deadline&&<span style={{fontSize:12,color:pov>0?C.red:C.t3}}>📅 {p.deadline}</span>}
+                          {pov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 7px"}}>⚠ {pov} overdue</span>}
                         </div>
                         <Pb v={pv} color={p.color} h={6}/>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:12}}>
@@ -14776,7 +14826,11 @@ export default function App(){
                             </div>
                           ))}
                         </div>
-                        <div style={{marginTop:10,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} tasks →</div>
+                        {assignees.length>0&&<div style={{marginTop:10,display:"flex",gap:5,flexWrap:"wrap"}}>
+                          {assignees.slice(0,4).map(a=><span key={a} style={{fontSize:11,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 7px",color:C.t2}}>👤 {a}</span>)}
+                          {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
+                        </div>}
+                        <div style={{marginTop:8,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} tasks →</div>
                       </div>
                     );
                   })}
