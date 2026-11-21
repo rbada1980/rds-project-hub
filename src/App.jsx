@@ -12916,7 +12916,6 @@ export default function App(){
   const [saving,ssv]        = useState(false);
   const [dashSearch,sdss]   = useState("");
   const [projSearch,setProjSearch] = useState("");
-  const [projFClient,setProjFClient] = useState("All");
   const [projFStatus,setProjFStatus] = useState("All");
   const [projFEmp,setProjFEmp]     = useState("All");
   const [dashUser,sdsu]     = useState("All");
@@ -14916,12 +14915,12 @@ export default function App(){
           // Build filter options
           const projClientList=[...new Set(accessibleProjects.map(p=>p.client||"").filter(Boolean))].sort();
           const projEmpList=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
-          const hasFilter=projSearch||projFClient!=="All"||projFStatus!=="All"||projFEmp!=="All";
-          const clearFilters=()=>{setProjSearch("");setProjFClient("All");setProjFStatus("All");setProjFEmp("All");};
+          const hasFilter=projSearch||filterClient!=="All"||projFStatus!=="All"||projFEmp!=="All";
+          const clearFilters=()=>{setProjSearch("");sfc("All");setProjFStatus("All");setProjFEmp("All");};
           const filteredProjs=accessibleProjects.filter(p=>{
             const pt=tasks.filter(t=>t.project_id===p.id);
             if(projSearch&&!p.name.toLowerCase().includes(projSearch.toLowerCase())&&!(p.client||"").toLowerCase().includes(projSearch.toLowerCase()))return false;
-            if(projFClient!=="All"&&(p.client||"")!==projFClient)return false;
+            if(filterClient!=="All"&&(p.client||"")!==filterClient)return false;
             if(projFEmp!=="All"&&!pt.some(t=>t.assignee===projFEmp))return false;
             if(projFStatus!=="All"){
               if(projFStatus==="Overdue"&&!pt.some(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold"))return false;
@@ -14949,7 +14948,7 @@ export default function App(){
                   style={{width:"100%",background:C.surface,border:`1px solid ${projSearch?C.accent:C.border}`,borderRadius:8,padding:"8px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
                 <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
                   {/* Client filter */}
-                  <select value={projFClient} onChange={e=>setProjFClient(e.target.value)} style={fSel(projFClient!=="All")}>
+                  <select value={filterClient} onChange={e=>{sfc(e.target.value);sfp("All");}} style={fSel(filterClient!=="All")}>
                     <option value="All">All Clients</option>
                     {projClientList.map(c=><option key={c} value={c}>{c}</option>)}
                   </select>
