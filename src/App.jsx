@@ -1269,8 +1269,10 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDow
           {task.checker_status&&<span style={{fontSize:9,fontWeight:700,color:STATUS_CLR[task.checker_status]||C.t3,background:(STATUS_CLR[task.checker_status]||C.t3)+"18",borderRadius:4,padding:"1px 5px",whiteSpace:"nowrap"}}>{task.checker_status}</span>}
         </div>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>-</span>}
-        {task.det_weight!=null&&<span style={{color:C.t3,fontSize:9,marginTop:1}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})} T</span>}
       </div></td>
+      <td style={{...td,width:70,textAlign:"right"}}>
+        {task.det_weight!=null?<span style={{color:C.t1,fontSize:11,fontWeight:600}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})}</span>:<span style={{color:C.t3,fontSize:10}}>-</span>}
+      </td>
       <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
         {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
@@ -15230,17 +15232,17 @@ export default function App(){
                   </div>
                 </th>}
                 {canEdit&&<th style={{width:44,borderBottom:`2px solid ${C.border}`,background:C.bg}}/>}
-                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
+                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:h==="Tons"?"right":"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
               <tbody>{(()=>{
-                if(filtered.length===0)return<tr><td colSpan={canEdit?11:9} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>;
+                if(filtered.length===0)return<tr><td colSpan={canEdit?12:10} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>;
                 const pinSorted=[...filtered].sort((a,b)=>(pinnedTasks.has(b.id)?1:0)-(pinnedTasks.has(a.id)?1:0));
                 const ordered=canEdit?applyTaskOrder(pinSorted,activePid):pinSorted;
                 return ordered.flatMap(t=>{
                   const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
                   const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
                   const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
-                  const colCount=(canEdit?2:0)+(isClient?9:10);
+                  const colCount=(canEdit?2:0)+(isClient?10:11);
                   const idx=ordered.indexOf(t);
                   const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}}onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                   if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
