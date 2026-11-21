@@ -378,10 +378,11 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
   }
   // Team Leaders only for Assignee
-  const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false).map(u=>u.name).filter(Boolean).sort();
+  const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const detailerOptions=users.filter(u=>u.is_active!==false&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader")).map(u=>u.name).filter(Boolean).sort();
-  const checkerOptions=users.filter(u=>u.is_active!==false&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
+  const isActiveU=u=>u.is_active!==false&&u.is_active!==null&&u.is_active!==0&&u.is_active!=="false";
+  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader")).map(u=>u.name).filter(Boolean).sort();
+  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
   // Validation extras
   const assigneeEqualsDetailer=f.assignee&&f.detailer&&f.assignee===f.detailer;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
@@ -13618,7 +13619,8 @@ export default function App(){
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-  const members=users.filter(u=>u.is_active!==false&&u.username!=="srilalitha").map(u=>u.name);
+  const isActiveUser=u=>u.is_active!==false&&u.is_active!==null&&u.is_active!==0&&u.is_active!=="false";
+  const members=users.filter(u=>isActiveUser(u)&&u.username!=="srilalitha").map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
   const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold";});
