@@ -15033,7 +15033,7 @@ export default function App(){
             const hasF=searchTask||filterClient!=="All"||filterProject!=="All"||filterAssignee!=="All"||filterStatus!=="All"||filterPinStar!=="all";
             const clientList=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort();
             const projList=accessibleProjects.filter(p=>filterClient==="All"||(p.client||"Unassigned")===filterClient);
-            const empList=members;
+            const empList=members.filter(n=>!users.find(u=>u.name===n&&u.role==="Client"));
             const ssel=active=>({flex:1,minWidth:0,background:C.surface,border:`1px solid ${active?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:active?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"});
             return(
               <div style={{background:C.card,border:`1px solid ${hasF?C.accent:C.border}`,borderRadius:12,padding:isMobile?"10px 12px":"12px 16px",marginBottom:16}}>
