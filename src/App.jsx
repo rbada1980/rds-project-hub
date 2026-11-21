@@ -817,7 +817,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
       {tab==="list"&&(()=>{
-        const nonClientUsers=users.filter(u=>u.role!=="Client"&&u.username!=="srilalitha"&&(showInactive?true:u.is_active!==false));
+        const nonClientUsers=users.filter(u=>u.role!=="Client"&&u.username!=="srilalitha"&&(showInactive?u.is_active===false:u.is_active!==false));
         const shownUsers=nonClientUsers.filter(u=>{
           if(uRole!=="All"&&u.role!==uRole)return false;
           if(uq&&!u.name.toLowerCase().includes(uq.toLowerCase())&&!u.username.toLowerCase().includes(uq.toLowerCase())&&!(u.email||"").toLowerCase().includes(uq.toLowerCase()))return false;
