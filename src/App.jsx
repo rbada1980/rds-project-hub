@@ -1270,7 +1270,7 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDow
         </div>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>-</span>}
       </div></td>
-      <td style={{...td,width:70,textAlign:"right"}}>
+      <td style={{...td,width:70,textAlign:"center"}}>
         {task.det_weight!=null?<span style={{color:C.t1,fontSize:11,fontWeight:600}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})}</span>:<span style={{color:C.t3,fontSize:10}}>-</span>}
       </td>
       <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
@@ -15232,7 +15232,7 @@ export default function App(){
                   </div>
                 </th>}
                 {canEdit&&<th style={{width:44,borderBottom:`2px solid ${C.border}`,background:C.bg}}/>}
-                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:h==="Tons"?"right":"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
+                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"center",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
               <tbody>{(()=>{
                 if(filtered.length===0)return<tr><td colSpan={canEdit?12:10} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>;
