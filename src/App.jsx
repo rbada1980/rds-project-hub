@@ -370,8 +370,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     return next;
   });
   function onAssigneeChange(v){
-    // Don't auto-set detailer to assignee anymore (they must be different)
-    sf(p=>({...p,assignee:v,detailer:p.detailer===v?"":p.detailer}));
+    sf(p=>({...p,assignee:v}));
   }
   function onProjectChange(pid){
     const proj=projects.find(p=>p.id===pid);
@@ -385,7 +384,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader")).map(u=>u.name).filter(Boolean).sort();
   const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
   // Validation extras
-  const assigneeEqualsDetailer=f.assignee&&f.detailer&&f.assignee===f.detailer;
+  const assigneeEqualsDetailer=false;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
   const col={flex:1,minWidth:0},row={display:"flex",gap:16,flexWrap:"wrap"};
   return(
@@ -457,7 +456,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">— Select Detailer —</option>
-              {(detailerOptions.length?detailerOptions:members).filter(m=>m!==f.assignee).map(m=><option key={m} value={m}>{m}</option>)}
+              {(detailerOptions.length?detailerOptions:members).map(m=><option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
