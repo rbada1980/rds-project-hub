@@ -15340,9 +15340,9 @@ export default function App(){
         // Root level
         if(DSM==="users"){
           title="👥 All Employees";color=C.accent;canDrill=true;drillType="employee";
-          items=users.filter(u=>u.role!=="Client").map(u=>{
+          items=users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.role!=="HR & Finance"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>{
             const ut=tasks.filter(t=>t.assignee===u.name||t.detailer===u.name||t.checker===u.name);
-            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Admin"?C.accent:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
+            return{label:u.name,sub:`${u.role} · ${ut.filter(t=>t.status==="In Progress").length} in progress · ${ut.filter(t=>isDone(t.status)).length} done`,dot:u.role==="Manager"?C.teal:u.role==="Team Leader"?C.blue:C.t3,raw:u};
           });
         } else if(DSM==="clients"){
           title="🏢 All Clients";color=C.teal;canDrill=true;drillType="client";
