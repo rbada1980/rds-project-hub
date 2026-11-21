@@ -377,8 +377,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     const proj=projects.find(p=>p.id===pid);
     sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
   }
-  // Active user helper
-  const isActiveU=u=>u.is_active!==false&&u.is_active!==null&&u.is_active!==0&&u.is_active!=="false";
+  // Active = not explicitly deactivated (null/undefined = active by default)
+  const isActiveU=u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false";
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
@@ -13620,7 +13620,7 @@ export default function App(){
       <Spinner/><p style={{color:C.t2,marginTop:16}}>Loading your projects…</p>
     </div>
   );
-  const isActiveUser=u=>u.is_active!==false&&u.is_active!==null&&u.is_active!==0&&u.is_active!=="false";
+  const isActiveUser=u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false";
   const members=users.filter(u=>isActiveUser(u)&&u.username!=="srilalitha").map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
