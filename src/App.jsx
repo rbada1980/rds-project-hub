@@ -389,8 +389,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Team Leader"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
-  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
+  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Team Leader"||u.role==="Manager")).map(u=>u.name).filter(Boolean).sort();
+  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Manager")).map(u=>u.name).filter(Boolean).sort();
   // Role lookup for displaying name (Role) in dropdowns
   const roleByName=Object.fromEntries((users||[]).map(u=>[u.name,u.role]));
   const withRole=name=>roleByName[name]?`${name} (${roleByName[name]})`:name;
@@ -571,12 +571,12 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Employees <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned - select at least 1 more)</span></label>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>sf(p=>({...p,assigned_users:users.filter(u=>u.role!=="Client"&&u.username!=="srilalitha"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
+            <button onClick={()=>sf(p=>({...p,assigned_users:users.filter(u=>u.role!=="Client"&&u.role!=="HR & Finance"&&u.username!=="srilalitha"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
             <button onClick={()=>sf(p=>({...p,assigned_users:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:160,overflowY:"auto",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
-          {users.filter(u=>u.role!=="Client"&&u.username!=="srilalitha"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>{
+          {users.filter(u=>u.role!=="Client"&&u.role!=="HR & Finance"&&u.username!=="srilalitha"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>{
             const isLocked=u.username===narayanaUsername;
             const checked=f.assigned_users.includes(u.username);
             return(
@@ -7858,7 +7858,7 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
   }
 
   // Per-employee stats
-  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name);
+  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.role!=="HR & Finance"&&u.is_active!==false).map(u=>u.name);
 
   function empStats(name){
     const myLogs=timeLogs.filter(l=>l.user_name===name);
@@ -8076,7 +8076,7 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
 
   const canManage=isAdmin||isManager;
   const empList=canManage
-    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name).sort()
+    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.role!=="HR & Finance"&&u.is_active!==false).map(u=>u.name).sort()
     :[me.name];
 
   // Overloaded: >45h/week (2700 min)
@@ -8490,7 +8490,7 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
   }
 
   const canEdit=isAdmin||isManager;
-  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false);
+  const empList=users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.role!=="HR & Finance"&&u.is_active!==false);
 
   return(
     <div>
@@ -8658,7 +8658,7 @@ function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
 
   // Build list: admin/manager see all non-admin employees; others see just themselves
   const empList=(isAdmin||isManager)
-    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.is_active!==false).map(u=>u.name).sort()
+    ?users.filter(u=>u.role!=="Admin"&&u.role!=="Client"&&u.role!=="HR & Finance"&&u.is_active!==false).map(u=>u.name).sort()
     :[me.name];
 
   const scored=empList.map(n=>({name:n,...metrics(n)})).sort((a,b)=>b.score-a.score);
@@ -13674,7 +13674,7 @@ export default function App(){
     </div>
   );
   const isActiveUser=u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false";
-  const members=users.filter(u=>isActiveUser(u)&&u.username!=="srilalitha").map(u=>u.name);
+  const members=users.filter(u=>isActiveUser(u)&&u.username!=="srilalitha"&&u.role!=="HR & Finance").map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
   const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold";});
