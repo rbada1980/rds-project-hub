@@ -15229,6 +15229,7 @@ export default function App(){
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
                   </div>
                 </th>}
+                {canEdit&&<th style={{width:44,borderBottom:`2px solid ${C.border}`,background:C.bg}}/>}
                 {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
               <tbody>{(()=>{
