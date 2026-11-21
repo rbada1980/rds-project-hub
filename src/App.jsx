@@ -1259,7 +1259,7 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDow
       <td style={{...td,maxWidth:110,width:100}}><span style={{background:getStatusColor(task.status)+"22",color:getStatusColor(task.status),border:`1px solid ${getStatusColor(task.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{task.status}</span></td>
       <td style={{...td,maxWidth:70,width:65}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"-"}</span></td>
       <td style={{...td,maxWidth:85}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>-</span>}</td>
-      <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+      <td style={{...td,minWidth:90,maxWidth:140,width:130}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
         {task.detailer?<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
           <span style={{color:C.teal,fontSize:10}}>✏ {task.detailer}</span>
           {task.detailer_status&&<span style={{fontSize:9,fontWeight:700,color:STATUS_CLR[task.detailer_status]||C.t3,background:(STATUS_CLR[task.detailer_status]||C.t3)+"18",borderRadius:4,padding:"1px 5px",whiteSpace:"nowrap"}}>{task.detailer_status}</span>}
