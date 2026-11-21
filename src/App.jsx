@@ -324,8 +324,8 @@ function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
 }
 function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClose,saving,requireDates=false}){
   const [custom,setCustom]=useState(false);
-  const initPid=initial.project_id||projects[0]?.id||"";
-  const initClient=initial.client||(projects.find(p=>p.id===initPid)?.client||"");
+  const initPid=initial.project_id||(initial.id?projects[0]?.id||"":"");
+  const initClient=initial.client||(initPid?(projects.find(p=>p.id===initPid)?.client||""):"");
   const initAssignee=initial.assignee||"";
   const initDS=initial.detailer_status||(initial.id?"Not Yet Started":"");
   const initCS=initial.checker_status||(initial.id?"Not Yet Started":"");
@@ -343,12 +343,12 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   });
   // Reset form whenever the task being edited changes (e.g. Prev/Next navigation)
   useEffect(()=>{
-    const pid=initial.project_id||projects[0]?.id||"";
+    const pid=initial.project_id||(initial.id?projects[0]?.id||"":"");
     const assignee=initial.assignee||"";
     sf({
       project_id:pid,
       custNo:"",custName:"",title:initial.title||"",
-      client:initial.client||(projects.find(p=>p.id===pid)?.client||""),
+      client:initial.client||(pid?(projects.find(p=>p.id===pid)?.client||""):""),
       status:initial.status||"Not Yet Started",priority:initial.priority||"Medium",
       assignee,due_date:initial.due_date||"",
       tags:(initial.tags||[]).join(", "),files:initial.files||[],
