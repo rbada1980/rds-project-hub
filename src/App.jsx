@@ -55,7 +55,7 @@ const LIGHT_C={
   shadow:"0 2px 8px rgba(0,0,0,0.10),0 0 0 1px rgba(0,0,0,0.06)",
 };
 const C={...DARK_C};
-const ROLES=["Rebar","Tekla","Team Leader","Manager","Admin","Client","HR & Finance"];
+const ROLES=["Rebar","Tekla","Precast","Team Leader","Manager","Admin","Client","HR & Finance"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
 const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
@@ -381,8 +381,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
-  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
+  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Team Leader"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
+  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
   // Role lookup for displaying name (Role) in dropdowns
   const roleByName=Object.fromEntries((users||[]).map(u=>[u.name,u.role]));
   const withRole=name=>roleByName[name]?`${name} (${roleByName[name]})`:name;
@@ -4967,7 +4967,7 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
 // ══════════════════════════════════════════════════════
 const WF_TRIGGERS=[["status_changed","Status Changes To"],["task_assigned","Task Assigned"],["task_created","Task Created"]];
 const WF_ACTIONS=[["change_status","Change Status To"]];
-const WF_ROLES=["Admin","Manager","Team Leader","Rebar","Client"];
+const WF_ROLES=["Admin","Manager","Team Leader","Rebar","Tekla","Precast","Client"];
 const ALL_WF_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
 
 
