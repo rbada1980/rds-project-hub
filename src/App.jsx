@@ -381,8 +381,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
-  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
+  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
+  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Manager"||u.role==="Employee")).map(u=>u.name).filter(Boolean).sort();
   // Role lookup for displaying name (Role) in dropdowns
   const roleByName=Object.fromEntries((users||[]).map(u=>[u.name,u.role]));
   const withRole=name=>roleByName[name]?`${name} (${roleByName[name]})`:name;
