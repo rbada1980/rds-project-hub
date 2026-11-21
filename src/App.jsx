@@ -383,6 +383,9 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
   const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader")).map(u=>u.name).filter(Boolean).sort();
   const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
+  // Role lookup for displaying name (Role) in dropdowns
+  const roleByName=Object.fromEntries((users||[]).map(u=>[u.name,u.role]));
+  const withRole=name=>roleByName[name]?`${name} (${roleByName[name]})`:name;
   // Validation extras
   const assigneeEqualsDetailer=false;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
@@ -431,7 +434,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">— Select Team Leader —</option>
-              {assigneeOptions.map(m=><option key={m} value={m}>{m}</option>)}
+              {assigneeOptions.map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
         </div>
@@ -456,7 +459,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">— Select Detailer —</option>
-              {(detailerOptions.length?detailerOptions:members).map(m=><option key={m} value={m}>{m}</option>)}
+              {(detailerOptions.length?detailerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -475,7 +478,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">— Select Checker —</option>
-              {(checkerOptions.length?checkerOptions:members).map(m=><option key={m} value={m}>{m}</option>)}
+              {(checkerOptions.length?checkerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
