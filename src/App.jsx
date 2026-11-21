@@ -643,7 +643,13 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false);
   const promotableEmployees=users.filter(u=>u.is_active!==false&&u.role!=="Admin"&&u.role!=="Manager"&&u.role!=="Team Leader"&&u.role!=="Client").sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-  const isAddingNewTL=f.team_leader==="__new__";
+  const isAddingNewTL=false;// multi-select replaces __new__ flow
+  const selTLs=(f.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
+  function toggleTL(name){
+    const cur=selTLs;
+    const next=cur.includes(name)?cur.filter(x=>x!==name):[...cur,name];
+    sf(p=>({...p,team_leader:next.join(",")}));
+  }
   function toUn(str){return(str||"").toLowerCase().trim().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");}
   function startEdit(c){
     sei(c.id);
@@ -655,18 +661,20 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");setNewTLUser("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
-    if(!f.team_leader){se("Please select a Team Leader.");return;}
+    if(!f.team_leader||!(f.team_leader||"").trim()){se("Please select at least one Team Leader.");return;}
     if(!f.portal_username.trim()){se("Portal username is required.");return;}
-    // Promoting an employee to Team Leader
+    // Promote new employee to Team Leader if selected
     let resolvedTL=f.team_leader;
-    if(isAddingNewTL){
-      if(!newTLUser){se("Please select an employee to promote as Team Leader.");return;}
+    if(newTLUser){
       const emp=users.find(u=>u.id===newTLUser);
-      if(!emp){se("Selected employee not found.");return;}
-      // Promote role to Team Leader in DB
-      const {error:roleErr}=await supabase.from("users").update({role:"Team Leader"}).eq("id",emp.id);
-      if(roleErr){se("Failed to promote employee: "+roleErr.message);return;}
-      resolvedTL=emp.name;
+      if(emp){
+        const {error:roleErr}=await supabase.from("users").update({role:"Team Leader"}).eq("id",emp.id);
+        if(roleErr){se("Failed to promote employee: "+roleErr.message);return;}
+        // Add promoted TL to the selection if not already there
+        const cur=resolvedTL.split(",").map(x=>x.trim()).filter(Boolean);
+        if(!cur.map(x=>x.toLowerCase()).includes(emp.name.toLowerCase()))resolvedTL=[...cur,emp.name].join(",");
+        su(us=>us.map(u=>u.id===emp.id?{...u,role:"Team Leader"}:u));
+      }
     }
     setSaving(true);
     try{
@@ -716,7 +724,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:C.t1}}>{c.name}</div>
                     <div style={{fontSize:11,color:C.t3,display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
-                      {c.team_leader&&<span style={{color:C.accent,fontWeight:600}}>👑 {c.team_leader}</span>}
+                      {c.team_leader&&(c.team_leader.split(",").map(x=>x.trim()).filter(Boolean)).map(tl=><span key={tl} style={{color:C.accent,fontWeight:600}}>👑 {tl}</span>)}
                       {c.email&&<span>✉ {c.email}</span>}
                       {c.phone&&<span>📞 {c.phone}</span>}
                       {c.address&&<span>📍 {c.address}</span>}
@@ -745,24 +753,29 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}>
-              <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.red}}>*</span></label>
-              <select value={f.team_leader} onChange={e=>{sf(p=>({...p,team_leader:e.target.value}));setNewTLUser("");}}
-                style={{width:"100%",background:C.surface,border:`1px solid ${f.team_leader?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.team_leader?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",boxSizing:"border-box"}}>
-                <option value="">— Select Team Leader —</option>
-                {teamLeaders.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
-                <option value="__new__">➕ Add New Team Leader from Employees</option>
-              </select>
-              {isAddingNewTL&&(
-                <div style={{marginTop:8,padding:"10px 12px",background:C.accent+"11",border:`1px solid ${C.accent}44`,borderRadius:8}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:6}}>Select employee to promote to Team Leader:</div>
-                  <select value={newTLUser} onChange={e=>setNewTLUser(e.target.value)}
-                    style={{width:"100%",background:C.surface,border:`1px solid ${newTLUser?C.accent:C.border}`,borderRadius:7,padding:"8px 10px",color:newTLUser?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                    <option value="">— Select Employee —</option>
-                    {promotableEmployees.map(u=><option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
-                  </select>
-                  {newTLUser&&<div style={{fontSize:11,color:C.accent,marginTop:5}}>⚠ This employee's role will be changed to Team Leader on save.</div>}
-                </div>
-              )}
+              <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.red}}>*</span> {selTLs.length>0&&<span style={{color:C.accent,fontWeight:700}}>({selTLs.length} selected)</span>}</label>
+              <div style={{background:C.surface,border:`1px solid ${selTLs.length?C.border:C.red+"88"}`,borderRadius:8,padding:"8px 10px",maxHeight:140,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+                {teamLeaders.length===0&&<div style={{color:C.t3,fontSize:12,padding:"4px 0"}}>No team leaders yet — use "Add New" below.</div>}
+                {teamLeaders.map(u=>{
+                  const checked=selTLs.includes(u.name);
+                  return(
+                    <label key={u.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"4px 6px",borderRadius:6,background:checked?C.accent+"18":"transparent",border:`1px solid ${checked?C.accent+"44":"transparent"}`,transition:"all .1s"}}>
+                      <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${checked?C.accent:C.t3}`,background:checked?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",flexShrink:0,transition:"all .1s"}} onClick={()=>toggleTL(u.name)}>{checked?"✓":""}</div>
+                      <span style={{fontSize:13,color:checked?C.t1:C.t2,fontWeight:checked?700:400}} onClick={()=>toggleTL(u.name)}>{u.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {/* Promote employee to Team Leader */}
+              <div style={{marginTop:6,padding:"8px 10px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:5}}>➕ Add New Team Leader from Employees:</div>
+                <select value={newTLUser} onChange={e=>setNewTLUser(e.target.value)}
+                  style={{width:"100%",background:C.bg,border:`1px solid ${newTLUser?C.accent:C.border}`,borderRadius:7,padding:"7px 9px",color:newTLUser?C.t1:C.t3,fontSize:12,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="">— Select Employee to Promote —</option>
+                  {promotableEmployees.map(u=><option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+                </select>
+                {newTLUser&&<div style={{fontSize:11,color:C.accent,marginTop:4}}>⚠ Will be promoted to Team Leader and added to selection on save.</div>}
+              </div>
             </div>
             <div style={{flex:1}}><FInput label="Phone" value={f.phone} onChange={s("phone")} placeholder="e.g. +1 234 567 8900"/></div>
           </div>
@@ -13827,9 +13840,10 @@ export default function App(){
   async function addClient(f){
     const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).select().single();
     if(data)scl(cl=>[...cl,data]);
-    // Append this client to the team leader's client_name (comma-separated)
-    if(f.team_leader){
-      const tlUser=users.find(u=>u.name===f.team_leader&&u.role==="Team Leader");
+    // Append this client to each selected team leader's client_name (comma-separated multi-TL)
+    const newTLNames=(f.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
+    for(const tlName of newTLNames){
+      const tlUser=users.find(u=>u.name===tlName&&u.role==="Team Leader");
       if(tlUser){
         const existing=(tlUser.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
         if(!existing.map(x=>x.toLowerCase()).includes(f.name.toLowerCase())){
@@ -13845,21 +13859,23 @@ export default function App(){
     const oldClient=clients.find(c=>c.id===id);
     const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).eq("id",id).select().single();
     if(data)scl(cl=>cl.map(c=>c.id===id?data:c));
-    // If team leader changed, remove client from old TL and add to new TL
-    if(oldClient&&oldClient.team_leader!==f.team_leader){
-      // Remove from old TL
-      if(oldClient.team_leader){
-        const oldTL=users.find(u=>u.name===oldClient.team_leader&&u.role==="Team Leader");
-        if(oldTL){
-          const updated=(oldTL.client_name||"").split(",").map(x=>x.trim()).filter(x=>x.toLowerCase()!==oldClient.name.toLowerCase()).join(",");
-          await supabase.from("users").update({client_name:updated}).eq("id",oldTL.id);
-          su(us=>us.map(u=>u.id===oldTL.id?{...u,client_name:updated}:u));
-        }
+    // Compute old and new TL name sets
+    const oldTLNames=(oldClient?.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const newTLNames=(f.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const removedTLs=oldTLNames.filter(n=>!newTLNames.map(x=>x.toLowerCase()).includes(n.toLowerCase()));
+    const addedTLs=newTLNames.filter(n=>!oldTLNames.map(x=>x.toLowerCase()).includes(n.toLowerCase()));
+    // Remove client from TLs that were deselected
+    for(const tlName of removedTLs){
+      const oldTL=users.find(u=>u.name===tlName&&u.role==="Team Leader");
+      if(oldTL){
+        const updated=(oldTL.client_name||"").split(",").map(x=>x.trim()).filter(x=>x.toLowerCase()!==oldClient.name.toLowerCase()).join(",");
+        await supabase.from("users").update({client_name:updated}).eq("id",oldTL.id);
+        su(us=>us.map(u=>u.id===oldTL.id?{...u,client_name:updated}:u));
       }
     }
-    // Append client to new TL's client_name
-    if(f.team_leader){
-      const tlUser=users.find(u=>u.name===f.team_leader&&u.role==="Team Leader");
+    // Add client to newly selected TLs
+    for(const tlName of addedTLs){
+      const tlUser=users.find(u=>u.name===tlName&&u.role==="Team Leader");
       if(tlUser){
         const existing=(tlUser.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
         if(!existing.map(x=>x.toLowerCase()).includes(f.name.toLowerCase())){
