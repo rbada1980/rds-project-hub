@@ -389,8 +389,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Team Leader"||u.role==="Manager")).map(u=>u.name).filter(Boolean).sort();
-  const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Manager")).map(u=>u.name).filter(Boolean).sort();
+  const detailerOptions=users.filter(u=>isActiveU(u)&&u.username!=="srilalitha"&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Team Leader"||u.role==="Manager")).map(u=>u.name).filter(Boolean).sort();
+  const checkerOptions=users.filter(u=>isActiveU(u)&&u.username!=="srilalitha"&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Manager")).map(u=>u.name).filter(Boolean).sort();
   // Role lookup for displaying name (Role) in dropdowns
   const roleByName=Object.fromEntries((users||[]).map(u=>[u.name,u.role]));
   const withRole=name=>roleByName[name]?`${name} (${roleByName[name]})`:name;
