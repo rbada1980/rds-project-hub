@@ -655,6 +655,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");setNewTLUser("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
+    if(!f.team_leader){se("Please select a Team Leader.");return;}
     if(!f.portal_username.trim()){se("Portal username is required.");return;}
     // Promoting an employee to Team Leader
     let resolvedTL=f.team_leader;
@@ -744,9 +745,9 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
           </div>
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}>
-              <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.t3,fontSize:11}}>(optional)</span></label>
+              <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.red}}>*</span></label>
               <select value={f.team_leader} onChange={e=>{sf(p=>({...p,team_leader:e.target.value}));setNewTLUser("");}}
-                style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:f.team_leader?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",boxSizing:"border-box"}}>
+                style={{width:"100%",background:C.surface,border:`1px solid ${f.team_leader?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.team_leader?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",boxSizing:"border-box"}}>
                 <option value="">— Select Team Leader —</option>
                 {teamLeaders.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
                 <option value="__new__">➕ Add New Team Leader from Employees</option>
