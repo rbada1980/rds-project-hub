@@ -571,12 +571,12 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Employees <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned - select at least 1 more)</span></label>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>sf(p=>({...p,assigned_users:users.map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
+            <button onClick={()=>sf(p=>({...p,assigned_users:users.filter(u=>u.role!=="Client"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
             <button onClick={()=>sf(p=>({...p,assigned_users:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,maxHeight:160,overflowY:"auto",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:10}}>
-          {users.map(u=>{
+          {users.filter(u=>u.role!=="Client"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>{
             const isLocked=u.username===narayanaUsername;
             const checked=f.assigned_users.includes(u.username);
             return(
