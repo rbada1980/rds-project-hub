@@ -4,7 +4,7 @@ import { createLocalClient } from "./localApi.js";
 import * as XLSX from "xlsx";
 const MobileCtx=createContext(false);
 const useMobile=()=>useContext(MobileCtx);
-// email notifications removed — daily scheduled digest replaces per-update emails
+// email notifications removed - daily scheduled digest replaces per-update emails
 
 const SUPA_URL = "https://xypcbioltukahipkqqzc.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
@@ -12,11 +12,11 @@ const IS_LOCAL = typeof window!=="undefined" && (window.location.port==="3000" |
 const LOCAL_BASE = IS_LOCAL ? `${typeof window!=="undefined"?window.location.protocol:"https:"}//${typeof window!=="undefined"?window.location.hostname:"192.168.0.159"}:${typeof window!=="undefined"?window.location.port:"8443"}` : "";
 const supabase = IS_LOCAL ? createLocalClient(LOCAL_BASE) : createClient(SUPA_URL, SUPA_KEY);
 const SUPER_ADMIN = "ramesh";
-// Hardcoded fallback notification emails — used when billing_notify_config is not saved
+// Hardcoded fallback notification emails - used when billing_notify_config is not saved
 const NOTIFY_ADMIN_EMAIL = "ramesh@rdstechserv.com";
 const NOTIFY_HR_EMAIL    = "lavanya@rdstechserv.com";
 // Returns YYYY-MM-DD in LOCAL timezone (IST). Never use toISOString() for attendance
-// All date/time calculations are anchored to IST (Asia/Kolkata) — the company operates entirely in India.
+// All date/time calculations are anchored to IST (Asia/Kolkata) - the company operates entirely in India.
 // Only billing amounts use en-US / USD since those clients are in the USA.
 function localDateStr(d){
   return (d||new Date()).toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});
@@ -31,7 +31,7 @@ function localDateTimeStr(d){
 // Normalize any date value to YYYY-MM-DD in IST.
 // Handles: "2026-07-20" (returned as-is), "2026-07-19T18:30:00.000Z" (IST midnight → "2026-07-20")
 function normDate(ds){
-  if(!ds)return"—";
+  if(!ds)return"-";
   if(typeof ds==="string"&&ds.length===10)return ds; // already YYYY-MM-DD
   const d=new Date(ds);
   if(isNaN(d.getTime()))return String(ds).slice(0,10);
@@ -62,10 +62,10 @@ const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
-const fmtD=v=>{if(!v)return"—";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
+const fmtD=v=>{if(!v)return"-";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 // Global DD/MM/YYYY formatter for any date string or Date object
 // IST-safe: plain YYYY-MM-DD strings sliced directly; timestamps/Date objects converted via IST locale
-const fmtDDMMYYYY=v=>{if(!v)return"—";if(typeof v==="string"&&/^\d{4}-\d{2}-\d{2}/.test(v)){const s=v.slice(0,10);return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);}const d=new Date(v);if(isNaN(d))return"—";const s=d.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});if(s.length<10)return"—";return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
+const fmtDDMMYYYY=v=>{if(!v)return"-";if(typeof v==="string"&&/^\d{4}-\d{2}-\d{2}/.test(v)){const s=v.slice(0,10);return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);}const d=new Date(v);if(isNaN(d))return"-";const s=d.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});if(s.length<10)return"-";return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 
 
 function Av({name,size=28}){
@@ -97,7 +97,7 @@ function Stat({label,value,sub,color=C.accent,onClick}){
     </div>
   );
 }
-// Live-theme button style proxies — always read current C values on spread
+// Live-theme button style proxies - always read current C values on spread
 const _mkBtn=fn=>new Proxy({},{
   get(_,k){return fn()[k];},
   ownKeys(){return Object.keys(fn());},
@@ -234,7 +234,7 @@ function FileUp({files,onChange}){
         onDrop={e=>{e.preventDefault();sd(false);add(e.dataTransfer.files);}}
         style={{border:`2px dashed ${drag?C.accent:C.border}`,borderRadius:8,padding:"10px 14px",cursor:"pointer",background:drag?C.accent+"10":C.surface,textAlign:"center",minHeight:48,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
         <span>📎</span>
-        <span style={{color:C.t3,fontSize:12}}>{files.length===0?"Click or drag & drop any file":`${files.length} file(s) — add more`}</span>
+        <span style={{color:C.t3,fontSize:12}}>{files.length===0?"Click or drag & drop any file":`${files.length} file(s) - add more`}</span>
         <input ref={ref} type="file" multiple style={{display:"none"}} onChange={e=>{add(e.target.files);e.target.value="";}}/>
       </div>
       {files.length>0&&(
@@ -264,7 +264,7 @@ function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
   }
   useEffect(()=>{load();},[task.id]);
   function fIcon(t){return t==="application/pdf"?"📄":t.startsWith("image/")?"🖼":t.includes("word")?"📝":t.includes("sheet")||t.includes("csv")?"📊":t.includes("dwg")||t.includes("dxf")||t.includes("cad")?"📐":"📎";}
-  function fmtSz(b){return!b?"—":b<1024?b+"B":b<1048576?(b/1024).toFixed(1)+"KB":(b/1048576).toFixed(1)+"MB";}
+  function fmtSz(b){return!b?"-":b<1024?b+"B":b<1048576?(b/1024).toFixed(1)+"KB":(b/1048576).toFixed(1)+"MB";}
   async function upload(e){
     const file=e.target.files?.[0];if(!file)return;
     su(true);
@@ -293,7 +293,7 @@ function TaskFilesPanel({task,me,canEdit,onClose,onCountChange}){
   }
   const canDel=f=>canEdit||f.uploaded_by===me.name||f.uploaded_by===me.username;
   return(
-    <Modal title={`📎 Files — ${task.title}`} onClose={onClose} wide>
+    <Modal title={`📎 Files - ${task.title}`} onClose={onClose} wide>
       <div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <span style={{color:C.t3,fontSize:12}}>{loading?"…":files.length+" file(s) attached"}</span>
@@ -404,7 +404,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
               <RLabel text="Project *"/>
               <select value={f.project_id} onChange={e=>onProjectChange(e.target.value)}
                 style={{width:"100%",background:C.surface,border:`1px solid ${f.project_id?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.project_id?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                <option value="">— Select Project —</option>
+                <option value="">- Select Project -</option>
                 {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
@@ -422,7 +422,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
                 <RLabel text="Client *"/>
                 <select value={f.client} onChange={e=>s("client")(e.target.value)}
                   style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="">— Select Client —</option>
+                  <option value="">- Select Client -</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
@@ -433,7 +433,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <RLabel text="Assignee *"/>
             <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <option value="">— Select Team Leader —</option>
+              <option value="">- Select Team Leader -</option>
               {assigneeOptions.map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
@@ -458,7 +458,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer *</label>
             <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <option value="">— Select Detailer —</option>
+              <option value="">- Select Detailer -</option>
               {(detailerOptions.length?detailerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
@@ -466,7 +466,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status *</label>
             <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`2px solid ${f.detailer_status?STATUS_CLR[f.detailer_status]||C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-              <option value="">— Select —</option>
+              <option value="">- Select -</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
           </div>
@@ -477,7 +477,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <RLabel text={isEdit?"Checker":"Checker *"}/>
             <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <option value="">— Select Checker —</option>
+              <option value="">- Select Checker -</option>
               {(checkerOptions.length?checkerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
@@ -485,7 +485,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
             <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status *</label>
             <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
               style={{width:"100%",background:C.surface,border:`2px solid ${f.checker_status?STATUS_CLR[f.checker_status]||C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
-              <option value="">— Select —</option>
+              <option value="">- Select -</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
           </div>
@@ -537,7 +537,7 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
           <RLabel text="Client *"/>
           <select value={f.client} onChange={e=>sf(p=>({...p,client:e.target.value}))}
             style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-            <option value="">— Select Client —</option>
+            <option value="">- Select Client -</option>
             {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
         </div>
@@ -551,7 +551,7 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
       </div>
       <FInput label="Description" value={f.description} onChange={v=>sf(p=>({...p,description:v}))}/>
       <div style={{marginBottom:14}}>
-        <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Group / Phase <span style={{color:C.t3,fontWeight:400}}>(optional — groups projects together on dashboard)</span></label>
+        <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Group / Phase <span style={{color:C.t3,fontWeight:400}}>(optional - groups projects together on dashboard)</span></label>
         <input value={f.group_name||""} onChange={e=>sf(p=>({...p,group_name:e.target.value}))} list="group-suggestions"
           placeholder="e.g. Somi Parc Phase 1, Tower A, Podium…"
           style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
@@ -559,7 +559,7 @@ function ProjectFormFields({f,sf,users,clients,requireDates=false,narayanaUserna
       </div>
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Employees <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned — select at least 1 more)</span></label>
+          <label style={{color:C.t2,fontSize:12,fontWeight:600}}>Assign Employees <span style={{color:C.red,fontWeight:700}}>*</span> <span style={{color:C.t3,fontWeight:400}}>(Narayana auto-assigned - select at least 1 more)</span></label>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>sf(p=>({...p,assigned_users:users.map(u=>u.username)}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>All</button>
             <button onClick={()=>sf(p=>({...p,assigned_users:[]}))} style={{...GBtn,padding:"3px 10px",fontSize:11}}>Clear</button>
@@ -685,7 +685,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
     }catch(e){se("Error: "+e.message);}
     setSaving(false);
   }
-  // autoUsername removed — username is now entered manually
+  // autoUsername removed - username is now entered manually
   const shownClients=cq?clients.filter(c=>c.name.toLowerCase().includes(cq.toLowerCase())||(c.email||"").toLowerCase().includes(cq.toLowerCase())||(c.phone||"").includes(cq)||(c.address||"").toLowerCase().includes(cq.toLowerCase())):clients;
   return(
     <Modal title="Manage Clients" onClose={onClose} wide>
@@ -732,7 +732,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
                     <div style={{marginTop:5,fontSize:11}}>
                       {pu
                         ?<span style={{color:C.green,fontWeight:600}}>🔐 Portal: @{pu.username}</span>
-                        :<span style={{color:C.yellow,fontWeight:600}}>⚠ No portal access — click ✏️ to set up</span>}
+                        :<span style={{color:C.yellow,fontWeight:600}}>⚠ No portal access - click ✏️ to set up</span>}
                     </div>
                   </div>
                   <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
@@ -755,7 +755,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
             <div style={{flex:1}}>
               <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.red}}>*</span> {selTLs.length>0&&<span style={{color:C.accent,fontWeight:700}}>({selTLs.length} selected)</span>}</label>
               <div style={{background:C.surface,border:`1px solid ${selTLs.length?C.border:C.red+"88"}`,borderRadius:8,padding:"8px 10px",maxHeight:140,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
-                {teamLeaders.length===0&&<div style={{color:C.t3,fontSize:12,padding:"4px 0"}}>No team leaders yet — use "Add New" below.</div>}
+                {teamLeaders.length===0&&<div style={{color:C.t3,fontSize:12,padding:"4px 0"}}>No team leaders yet - use "Add New" below.</div>}
                 {teamLeaders.map(u=>{
                   const checked=selTLs.includes(u.name);
                   return(
@@ -771,7 +771,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
                 <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:5}}>➕ Add New Team Leader from Employees:</div>
                 <select value={newTLUser} onChange={e=>setNewTLUser(e.target.value)}
                   style={{width:"100%",background:C.bg,border:`1px solid ${newTLUser?C.accent:C.border}`,borderRadius:7,padding:"7px 9px",color:newTLUser?C.t1:C.t3,fontSize:12,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="">— Select Employee to Promote —</option>
+                  <option value="">- Select Employee to Promote -</option>
                   {promotableEmployees.map(u=><option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
                 </select>
                 {newTLUser&&<div style={{fontSize:11,color:C.accent,marginTop:4}}>⚠ Will be promoted to Team Leader and added to selection on save.</div>}
@@ -983,7 +983,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                 <RLabel text="Client Name *"/>
                 <select value={f.client_name} onChange={e=>{const cn=e.target.value;sf(p=>({...p,client_name:cn,name:cn||p.name}));}}
                   style={{width:"100%",background:C.surface,border:`1px solid ${f.client_name?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client_name?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="">— Select Client —</option>
+                  <option value="">- Select Client -</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
@@ -1056,7 +1056,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
                 <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Client Name</label>
                 <select value={f.client_name} onChange={e=>s("client_name")(e.target.value)}
                   style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="">— Select Client —</option>
+                  <option value="">- Select Client -</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
@@ -1177,7 +1177,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
     </div>
   );
 }
-// Revision flow bar — single row spanning full width showing status chain
+// Revision flow bar - single row spanning full width showing status chain
 // Main (Completed) ➜ Rev 1 (In Progress) ➜ Rev 2 (Completed) …
 function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
   const mainClr=getStatusColor(task.status);
@@ -1255,10 +1255,10 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDow
       </td>}
       <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
       <td style={{...td,maxWidth:90}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
-      {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.teal,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"—"}</span></td>}
+      {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.teal,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"-"}</span></td>}
       <td style={{...td,maxWidth:110,width:100}}><span style={{background:getStatusColor(task.status)+"22",color:getStatusColor(task.status),border:`1px solid ${getStatusColor(task.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{task.status}</span></td>
-      <td style={{...td,maxWidth:70,width:65}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"—"}</span></td>
-      <td style={{...td,maxWidth:85}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>—</span>}</td>
+      <td style={{...td,maxWidth:70,width:65}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"-"}</span></td>
+      <td style={{...td,maxWidth:85}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>-</span>}</td>
       <td style={{...td,minWidth:90}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
         {task.detailer?<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
           <span style={{color:C.teal,fontSize:10}}>✏ {task.detailer}</span>
@@ -1268,13 +1268,13 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDow
           <span style={{color:"#8b5cf6",fontSize:10}}>✓ {task.checker}</span>
           {task.checker_status&&<span style={{fontSize:9,fontWeight:700,color:STATUS_CLR[task.checker_status]||C.t3,background:(STATUS_CLR[task.checker_status]||C.t3)+"18",borderRadius:4,padding:"1px 5px",whiteSpace:"nowrap"}}>{task.checker_status}</span>}
         </div>:null}
-        {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>—</span>}
+        {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>-</span>}
         {task.det_weight!=null&&<span style={{color:C.t3,fontSize:9,marginTop:1}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})} T</span>}
       </div></td>
       <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
         {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
-        {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:10}}>—</span>}
+        {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:10}}>-</span>}
       </div></td>
       {onReview?(
         <td style={{...td,minWidth:130}}>
@@ -1478,8 +1478,8 @@ function PersonalStats({me,tasks,projects}){
     {l:"Done This Month",v:doneThisMonth.length,c:"#3b82f6",icon:"📆"},
     {l:"All-Time Done",v:doneTasks.length,c:"#8b5cf6",icon:"✅"},
     {l:"Projects",v:projCount,c:"#f59e0b",icon:"📁"},
-    {l:"On-Time Rate",v:onTimeRate!==null?onTimeRate+"%":"—",c:onTimeRate!==null?onTimeClr:C.t3,icon:"🎯"},
-    {l:"Avg Turnaround",v:avgTA!==null?avgTA+"d":"—",c:"#14b8a6",icon:"⏱"},
+    {l:"On-Time Rate",v:onTimeRate!==null?onTimeRate+"%":"-",c:onTimeRate!==null?onTimeClr:C.t3,icon:"🎯"},
+    {l:"Avg Turnaround",v:avgTA!==null?avgTA+"d":"-",c:"#14b8a6",icon:"⏱"},
   ];
   return(
     <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"20px 24px",marginBottom:24}}>
@@ -1539,7 +1539,7 @@ function EmployeeOfMonthBanner({me,today}){
           <span style={{fontSize:36}}>🌟</span>
         </div>
         <div style={{flex:1,minWidth:200,position:"relative"}}>
-          <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🏅 RDS Techserv — Employee of the Month</div>
+          <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🏅 RDS Techserv - Employee of the Month</div>
           <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Congratulations, "+me.name+"! 🌟"}</div>
           <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",marginTop:6}}>{"You are the Employee of the Month for "+monthName+" "+yr+"! The team is proud of you! 🎉"}</div>
           {eom.reason&&<div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:4,fontStyle:"italic"}}>"{eom.reason}"</div>}
@@ -1590,7 +1590,7 @@ function EOMPickerWidget({me,users,today}){
   return(
     <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"18px 20px",marginBottom:20}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-        <div style={{fontWeight:800,fontSize:14,color:C.t1}}>🏅 Employee of the Month — {monthName} {yr}</div>
+        <div style={{fontWeight:800,fontSize:14,color:C.t1}}>🏅 Employee of the Month - {monthName} {yr}</div>
         <button onClick={()=>{
           const existing=eom?emps.find(u=>String(u.id)===String(eom.user_id)||u.name===eom.user_name):null;
           setPicking(true);setPickId(existing?(existing.username||String(existing.id)):"");setReason(eom?.reason||"");
@@ -1620,7 +1620,7 @@ function EOMPickerWidget({me,users,today}){
               <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:.4,marginBottom:6}}>Employee</div>
               <select value={pickId} onChange={e=>setPickId(e.target.value)}
                 style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.t1,fontSize:13}}>
-                <option value="">— Select Employee —</option>
+                <option value="">- Select Employee -</option>
                 {emps.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>(
                   <option key={u.id} value={u.username||String(u.id)}>{u.name} ({u.role})</option>
                 ))}
@@ -1653,7 +1653,7 @@ function HolidayBanner({today}){
   },[today]);
   if(hols.length===0)return null;
   const CFG={
-    national:{bg:"linear-gradient(135deg,#FF9933 0%,#cc3300 45%,#000080 100%)",emoji:"🇮🇳",sub:"Wishing you a proud and joyful day — Jai Hind! 🙏",badge:"National Holiday"},
+    national:{bg:"linear-gradient(135deg,#FF9933 0%,#cc3300 45%,#000080 100%)",emoji:"🇮🇳",sub:"Wishing you a proud and joyful day - Jai Hind! 🙏",badge:"National Holiday"},
     festival:{bg:"linear-gradient(135deg,#f59e0b 0%,#ec4899 55%,#8b5cf6 100%)",emoji:"🎉",sub:"Warm festival wishes and blessings from the entire RDS Team! 🪔",badge:"Festival"},
     public:{bg:"linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%)",emoji:"✨",sub:"Season's greetings and warm wishes from the RDS Team! 🌟",badge:"Public Holiday"},
     company:{bg:"linear-gradient(135deg,#f97316 0%,#8b5cf6 100%)",emoji:"🎊",sub:"Celebrating this special day together as the RDS Family! 🎉",badge:"RDS Event"},
@@ -1668,7 +1668,7 @@ function HolidayBanner({today}){
             <div style={{position:"absolute",top:12,right:16,background:"rgba(255,255,255,0.22)",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 12px",borderRadius:20,letterSpacing:".06em",textTransform:"uppercase"}}>{cfg.badge}</div>
             <div style={{width:62,height:62,borderRadius:16,background:"rgba(255,255,255,0.2)",border:"2px solid rgba(255,255,255,0.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,flexShrink:0}}>{cfg.emoji}</div>
             <div style={{flex:1,minWidth:180,position:"relative"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:3}}>RDS Techserv — Holiday Greetings</div>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:3}}>RDS Techserv - Holiday Greetings</div>
               <div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Happy "+h.name+"! "+cfg.emoji}</div>
               <div style={{fontSize:13,color:"rgba(255,255,255,0.88)",marginTop:5}}>{cfg.sub}</div>
             </div>
@@ -1698,7 +1698,7 @@ function MonthHolidayWidget({today}){
         .order("date")
         .then(({data})=>{if(data)setHolidays(data);});
     }
-    fetchHols();// one-time fetch only — holidays are static data
+    fetchHols();// one-time fetch only - holidays are static data
   },[]);
   const monthHols=holidays.filter(h=>(h.date||"").slice(5,7)===today.slice(5,7));
   const byMonth=Array.from({length:12},(_,i)=>({
@@ -1885,7 +1885,7 @@ function BirthdayBanner({me,users,today}){
   const RDS_ORANGE="#f97316";
   return(
     <div style={{marginBottom:22}}>
-      {/* Own birthday — big RDS-branded celebration banner */}
+      {/* Own birthday - big RDS-branded celebration banner */}
       {isMeBday&&(
         <div style={{background:"linear-gradient(135deg,#f97316,#ea580c,#c2410c)",borderRadius:18,padding:"26px 32px",marginBottom:14,display:"flex",alignItems:"center",gap:20,boxShadow:"0 6px 32px #f9731644",flexWrap:"wrap",position:"relative",overflow:"hidden"}}>
           {/* Background decoration */}
@@ -1896,7 +1896,7 @@ function BirthdayBanner({me,users,today}){
             <span style={{fontSize:36,lineHeight:1}}>🎂</span>
           </div>
           <div style={{flex:1,minWidth:200,position:"relative"}}>
-            <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🎊 RDS Techserv — Birthday Celebration</div>
+            <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🎊 RDS Techserv - Birthday Celebration</div>
             <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Happy Birthday, "+me.name+"! 🎉"}</div>
             <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",marginTop:6}}>{"Wishing you a wonderful day from the entire RDS Team! 🎈"}</div>
           </div>
@@ -1928,7 +1928,7 @@ function BirthdayBanner({me,users,today}){
         <div key={u.id} style={{background:"#000",border:`1px solid ${RDS_ORANGE}44`,borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
           <div style={{width:42,height:42,borderRadius:"50%",background:RDS_ORANGE+"33",border:`1px solid ${RDS_ORANGE}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🎁</div>
           <div style={{flex:1,minWidth:160}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{"🗓️ Tomorrow — "+u.name+"'s Birthday!"}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{"🗓️ Tomorrow - "+u.name+"'s Birthday!"}</div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginTop:2}}>{u.role+" · Prepare your wishes for tomorrow! 🎂"}</div>
           </div>
           <div style={{fontSize:11,fontWeight:600,color:"#fff",background:RDS_ORANGE,borderRadius:8,padding:"5px 12px"}}>Tomorrow</div>
@@ -1961,7 +1961,7 @@ function WorkAnniversaryBanner({me,users,today}){
             <span style={{fontSize:36,lineHeight:1}}>🏆</span>
           </div>
           <div style={{flex:1,minWidth:200,position:"relative"}}>
-            <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🎊 RDS Techserv — Work Anniversary</div>
+            <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:4}}>🎊 RDS Techserv - Work Anniversary</div>
             <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.2}}>{"Happy "+meYrs+(meYrs===1?" Year":" Years")+" Anniversary, "+me.name+"! 🎉"}</div>
             <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",marginTop:6}}>{"Thank you for "+meYrs+(meYrs===1?" year":" years")+" of dedication to RDS Team! ⭐"}</div>
           </div>
@@ -1981,7 +1981,7 @@ function WorkAnniversaryBanner({me,users,today}){
             </div>
             <div style={{flex:1,minWidth:160}}>
               <div style={{fontSize:11,fontWeight:700,color:TEAL,letterSpacing:".08em",textTransform:"uppercase",marginBottom:2}}>🏆 Work Anniversary · RDS Techserv</div>
-              <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{u.name+" — "+y+(y===1?" Year":" Years")+" at RDS! 🎊"}</div>
+              <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{u.name+" - "+y+(y===1?" Year":" Years")+" at RDS! 🎊"}</div>
               <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role}</div>
             </div>
             <div style={{background:`linear-gradient(135deg,${TEAL},${PURPLE})`,color:"#fff",borderRadius:10,padding:"10px 20px",fontWeight:700,fontSize:13,whiteSpace:"nowrap",flexShrink:0,boxShadow:`0 2px 8px ${TEAL}44`}}>
@@ -1997,7 +1997,7 @@ function WorkAnniversaryBanner({me,users,today}){
           <div key={u.id} style={{background:`linear-gradient(135deg,${C.card},#f0f9ff)`,border:`1px solid ${TEAL}44`,borderRadius:12,padding:"14px 20px",marginBottom:8,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
             <div style={{width:42,height:42,borderRadius:"50%",background:TEAL+"22",border:`1px solid ${TEAL}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🏆</div>
             <div style={{flex:1,minWidth:160}}>
-              <div style={{fontSize:13,fontWeight:700,color:TEAL}}>{"🗓️ Tomorrow — "+u.name+"'s "+y+(y===1?" Year":" Years")+" Anniversary!"}</div>
+              <div style={{fontSize:13,fontWeight:700,color:TEAL}}>{"🗓️ Tomorrow - "+u.name+"'s "+y+(y===1?" Year":" Years")+" Anniversary!"}</div>
               <div style={{fontSize:12,color:C.t2,marginTop:2}}>{u.role+" · Wish them tomorrow! 🥂"}</div>
             </div>
             <div style={{fontSize:11,fontWeight:600,color:TEAL,background:TEAL+"15",borderRadius:8,padding:"5px 12px",border:`1px solid ${TEAL}33`}}>Tomorrow</div>
@@ -2061,10 +2061,10 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
         const od=myTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold");
         const uModalData={
-          utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
-          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.blue};})},
-          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
+          utotal:{title:"📋 All My Tasks",color:C.accent,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          ucompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · Done`,dot:C.green};})},
+          uinprog:{title:"🔄 In Progress Tasks",color:C.blue,items:ipTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · Due: ${fmtD(t.due_date)}`,dot:C.blue};})},
+          uoverdue:{title:"⚠ Overdue Tasks",color:C.red,items:od.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=uModalData[uStatModal];if(!md)return null;
         return(<div onClick={()=>setUSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -2120,7 +2120,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                     <div style={{width:3,height:28,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
-                      <div style={{fontSize:11,color:C.t3}}>{pj?.name||"—"}</div>
+                      <div style={{fontSize:11,color:C.t3}}>{pj?.name||"-"}</div>
                     </div>
                     <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
                     <span style={{fontSize:11,color:daysLeft<=1?C.red:C.yellow,fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>
@@ -2184,12 +2184,12 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                   ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
                   :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"—"}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"-"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>-</span>}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"-"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
                   </tr>);})}</tbody>
@@ -2215,7 +2215,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                     <div style={{width:3,height:36,borderRadius:2,background:proj?.color||C.accent,flexShrink:0}}/>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{margin:0,fontSize:13,fontWeight:700,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</p>
-                      <p style={{margin:"3px 0 0",fontSize:11,color:C.t3}}>{proj?.name||"—"}{t.due_date?` · Due ${fmtD(t.due_date)}`:""}{isOv?" ⚠":""}</p>
+                      <p style={{margin:"3px 0 0",fontSize:11,color:C.t3}}>{proj?.name||"-"}{t.due_date?` · Due ${fmtD(t.due_date)}`:""}{isOv?" ⚠":""}</p>
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                       <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
@@ -2386,13 +2386,13 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         const doneTasks=allTasks.filter(t=>isDone(t.status));
         const tlModalData={
           tlteam:{title:"👤 Team Members",color:"#8b5cf6",items:teamMembers.map(m=>{const mt=allTasks.filter(t=>t.assignee===m);const mip=mt.filter(t=>t.status==="In Progress").length;const md=mt.filter(t=>isDone(t.status)).length;return{label:m,sub:`${mip} in progress · ${md} done`,dot:"#8b5cf6"};})},
-          tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.accent};})},
-          tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"}`,dot:C.green};})},
-          tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status} · Due: ${fmtD(t.due_date)}`,dot:isDone(t.status)?C.green:C.blue};})},
-          tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
-          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.assignee||"—"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
+          tltotal:{title:"📋 All Tasks",color:C.blue,items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.assignee||"-"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          tlinprog:{title:"🔄 In Progress Tasks",color:C.accent,items:ipTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.assignee||"-"} · Due: ${fmtD(t.due_date)}`,dot:C.accent};})},
+          tlcomplete:{title:"✅ Completed Tasks",color:C.green,items:doneTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.assignee||"-"}`,dot:C.green};})},
+          tlalltasks:{title:"📋 Total Tasks",color:"#8b5cf6",items:allTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.assignee||"-"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          tlmydetail:{title:"✏️ My Detailing",color:C.blue,items:detailerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.status} · Due: ${fmtD(t.due_date)}`,dot:isDone(t.status)?C.green:C.blue};})},
+          tlmycheck:{title:"✅ My QC/Checking",color:C.teal,items:checkerTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.assignee||"-"} · ${t.status}`,dot:isDone(t.status)?C.green:C.teal};})},
+          tloverdue:{title:"⚠️ Overdue Tasks",color:C.red,items:allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.assignee||"-"} · Due: ${fmtD(t.due_date)}`,dot:C.red};})},
         };
         const md=tlModalData[tlStatModal];if(!md)return null;
         return(<div onClick={()=>setTSM(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -2590,12 +2590,12 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                   ?<tr><td colSpan={11} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
                   :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"—"}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>—</span>}</td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]}>{t.priority||"-"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:5}}><Av name={t.assignee} size={20}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>:<span style={{color:C.t3,fontSize:12}}>-</span>}</td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.detailer||"-"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{t.checker||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t3,fontSize:12}}>{fmtD(t.client_sub_date)}</span></td>
                     <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
@@ -2629,7 +2629,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
               const isOv=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
               const iAmDetailer=matchesMe(t.detailer);
               const iAmChecker=matchesMe(t.checker);
-              const myRole=iAmDetailer&&iAmChecker?"Detailer · QC":iAmDetailer?"Detailer":iAmChecker?"QC Check":"—";
+              const myRole=iAmDetailer&&iAmChecker?"Detailer · QC":iAmDetailer?"Detailer":iAmChecker?"QC Check":"-";
               return(
                 <div key={t.id} onClick={()=>onEditTask(t)}
                   style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",transition:"border-color .15s",borderLeft:`4px solid ${proj?.color||"#8b5cf6"}`}}
@@ -2639,10 +2639,10 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                     <span style={{fontSize:14,fontWeight:700,color:C.t1,lineHeight:1.3,flex:1}}>{t.title}</span>
                     <Bdg color={getStatusColor(t.status)}>{t.status}</Bdg>
                   </div>
-                  <div style={{fontSize:12,color:C.teal,marginBottom:8,fontWeight:600}}>📁 {proj?.name||"—"}</div>
+                  <div style={{fontSize:12,color:C.teal,marginBottom:8,fontWeight:600}}>📁 {proj?.name||"-"}</div>
                   {t.assignee&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><Av name={t.assignee} size={22}/><span style={{fontSize:12,color:C.t2}}>{t.assignee}</span></div>}
                   <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",borderTop:`1px solid ${C.border}`,paddingTop:8,marginTop:4}}>
-                    <Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg>
+                    <Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"-"}</Bdg>
                     {(iAmDetailer||iAmChecker)&&<span style={{fontSize:11,fontWeight:600,color:"#8b5cf6",background:"#8b5cf622",padding:"2px 8px",borderRadius:20}}>{myRole}</span>}
                     <span style={{flex:1}}/>
                     <span style={{fontSize:11,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{fmtD(t.due_date)}{isOv?" ⚠":""}</span>
@@ -3322,14 +3322,14 @@ function ClientFeedbackPage({tasks,projects,users,onEditTask}){
                           </div>
                           {t.due_date&&<div style={{fontSize:11,color:ov?C.red:C.t3,marginLeft:9,marginTop:2}}>{ov?"⚠ Overdue · ":""}{fmtD(t.due_date)}</div>}
                         </td>
-                        <td style={{padding:"10px 12px"}}><span style={{fontSize:12,color:C.t2}}>{proj?.name||"—"}</span></td>
+                        <td style={{padding:"10px 12px"}}><span style={{fontSize:12,color:C.t2}}>{proj?.name||"-"}</span></td>
                         <td style={{padding:"10px 12px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                        <td style={{padding:"10px 12px"}}><span style={{fontSize:12,color:C.t2}}>{t.assignee||"—"}</span></td>
+                        <td style={{padding:"10px 12px"}}><span style={{fontSize:12,color:C.t2}}>{t.assignee||"-"}</span></td>
                         <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
                           <span style={{fontSize:12,fontWeight:700,color:col,background:col+"18",padding:"4px 10px",borderRadius:20}}>{APPROVAL_ICON[apv]} {apv}</span>
                         </td>
                         <td style={{padding:"10px 12px",maxWidth:260}}>
-                          {t.client_comment?<span style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>"{t.client_comment}"</span>:<span style={{color:C.t3,fontSize:12}}>—</span>}
+                          {t.client_comment?<span style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>"{t.client_comment}"</span>:<span style={{color:C.t3,fontSize:12}}>-</span>}
                         </td>
                       </tr>
                     );
@@ -3369,7 +3369,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
           (i.clientKey||"").toLowerCase()===(me.client_name||"").toLowerCase()
         );
         setMyInvoices(mine);
-        // Auto-mark any "sent" invoice as "viewed" only when client opens detail — not on load
+        // Auto-mark any "sent" invoice as "viewed" only when client opens detail - not on load
       }
     }).catch(()=>{});
   },[]);
@@ -3409,8 +3409,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   <div style="padding:28px 32px;">
     <p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has viewed Invoice <strong>${inv.invoiceNo||""}</strong>.</p>
     <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"-"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"-"}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#1d4ed8;font-size:15px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
       <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Viewed At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
     </div>
@@ -3462,8 +3462,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
   <div style="padding:28px 32px;">
     <p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has marked Invoice <strong>${inv.invoiceNo||""}</strong> as <strong>PAID</strong>.</p>
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"-"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"-"}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
       <div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Paid At</span><strong style="color:#1e293b;font-size:13px;">${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div>
     </div>
@@ -3475,14 +3475,14 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
           fetch(SUPA_URL+"/functions/v1/notify",{
             method:"POST",
             headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
-            body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`✅ Payment Received — ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
+            body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`✅ Payment Received - ${inv.clientName} paid $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
           }).catch(()=>{});
         });
       }catch(_){}
     }catch(_){}
   }
   const INV_S={sent:{label:"Sent",color:"#3b82f6"},viewed:{label:"Viewed",color:"#8b5cf6"},paid:{label:"Paid",color:"#22c55e"},overdue:{label:"Overdue",color:"#ef4444"}};
-  function fmtAmt(n){return n!=null?"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";}
+  function fmtAmt(n){return n!=null?"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"-";}
   function fmtInvDate(d){return fmtDDMMYYYY(d);}
   // Group taskSnapshot by project
   function groupByProject(taskSnap){
@@ -3534,7 +3534,7 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
       <div className="rds-dash-banner" style={{background:`linear-gradient(135deg,${C.card} 0%,${C.teal}11 100%)`,border:`1px solid ${C.teal}44`,borderRadius:14,padding:"20px 24px",marginBottom:22,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",borderLeft:`4px solid ${C.teal}`}}>
         <div className="rds-dash-banner-avatar" style={{width:52,height:52,borderRadius:14,background:C.teal+"22",border:`2px solid ${C.teal}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:C.teal}}>{(me.client_name||me.name)[0]}</div>
         <div style={{flex:1,minWidth:0}}>
-          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>{me.client_name||me.name} — Client Portal</h2>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>{me.client_name||me.name} - Client Portal</h2>
           <p style={{margin:"3px 0 0",fontSize:13,color:C.t3}}>Welcome back · {myProjects.length} project{myProjects.length!==1?"s":""} · {total} tasks total</p>
         </div>
         <div style={{textAlign:"right"}}>
@@ -3557,8 +3557,8 @@ function ClientDashboard({me,tasks,projects,today,onViewProject,onUpdateTask}){
         const ipTasks=myTasks.filter(t=>t.status==="In Progress");
         const clModalData={
           clprojects:{title:"📁 My Projects",color:C.teal,items:myProjects.map(p=>{const pt=myTasks.filter(t=>t.project_id===p.id);const pd=pt.filter(t=>isDone(t.status)).length;return{label:p.name,sub:`${pt.length} tasks · ${pt.length?Math.round(pd/pt.length*100):0}% done`,dot:C.teal};})},
-          cltotal:{title:"📋 All Tasks",color:C.blue,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
-          clcompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"—"} · Done`,dot:C.green};})},
+          cltotal:{title:"📋 All Tasks",color:C.blue,items:myTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · ${t.status}`,dot:t.status==="In Progress"?C.blue:isDone(t.status)?C.green:C.t3};})},
+          clcompleted:{title:"✅ Completed Tasks",color:C.green,items:completedTasks.map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?.name||"-"} · Done`,dot:C.green};})},
           clpct:{title:"📊 Tasks by Status",color:"#f59e0b",items:[{label:`✅ Completed`,sub:`${done} tasks`,dot:C.green},{label:`🔄 In Progress`,sub:`${inprog} tasks`,dot:C.blue},{label:`⏳ Not Started`,sub:`${notStarted} tasks`,dot:C.t3},{label:`⚠ Overdue`,sub:`${overdue} tasks`,dot:C.red}]},
         };
         const md=clModalData[clStatModal];if(!md)return null;
@@ -3776,7 +3776,7 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
                                 <span style={{color:q&&t.title.toLowerCase().includes(q.toLowerCase())?C.accent:C.t1,fontSize:13,fontWeight:500}}>{t.title}</span>
                               </td>
                               <td style={{padding:"9px 16px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
-                              <td style={{padding:"9px 16px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
+                              <td style={{padding:"9px 16px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"-"}</Bdg></td>
                               <td style={{padding:"9px 16px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={20}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12}}>Unassigned</span>}</td>
                               <td style={{padding:"9px 16px"}}><span style={{color:ov?C.red:C.t3,fontSize:12,fontWeight:ov?700:400}}>{fmtD(t.due_date)}{ov?" ⚠":""}</span></td>
                               <td style={{padding:"9px 16px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEditTask(t)} title="Edit"/>}</td>
@@ -3860,14 +3860,14 @@ function ClientProjectSearch({projects,tasks,assignees,today,isAdmin,canEdit,onV
                                 <tbody>
                                   {ts.map((t,i)=>(
                                     <tr key={t.id||i} style={{borderTop:`1px solid ${C.border}22`}}>
-                                      <td style={{padding:"7px 10px",color:C.t1,fontSize:13}}>{t.title||t.name||"—"}</td>
-                                      <td style={{padding:"7px 10px",color:C.t2,fontSize:12}}>{t.assignee||"—"}</td>
+                                      <td style={{padding:"7px 10px",color:C.t1,fontSize:13}}>{t.title||t.name||"-"}</td>
+                                      <td style={{padding:"7px 10px",color:C.t2,fontSize:12}}>{t.assignee||"-"}</td>
                                       <td style={{padding:"7px 10px"}}>
                                         <span style={{background:getStatusColor(t.status)+"25",color:getStatusColor(t.status),border:`1px solid ${getStatusColor(t.status)}60`,borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600}}>
-                                          {t.status||"—"}
+                                          {t.status||"-"}
                                         </span>
                                       </td>
-                                      <td style={{padding:"7px 10px",color:PRI_CLR[t.priority]||C.t3,fontSize:12,fontWeight:600}}>{t.priority||"—"}</td>
+                                      <td style={{padding:"7px 10px",color:PRI_CLR[t.priority]||C.t3,fontSize:12,fontWeight:600}}>{t.priority||"-"}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -3994,10 +3994,10 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
                 const rows=[
                   <tr key={t.id} style={{borderBottom:taskRevs.length?`1px solid ${C.border}33`:`1px solid ${C.border}`,background:hi?"#f9731610":"transparent"}}>
                     <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"—"}</span></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.client||"—"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"-"}</span></td>
+                    <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.client||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(dispStatus)}>{dispStatus}</Bdg></td>
-                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"—"}</Bdg></td>
+                    <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"-"}</Bdg></td>
                     <td style={{padding:"10px 14px"}}>{t.assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Av name={t.assignee} size={22}/><span style={{color:C.t2,fontSize:12}}>{t.assignee}</span></div>:<span style={{color:C.yellow,fontSize:12,fontWeight:600}}>Unassigned</span>}</td>
                     <td style={{padding:"10px 14px"}}><span style={{color:ovDisp?C.red:C.t3,fontSize:12,fontWeight:ovDisp?700:400}}>{fmtD(dispDate)}{ovDisp?" ⚠":""}</span></td>
                     <td style={{padding:"10px 14px"}}>{canEdit&&<IBtn icon="✏️" onClick={()=>onEdit(t)} title="Edit task"/>}</td>
@@ -4019,7 +4019,7 @@ function userMatchesStr(me,str){
   const v=(str||'').toLowerCase().trim();
   const n=(me.name||'').toLowerCase().trim();
   const u=(me.username||'').toLowerCase().trim();
-  // Strict: no first-name-only or substring matches — avoids matching other users
+  // Strict: no first-name-only or substring matches - avoids matching other users
   return v===n||(u&&v===u)||n.startsWith(v+' ')||v.startsWith(n+' ')||v.includes(n);
 }
 // ── URL routing helpers ──────────────────────────────────────────────────────
@@ -4216,7 +4216,7 @@ function exportAnalyticsReport(projects,tasks,users,clients,today){
   .pct-crit{color:#dc2626;font-weight:700}
   .badge{border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700;display:inline-block}
 </style></head><body>
-<h1>📊 RDS TechServ — Business Analytics Report</h1>
+<h1>📊 RDS TechServ - Business Analytics Report</h1>
 <div class="meta">Generated: ${dateStr} &nbsp;·&nbsp; Total Projects: ${totalProj} &nbsp;·&nbsp; Total Tasks: ${tasks.length} &nbsp;·&nbsp; Completion Rate: ${compRate}%</div>
 
 <h2>▌ KPI SUMMARY</h2>
@@ -4241,14 +4241,14 @@ ${statusBD.map((s,i)=>{const p=tasks.length?Math.round(s.count/tasks.length*100)
 <h2>▌ TEAM PERFORMANCE</h2>
 <table>
 <tr><th>#</th><th>Team Member</th><th>Total Tasks</th><th>Completed</th><th>Open</th><th>Overdue</th><th>Completion %</th><th>Performance</th></tr>
-${teamPerf.map((u,i)=>{const pClass=u.pct>=80?"pct-high":u.pct>=50?"pct-mid":u.pct>=25?"pct-low":"pct-crit";const bg=i%2?" class='alt'":"";return`<tr${bg}><td class="num" style="color:#94a3b8">${i+1}</td><td style="font-weight:600">${u.name}</td><td class="num">${u.total}</td><td class="num" style="color:#16a34a;font-weight:700">${u.done}</td><td class="num" style="color:#ea580c">${u.total-u.done}</td><td class="num" style="color:${u.overdue>0?"#dc2626":"#94a3b8"};font-weight:${u.overdue>0?700:400}">${u.overdue>0?"⚠ "+u.overdue:"—"}</td><td class="${pClass}" style="font-size:11pt">${u.pct}%</td><td style="font-family:monospace;color:${compColor(u.pct)};letter-spacing:-.05em">${"█".repeat(Math.round(u.pct/10))}${"░".repeat(10-Math.round(u.pct/10))}</td></tr>`;}).join("")}
+${teamPerf.map((u,i)=>{const pClass=u.pct>=80?"pct-high":u.pct>=50?"pct-mid":u.pct>=25?"pct-low":"pct-crit";const bg=i%2?" class='alt'":"";return`<tr${bg}><td class="num" style="color:#94a3b8">${i+1}</td><td style="font-weight:600">${u.name}</td><td class="num">${u.total}</td><td class="num" style="color:#16a34a;font-weight:700">${u.done}</td><td class="num" style="color:#ea580c">${u.total-u.done}</td><td class="num" style="color:${u.overdue>0?"#dc2626":"#94a3b8"};font-weight:${u.overdue>0?700:400}">${u.overdue>0?"⚠ "+u.overdue:"-"}</td><td class="${pClass}" style="font-size:11pt">${u.pct}%</td><td style="font-family:monospace;color:${compColor(u.pct)};letter-spacing:-.05em">${"█".repeat(Math.round(u.pct/10))}${"░".repeat(10-Math.round(u.pct/10))}</td></tr>`;}).join("")}
 ${teamPerf.length===0?"<tr><td colspan='8' style='text-align:center;color:#94a3b8;padding:16px'>No team data available</td></tr>":""}
 </table>
 
 <h2>▌ CLIENT PORTFOLIO</h2>
 <table>
 <tr><th>Client</th><th>Projects</th><th>Total Tasks</th><th>Completed</th><th>Open</th><th>Overdue</th><th>Progress %</th><th>Health</th></tr>
-${clientPortfolio.map((c,i)=>{const bg=i%2?" class='alt'":"";const pClass=c.pct>=80?"pct-high":c.pct>=50?"pct-mid":c.pct>=25?"pct-low":"pct-crit";const health=c.pct>=80?"🟢 HEALTHY":c.pct>=50?"🟡 PROGRESSING":c.overdue>0?"🔴 AT RISK":"🟠 SLOW";return`<tr${bg}><td style="font-weight:700">${c.name}</td><td class="num" style="color:#2563eb">${c.projects}</td><td class="num">${c.tasks}</td><td class="num" style="color:#16a34a;font-weight:700">${c.done}</td><td class="num" style="color:#ea580c">${c.tasks-c.done}</td><td class="num" style="color:${c.overdue>0?"#dc2626":"#94a3b8"};font-weight:${c.overdue>0?700:400}">${c.overdue>0?"⚠ "+c.overdue:"—"}</td><td class="${pClass}">${c.pct}%</td><td>${health}</td></tr>`;}).join("")}
+${clientPortfolio.map((c,i)=>{const bg=i%2?" class='alt'":"";const pClass=c.pct>=80?"pct-high":c.pct>=50?"pct-mid":c.pct>=25?"pct-low":"pct-crit";const health=c.pct>=80?"🟢 HEALTHY":c.pct>=50?"🟡 PROGRESSING":c.overdue>0?"🔴 AT RISK":"🟠 SLOW";return`<tr${bg}><td style="font-weight:700">${c.name}</td><td class="num" style="color:#2563eb">${c.projects}</td><td class="num">${c.tasks}</td><td class="num" style="color:#16a34a;font-weight:700">${c.done}</td><td class="num" style="color:#ea580c">${c.tasks-c.done}</td><td class="num" style="color:${c.overdue>0?"#dc2626":"#94a3b8"};font-weight:${c.overdue>0?700:400}">${c.overdue>0?"⚠ "+c.overdue:"-"}</td><td class="${pClass}">${c.pct}%</td><td>${health}</td></tr>`;}).join("")}
 ${clientPortfolio.length===0?"<tr><td colspan='8' style='text-align:center;color:#94a3b8;padding:16px'>No client data</td></tr>":""}
 </table>
 
@@ -4259,10 +4259,10 @@ ${priData.map((p,i)=>{const pct2=tasks.length?Math.round(p.count/tasks.length*10
 ${priData.length===0?"<tr><td colspan='4' style='text-align:center;color:#94a3b8;padding:16px'>No priority data</td></tr>":""}
 </table>
 
-${overdueList.length>0?`<h2>▌ OVERDUE TASKS — ACTION REQUIRED (${overdueList.length})</h2>
+${overdueList.length>0?`<h2>▌ OVERDUE TASKS - ACTION REQUIRED (${overdueList.length})</h2>
 <table>
 <tr><th>#</th><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Days Overdue</th><th>Status</th><th>Priority</th></tr>
-${overdueList.map((t,i)=>{const pj=projectById.get(t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"—"}</td><td style="color:#7c3aed">${t.assignee||"—"}</td><td style="color:#dc2626;font-weight:600">${fmtD(t.due_date)}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"—"}</span></td></tr>`;}).join("")}
+${overdueList.map((t,i)=>{const pj=projectById.get(t.project_id);const days=Math.floor((new Date(today)-new Date(t.due_date))/(1000*60*60*24));const urgency=days>30?"background:#450a0a;color:#fca5a5":days>14?"background:#7f1d1d;color:#fca5a5":days>7?"background:#fee2e2;color:#dc2626":"background:#fef2f2;color:#dc2626";const priColor=priColors[t.priority]||"#64748b";return`<tr><td class="num" style="color:#dc2626">${i+1}</td><td style="font-weight:600;max-width:220px">${t.title}</td><td style="color:#2563eb">${pj?.name||"-"}</td><td style="color:#7c3aed">${t.assignee||"-"}</td><td style="color:#dc2626;font-weight:600">${fmtD(t.due_date)}</td><td class="num" style="${urgency};font-weight:700;border-radius:4px;padding:3px 8px">${days}d late</td><td><span class="badge" style="background:${statusColors[t.status]||"#64748b"}22;color:${statusColors[t.status]||"#64748b"};border:1px solid ${statusColors[t.status]||"#64748b"}55">${t.status}</span></td><td><span class="badge" style="background:${priColor}22;color:${priColor};border:1px solid ${priColor}55">${t.priority||"-"}</span></td></tr>`;}).join("")}
 </table>`:""}
 
 <div style="margin-top:20px;padding:10px 14px;background:#f1f5f9;border-top:2px solid #1e3a5f;font-size:8pt;color:#64748b">
@@ -4294,20 +4294,20 @@ function exportSubmissionList(projects,tasks,today){
   const weekTasks=tasks.filter(t=>inRange(t,wsStr,weStr)&&!inRange(t,today,today));
   const safe=`Submission List - ${today}`;
   let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;text-align:center;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;text-align:center;}.sec{background:#1d4ed8;color:#fff;font-weight:bold;font-size:13px;}.client{background:#f97316;color:#fff;font-weight:bold;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.notstarted{background:#f3f4f6;color:#374151;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
-  html+=`<table><tr><td colspan="10" class="hdr" style="font-size:16px;">RDS TechServ — Submission List (${today})</td></tr><tr><td colspan="10"></td></tr>`;
+  html+=`<table><tr><td colspan="10" class="hdr" style="font-size:16px;">RDS TechServ - Submission List (${today})</td></tr><tr><td colspan="10"></td></tr>`;
   const writeSection=(label,list)=>{
-    html+=`<tr><td colspan="10" class="sec">📅 ${label} — ${list.length} submission(s)</td></tr>`;
+    html+=`<tr><td colspan="10" class="sec">📅 ${label} - ${list.length} submission(s)</td></tr>`;
     if(!list.length){html+=`<tr><td colspan="10" style="text-align:center;color:#666;font-style:italic;">No submissions</td></tr><tr><td colspan="10"></td></tr>`;return;}
     html+=`<tr><th class="hdr">#</th><th class="hdr">Task</th><th class="hdr">Project</th><th class="hdr">Client</th><th class="hdr">Status</th><th class="hdr">Assignee</th><th class="hdr">Detailer</th><th class="hdr">Checker</th><th class="hdr">Client Sub Date</th><th class="hdr">Due Date</th></tr>`;
     list.forEach((t,i)=>{
       const proj=projectById.get(t.project_id);
       const ov=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
-      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
+      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"-"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"-"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"-"}</td><td>${t.detailer||"-"}</td><td>${t.checker||"-"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
     });
     html+=`<tr><td colspan="10"></td></tr>`;
   };
-  writeSection(`Today's Submissions — ${today}`,todayTasks);
+  writeSection(`Today's Submissions - ${today}`,todayTasks);
   writeSection(`This Week (${wsStr} → ${weStr})`,weekTasks);
   html+=`</table></body></html>`;
   const blob2=new Blob([html],{type:"application/vnd.ms-excel;charset=utf-8"});
@@ -4332,8 +4332,8 @@ function exportSubmissionListByPeriod(projects,tasks,period,today){
   const nmEnd=localDateStr(new Date(d.getFullYear(),d.getMonth()+2,0));
   const CFG={
     overdue:{from:"2000-01-01",to:yesterday,label:"Overdue Tasks",icon:"⚠️",filename:`RDS_Overdue_${today}`},
-    today:{from:today,to:today,label:`Today — ${today}`,icon:"📅",filename:`RDS_Today_${today}`},
-    tomorrow:{from:tom,to:tom,label:`Tomorrow — ${tom}`,icon:"🌅",filename:`RDS_Tomorrow_${tom}`},
+    today:{from:today,to:today,label:`Today - ${today}`,icon:"📅",filename:`RDS_Today_${today}`},
+    tomorrow:{from:tom,to:tom,label:`Tomorrow - ${tom}`,icon:"🌅",filename:`RDS_Tomorrow_${tom}`},
     this_week:{from:wkStart,to:wkEnd,label:`This Week (${wkStart} → ${wkEnd})`,icon:"📆",filename:`RDS_ThisWeek_${wkStart}`},
     next_week:{from:nwStart,to:nwEnd,label:`Next Week (${nwStart} → ${nwEnd})`,icon:"🗓",filename:`RDS_NextWeek_${nwStart}`},
     next_month:{from:nmStart,to:nmEnd,label:`Next Month (${nmStart} → ${nmEnd})`,icon:"📅",filename:`RDS_NextMonth_${nmStart}`},
@@ -4350,7 +4350,7 @@ function exportSubmissionListByPeriod(projects,tasks,period,today){
     return true;
   }).sort((a,b)=>(a.client_sub_date||a.due_date||"zzz").localeCompare(b.client_sub_date||b.due_date||"zzz"));
   let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>td,th{border:1px solid #ccc;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;text-align:center;}.hdr{background:#1e2433;color:#f1f5f9;font-weight:bold;text-align:center;}.sec{background:#1d4ed8;color:#fff;font-weight:bold;font-size:13px;}.done{background:#d1fae5;color:#065f46;}.inprog{background:#dbeafe;color:#1e40af;}.notstarted{background:#f3f4f6;color:#374151;}.overdue{background:#fee2e2;color:#991b1b;font-weight:bold;}</style></head><body>`;
-  html+=`<table><tr><td colspan="10" class="hdr" style="font-size:16px;">RDS TechServ — ${cfg.icon} ${cfg.label}</td></tr>`;
+  html+=`<table><tr><td colspan="10" class="hdr" style="font-size:16px;">RDS TechServ - ${cfg.icon} ${cfg.label}</td></tr>`;
   html+=`<tr><td colspan="10" class="sec">${filtered.length} submission(s)</td></tr>`;
   if(!filtered.length){
     html+=`<tr><td colspan="10" style="text-align:center;color:#666;font-style:italic;">No submissions for this period</td></tr>`;
@@ -4360,7 +4360,7 @@ function exportSubmissionListByPeriod(projects,tasks,period,today){
       const proj=projectById.get(t.project_id);
       const ov=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
       const cls=ov?"overdue":isDone(t.status)?"done":t.status==="In Progress"?"inprog":"notstarted";
-      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"—"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"—"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"—"}</td><td>${t.detailer||"—"}</td><td>${t.checker||"—"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
+      html+=`<tr><td>${i+1}</td><td style="text-align:left;font-weight:600;">${t.title}</td><td>${proj?.name||"-"}</td><td style="color:#0891b2;font-weight:700;">${proj?.client||"-"}</td><td class="${cls}">${t.status}${ov?" ⚠":""}</td><td>${t.assignee||"-"}</td><td>${t.detailer||"-"}</td><td>${t.checker||"-"}</td><td style="color:#16a34a;font-weight:700;">${fmtD(t.client_sub_date)}</td><td class="${ov?"overdue":""}">${fmtD(t.due_date)}</td></tr>`;
     });
   }
   html+=`</table></body></html>`;
@@ -4426,7 +4426,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   };
 
   const allTasks=tasks.filter(t=>scopedProjects.some(p=>p.id===t.project_id));
-  // "all" bypasses date filter entirely — shows every task regardless of date
+  // "all" bypasses date filter entirely - shows every task regardless of date
   const periodTasksRaw=(period==="all"
     ?[...allTasks]
     :allTasks.filter(t=>inRange(t,rangeFrom,rangeTo))
@@ -4465,14 +4465,14 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         onMouseEnter={e=>e.currentTarget.style.background=C.surface}
         onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
         <td style={{...tdL,color:C.t1,fontWeight:600,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</td>
-        <td style={{...tdC,color:C.accent,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"—"}</td>
-        {!isClient&&<td style={{...tdC,color:C.teal,fontWeight:600}}>{proj?.client||"—"}</td>}
+        <td style={{...tdC,color:C.accent,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"-"}</td>
+        {!isClient&&<td style={{...tdC,color:C.teal,fontWeight:600}}>{proj?.client||"-"}</td>}
         <td style={{...tdC}}>
           <span style={{fontSize:11,fontWeight:700,color:statusColor(t.status),background:statusColor(t.status)+"18",padding:"3px 8px",borderRadius:6,whiteSpace:"nowrap"}}>{t.status}</span>
         </td>
-        <td style={{...tdC,color:C.t2}}>{t.assignee||"—"}</td>
-        <td style={{...tdC,color:C.t2}}>{t.detailer||"—"}</td>
-        <td style={{...tdC,color:C.t2}}>{t.checker||"—"}</td>
+        <td style={{...tdC,color:C.t2}}>{t.assignee||"-"}</td>
+        <td style={{...tdC,color:C.t2}}>{t.detailer||"-"}</td>
+        <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
         <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{fmtD(t.client_sub_date)}</td>
         <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{fmtD(t.due_date)}{isOverdue?" ⚠":""}</td>
         {!isClient&&<td style={{...tdC}}>
@@ -4510,7 +4510,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       {/* ── Header ── */}
       <div style={{marginBottom:14}}>
         <h2 style={{margin:0,fontSize:20,fontWeight:900,color:C.t1}}>📬 Submission List</h2>
-        <p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Tasks and projects due for submission — filter by date range</p>
+        <p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Tasks and projects due for submission - filter by date range</p>
       </div>
       {/* ── Diagnostic info strip ── */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 14px",marginBottom:8,fontSize:12,color:C.t2,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
@@ -4543,7 +4543,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
       {noDatesCount>0&&(
         <div style={{background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:12,color:"#b45309",display:"flex",alignItems:"center",gap:8}}>
           <span>⚠️</span>
-          <span><strong>{noDatesCount} task{noDatesCount!==1?"s":""}</strong> have no Client Sub Date or Due Date set — they won't appear in any period. Edit those tasks to add dates.</span>
+          <span><strong>{noDatesCount} task{noDatesCount!==1?"s":""}</strong> have no Client Sub Date or Due Date set - they won't appear in any period. Edit those tasks to add dates.</span>
         </div>
       )}
 
@@ -4680,7 +4680,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
           <div style={{padding:"48px",textAlign:"center",color:C.t3}}>
             <div style={{fontSize:40,marginBottom:10}}>{period==="overdue"?"✅":"🎉"}</div>
             <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:4}}>
-              {period==="overdue"?"No overdue submissions — all clear!":"No submissions in this period"}
+              {period==="overdue"?"No overdue submissions - all clear!":"No submissions in this period"}
             </div>
             <div style={{fontSize:13}}>
               {period==="overdue"
@@ -4690,7 +4690,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                     :allTasks.length===0?"Tasks exist but don't match any project. Check if projects are loaded correctly."
                     :"No tasks found.")
                 :noDatesCount>0
-                  ?`${noDatesCount} task${noDatesCount!==1?"s":""} have no dates — click "All Tasks" to see them, or set due dates on tasks.`
+                  ?`${noDatesCount} task${noDatesCount!==1?"s":""} have no dates - click "All Tasks" to see them, or set due dates on tasks.`
                   :"Try selecting a different date range or check the Overdue filter above."}
             </div>
           </div>
@@ -4703,7 +4703,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                 return(
                   <div key={t.id} style={{background:C.surface,border:`1px solid ${isOverdue?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`3px solid ${statusColor(t.status)}`}}>
                     <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:4,lineHeight:1.3}}>{t.title}</div>
-                    <div style={{fontSize:12,color:C.accent,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"—"}</div>
+                    <div style={{fontSize:12,color:C.accent,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"-"}</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       <span style={{fontSize:10,fontWeight:700,color:statusColor(t.status),background:statusColor(t.status)+"18",padding:"2px 7px",borderRadius:5}}>{t.status}</span>
                       {t.client_sub_date&&<span style={{fontSize:10,color:C.t3}}>📬 {fmtD(t.client_sub_date)}</span>}
@@ -4847,11 +4847,11 @@ function AnalyticsProjModal({title,projList,tasks,today,onClose}){
                         <span style={{color:C.t1,fontSize:13,fontWeight:600}}>{p.name}</span>
                       </div>
                     </td>
-                    <td style={{padding:"10px 12px"}}><span style={{color:C.teal,fontSize:12}}>{p.client||"—"}</span></td>
+                    <td style={{padding:"10px 12px"}}><span style={{color:C.teal,fontSize:12}}>{p.client||"-"}</span></td>
                     <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.t2,fontWeight:700}}>{pt.length}</span></td>
                     <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.green,fontWeight:700}}>{done}</span></td>
-                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700}}>{ip||"—"}</span></td>
-                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:ov>0?C.red:C.t3,fontWeight:ov>0?700:400}}>{ov>0?`⚠ ${ov}`:"—"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700}}>{ip||"-"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:ov>0?C.red:C.t3,fontWeight:ov>0?700:400}}>{ov>0?`⚠ ${ov}`:"-"}</span></td>
                     <td style={{padding:"10px 12px",minWidth:130}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
@@ -4860,7 +4860,7 @@ function AnalyticsProjModal({title,projList,tasks,today,onClose}){
                         <span style={{fontSize:11,color:pc>=100?C.green:C.t2,fontWeight:700,width:32,flexShrink:0}}>{pc}%</span>
                       </div>
                     </td>
-                    <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}><span style={{color:ovDL?C.red:C.t3,fontSize:12,fontWeight:ovDL?700:400}}>{p.deadline||"—"}{ovDL?" ⚠":""}</span></td>
+                    <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}><span style={{color:ovDL?C.red:C.t3,fontSize:12,fontWeight:ovDL?700:400}}>{p.deadline||"-"}{ovDL?" ⚠":""}</span></td>
                   </tr>
                 );
               })}
@@ -4895,7 +4895,7 @@ function AnalyticsClientModal({title,clientList,onClose}){
                   <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700,fontSize:14}}>{c.projects}</span></td>
                   <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.t2,fontWeight:600}}>{c.tasks}</span></td>
                   <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.green,fontWeight:700}}>{c.done}</span></td>
-                  <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:c.overdue>0?C.red:C.t3,fontWeight:c.overdue>0?700:400}}>{c.overdue>0?`⚠ ${c.overdue}`:"—"}</span></td>
+                  <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:c.overdue>0?C.red:C.t3,fontWeight:c.overdue>0?700:400}}>{c.overdue>0?`⚠ ${c.overdue}`:"-"}</span></td>
                   <td style={{padding:"10px 12px",minWidth:140}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
@@ -4940,8 +4940,8 @@ function AnalyticsMemberModal({title,memberList,tasks,onClose}){
                     </td>
                     <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.t2,fontWeight:700}}>{u.total}</span></td>
                     <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.green,fontWeight:700}}>{u.done}</span></td>
-                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700}}>{ip||"—"}</span></td>
-                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:u.overdue>0?C.red:C.t3,fontWeight:u.overdue>0?700:400}}>{u.overdue>0?`⚠ ${u.overdue}`:"—"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:C.blue,fontWeight:700}}>{ip||"-"}</span></td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{color:u.overdue>0?C.red:C.t3,fontWeight:u.overdue>0?700:400}}>{u.overdue>0?`⚠ ${u.overdue}`:"-"}</span></td>
                     <td style={{padding:"10px 12px",minWidth:140}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
@@ -5003,14 +5003,14 @@ function EmailDigestCard(){
   }
   async function toggle(val){setEnabled(val);await upsertSetting("daily_digest_enabled",val?"true":"false");setMsg("Digest "+(val?"enabled":"disabled"));setTimeout(()=>setMsg(null),3000);}
   async function triggerNow(){
-    // Delegate entirely to server — single sender, single guard across PG + Supabase
+    // Delegate entirely to server - single sender, single guard across PG + Supabase
     setTriggering(true);setMsg(null);
     try{
       const res=await fetch("/api/cron-daily",{method:"GET"});
       const d=await res.json();
       if(d.message){setMsg(d.message);}
       else if(d.error){setMsg("Error: "+d.error);}
-      else{setMsg("Sent to "+d.sent+" recipient(s) — "+d.tasks+" task(s) for today");}
+      else{setMsg("Sent to "+d.sent+" recipient(s) - "+d.tasks+" task(s) for today");}
     }catch(e){setMsg("Error: "+e.message);}
     setTriggering(false);setTimeout(()=>setMsg(null),6000);
   }
@@ -5030,7 +5030,7 @@ function EmailDigestCard(){
         <span style={{fontSize:20}}>{"\ud83d\udce7"}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Daily Submission Email</div>
-          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin, Manager, Team Leaders"+(loading?"":" — "+schedLabel())}</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin, Manager, Team Leaders"+(loading?"":" - "+schedLabel())}</div>
         </div>
         <div onClick={()=>toggle(!enabled)} style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
           <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #0003"}}/>
@@ -5094,7 +5094,7 @@ function EscalationAlertCard(){
       const data=await res.json();
       if(res.ok){
         if(data.escalated!=null&&data.escalated>0)setMsg("Escalated "+data.escalated+" task(s) to "+data.recipients+" recipient(s)");
-        else if(data.escalated===0)setMsg("No tasks within cooldown window — nothing sent");
+        else if(data.escalated===0)setMsg("No tasks within cooldown window - nothing sent");
         else setMsg(data.message||"Done");
       }else{setMsg("Error: "+(data.error||"Unknown"));}
     }
@@ -5108,7 +5108,7 @@ function EscalationAlertCard(){
         <span style={{fontSize:20}}>{"🚨"}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:15,fontWeight:800,color:C.t1}}>72h Overdue Escalation Alert</div>
-          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin & Manager — runs automatically once daily at 2am UTC"}</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin & Manager - runs automatically once daily at 2am UTC"}</div>
         </div>
         <div onClick={()=>toggle(!enabled)} style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
           <div style={{position:"absolute",top:3,left:enabled?22:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 4px #0003"}}/>
@@ -5176,7 +5176,7 @@ function SyncReportCard(){
   );
 
   const sColor=!report?"#64748b":report.status==="success"?C.green:report.status==="partial"?"#f59e0b":C.red;
-  const sIcon=!report?"—":report.status==="success"?"✅":report.status==="partial"?"⚠️":"❌";
+  const sIcon=!report?"-":report.status==="success"?"✅":report.status==="partial"?"⚠️":"❌";
   const statusLabel=!report?"No sync yet":report.status==="success"?"Success":report.status==="partial"?"Partial":"Failed";
   const keyTables=(report?.tables||[]).filter(t=>(t.total||0)>0||(t.failed||0)>0||(t.pulled||0)>0);
   const hasFails=(report?.total_failed||0)>0;
@@ -5416,7 +5416,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
 
-  // Period filter — apply to tasks before all KPI computations
+  // Period filter - apply to tasks before all KPI computations
   const ds=v=>v?String(v).slice(0,10):null;
   const periodDays={"all":0,"quarter":90,"month":30,"week":7}[period]||0;
   const periodCutoff=periodDays>0?(()=>{const d=new Date(today);d.setDate(d.getDate()-periodDays);return d.toISOString().slice(0,10);})():null;
@@ -5610,7 +5610,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
         <Panel title="👥 Team Performance">
           <div style={{display:"flex",flexDirection:"column",gap:14,maxHeight:320,overflowY:"auto"}}>
             {teamPerf.map((u,i)=>(
-              <div key={u.name} className="rds-perf-row" onClick={()=>openModal(`${u.name} — All Tasks`,u.allTasks)}
+              <div key={u.name} className="rds-perf-row" onClick={()=>openModal(`${u.name} - All Tasks`,u.allTasks)}
                 style={{cursor:"pointer",borderRadius:8,padding:"6px 8px",transition:"background .15s"}}
                 onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                 onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
@@ -5619,7 +5619,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
                     <span style={{fontSize:10,color:C.t3,width:16,textAlign:"right"}}>{i+1}.</span>
                     <Av name={u.name} size={20}/>
                     <span style={{fontSize:12,color:C.t1,fontWeight:600}}>{u.name.split(" ")[0]}</span>
-                    {u.overdue>0&&<span onClick={e=>{e.stopPropagation();openModal(`${u.name} — Overdue Tasks`,u.overdueTasks);}} style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"15",padding:"1px 5px",borderRadius:4,cursor:"pointer"}}>⚠{u.overdue}</span>}
+                    {u.overdue>0&&<span onClick={e=>{e.stopPropagation();openModal(`${u.name} - Overdue Tasks`,u.overdueTasks);}} style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"15",padding:"1px 5px",borderRadius:4,cursor:"pointer"}}>⚠{u.overdue}</span>}
                   </div>
                   <span style={{fontSize:12,fontWeight:800,color:u.pct>=80?C.green:u.pct>=50?C.blue:C.accent}}>{u.pct}%</span>
                 </div>
@@ -5647,12 +5647,12 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
                   <tr key={c.name} style={{borderBottom:`1px solid ${C.border}`,cursor:"pointer",transition:"background .12s"}}
                     onMouseEnter={e=>{e.currentTarget.style.background=C.surface;}}
                     onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
-                    onClick={()=>openModal(`${c.name} — All Tasks`,c.allTasks)}>
+                    onClick={()=>openModal(`${c.name} - All Tasks`,c.allTasks)}>
                     <td style={{padding:"9px 10px",color:C.accent,fontWeight:700,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</td>
                     <td style={{padding:"9px 10px",color:C.teal,textAlign:"center",fontWeight:700}}>{c.projects}</td>
                     <td style={{padding:"9px 10px",color:C.t2,textAlign:"center"}}>{c.tasks}</td>
-                    <td onClick={e=>{e.stopPropagation();openModal(`${c.name} — Completed Tasks`,c.doneTasks);}} style={{padding:"9px 10px",color:C.green,textAlign:"center",fontWeight:700,cursor:"pointer",textDecoration:"underline dotted"}}>{c.done}</td>
-                    <td onClick={e=>{e.stopPropagation();if(c.overdue>0)openModal(`${c.name} — Overdue Tasks`,c.ovTasks);}} style={{padding:"9px 10px",color:c.overdue>0?C.red:C.t3,textAlign:"center",fontWeight:c.overdue>0?700:400,cursor:c.overdue>0?"pointer":"default",textDecoration:c.overdue>0?"underline dotted":"none"}}>{c.overdue||"—"}</td>
+                    <td onClick={e=>{e.stopPropagation();openModal(`${c.name} - Completed Tasks`,c.doneTasks);}} style={{padding:"9px 10px",color:C.green,textAlign:"center",fontWeight:700,cursor:"pointer",textDecoration:"underline dotted"}}>{c.done}</td>
+                    <td onClick={e=>{e.stopPropagation();if(c.overdue>0)openModal(`${c.name} - Overdue Tasks`,c.ovTasks);}} style={{padding:"9px 10px",color:c.overdue>0?C.red:C.t3,textAlign:"center",fontWeight:c.overdue>0?700:400,cursor:c.overdue>0?"pointer":"default",textDecoration:c.overdue>0?"underline dotted":"none"}}>{c.overdue||"-"}</td>
                     <td style={{padding:"9px 10px",minWidth:110}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <div style={{flex:1,height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
@@ -5695,7 +5695,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
           ):(
             <>
               <div style={{marginBottom:14,padding:"8px 14px",background:C.red+"12",border:`1px solid ${C.red}30`,borderRadius:8,fontSize:12,color:C.red,fontWeight:600}}>
-                ⚠ {overdue} overdue task{overdue!==1?"s":""} — immediate attention needed
+                ⚠ {overdue} overdue task{overdue!==1?"s":""} - immediate attention needed
               </div>
               <HBar data={overdueByA.map(u=>({label:u.name,value:u.count,color:C.red,tasks:u.tasks}))}/>
             </>
@@ -5726,7 +5726,7 @@ function AnnouncementsPage({me,users,projects,canPost}){
   const [tab,setTab]=useState("all"); // all | company | project
 
   useEffect(()=>{loadAnns();},[]);
-  // Announcements realtime removed — use loadAnns() for manual refresh.
+  // Announcements realtime removed - use loadAnns() for manual refresh.
 
   async function loadAnns(){
     const{data}=await supabase.from("announcements").select("*")
@@ -5785,7 +5785,7 @@ function AnnouncementsPage({me,users,projects,canPost}){
           <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:800,color:C.accent}}>📝 New Announcement</h3>
           <input placeholder="Title *" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
             style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
-          <textarea placeholder="Body — write your announcement here *" value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))}
+          <textarea placeholder="Body - write your announcement here *" value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))}
             rows={4} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box",resize:"vertical",marginBottom:10}}/>
           <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
             <select value={form.scope} onChange={e=>setForm(f=>({...f,scope:e.target.value,project_id:""}))}
@@ -5866,7 +5866,7 @@ function AnnouncementsPage({me,users,projects,canPost}){
 
 
 // ══════════════════════════════════════════════════════════
-// GANTT VIEW — timeline per project, risk-coloured bars
+// GANTT VIEW - timeline per project, risk-coloured bars
 // ══════════════════════════════════════════════════════════
 function GanttPage({projects,tasks,today,onSelectProject}){
   const isMobile=useMobile();
@@ -5972,7 +5972,7 @@ function GanttPage({projects,tasks,today,onSelectProject}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14,height:"100%",minHeight:0}}>
-      {/* KPI strip — clickable filters */}
+      {/* KPI strip - clickable filters */}
       <div style={{display:"flex",gap:10,flexWrap:"wrap",flexShrink:0}}>
         {[
           {l:"Total Projects",v:enriched.length,c:C.teal,key:"all",icon:"📋"},
@@ -6032,7 +6032,7 @@ function GanttPage({projects,tasks,today,onSelectProject}){
         </div>
       </div>
 
-      {/* Gantt chart — single scroll container with sticky label column */}
+      {/* Gantt chart - single scroll container with sticky label column */}
       <div ref={containerRef} style={{flex:1,overflow:"auto",background:C.card,border:`1px solid ${C.border}`,borderRadius:12,minHeight:0,position:"relative"}}>
         <div style={{minWidth:LW+TW,display:"inline-block",verticalAlign:"top",width:"100%"}}>
 
@@ -6132,7 +6132,7 @@ function GanttPage({projects,tasks,today,onSelectProject}){
             <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:6,lineHeight:1.3}}>{tooltip.p.name}</div>
             <div style={{display:"flex",flexDirection:"column",gap:3}}>
               {[
-                ["Client",tooltip.p.client||"—"],
+                ["Client",tooltip.p.client||"-"],
                 ["Progress",`${tooltip.p.pct}% (${tooltip.p.done}/${tooltip.p.total} tasks)`],
                 ["In Progress",`${tooltip.p.inProg} tasks`],
                 ["Deadline",tooltip.p.deadline||"Not set"],
@@ -6312,7 +6312,7 @@ function TaskTimeLogs({taskId,projectId,me,isClient,task=null,activeTimer=null,t
           ))}
         </div>
       )}
-      {logs.length===0&&!showForm&&<div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"12px 0"}}>No time logged yet — click "+ Log Time" to add</div>}
+      {logs.length===0&&!showForm&&<div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"12px 0"}}>No time logged yet - click "+ Log Time" to add</div>}
     </div>
   );
 }
@@ -6403,7 +6403,7 @@ function ProjectActivityFeed({projectId,tasks,isAdmin,isManager}){
               {l.entity_label&&<span style={{color:C.t3}}> on "{l.entity_label}"</span>}
               {l.old_value&&<>{" "}<span style={{color:C.red,background:C.red+"15",borderRadius:3,padding:"0 4px",fontFamily:"monospace",fontSize:10}}>{l.old_value}</span></>}
               {" → "}
-              {l.new_value?<span style={{color:C.green,background:C.green+"15",borderRadius:3,padding:"0 4px",fontFamily:"monospace",fontSize:10}}>{l.new_value}</span>:<span style={{color:C.t3}}>—</span>}
+              {l.new_value?<span style={{color:C.green,background:C.green+"15",borderRadius:3,padding:"0 4px",fontFamily:"monospace",fontSize:10}}>{l.new_value}</span>:<span style={{color:C.t3}}>-</span>}
             </>}
           </div>
         </div>
@@ -6415,7 +6415,7 @@ function ProjectActivityFeed({projectId,tasks,isAdmin,isManager}){
 
   return(
     <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,marginTop:16,overflow:"hidden"}}>
-      {/* Header — always visible */}
+      {/* Header - always visible */}
       <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",cursor:"pointer",userSelect:"none"}}>
         <span style={{fontSize:15}}>📋</span>
         <span style={{fontWeight:700,color:C.t1,fontSize:13,flex:1}}>Project Activity</span>
@@ -6523,7 +6523,7 @@ function MoveTaskModal({task,projects,onMove,onClose}){
         <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Destination Project *</div>
         <select value={destId} onChange={e=>setDestId(e.target.value)}
           style={{width:"100%",background:C.bg,border:`1px solid ${C.accent}`,borderRadius:8,padding:"10px 12px",fontSize:13,color:C.t1,fontFamily:"inherit",cursor:"pointer",outline:"none",marginBottom:20}}>
-          <option value="">— Select project —</option>
+          <option value="">- Select project -</option>
           {others.map(p=><option key={p.id} value={p.id}>{p.name}{p.client?` (${p.client})`:""}</option>)}
         </select>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
@@ -6566,7 +6566,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
         revs=data||[];
       }
       setRevisions(revs);
-      // Revisions are independent — they do NOT change the main task's status
+      // Revisions are independent - they do NOT change the main task's status
     }catch(e){}
     setLoading(false);
   }
@@ -6602,7 +6602,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
           await supabase.from("task_revisions").update({...form,updated_at:new Date().toISOString()}).eq("id",editId);
         }
       } else {
-        // INSERT — calculate next revision_number first
+        // INSERT - calculate next revision_number first
         const revNum=revisions.length+1;
         const payload={task_id:taskId,...form,revision_number:revNum,created_by:me?.name||me?.username||"Unknown"};
         if(IS_LOCAL){
@@ -6652,7 +6652,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
           <div style={{fontWeight:700,fontSize:13,color:C.t1,marginBottom:12}}>
             {editId
               ?`Edit Rev ${revisions.find(r=>r.id===editId)?.revision_number||1}`
-              :`New Revision — Rev ${revisions.length+1}`}
+              :`New Revision - Rev ${revisions.length+1}`}
           </div>
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
             <div style={{flex:1,minWidth:140}}>
@@ -6673,7 +6673,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               <div style={{fontSize:11,fontWeight:700,color:C.teal,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Detailer</div>
               <select value={form.detailer} onChange={e=>setForm(p=>({...p,detailer:e.target.value}))}
                 style={{width:"100%",background:C.bg,border:`1px solid ${form.detailer?C.teal:C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.detailer?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
-                <option value="">— Select Detailer —</option>
+                <option value="">- Select Detailer -</option>
                 {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
               </select>
             </div>
@@ -6681,7 +6681,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Checker</div>
               <select value={form.checker} onChange={e=>setForm(p=>({...p,checker:e.target.value}))}
                 style={{width:"100%",background:C.bg,border:`1px solid ${form.checker?C.accent:C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.checker?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
-                <option value="">— Select Checker —</option>
+                <option value="">- Select Checker -</option>
                 {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
               </select>
             </div>
@@ -6772,7 +6772,7 @@ function TaskHistory({taskId,me,historyKey}){
     try{
       let data=[];
       if(IS_LOCAL){
-        // LAN employees have no direct Supabase access — use local API
+        // LAN employees have no direct Supabase access - use local API
         const r=await fetch(LOCAL_BASE+"/api/audit-logs?task_id="+taskId+"&limit=100");
         const j=await r.json();
         data=Array.isArray(j.data)?j.data:[];
@@ -6820,7 +6820,7 @@ function TaskHistory({taskId,me,historyKey}){
         {icon} changed <b style={{color:C.t1}}>{l.field}</b>
         {l.old_value?<>{" "}<span style={{color:C.red,background:C.red+"18",borderRadius:3,padding:"1px 5px",fontSize:11,fontFamily:"monospace"}}>{l.old_value}</span></>:null}
         {" → "}
-        {l.new_value?<span style={{color:C.green,background:C.green+"18",borderRadius:3,padding:"1px 5px",fontSize:11,fontFamily:"monospace"}}>{l.new_value}</span>:<span style={{color:C.t3,fontSize:11}}>—</span>}
+        {l.new_value?<span style={{color:C.green,background:C.green+"18",borderRadius:3,padding:"1px 5px",fontSize:11,fontFamily:"monospace"}}>{l.new_value}</span>:<span style={{color:C.t3,fontSize:11}}>-</span>}
       </span>
     );
   }
@@ -6923,7 +6923,7 @@ function TaskComments({taskId,projectId,me,users}){
       {/* Comment list */}
       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14,maxHeight:260,overflowY:"auto"}}>
         {comments.length===0?
-          <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"16px 0"}}>No comments yet — add the first one below</div>:
+          <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"16px 0"}}>No comments yet - add the first one below</div>:
           comments.map(cm=>{
             const isMe=cm.author===me.username;
             return(
@@ -7056,7 +7056,7 @@ function CapacityView({tasks,users,projects,onReassign,canEdit}){
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:C.t1}}>Team Capacity Planning</div>
-          <div style={{fontSize:12,color:C.t2,marginTop:2}}>Workload heatmap — click a cell to see tasks — drag to reassign</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:2}}>Workload heatmap - click a cell to see tasks - drag to reassign</div>
         </div>
         <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
           <button onClick={()=>{setBaseDate(null);setWeekOffset(o=>o-1);}} style={GBtn}>Prev</button>
@@ -7196,22 +7196,22 @@ function CommandPalette({projects,tasks,users,clients,onNav,onClose,pinnedTasks=
   if(!qL){
     const pinnedList=tasks.filter(t=>pinnedTasks.has(t.id));
     const starredList=tasks.filter(t=>starredTasks.has(t.id)&&!pinnedTasks.has(t.id));
-    pinnedList.slice(0,5).forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"pinned",icon:"📌",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status,data:t});});
-    starredList.slice(0,5).forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"starred",icon:"⭐",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status,data:t});});
-    projects.slice(0,8).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
+    pinnedList.slice(0,5).forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"pinned",icon:"📌",title:t.title,sub:(pj?pj.name:"-")+" · "+t.status,data:t});});
+    starredList.slice(0,5).forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"starred",icon:"⭐",title:t.title,sub:(pj?pj.name:"-")+" · "+t.status,data:t});});
+    projects.slice(0,8).forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"-")+(p.group_name?" · "+p.group_name:""),data:p}));
     clients.slice(0,5).forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
     users.filter(u=>u.role!=="Admin"&&u.role!=="Manager").slice(0,5).forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.client_name?" · "+u.client_name:""),data:u}));
   } else {
     projects.filter(p=>p.name.toLowerCase().includes(qL)||(p.client||"").toLowerCase().includes(qL)||(p.group_name||"").toLowerCase().includes(qL)||(p.description||"").toLowerCase().includes(qL)).slice(0,6)
-      .forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"—")+(p.group_name?" · "+p.group_name:""),data:p}));
+      .forEach(p=>results.push({type:"project",icon:"📁",title:p.name,sub:(p.client||"-")+(p.group_name?" · "+p.group_name:""),data:p}));
     tasks.filter(t=>t.title.toLowerCase().includes(qL)||(t.assignee||"").toLowerCase().includes(qL)||(t.status||"").toLowerCase().includes(qL)).slice(0,6)
-      .forEach(t=>{const pj=projectById.get(t.project_id);const hasFiles=fc[t.id]>0;results.push({type:"task",icon:isDone(t.status)?"✅":hasFiles?"📎":"🔵",title:t.title,sub:(pj?pj.name:"—")+" · "+t.status+(hasFiles?" · "+fc[t.id]+" file"+(fc[t.id]!==1?"s":""):""),data:t});});
+      .forEach(t=>{const pj=projectById.get(t.project_id);const hasFiles=fc[t.id]>0;results.push({type:"task",icon:isDone(t.status)?"✅":hasFiles?"📎":"🔵",title:t.title,sub:(pj?pj.name:"-")+" · "+t.status+(hasFiles?" · "+fc[t.id]+" file"+(fc[t.id]!==1?"s":""):""),data:t});});
     clients.filter(c=>c.name.toLowerCase().includes(qL)||(c.email||"").toLowerCase().includes(qL)).slice(0,5)
       .forEach(c=>results.push({type:"client",icon:"🏢",title:c.name,sub:[c.email,c.phone,c.address].filter(Boolean).join(" · ")||"Client",data:c}));
     users.filter(u=>u.name.toLowerCase().includes(qL)||u.role.toLowerCase().includes(qL)||(u.username||"").toLowerCase().includes(qL)).slice(0,6)
       .forEach(u=>results.push({type:"user",icon:u.role==="Team Leader"?"👑":u.role==="Admin"?"🛡":u.role==="Manager"?"🎯":u.role==="Client"?"🏢":"👤",title:u.name,sub:u.role+(u.username?" · @"+u.username:"")+(u.client_name?" · "+u.client_name:""),data:u}));
     tasks.filter(t=>fc[t.id]>0&&(t.title.toLowerCase().includes(qL)||(projectById.get(t.project_id)?projectById.get(t.project_id).name:"").toLowerCase().includes(qL))).slice(0,4)
-      .forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:fc[t.id]+" file"+(fc[t.id]!==1?"s":"")+" · "+(pj?pj.name:"—")+" · "+t.status,data:t});});
+      .forEach(t=>{const pj=projectById.get(t.project_id);results.push({type:"file",icon:"📎",title:t.title,sub:fc[t.id]+" file"+(fc[t.id]!==1?"s":"")+" · "+(pj?pj.name:"-")+" · "+t.status,data:t});});
   }
   useEffect(()=>setSel(0),[q]);
   useEffect(()=>{
@@ -7349,8 +7349,8 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
     return()=>clearInterval(id);
   },[attRec]);
   if(!stats)return null;
-  function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h>0?h+"h "+String(mn).padStart(2,"0")+"m":mn+"m";}
-  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
+  function fmtMin(m){if(!m||m<=0)return"-";const h=Math.floor(m/60),mn=m%60;return h>0?h+"h "+String(mn).padStart(2,"0")+"m":mn+"m";}
+  function fmtTime(ts){if(!ts)return"-";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
   const now=Date.now();
   const loginMs=attRec&&!attRec.logout_at?new Date(attRec.login_at).getTime():null;
   const liveBrk=attRec&&attBreak&&!attRec.logout_at?Math.floor((now-new Date(attBreak.break_start).getTime())/60000):0;
@@ -7454,7 +7454,7 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
           <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:"1px solid "+C.border,borderRadius:16,width:"100%",maxWidth:860,maxHeight:"82vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 60px #00000090"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",borderBottom:"1px solid "+C.border,flexShrink:0}}>
               <div>
-                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>⏱ {modal.label} — Attendance</div>
+                <div style={{fontSize:16,fontWeight:800,color:C.t1}}>⏱ {modal.label} - Attendance</div>
                 <div style={{fontSize:12,color:C.t3,marginTop:2}}>{modal.from===modal.to?modal.from:modal.from+" to "+modal.to}</div>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -7554,8 +7554,8 @@ function AttendancePage({users}){
     setRows(Array.isArray(data)?norm(data).filter(r=>!adminIds.has(r.user_id)):[]);
     setLdng(false);
   }
-  function fmtMin(m){if(!m||m<=0)return"—";const h=Math.floor(m/60),mn=m%60;return h+"h "+String(mn).padStart(2,"0")+"m";}
-  function fmtTime(ts){if(!ts)return"—";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
+  function fmtMin(m){if(!m||m<=0)return"-";const h=Math.floor(m/60),mn=m%60;return h+"h "+String(mn).padStart(2,"0")+"m";}
+  function fmtTime(ts){if(!ts)return"-";const d=new Date(ts);return d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
   function exportCsv(){
     const hdr=["Date","Employee","Clock In","Clock Out","Work Hours","Break Min","Status"];
     const csvRows=rows.map(r=>[r.date,r.user_name,fmtTime(r.login_at),fmtTime(r.logout_at),fmtMin(r.total_work_minutes),r.total_break_minutes||0,r.logout_at?"Done":"Active"]);
@@ -7656,7 +7656,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
   else if(sortBy==="status")rows=[...rows].sort((a,b)=>a.task.status.localeCompare(b.task.status));
   else rows=[...rows].sort((a,b)=>a.task.title.localeCompare(b.task.title));
 
-  function fmtDur(min){if(!min)return"—";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
+  function fmtDur(min){if(!min)return"-";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
   const SC={"Completed":"#059669","Done":"#059669","In Progress":"#3b82f6","Not Yet Started":"#6b7280","To Be Started":"#6b7280","On Hold":"#f59e0b","Hold":"#f59e0b"};
   const totalAll=myTasks.reduce((s,t)=>s+(byTask[t.id]?.min||0),0);
   const withTime=myTasks.filter(t=>(byTask[t.id]?.min||0)>0).length;
@@ -7745,7 +7745,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
       {loading?(
         <div style={{textAlign:"center",padding:28,color:C.t3,fontSize:13}}>Loading time logs…</div>
       ):rows.length===0?(
-        <div style={{textAlign:"center",padding:28,color:C.t3,fontSize:13}}>No tasks found{fProj!=="All"||fStatus!=="All"?" — try clearing filters":""}</div>
+        <div style={{textAlign:"center",padding:28,color:C.t3,fontSize:13}}>No tasks found{fProj!=="All"||fStatus!=="All"?" - try clearing filters":""}</div>
       ):(
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -7778,12 +7778,12 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
                       {isClient?(
                         r.workers.length>0
                           ?<span style={{fontSize:11,background:C.surface,color:C.t2,borderRadius:6,padding:"2px 8px"}}>Our Team ({r.workers.length})</span>
-                          :<span style={{color:C.t3,fontSize:11}}>—</span>
+                          :<span style={{color:C.t3,fontSize:11}}>-</span>
                       ):(
                         <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                           {r.workers.length>0?r.workers.slice(0,3).map(w=>(
                             <span key={w} style={{fontSize:10,background:"#05966918",color:"#059669",borderRadius:10,padding:"1px 7px",fontWeight:600,whiteSpace:"nowrap"}}>{w.split(" ")[0]}</span>
-                          )):<span style={{color:C.t3,fontSize:11}}>—</span>}
+                          )):<span style={{color:C.t3,fontSize:11}}>-</span>}
                           {r.workers.length>3&&<span style={{fontSize:10,color:C.t3}}>+{r.workers.length-3}</span>}
                         </div>
                       )}
@@ -7791,7 +7791,7 @@ function TaskTimingPanel({tasks,projects,me,isAdmin,isManager,isTeamLeader,isCli
                     <td style={{padding:"8px 10px",textAlign:"center"}}>
                       {r.totalMin>0
                         ?<span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 9px",fontSize:12}}>{fmtDur(r.totalMin)}</span>
-                        :<span style={{color:C.t3,fontSize:11}}>—</span>}
+                        :<span style={{color:C.t3,fontSize:11}}>-</span>}
                     </td>
                     <td style={{padding:"8px 10px",textAlign:"center"}}>
                       <span style={{background:sc+"18",color:sc,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{r.task.status}</span>
@@ -7877,11 +7877,11 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
   const topAllRounder=[...scored].sort((a,b)=>b.projCount-a.projCount)[0];
 
   const awards=[
-    {trophy:"🏆",title:"Top Performer",winner:topHours?.name,stat:topHours?fmtH(topHours.totalMins)+" logged":"—",color:"#fbbf24"},
-    {trophy:"⚡",title:"Fast Finisher",winner:topDone?.name,stat:topDone?topDone.done+" tasks done":"—",color:"#34d399"},
-    {trophy:"🎯",title:"Deadline Crusher",winner:topOnTime?.name,stat:topOnTime?topOnTime.onTime+" on-time":"—",color:"#60a5fa"},
-    {trophy:"🔥",title:"Streak Champion",winner:topStreak?.name,stat:topStreak?topStreak.streak+"-day streak":"—",color:"#f87171"},
-    {trophy:"🌟",title:"All Rounder",winner:topAllRounder?.name,stat:topAllRounder?topAllRounder.projCount+" projects":"—",color:"#a78bfa"},
+    {trophy:"🏆",title:"Top Performer",winner:topHours?.name,stat:topHours?fmtH(topHours.totalMins)+" logged":"-",color:"#fbbf24"},
+    {trophy:"⚡",title:"Fast Finisher",winner:topDone?.name,stat:topDone?topDone.done+" tasks done":"-",color:"#34d399"},
+    {trophy:"🎯",title:"Deadline Crusher",winner:topOnTime?.name,stat:topOnTime?topOnTime.onTime+" on-time":"-",color:"#60a5fa"},
+    {trophy:"🔥",title:"Streak Champion",winner:topStreak?.name,stat:topStreak?topStreak.streak+"-day streak":"-",color:"#f87171"},
+    {trophy:"🌟",title:"All Rounder",winner:topAllRounder?.name,stat:topAllRounder?topAllRounder.projCount+" projects":"-",color:"#a78bfa"},
   ];
 
   // Leaderboard
@@ -7954,7 +7954,7 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
           <div key={a.title} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:14,textAlign:"center"}}>
             <div style={{fontSize:28,marginBottom:4}}>{a.trophy}</div>
             <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}}>{a.title}</div>
-            <div style={{fontWeight:700,color:a.color,fontSize:13,marginBottom:2}}>{a.winner||"—"}</div>
+            <div style={{fontWeight:700,color:a.color,fontSize:13,marginBottom:2}}>{a.winner||"-"}</div>
             <div style={{fontSize:10,color:C.t2}}>{a.stat}</div>
           </div>
         ))}
@@ -7962,7 +7962,7 @@ function GamificationBoard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
 
       {/* Leaderboard */}
       <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
-        <div style={{padding:"12px 16px",borderBottom:"1px solid "+C.border,fontWeight:700,color:C.t1,fontSize:13}}>🏅 Leaderboard — {month}</div>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid "+C.border,fontWeight:700,color:C.t1,fontSize:13}}>🏅 Leaderboard - {month}</div>
         {leaderboard.map((e,i)=>{
           const badges=getBadges(e);const isMe=e.name===me.name;
           const pct=leaderboard[0]?.totalMins?Math.round(e.totalMins/leaderboard[0].totalMins*100):0;
@@ -8161,14 +8161,14 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
                                 <span style={{fontSize:10,fontWeight:600,color:mins>480?"#f87171":"#34d399"}}>{fmtH(mins)}</span>
                               </div>
                             ):(
-                              <span style={{fontSize:11,color:C.border}}>—</span>
+                              <span style={{fontSize:11,color:C.border}}>-</span>
                             )}
                           </td>
                         );
                       })}
                       <td style={{padding:"6px 8px",textAlign:"center"}}>
                         <span style={{background:isOver?"#ef444422":weekMins>0?"#05966922":C.surface,color:isOver?"#f87171":weekMins>0?"#34d399":C.t3,borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>
-                          {weekMins>0?fmtH(weekMins):"—"}{isOver?" ⚠️":""}
+                          {weekMins>0?fmtH(weekMins):"-"}{isOver?" ⚠️":""}
                         </span>
                       </td>
                     </tr>
@@ -8288,7 +8288,7 @@ function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,i
     <body><h2>📁 Monthly Project Summary</h2><p>Month: ${month} &nbsp;·&nbsp; Total: ${fmtH(totalMins)}</p>
     <table><thead><tr><th>Project</th><th>Hours</th><th>Team Size</th><th>Tasks Done</th></tr></thead>
     <tbody>${projRows}</tbody>
-    <tfoot><tr><td><strong>Total</strong></td><td>${fmtH(totalMins)}</td><td>—</td><td>—</td></tr></tfoot></table>
+    <tfoot><tr><td><strong>Total</strong></td><td>${fmtH(totalMins)}</td><td>-</td><td>-</td></tr></tfoot></table>
     <p style="margin-top:20px;font-size:11px;color:#999">Generated ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})} · RDS Project Hub</p>
     </body></html>`;
     const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
@@ -8325,12 +8325,12 @@ function AutomatedReports({timeLogs,projects,users,tasks,me,attendance,isAdmin,i
 
   const REPORT_CARDS=[
     {
-      icon:"💵",title:"Payroll Export",desc:"Hours × rate per employee — open in Excel",
+      icon:"💵",title:"Payroll Export",desc:"Hours × rate per employee - open in Excel",
       badge:null,badgeClr:"#34d399",
       action:downloadPayrollCsv,actionLabel:"⬇ Download CSV",color:"#059669",
     },
     {
-      icon:"📁",title:"Project Summary",desc:"Monthly breakdown by project — print / PDF",
+      icon:"📁",title:"Project Summary",desc:"Monthly breakdown by project - print / PDF",
       badge:null,badgeClr:"#60a5fa",
       action:printProjectSummary,actionLabel:"🖨️ Print / PDF",color:"#3b82f6",
     },
@@ -8462,9 +8462,9 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
       <tr>
         <td>${p.name}</td>
         <td>${fmtH(p.actualMins)}</td>
-        <td>${p.est>0?p.est+"h":"—"}</td>
-        <td>${p.burnPct!=null?p.burnPct+"%":"—"}</td>
-        <td>${p.cost>0?fmtMoney(p.cost):"—"}</td>
+        <td>${p.est>0?p.est+"h":"-"}</td>
+        <td>${p.burnPct!=null?p.burnPct+"%":"-"}</td>
+        <td>${p.cost>0?fmtMoney(p.cost):"-"}</td>
       </tr>`).join("");
     const totalCost=projStats.reduce((s,p)=>s+p.cost,0);
     const totalH=fmtH(projStats.reduce((s,p)=>s+p.actualMins,0));
@@ -8472,7 +8472,7 @@ function ProjectBudget({timeLogs,projects,users,me,isAdmin,isManager,isClient,mo
     <body><h2>📊 Project Billing Report</h2><p>Month: ${month} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})} &nbsp;·&nbsp; RDS Project Hub</p>
     <table><thead><tr><th>Project</th><th>Hours Logged</th><th>Est. Hours</th><th>Burn %</th><th>Cost</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr><td><strong>Total</strong></td><td>${totalH}</td><td>—</td><td>—</td><td class="total">${fmtMoney(totalCost)}</td></tr></tfoot></table>
+    <tfoot><tr><td><strong>Total</strong></td><td>${totalH}</td><td>-</td><td>-</td><td class="total">${fmtMoney(totalCost)}</td></tr></tfoot></table>
     </body></html>`;
     const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
   }
@@ -8707,7 +8707,7 @@ function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
                 {[
                   {icon:"✅",label:"Tasks Done",val:e.done+"/"+e.total},
                   {icon:"⏱️",label:"Hours",val:fmtH(e.totalMins)},
-                  {icon:"🎯",label:"On-Time",val:e.onTimeRate!=null?e.onTimeRate+"%":"—"},
+                  {icon:"🎯",label:"On-Time",val:e.onTimeRate!=null?e.onTimeRate+"%":"-"},
                   {icon:"🔥",label:"Streak",val:e.streak+" days"},
                 ].map(m=>(
                   <div key={m.label} style={{background:C.surface,borderRadius:8,padding:"7px 9px"}}>
@@ -8735,8 +8735,8 @@ function EmployeeScorecard({timeLogs,tasks,users,me,attendance,isAdmin,isManager
                   </div>
                   {/* Personal best message */}
                   {e.score>=85&&<div style={{marginTop:10,background:"#05966911",border:"1px solid #05966933",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#34d399",fontWeight:600}}>🌟 Outstanding performance this month!</div>}
-                  {e.streak>=7&&<div style={{marginTop:6,background:"#f59e0b11",border:"1px solid #f59e0b33",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#fbbf24",fontWeight:600}}>🔥 {e.streak}-day attendance streak — keep it up!</div>}
-                  {e.overdue>0&&<div style={{marginTop:6,background:"#ef444411",border:"1px solid #ef444433",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#f87171"}}>{e.overdue} task{e.overdue>1?"s":""} overdue — action needed</div>}
+                  {e.streak>=7&&<div style={{marginTop:6,background:"#f59e0b11",border:"1px solid #f59e0b33",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#fbbf24",fontWeight:600}}>🔥 {e.streak}-day attendance streak - keep it up!</div>}
+                  {e.overdue>0&&<div style={{marginTop:6,background:"#ef444411",border:"1px solid #ef444433",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#f87171"}}>{e.overdue} task{e.overdue>1?"s":""} overdue - action needed</div>}
                 </div>
               )}
             </div>
@@ -8843,7 +8843,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
     const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
     const rows=weekDays.map(d=>"<tr><td>"+fmtDay(d)+"</td><td>"+(em&&em.days[d]?fmtH(em.days[d]):"-")+"</td></tr>").join("");
     const fmtRange=weekStart.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric",year:"numeric"});
-    const html="<html><head><title>Timesheet — "+empName+"</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:8px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:600}tfoot td{font-weight:700;background:#fafafa}</style></head><body><h2>Timesheet — "+empName+"</h2><p>Week: "+fmtRange+" &nbsp;|&nbsp; Status: "+ts.status+(ts.approved_by?" &nbsp;|&nbsp; Approved by: "+ts.approved_by:"")+"</p><table><thead><tr><th>Day</th><th>Hours Logged</th></tr></thead><tbody>"+rows+"</tbody><tfoot><tr><td>Total</td><td>"+(em?fmtH(em.mins):"0h")+"</td></tr></tfoot></table><p style='margin-top:24px;font-size:11px;color:#999'>Printed "+new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})+" &nbsp;·&nbsp; RDS Project Hub</p></body></html>";
+    const html="<html><head><title>Timesheet - "+empName+"</title><style>body{font-family:Arial,sans-serif;padding:30px;color:#111}h2{margin-bottom:4px}p{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{padding:8px 12px;text-align:left;border:1px solid #ddd}th{background:#f5f5f5;font-weight:600}tfoot td{font-weight:700;background:#fafafa}</style></head><body><h2>Timesheet - "+empName+"</h2><p>Week: "+fmtRange+" &nbsp;|&nbsp; Status: "+ts.status+(ts.approved_by?" &nbsp;|&nbsp; Approved by: "+ts.approved_by:"")+"</p><table><thead><tr><th>Day</th><th>Hours Logged</th></tr></thead><tbody>"+rows+"</tbody><tfoot><tr><td>Total</td><td>"+(em?fmtH(em.mins):"0h")+"</td></tr></tfoot></table><p style='margin-top:24px;font-size:11px;color:#999'>Printed "+new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})+" &nbsp;·&nbsp; RDS Project Hub</p></body></html>";
     const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();w.print();}
   }
 
@@ -8897,7 +8897,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
 
         return(
           <div key={empName} style={{background:C.card,border:"1px solid "+(isApproved?"#05966944":C.border),borderRadius:12,marginBottom:10,overflow:"hidden"}}>
-            {/* Header row — click to expand */}
+            {/* Header row - click to expand */}
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",cursor:"pointer",userSelect:"none"}} onClick={()=>setExpanded(isExpanded?null:empName)}>
               <div style={{width:32,height:32,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:C.accent,fontSize:14,flexShrink:0}}>{empName[0]}</div>
               <div style={{flex:1,minWidth:0}}>
@@ -8930,7 +8930,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
                             <div style={{fontSize:11,fontWeight:700,color:"#34d399"}}>{fmtH(mins)}</div>
                           </>
                         ):(
-                          <div style={{fontSize:12,color:C.t3,marginTop:4}}>—</div>
+                          <div style={{fontSize:12,color:C.t3,marginTop:4}}>-</div>
                         )}
                       </div>
                     );
@@ -9079,7 +9079,7 @@ function TimingsCharts({timeLogs,projects,month,isClient}){
       {/* ── 3. Heatmap calendar ── */}
       <div style={CARD}>
         <div style={{fontSize:13,fontWeight:800,color:C.t1,marginBottom:2}}>📅 Daily Work Intensity</div>
-        <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Hours logged per day — darker = more time</div>
+        <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Hours logged per day - darker = more time</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:4}}>
           {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:9,color:C.t3,fontWeight:700}}>{d}</div>)}
         </div>
@@ -9190,8 +9190,8 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
     setLoading(false);
   }
 
-  function fmtDur(min){if(!min)return"—";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
-  function fmtTime(ts){if(!ts)return"—";return new Date(ts).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
+  function fmtDur(min){if(!min)return"-";const h=Math.floor(min/60),m=min%60;return h>0?(m>0?h+"h "+m+"m":h+"h"):m+"m";}
+  function fmtTime(ts){if(!ts)return"-";return new Date(ts).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});}
 
   const SC={"Completed":"#059669","Done":"#059669","In Progress":"#3b82f6","Not Yet Started":"#6b7280","To Be Started":"#6b7280","On Hold":"#f59e0b","Hold":"#f59e0b"};
 
@@ -9290,7 +9290,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
                       <td style={{padding:"9px 12px"}}><span style={{fontWeight:600,color:C.blue}}>{d.days} days</span></td>
                       <td style={{padding:"9px 12px"}}><span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"3px 10px"}}>{fmtDur(d.workMin)}</span></td>
                       <td style={{padding:"9px 12px"}}><span style={{color:C.t3,fontSize:12}}>{fmtDur(d.breakMin)}</span></td>
-                      <td style={{padding:"9px 12px"}}><span style={{color:C.t2}}>{d.days>0?fmtDur(Math.round(d.workMin/d.days)):"—"}</span></td>
+                      <td style={{padding:"9px 12px"}}><span style={{color:C.t2}}>{d.days>0?fmtDur(Math.round(d.workMin/d.days)):"-"}</span></td>
                     </tr>
                   ))}
                   {!Object.keys(byEmp).length&&<tr><td colSpan={5} style={{textAlign:"center",padding:36,color:C.t3}}>No attendance records this month</td></tr>}
@@ -9311,7 +9311,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
                 {label:"Days Present",val:attendance.length,color:C.blue},
                 {label:"Total Work Hours",val:fmtDur(attendance.reduce((s,r)=>s+(r.total_work_minutes||0),0)),color:"#059669"},
                 {label:"Total Break",val:fmtDur(attendance.reduce((s,r)=>s+(r.total_break_minutes||0),0)),color:C.t2},
-                {label:"Avg Hours/Day",val:attendance.length>0?fmtDur(Math.round(attendance.reduce((s,r)=>s+(r.total_work_minutes||0),0)/attendance.length)):"—",color:C.accent},
+                {label:"Avg Hours/Day",val:attendance.length>0?fmtDur(Math.round(attendance.reduce((s,r)=>s+(r.total_work_minutes||0),0)/attendance.length)):"-",color:C.accent},
               ].map(s=>(
                 <div key={s.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 18px",flex:"1 1 140px",minWidth:130}}>
                   <div style={{fontSize:11,color:C.t3,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",marginBottom:5}}>{s.label}</div>
@@ -9383,7 +9383,7 @@ function TimingsPage({me,tasks,projects,users,isAdmin,isManager,isTeamLeader,isC
                                   </div>
                                 }
                               </td>
-                              <td style={{padding:"7px 10px",textAlign:"center"}}>{td.min>0?<span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 8px"}}>{fmtDur(td.min)}</span>:<span style={{color:C.t3}}>—</span>}</td>
+                              <td style={{padding:"7px 10px",textAlign:"center"}}>{td.min>0?<span style={{fontWeight:700,color:"#059669",background:"#05966918",borderRadius:6,padding:"2px 8px"}}>{fmtDur(td.min)}</span>:<span style={{color:C.t3}}>-</span>}</td>
                               <td style={{padding:"7px 10px",textAlign:"center"}}><span style={{background:sc+"18",color:sc,borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{t.status}</span></td>
                             </tr>
                           );
@@ -9712,7 +9712,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
   function fmtDate(d){return fmtDDMMYYYY(d);}
   function yearsAt(d){if(!d)return null;const y=Math.floor((Date.now()-new Date(d))/(365.25*24*3600*1000));return y>=0?y:null;}
   function LeaveBar({used,total}){
-    if(total==null)return<span style={{color:C.t3,fontSize:11}}>—</span>;
+    if(total==null)return<span style={{color:C.t3,fontSize:11}}>-</span>;
     const pct=total>0?Math.min(100,Math.round((used||0)/total*100)):0;
     const col=pct>80?"#ef4444":pct>50?"#f59e0b":"#22c55e";
     return(<div>
@@ -9740,9 +9740,9 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
           <div style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:14}}>
             <span style={{fontSize:28,lineHeight:1}}>⚙️</span>
             <div>
-              <div style={{fontWeight:800,fontSize:15,color:C.t1,marginBottom:4}}>First-Time HR Setup — {currentYear}</div>
+              <div style={{fontWeight:800,fontSize:15,color:C.t1,marginBottom:4}}>First-Time HR Setup - {currentYear}</div>
               <div style={{fontSize:13,color:C.t2}}>No holiday calendar found for {currentYear}. Click Setup to automatically add Indian national holidays and set default leave balances (Annual 15, Sick 6, Casual 6) for all employees.</div>
-              <div style={{fontSize:12,color:C.t3,marginTop:4}}>Festival dates are approximate — you can edit them after setup. Run <b>hr_migration.sql</b> in Supabase first if you haven't already.</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:4}}>Festival dates are approximate - you can edit them after setup. Run <b>hr_migration.sql</b> in Supabase first if you haven't already.</div>
             </div>
           </div>
           <button onClick={runHRSetup} disabled={setupBusy} style={{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"10px 22px",fontWeight:700,fontSize:13,cursor:setupBusy?"wait":"pointer",opacity:setupBusy?0.7:1}}>
@@ -9755,7 +9755,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
       {/* ── BIRTHDAYS ── */}
       {thisMonthBirthdays.length>0&&(
         <div style={{...card,marginBottom:24,borderTop:"3px solid #ec4899"}}>
-          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>🎂 Birthdays This Month — {new Date().toLocaleString("default",{month:"long"})}</div>
+          <div style={{fontWeight:700,fontSize:14,color:C.t1,marginBottom:14}}>🎂 Birthdays This Month - {new Date().toLocaleString("default",{month:"long"})}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
             {thisMonthBirthdays.map(u=>{
               const dobParts=(u.date_of_birth||"").split("-");
@@ -9873,7 +9873,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
 
       {/* ── HR SECTION ── */}
-      <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>👥 HR — Today's Attendance</div>
+      <div style={{fontSize:13,fontWeight:800,color:C.t2,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>👥 HR - Today's Attendance</div>
       <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?"140px":"170px"},1fr))`,gap:14,marginBottom:24}}>
         {[
           {label:"Total Employees",value:totalEmp,color:"#3b82f6",icon:"👥",sub:"excl. admin & clients"},
@@ -9912,9 +9912,9 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
               const user=users.find(u=>(u.id===a.user_id)||(u.name||"").toLowerCase()===(a.employee_name||"").toLowerCase());
               const name=user?.name||a.employee_name||"Unknown";
               const isActive=!a.logout_at;
-              const loginTime=a.login_at?new Date(a.login_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true}):"—";
+              const loginTime=a.login_at?new Date(a.login_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true}):"-";
               const logoutTime=a.logout_at?new Date(a.logout_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true}):"Active";
-              const hrs=a.total_work_minutes?Math.floor(a.total_work_minutes/60)+"h "+String(a.total_work_minutes%60).padStart(2,"0")+"m":"—";
+              const hrs=a.total_work_minutes?Math.floor(a.total_work_minutes/60)+"h "+String(a.total_work_minutes%60).padStart(2,"0")+"m":"-";
               return(
                 <div key={a.id} style={{background:C.bg,border:`1px solid ${isActive?"#22c55e44":C.border}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
                   <div style={{width:34,height:34,borderRadius:10,background:isActive?"#22c55e22":"#ef444422",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:isActive?"#22c55e":"#ef4444",flexShrink:0}}>{(name[0]||"?").toUpperCase()}</div>
@@ -9952,7 +9952,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
             <div>
               <div style={{fontWeight:700,fontSize:13,color:"#f59e0b",marginBottom:4}}>⚠️ {staleSessions.length} Unclosed Session{staleSessions.length>1?"s":""} from Previous Day{staleSessions.length>1?"s":""}</div>
-              <div style={{fontSize:12,color:C.t3}}>{staleSessions.map(s=>s.user_name||"Unknown").join(", ")} — clocked in but never clocked out</div>
+              <div style={{fontSize:12,color:C.t3}}>{staleSessions.map(s=>s.user_name||"Unknown").join(", ")} - clocked in but never clocked out</div>
             </div>
             <button onClick={closeStaleSessions} style={{background:"#f59e0b22",border:"1px solid #f59e0b55",borderRadius:8,padding:"7px 16px",color:"#f59e0b",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Close All Stale Sessions</button>
           </div>
@@ -9980,7 +9980,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
                   const exp=yearsAt(u.date_of_joining);
                   return(
                     <tr key={u.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?"transparent":C.bg}}>
-                      <td style={{padding:"9px 12px",color:C.accent,fontWeight:800,whiteSpace:"nowrap"}}>{u.employee_id||<span style={{color:C.t3,fontWeight:400}}>—</span>}</td>
+                      <td style={{padding:"9px 12px",color:C.accent,fontWeight:800,whiteSpace:"nowrap"}}>{u.employee_id||<span style={{color:C.t3,fontWeight:400}}>-</span>}</td>
                       <td style={{padding:"9px 12px",fontWeight:700,color:C.t1,whiteSpace:"nowrap"}}>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
                           <div style={{width:28,height:28,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:C.accent,flexShrink:0}}>{(u.name||"?")[0].toUpperCase()}</div>
@@ -9989,7 +9989,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
                       </td>
                       <td style={{padding:"9px 12px",color:C.t2,whiteSpace:"nowrap"}}>{u.role}</td>
                       <td style={{padding:"9px 12px",color:C.t3,whiteSpace:"nowrap"}}>{fmtDate(u.date_of_joining)}</td>
-                      <td style={{padding:"9px 12px",color:C.t2,whiteSpace:"nowrap",fontWeight:600}}>{exp!=null?exp+" yr"+(exp===1?"":"s"):<span style={{color:C.t3,fontWeight:400}}>—</span>}</td>
+                      <td style={{padding:"9px 12px",color:C.t2,whiteSpace:"nowrap",fontWeight:600}}>{exp!=null?exp+" yr"+(exp===1?"":"s"):<span style={{color:C.t3,fontWeight:400}}>-</span>}</td>
                       <td style={{padding:"9px 12px",color:C.t3,whiteSpace:"nowrap"}}>{fmtDate(u.date_of_birth)}</td>
                       <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.annual_used} total={lb.annual}/></td>
                       <td style={{padding:"9px 12px",minWidth:110}}><LeaveBar used={lb.sick_used} total={lb.sick}/></td>
@@ -10019,7 +10019,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
           {editEmp&&(
             <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditEmp(null);}}>
               <div style={{background:C.card,borderRadius:16,padding:28,width:460,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px #0004"}}>
-                <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:20}}>✏️ Edit HR Info — {editEmp.name}</div>
+                <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:20}}>✏️ Edit HR Info - {editEmp.name}</div>
                 {[
                   {label:"Employee ID",key:"employee_id",type:"text",placeholder:"e.g. EMP001"},
                   {label:"Date of Joining",key:"date_of_joining",type:"date"},
@@ -10146,7 +10146,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
   // Re-fetch invoices whenever user opens the Invoices tab; reset filters so new drafts are always visible
   useEffect(()=>{if(billingView==="invoices"){loadInvoices();setInvFClient("all");setInvFProject("all");setInvFTask("all");setInvFStatus("all");}},[billingView]);
-  // Auto-poll every 20s when Invoices tab is open — picks up client "viewed" updates in near-realtime
+  // Auto-poll every 20s when Invoices tab is open - picks up client "viewed" updates in near-realtime
   useEffect(()=>{
     if(billingView!=="invoices")return;
     const t=setInterval(async()=>{
@@ -10177,7 +10177,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     return()=>clearInterval(t);
   },[billingView]);
 
-  // upsertSetting — uses Supabase directly (works from cloud & local deployments)
+  // upsertSetting - uses Supabase directly (works from cloud & local deployments)
   async function upsertSetting(key,value){
     const val=JSON.stringify(value);
     const r=await fetch(SUPA_URL+"/rest/v1/settings?key=eq."+encodeURIComponent(key),{
@@ -10195,7 +10195,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     }
   }
 
-  // ── Resend email helper — routes through Supabase notify Edge Function ──
+  // ── Resend email helper - routes through Supabase notify Edge Function ──
   async function sendMail(to,subject,html){
     try{
       const toArr=Array.isArray(to)?to.filter(Boolean):[to].filter(Boolean);
@@ -10210,15 +10210,15 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       });
     }catch(_){}
   }
-  // Invoice email template — sent to client when admin clicks "Mark Sent"
+  // Invoice email template - sent to client when admin clicks "Mark Sent"
   function buildClientInvoiceEmail(inv,company){
     const taskSnap=inv.taskSnapshot||[];
     const byProj={};
     taskSnap.forEach(t=>{const k=t._proj?.name||t.project||"Tasks";if(!byProj[k])byProj[k]=[];byProj[k].push(t);});
     // Fallback overall unit price if per-task rate isn't stored
     const unitPrice=inv.tons&&inv.amount?Number(inv.amount/inv.tons).toFixed(2):null;
-    const fmtT=v=>(v!=null&&v!==undefined&&!isNaN(v))?Number(v).toFixed(2)+" T":"—";
-    const fmtR=v=>(v!=null&&v!==undefined&&!isNaN(v)&&Number(v)>0)?"$"+Number(v).toFixed(2)+"/T":(unitPrice?"$"+unitPrice+"/T":"—");
+    const fmtT=v=>(v!=null&&v!==undefined&&!isNaN(v))?Number(v).toFixed(2)+" T":"-";
+    const fmtR=v=>(v!=null&&v!==undefined&&!isNaN(v)&&Number(v)>0)?"$"+Number(v).toFixed(2)+"/T":(unitPrice?"$"+unitPrice+"/T":"-");
     const taskRows=Object.entries(byProj).map(([proj,tasks])=>`
       <tr><td colspan="3" style="background:#eef2ff;padding:8px 14px;font-weight:700;color:#1e3a8a;font-size:12px;border-top:2px solid #c7d2fe;">📁 ${proj}</td></tr>
       ${tasks.map((t,i)=>`<tr style="background:${i%2===0?"#fff":"#f9fafb"};">
@@ -10243,16 +10243,16 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   <!-- BODY -->
   <div style="padding:32px 36px;">
     <p style="color:#1e293b;font-size:16px;font-weight:700;margin:0 0 6px;">Hello <strong>${inv.clientName} Team</strong>,</p>
-    <p style="color:#475569;font-size:13px;line-height:1.7;margin:0 0 24px;">Please find below your invoice summary. Kindly review and process the payment by the due date. For complete details, task breakdown, and to confirm payment — please log in to your client portal at <a href="https://hub-rdsprojects.com" style="color:#2563eb;font-weight:600;">hub-rdsprojects.com</a>.</p>
+    <p style="color:#475569;font-size:13px;line-height:1.7;margin:0 0 24px;">Please find below your invoice summary. Kindly review and process the payment by the due date. For complete details, task breakdown, and to confirm payment - please log in to your client portal at <a href="https://hub-rdsprojects.com" style="color:#2563eb;font-weight:600;">hub-rdsprojects.com</a>.</p>
 
     <!-- Invoice summary box -->
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px;">
       <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;width:140px;">Invoice No</td><td style="color:#1e293b;font-size:14px;font-weight:700;padding:5px 0;">${inv.invoiceNo||"—"}</td></tr>
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;width:140px;">Invoice No</td><td style="color:#1e293b;font-size:14px;font-weight:700;padding:5px 0;">${inv.invoiceNo||"-"}</td></tr>
         ${inv.invoiceTitle?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Description</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.invoiceTitle}</td></tr>`:""}
         ${inv.period?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Period</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.period}</td></tr>`:""}
-        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Issue Date</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.issueDate||"—"}</td></tr>
-        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Due Date</td><td style="color:#ef4444;font-size:13px;font-weight:700;padding:5px 0;">${inv.dueDate||"—"}</td></tr>
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Issue Date</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.issueDate||"-"}</td></tr>
+        <tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Due Date</td><td style="color:#ef4444;font-size:13px;font-weight:700;padding:5px 0;">${inv.dueDate||"-"}</td></tr>
         ${inv.tons?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Total QTY</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">${inv.tons} T</td></tr>`:""}
         ${unitPrice?`<tr><td style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 0;">Unit Price</td><td style="color:#1e293b;font-size:13px;padding:5px 0;">$${unitPrice}/T</td></tr>`:""}
         <tr><td style="padding:10px 0 5px;" colspan="2"><div style="border-top:1px solid #bae6fd;"></div></td></tr>
@@ -10280,7 +10280,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     ${company?.paymentMethod?`
     <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
       <div style="font-weight:700;color:#92400e;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">💳 Payment Information</div>
-      <div style="color:#78350f;font-size:13px;">${company.paymentMethod}${company.bankName?` — <strong>${company.bankName}</strong>`:""}</div>
+      <div style="color:#78350f;font-size:13px;">${company.paymentMethod}${company.bankName?` - <strong>${company.bankName}</strong>`:""}</div>
       ${company.accountNumber?`<div style="color:#78350f;font-size:13px;margin-top:4px;">Account No: <strong>${company.accountNumber}</strong></div>`:""}
       ${company.routingNumber?`<div style="color:#78350f;font-size:13px;margin-top:2px;">Routing: <strong>${company.routingNumber}</strong></div>`:""}
     </div>`:""}
@@ -10301,17 +10301,17 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
 </div></body></html>`;
   }
-  // Notification template — sent to admin+HR
+  // Notification template - sent to admin+HR
   function buildNotifyEmail(subject,body,inv){
     return`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
 <div style="max-width:560px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;">
-  <div style="background:#1e293b;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">RDS Projects — Billing Alert</div></div>
+  <div style="background:#1e293b;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">RDS Projects - Billing Alert</div></div>
   <div style="padding:28px 32px;">
     <h2 style="color:#1e293b;font-size:16px;margin:0 0 16px;">${subject}</h2>
     <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">${body}</p>
     ${inv?`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"—"}</strong></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"—"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;font-size:12px;">Invoice No</span><strong style="color:#1e293b;font-size:13px;">${inv.invoiceNo||"-"}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#64748b;font-size:12px;">Client</span><strong style="color:#1e293b;font-size:13px;">${inv.clientName||"-"}</strong></div>
       <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;font-size:12px;">Amount</span><strong style="color:#1d4ed8;font-size:15px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div>
     </div>`:""}
   </div>
@@ -10319,7 +10319,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 </div></body></html>`;
   }
 
-  // handleCompanyChange: called on every field change — auto-saves after 800ms idle
+  // handleCompanyChange: called on every field change - auto-saves after 800ms idle
   function handleCompanyChange(field,val){
     const updated={...companyInfo,[field]:val};
     setCompanyInfo(updated);
@@ -10377,7 +10377,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     try{
       await upsertSetting("billing_invoices",updated);
     }catch(e){
-      setMsg("⚠️ Invoice save failed — check network");setTimeout(()=>setMsg(null),4000);
+      setMsg("⚠️ Invoice save failed - check network");setTimeout(()=>setMsg(null),4000);
     }
   }
 
@@ -10403,11 +10403,11 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         const clientEmail=clientCustom[targetInv.clientName]?.email||clientCustom[targetInv.clientKey]?.email||"";
         if(clientEmail){
           const html=buildClientInvoiceEmail(targetInv,companyInfo);
-          sendMail(clientEmail,`Invoice ${targetInv.invoiceNo||""} from RDS Projects — $${Number(targetInv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}`,html);
+          sendMail(clientEmail,`Invoice ${targetInv.invoiceNo||""} from RDS Projects - $${Number(targetInv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}`,html);
           setMsg(`✅ Invoice moved to client dashboard & email sent to ${clientEmail}`);
           setTimeout(()=>setMsg(null),5000);
         }else{
-          setMsg(`⚠️ Invoice visible in client dashboard — no email on file for ${targetInv.clientName}. Add it in Settings → Client.`);
+          setMsg(`⚠️ Invoice visible in client dashboard - no email on file for ${targetInv.clientName}. Add it in Settings → Client.`);
           setTimeout(()=>setMsg(null),7000);
         }
       }
@@ -10419,7 +10419,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           `<strong>${targetInv.clientName}</strong> has marked Invoice <strong>${targetInv.invoiceNo}</strong> as <strong>PAID</strong> on ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}.`,
           targetInv
         );
-        sendMail(notifyTo,`✅ Payment Received — ${targetInv.clientName} paid Invoice ${targetInv.invoiceNo}`,html);
+        sendMail(notifyTo,`✅ Payment Received - ${targetInv.clientName} paid Invoice ${targetInv.invoiceNo}`,html);
       }
     }
   }
@@ -10456,16 +10456,16 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         if(Array.isArray(ncRows)&&ncRows[0]){const nc=JSON.parse(ncRows[0].value||"{}");if(nc.adminEmail)adminEmail=nc.adminEmail;if(nc.hrEmail)hrEmail=nc.hrEmail;}
       }catch(_){}
       const notifyTo=[adminEmail,hrEmail].filter(Boolean);
-      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;"><div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div><div style="padding:28px 32px;"><p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong>${inv.invoiceNo||"—"}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong>${inv.clientName||"—"}</strong></div>${inv.dueDate?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Due Date</span><strong>${new Date(inv.dueDate).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"})}</strong></div>`:""}<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div></div><p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p></div><div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
+      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px #0000001a;"><div style="background:#16a34a;padding:24px 32px;"><div style="color:#fff;font-size:18px;font-weight:700;">💸 Payment Notification</div></div><div style="padding:28px 32px;"><p style="color:#374151;font-size:15px;margin:0 0 16px;"><strong>${inv.clientName}</strong> has notified that payment has been sent for Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Invoice No</span><strong>${inv.invoiceNo||"-"}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Client</span><strong>${inv.clientName||"-"}</strong></div>${inv.dueDate?`<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#6b7280;font-size:12px;">Due Date</span><strong>${new Date(inv.dueDate).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"})}</strong></div>`:""}<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;font-size:12px;">Amount</span><strong style="color:#16a34a;font-size:18px;font-weight:800;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div></div><p style="color:#64748b;font-size:13px;">Please verify receipt and confirm payment in the RDS Projects portal.</p></div><div style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;">RDS Projects · Billing Notification · ${new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"long",year:"numeric"})}</div></div></body></html>`;
       notifyTo.forEach(email=>{
         fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
-          body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`💸 Payment Sent — ${inv.clientName} · Invoice ${inv.invoiceNo||""} · $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
+          body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`💸 Payment Sent - ${inv.clientName} · Invoice ${inv.invoiceNo||""} · $${Number(inv.amount||0).toFixed(2)}`,htmlBody:html}})
         }).catch(()=>{});
       });
     }catch(_){}
     setPayBusy(p=>({...p,[inv.id]:false}));
   }
-  // Client "View Details" — mark as viewed + notify admin+HR
+  // Client "View Details" - mark as viewed + notify admin+HR
   async function clientMarkViewed(inv){
     if(inv.status!=="sent")return;
     const now=new Date().toISOString();
@@ -10486,7 +10486,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         [adminEmail,hrEmail].filter(Boolean).forEach(email=>{
           fetch(SUPA_URL+"/functions/v1/notify",{method:"POST",headers:{"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
             body:JSON.stringify({type:"billing",data:{recipientEmail:email,subject:`👁 ${inv.clientName} viewed Invoice ${inv.invoiceNo||""}`,
-              htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f5f3ff;border-radius:8px;padding:16px;"><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No: </span><strong>${inv.invoiceNo||"—"}</strong></div><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount: </span><strong style="color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div><div><span style="color:#6b7280;font-size:12px;">Viewed At: </span><strong>${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div></div></div>`
+              htmlBody:`<div style="font-family:Arial,sans-serif;padding:28px;max-width:520px;margin:auto;background:#fff;border-radius:10px;"><h2 style="color:#7c3aed;margin-top:0;">👁 Invoice Viewed</h2><p style="color:#374151;"><strong>${inv.clientName}</strong> opened Invoice <strong>${inv.invoiceNo||""}</strong>.</p><div style="background:#f5f3ff;border-radius:8px;padding:16px;"><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Invoice No: </span><strong>${inv.invoiceNo||"-"}</strong></div><div style="margin-bottom:6px;"><span style="color:#6b7280;font-size:12px;">Amount: </span><strong style="color:#1d4ed8;font-size:16px;">$${Number(inv.amount||0).toLocaleString("en-US",{minimumFractionDigits:2})}</strong></div><div><span style="color:#6b7280;font-size:12px;">Viewed At: </span><strong>${new Date(now).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></div></div></div>`
             }})
           }).catch(()=>{});
         });
@@ -10567,7 +10567,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     const proj=projects.find(p=>p.id===t.project_id);
     const cl=(proj?.client||"Unassigned").trim();
     if(!clientMap[cl])clientMap[cl]={projMap:{},totalTons:0,totalAmt:0};
-    const pName=proj?.name||"—";
+    const pName=proj?.name||"-";
     if(!clientMap[cl].projMap[pName])clientMap[cl].projMap[pName]={tasks:[],proj,totalTons:0,totalAmt:0};
     const wt=parseFloat(t.det_weight)||0;
     const {rate,level}=getRate(t,proj,cl);
@@ -10590,9 +10590,9 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   // ── PDF generator (shared) ─────────────────────────────────────────
   function buildPdf({title,subtitle,note,label,taskList,hideProject=false}){
     const rows=taskList.map((t,i)=>`<tr class="${i%2===0?'row-even':'row-odd'}">
-      ${hideProject?"":`<td class="td">${t._proj?.name||"—"}</td>`}
+      ${hideProject?"":`<td class="td">${t._proj?.name||"-"}</td>`}
       <td class="td">${t.title}</td>
-      <td class="td-r">${t.client_sub_date||"—"}</td>
+      <td class="td-r">${t.client_sub_date||"-"}</td>
       <td class="td-r">${fmtT(t._wt)}</td>
       <td class="td-r">$${t._rate}/T</td>
       <td class="td-r amt">${fmtM(t._amt)}</td>
@@ -10604,7 +10604,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     const todayDate=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
     const invoiceNo="INV-"+new Date().getFullYear()+""+String(new Date().getMonth()+1).padStart(2,"0")+"-"+String(Math.floor(Math.random()*9000)+1000);
     const LOGO_SRC="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAABZCAYAAADIKkNiAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JQAAgIMAAPn/AACA6QAAdTAAAOpgAAA6mAAAF2+SX8VGAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAB3RJTUUH4wMLFQIXZ624gwAAYwVJREFUeNrtvXeAJFd16P0791ZVx8m7szlLWuUAkggSIBCIjEgGB4LBxhhjjMHYD7ANmCiCTcbYBAMCTDIgwGBykEBIQhHlXW3Ok6dzVd17vj+qe6ZndmZ3JRT83qez21Nd1VV147knnwsPwoPwIDwID8KD8CA8CA/Cg/AgPAgPwoPwIDwID8IDAvJAV2D1pRcRFISkoYT9Ea6a4Fre+NQT5azP5wJq9QT1yr6X/uiBru6D8CDc6/CAIeGqSy8CBUQAhVSp/maaYCDEhAbz1DIy7pG7YiRvsoc87PuTBxHxQfh/Cx4QJFx16UVIB69SFVFRsSJhFGjBRkumqrVPa+qbJ61c+4fT9Xp6sDIhiU/BowD7X/bjB7rfHoQH4V6D+xUJV116EUSC/mAcecyAwSt72eJxfXJScd1AI01e00qTv6mlzbxrOemLir8tFgrPj2x4W6VeMw6PpupVFZMzD7KnD8L/E2Duj0JWXXoRqz77eFCFljfyqP7giZzr96Y/9GuDzcPH5da8aqrV2DrZrP3DoeZkflVhUNYWh/RAffy0Sr12dStu/dHu83+gPkZNIEHyilswTxpk5X88/oHuvwfhQfid4T6lhKs/fxHeZ6UIGLzaUCNXkKKvBFPDJXJPraet10/HjRMaLvaDUUmevPwsedqKs1GvfPTO7+rPD96qfVHJ9OfLH5aAt50VrB35dfWuSEMSQNUr+//kQfb0Qfi/F+4TJFz9+SeiqmBBRERjDcSrJ1BXN+nAkJaeETv3som4el7LJb4vLPjHLj3VPmn5mbK2OEw1beC9UrARX999pX5xx+Uu8T5YWuj7VSEK/+ZMt/LXv67tsK4EqupQECvse8mD7OmD8H8f2Hv7has//0QOveT75B+5DJMPrabexIFLU6tDOQ2eV9Don0Zb1b+ejKvrBsJS8qglJ5qXbXi8ffTSkyVnIvY1J6ilTSpxnZZPOXtwkxzfs9zsrB1KdtbG1huVp4zautvZd+A3lRdemfZcv9Fqqqqpp/f3jqfyzW0PdJ8+CA/C3YJ7hRKuuvQiBMF739Z6iqhX0yx7ZxxRvmlfGqj542raOmMyqeeXROX0kUPH88Th04PhXD+peqbTOi2fEJoAvOK9J1WPQViS6yX2CV/d9ev0O/uvNwUb6UCu/L1mmLwqUNlBit33pz91PHszK5+2CuB3Utp8b80KZsVlbzJbSneXaVfX6SLXmff7/C5f6J3z3zO/HNHZk+w3VWHzZyr0TeUAodHy0lcSiZ3HA2IUjGaPii5+jp/9bjyIz6xHpqsr5jQvAvIgRURKiJTAlBDTi9h+xA4gwQAmWKImtxLJrdVt7z6PTW/4DS6ZxCeTBMV1RAPn3K2xecjnHo8RSD2Q5CFskaoXj0iqEKsS62xvGgQLWBFCIBKhIJaCCcjbgKKJKAcFSkGRnrBMf66HgXw/S0pDDJeWsnHJcaweXMvBqQMcqhxgojHBZGOC6dY0lVaVWlKnljRopE2aaZOma9H0MalLvaIYMXzxeZ87Ypt+JyRcfelFRAN5dl16M8ueugk8mJxF64kgqIb22cbzhti508fjatQXFvzDBjb5i4ZPs6sKg9JwCU2X0HQxRgxWBAW0jYQi4FXxqvQEeXrCAr8evdN/ZuflfjptBcO5nl0E8ipJ9FvOeyOR8ZjZ+SxW2PviH/4uTfxfCd9bswLVTM9lLdhA6BswOK80qsrjtux7oKt4GMT7voZVxXhHHITgaqTVKzNEjdaQX/uKIz5/9ucyJVxnwjqgz8ATy/ClKbjhxf/3iiL3CAlXf/6J+NSBCCIiOKUYRDqe1gVBe4LcI1Pn3p06fdhkWg9zYvXs/vX+wiUnm+NKy6XmWjRcTOxTjAgG08YbBZEMCZ2fqaCiOFVCYxjK9bK/Ma6f2Xm5v3V6vx2KymkuCt/TmGz+/di+g6w8cY2oybBXRbDh3UfELkoYgX8LaFmVVvuiHttb5Nhv7bR94eEQoCnCBCL7jDFbc8XcLd5rzTtHbwJLtu+Df1xiBx6RutqU/l5/j7molbqJ1GONVUVcRvmMZBTOMEMNF6SE4sEcjRKGHEYJpYTYXsT0iwQDXuxARYLBQyZaepcJBm/QcHhE3bSYXW/SpPexiMmL+iZIqIhBXYXy5n85rAPOvvTxWIlQPKpOADUSEBmLUy3U0vjhieopibIiUc3HqtqZPYZM5rIIoUibEpqMEpqAom1TQlukJ+qihMWMEh43fAJrBtZxcGo/B6sHmaiPz6GE1aROPalTT5s00xZN16Tl457Ep+9VZasRMV983uf80WbKMcPqzz8xwxOTPeZTZ1B07350w9pUAime1EiSdyfOPa3mWqogD+ld4x8ztFlOKq+Upk+ppA28artwWbBG3nnU62EcmaKoKv1hCQN8c991+sORWzVvQlOO8j8uFXN/OBDnDu2Np40LFE3Ug2LyAfv++NgR8XtrVoh6VZe63jAfbk2aydJWo6UiInNQa+ZkPsId6XwOe9n1vfu+udclW+wQK2qNUbFmSkSuMoH5dq5UvKy4PH9g/Elbaak4acinVy8PX3LS+jCNUx8kXkFSNK5CkM1IMe0i2kfpINr8c8kcmua0t/NVIkTKIGXE9CCmDzGDSDCIBEswwVJMbhkmWobJrfS2tLEltnC9q+34b23t/HLgRndwzR+4xsbXiddRMXbQS9BD2txCz6lfnIOABQokJHicGXct3br6Wn3UocecWE1bf9Vy+nst74ca3tH0KrFXfKd5IgSQIR9CzhiKYimagJKNKAU5eoISfVGZvqiPwXwvS4tDrOhZzqq+NWwc2kSxUKbaqLBvcg9j9VHGa+NMtiaZblVmkDBjRxvUXYPYJ96LmkTd4xV+bBD7X8//ortXkHD1pU8kKhe565lfZ/XnnmhVlWrYci1xwVrftzH2/jWNNH550yWSopxcXs5jBk7Qk3pWCsBEUkM7bOJRSvVOUe9nXdrmVdOrJ2dCBqMSv5nYxlf2XesradP0R6WRYhi+cNvgbT9Yu2OTJCWRxl0VN/mZ7ay65MxjpojfW7NCwijQfCnXO3Foekvf0t7hJSsHNE2cdCalHBGB5lJARRB05jlF57Ro7lPSfqK7PzxJnNCqxTSqDRqVJkmcqg2MBKGt54rhpcXh3L/ueNGuG4Nxe0laNf9n1XCQnnVyFLi0hs9vpLTyUaSTP0eCXsBlxYh2fdo1Ec26vfPpbiKGDJMjRCJof0RyIAXEFLKjLSK2hNgByK3G9pyOBktwjTF8fACS0VSTkS+RjrzPq7+5NvFdl4uGLI0fOMwSCDfTe8aPMha0XQcrxv76aW9zj/2ftw400uRva2nyt3WXBs6jPbmS9IRF8kEOEYO0e1wAKxkVDIBADJEYQmMJTUDOhORMRC7IUQzyFIIC5ahEb76X/sIAg6UhppvTjNdGabQRrZm2iNMWLZcQ+4TEJ6QuIfEOh6eeNPx4fco41QsV/YlB7H//0X/9bki4+vNPRNusJ0aMOrVPv2FV8m8X3WbWjg9stl5e2EjjVzZc0pvi/abCkDxq8Hg5sbSCnAkYS2o49di2sRAyWUYAla4KdM1lN0MJBdG5SDg7YbMVb3mulwOtSb627zq9vXpQ+sK8L4f5f2qGyQdKw4Xp+q5GaMthoqpo7I/JjPG9NSukPFDWJWuX9t52+S1bTnjE5uFTnnC6uumGYGVWPbIAzKd383+7J/y/qqJecakjaSU0q02mDk3p2K4RpkcmVdSbqBikS0YHX3b7G7eeqfDq1kHjhoetPfdM8N5QPPNSwmgSpn4NwRBoOlsbXaBWi7ZRuz4e1GdHFHCgrn29813A5FGNUNOHN/3qXIjzDcFVWvjqv4ivfNga3d9q3hWoq6T4CpgSj795qKMrsK8+5THug7f+fGPq3Wenktb5HnGbeleYDb3LpC9XpGBDQjEzi6MuWGNt1zrjqGaO6nHq8erbCsEU5x2xi0GVMIja9bAYYzAYRAQjBoNknKFCLogYq036W/ZvM0bMhan3P7FG7PW37HFjl1y76PguOidWf+4J2aqSsZ7iEh/4NHXTrYrv6es7vuCD58fe/Vk1ba3xqm5lrpfzBzbZE8srKNqIyaSRaTvFtifSsc1AEUhTh3pdmF3tuk8VEnUMRiVQ5cejt+kvxu5y1pigPyp821t5fWjMra1mEpI3KWSYu+8lR6aI31uzQop9RR1cOdC79Zq7tmw8a8PwSedt1ma1KWKkzYHKYdSsu0OPpbmL3XOYTrQ90GKEIDAEYQBAmqTUJ6oc2rrXje85IGETb1eF1d0XjvUn5Zj4gGX5qpBzTq/STFbSf84nsNPfBd/MqFhHyTq/UxedGQux1Qv93v2bA98CjdvUNUIlT+oiFyeJ964eCvF1aO0vjFl2VRrfGJj8henf3vETrq31IorpCUPfSNPNifdfGW/VT19SGEgetuyEcLjQhxEhdimJT/Gqi/AiC9W2m/eQ2VrP/sG0CYfq7Nt0fp+1waNENmCkNul/e2CbCWxwofPuJ0bE/vxF3z4iJVzQTviXb3wU3/7nu/jbz17Hd56wMdiyLDA5r6kN7Mqczf1l4M07ppPW8+tp3LMsV04fO3i8fcLQSWZlrp+mTxiLq/i2eWFmhZFsxfHaOfp557NH5x3qPR6Pw6O07+3+1z43CNNJAwVOKi+XZfmy2dEYi8fj+sl5CZ6IcGjdVP6mqkkDZwCv2vOMjVS/tX3RTnlBX49E+ZBCTzE3vm/8rwZWDpSG1y4lTZyIactn6umoKKXr2P3p/o1511ngPjnCPeoz7sA5pdVKiZsxIkK+t8jA6qWmb3iQJK5qsK9ZXH6gj6kVLfyShKl94MM8K4dHadZa5Jc/FWo3gskDfi5Lis6yqdp1bT71m1keuqngQucAQVaWKbXLNAgp1jgTWDWaVpI0GV2Nxk9Xf/BOY8q3+fi68MKecf/NsT4pBDn13hca3n1jrFV/6Mbelcnj15wR9oQFakmTetpCVREx+Iy2tZFmlvZp+7vvOu/+57uO3fPTdVNI9W3F0GLv8FgxVOO67quOS5z4L7Sc2+bUm/jkPq1fsX/R+RYsdPEj77ycjwAnfvkZks/n000tXx5rTb/Me32RwOmxd2Z5VE5O6VluTy4tD4smT0sTDsSTbT7c4rwjxc2wnTNjsoC+orP4dNhU57PGdn6beWQRFkkQqmmdumtyXHEpL1p1TvS9kduSO2sjx/X6/Gd3D3DudC//WLlooL7svyYMqfoVn7gQTY/kCC4LrutZewRtJdCWW+ezPixyvlD19Qi/zbmng5jeYQSI8rjUkLbqmMBSHOqTdY94aDB6xx3KlgNy5uXLuO6xB2BJwtZbhaVLCwzJ12hWH0e+sAkaW8GW2uzk3HbPLVi6LncLit3HbqTrNmX6NturGeU1BTK5MqPCxogUysORradpvbZlmYj9opiplxiT/+pEovZQUNT+INBWtX7JRNp8+LLiQHLhmtPDZhpTTRpYMeRMRMM1aKYxgQkwMxyKHD52c7gXwXRMYu2Jlx3aenqdK8NnLZor/8+Z1m1qGftUEzxJ4q3HE2QaXI4ECyLhH73rsXz2w9uxz/+hecTnL3zJ9cXWK5fG/hQNTCiQxjhdEhXDx/RvZDRpMBJPoyhWMlOD92lXw+eN8yKKwm4tnPPu7mn3O89pyoHWFD02z7OXnR7+amK7u3JyVxh7/9qeyejs0jcm/lSMbFGL8V590BMBsPI/nrAoi3q4aV2g1aL4hIuww8ug1WQmLuu+gPb81jSFZgM/MU6yfz/poQNoZQrJFwBLq1oniCKWnnKKTBdDwjv38bDrlnP5ebsJip6bb7I8+rEQH/gI+ZMuhXKdw5cIzxyKpp7MItct46XgHWiSfXwMYkGC9sdmHyRDQF+BZASSQ+AmQUIwxXaRWflRcX0gBledvLokNvw0Uh1f11v98c3mIZxvp86bMq1Xriuv8n+0+YLgtvGtWAkzMUeEyXianqjMGUtOYXV5BaENs9rPcFcOR2Z3dupIvSP1CYlPSdIWRiyBDbHGYCXAisnkPslkP9PWTJu2vDnzT9rsKpkW1qlnINfLlftv5PK9t1EyJRLfQkXbpGhxWBAJP/zBLWIP7FEg+vJbb3/JX7zu1DP/e0nVrRl1zkdBULIRN1UPotzAhf2bQDOmEfWz9r5Zu8IC5+0v3Stt1/WMEs6uSscO2ao16atEEvDIvnV2WVT2Px7f6sfjxqP7fO6XEpiXiXKZUcyeMVWby6lXMB97Gv4vvjNnQmp7Us6V0RQTBhy84U7icA/Gu3vdA7dD+bLBz0xCNgzJ9ZbJLVlCbuOJ5EJLeuftxNf/Bq1WMOUeXJLgnae8YTMtUga3j3HqrcO160/bJ5UDheKu3SEbj7uV+v5PEBbXoK7eXkA6LZQ2AgV07BkiIUg4ow0VicAWEDOA2B4ktzTrq7QGrolqqy0DJtmIBENI7pRslY23Q/1GSA6AKWdIqx60SVg43pY1cZXJH5expc/vnAgu+L07f3HHD2/VE/vOX21HBmrp8sKKYKvdgVOPSMBka4qThzbzmFUP50BtnK2Te2ilzQyhMFgsgTGEJiA0YaYRDSJ6gxKFsMhQeQhVpd6q0XIxcRoT+7it7UxJfEyiacaSetdmT12G3GRsq6riUJx6CkGerZN7EGOJE4drc/Qp94ASTgfCz17yGJ796W+1DpY23PrZD25/5Ivf83D5797bzJppIAoo2pDfVPZiFC7o28C0axG3ZbRunFrICevIFjQldQvZNo+kEID5iN6gRcO1WB31mOcsPVl/Prndb2lMLCn76Ju5MPiXfUOlvyvvD3RzuJu/WjvB00r74Vclhh5Zo2NEk46xbH6nFXLc8skvM75rhN5CHq9HtMXeTch6xBohDA1BAGFgCCNLmA8Je0vkVwxTPvlEeh71aIrPexHNn/+QdOvtmP4BcA7faBCuOZFq/To27nPB7lU9N432NM7adnsYbDwlJWh+nLQ231SUGQXFFBHpA9OL2EGMXYIES5FwGLHLIb8KCmsh3AyU2s8miN8H8X4kqUEyBukEmk6RJlW8V0zQjymcihn4A6R5E1R+DmoyZCQFN01YPs0W3aSrTV2+vC/o/fhX/376sZymTgo5Rh/j5LN3/pTnbnwIl++/DtUGD112OmcuOZ2P3PQ1fjNyMylNijagbCN6wiJ9QZn+fB9DuQGWFgZZ3rOM5X3DHDd4PD3hEACelNHmAQ5OH6BZrzHdmmSqMcVkXKEaVzMxp22Mr7smTRfT9AlNn9DyKbF3xOqJ1RF7RxBE9A70MTXdxJg8GHBRcMQRX/DXRinU0vdvlY8/5hy/Z9Pgrr6du/n8O3vllW8+hy+mV7G67glyeQaDIr+p7idVx3k9q0nU0fSKlXvETc5A6lwn/GkhFJvH6yvz9agzyK4w4qoUbSiP698gK3M9ektt1LcS99o1E9XzbIFX/Oal11z/vZtg6OfPgr/6xry3LAyqUBroo1pLGbV+VqPYhUZHfsORwYhgbXYUm1HD0AgFEXqbTaJd24l33M7klT+l8fDz6Hnac5BSmeSm32D6B9E0QbzFrDveJwd25M4eO4nvrb3mV3EtfPTN1wS+t9+ZJMlkpExGC8lsfzkgAskhxiImBplEbIKYSbD7MfYuJLwZk7saVYdv7kfTCvg66huob2aUkJgoJxRLAT19YIIqSfUHaLCBsP+ZBEv+GCa+DukUBH0Z5UymyPc+yvp0zNVqt16gY+bP5YKNW6Z3jNJ//ADfSX/Dk9ecRcGG9Of7WVtexyt/9m52x/sY1l7SgzHTcYOWCamaBuO2RiGYpBgcpBRmHjG9+V6WlK+lEOYZqRxkulXJbIBJg5aLaSYtYt+xAaYzn1QdTh3JjMImo36+7c3l2hxTgwbTTBHHDpGsj+Px+t1Hwsgry4slWbmnpTmRLVOr+vHXXief+edeojdfyGdu/x/WxBYbBfQHea6vHSRVzyN7VtEiJfE6Gy18LN5b8+5x9yKLp8BkklC2IWeXlkkjTeSO5iGtxdHDKj765XO/8IiXXl/r+dL6XNVc+6uSzyhht7bv8MqrKtYYYvVsrUzNVTHPa8sc1fd87bbMLhYLPt6+v6OwMgJhYOnJR6xfWuZMI0Q//w617bfS85d/j5+cwO/bhZTKaBpjgqJJ16ylpzx01vrW5Pv25bacuOPO/LDzqiLd3H42faA+22b1s4qILr1LR/Go7dtmvG9kHmUVMBbCXECxXGbJ8gHWHddDT8/PaO75MXbw5RSWvBjGPgtuGmxvZsZwNYoDTzHNxn4Ym3jt859Q+/SXrwlp/fag4bHL+e9d13Dh6hMYyC3hbVd9igPuIAP7ctx87W3EtSa42fpnyizf9XGZPOt8Jup2fNqkzYaL6fp0N8rMVUx1mTEOG8xOf5kuMSs6ss5gQSTctGU7tx6/AbVCCttyifeVjcvMlp/9WP99cEAKf/00/vWmb7I2HcJYYTAocEtjDAM8tLSMqqakZIioOpcuSHtWzlF0+Lb8J5Lx2Lq4WWVm0h4pGEGychwQiFAwlqm0wRXTe5hyNSaTnKDF5DXLdxReMrzjmQ0vXzqU5A0z+vdup8mFVwMFRETzgfG229jdhWxztKuHLUadis426Ci2RXHqcc7JwcmG7JtocOveiCc/dDUnj++l+sl/pviHf07r4F7UO0QMpDFiI+cf8rDglGXPWLPtK8/5Tm8vL1XVlMOyKnROu5YUWZil6ThZdGsOF7hPvFecS2VydFomDk2ya0uOdScsZfNpgh97M7V4L6WVL4ORfwffAClkR5OXQt9jcfHXj3vOOZXXfvnaoaQ2Mh0uHVnGr4JbePHmC/nVvt+yK95Lz56Am35wAxQipBDNTv7uvswGa/a8/V27FqEFltr238VW1a7LM+edghRVZmWUoxCUBZFw6/EbiNvFC1Q96nKxN80NK9n61a/wgaGX4V50Mf9+7ddZk1+OCvTZHLc0xgE4vTBI1TvSOYyizlamU705bjMKmjlvO++Y56XZ/cDcDpgvfLZ1zV6hYCyCsrVRYUtrkomkSTUuclIx5O1rf2ufPbgdDeRWEQU/pfLQuYNwDOykqKo9DLdmDjL7nsVepnMb0iE6C42bEcEGhnyYud9ON2LzhZ9t4/mP2cBph+6ieeOVBJtOIrnzZiiVwVp0YsSYtWcSHn/S+aWvFf/JufT5IrZ0TO4Ti6nWOxT6KD0kAmEYEuUiD6rNemJuv2GfjB3s4ZxHLSWc/ndqElIa/n0Y/RTYXKasSacolE6kNrqBp5y2ffARx/XWr9waBOm2cbErhrlq361smd7BYJznt7+4CXqLSD5QTb3OOCbP73I9htFcrLFHuzS3IN+mP7OU5CgqgwWR8Lgt27n1uPWa+eAxDSQewpyH+sYVbP23T/HhodeRPOnp/Mf132ZdcTkOpcdG3NoYB5QTc33UfMYpdzlcznZI55oySx4hi6DoKDoOa/8i80ZmG6ooBiFvLFOuyR2NaUZdg0rsaPk+/nS5441rrmVDVKOZDuMbIyPegQ0ixn4VthUz2Utl8RKzZkEF+C0LOD0c7jx17LBICwOgrKpLUmVQgIGi1UrL87Vf7ZIVz9rMwN6b8ac/EbFBZuAXwYSR1K/+mTbHJtYt73/o0J7m5V+KpHS+otPctzmGDFBQ1SXqdAlAvhBqrhDq6MG6XP4Dx6OeWMZOfJRmbj353gth6kcQLgVtAjGmcB45ttuXX1jZc+Wd/cPT+yeHTmqu1R/t/ZX0FwrUdlSJnUPyOdXEkZH/+wCORaQ6/JnoWG9dVG3jAauA81OEQUVbcdEZQz6fo7F6iLve/X4+MfCP2LMu4pO3/pA1hWUY9ZRtxG3NSRTPpqhMrW3zmyF2zH6fAZ3hGPBdsYRH4gJkHtvXuR5l0jDbWjW2taq01DPZdCzLDfLPG+o8f/h6bG2MOPcHGLZh6of2aApiE4YeGc+tFAuTCpFsiltkrzfyjsBTPtyZaXGH7vllHOM06CBiv8B64Jw41Uf05m10aCrVH98yIX/0x6dS9zWkUIKkBdZiimVat16l4/tHRFrBaXGeL+RS82MV74618GOHw5asAOgjq++Z3ut5QKm3L9TKdCJX/tjymCcJrYPvINj4aYJoRSYfSg5clUJxFZWxVTzrjL3lvxkYunGskj4u2VehdGoPRYmoHZqGyCpOBZFxsgVxmu4V9Gi9qgt8n3/P3e+EXmBf1/kRYVEkFKA02EdhsLe177btk+GaZcvS/aPq41jyuTy1pT3c9eb38K/vfwtu06P5j21XsCa/FKueogm4o1lBVVkTFmhoGxGlI/d0+eJ1zVMRmTGwztoQD7fszxBPoBOhIAg5MUy7lB1xnXHXIvZKtalcNLyCjx43ynHRNSS1Kk1ZQn7gySbd9RrUsj0T/xbnV7prMOs/IigEojoI0rY+SxcuLsovtxmBuzVLOrQ+BZkGrgb9uQgnxU5f2V+SdbdvH/UjfevM0oc/jtqBr6KNKliLFyHE0ty9DZ94E51Mv6Z+CEju0RQ7ZlAFSYEacC1wBfBN4HnO6QU9vUYnRlWuv6rA2Q+fpL7/k/SueCFMfgdsITP0C2Kj08jr3pUve3Tth5dcFk6N7x7rO+OsE7Rs8+JTp4gKRn6E0y8C48yRAY5WxXnfFxqSe8bM5IE9M2/45pGDrBdFQiOia17wdOTV74ivH+jfF61ftTlcOkj18uuQJf3kSyWmk5Rtf38Jn37fP5KsbPD5A9ezNhoiUKVgYGurhqIssxHNji9klwJiZnp2T12XUcIOHMtiFbQn9M6kyQHXouU91TglIse7T1zH61ZvxTSuJK4H+Bhyq1+ieC+ajE2YUnmMtIr6CIg5EsyX3jIlEhoeJqgeecRFjnbvYc9oe6xKoHlm1Zk71PM3QRT9k5tonbKzucwvPfVJRr/9TXCZXK2qhDZQPz1Csr+5ypzLTq3pQPv5Y0TCo4uPsyM0p5U5MkoYAi0yJLkEuN45XtnbT7TjTtEVa0JZvvy7tBoXkYvWQDqaubn5GlFhk29W8vYPHzHRd8nXVvxgeqzye9LAL1k+KJFYQ5J+N+gN35+41hpgzbG36QjN/F3saxkUUHIzZ89cyZEQ8QhWROUTr36/fBpUjJlKR8YZeObjtPKzazLqlabk+/upjIxx55vey+fe+bdIX5NLK3ewJugnUEGNYVvcwIWeARMQ65F6KJMTvfezsYQLjX3XNdEMAae950AaU1NP4hxTzQYPGVjJv526mrOLvyad+A2J5kFb2OImTN+T1E/9UIBRky/XtVVF4+4ApW50O8wHCAPqVSVvg5Geqn4hKUpJTBZ9ldHIw10Suj0RQeZ45nfHKGbOyJlWWTItW+f3AMhLNqmXA5uAExDdHYbBO4TWR3bffOvgyTuv0yRJJBe2tTeqGGtEGy0a0xNLz/7ReTf+6O9+ec3wpf3GDTd1lhWReW2eH04/14OyW+Em857PLLdGsgVDeoBlwEZgQ/v7D4ERVf4hX/TFW6+PdPiJifjJr5Jb+iJI9oPkQVOCoF8Ss4L1xe1n968OPjE5UX1Ofbxhlh23VDauXbtt+7W3fUL6ek9FNUDkIIstLseKXEdb8Rd732wXdRaf2RX9HlNC4Pg1Q7jddUwhPxXv2k9u0xryx68l3nsIWy6hSUJ+eIjpA4fYccnH+NQbXk4ctfiy281q6SXUDJl2JS3SQCmLaWtM57Z3ph0quNQxx6Cmsyxnd0d1PHMOpSlT6lGBStzEpI5XHXcm79jcQ0/jMlojWzM3KzHgFLvkxeBj1WQ/wD5z6jcqTD0CvX1+j3Z/Zvt8Zmpm89u3gOUNra9cvVJFR7loT+sYRvoew/QlZXMI2AL8GjhV4HHOJXs9fG7s11f89cj3V2q+1ZKCDWYUhcYarHOkrUZxfFureMLzTm62ci2dfPk2fc5rf/dl/whQveytuSoM7Yd9N0JhNfAw4GzgBu95by7HmypTyJ5dVtdtvE7i+GIi25PZ9FRBnIg9Du+2r/v9h7qpj38rvr1ycPLkwVw/z73w6dM//ur301zS2NdjC1eP7923Jzi+Jy26IlM37oVb78umHTPcc5kQhKJVcYWiYmRaWwm+Xtfyhecw+vH/wvaUMhNfHFNYvozRu7bDx77A5/7sedCK+XI0wjotEbQtugfShEFryYssrLFtB/EqHp96xM6mc5lPEAVIFKadQ63gPYzUpji51Mfbzn00zx6eJDl0Kc36IUxUBCwkFUzvhZj8ZjQdUU32ARys/NcjvCkbkx+Y73umXX8X+EXA46UEREGOu6rjTMUJ7yqbBZfhDh2ZY1Ji1sDd7eXTbfTuPu9mJEQkBbnee93nnb/Yws2+UTs4cccdy5amsZIPBZ8ROhXBqsE3krDRXw1bpQZplEhQzetlbz0Ku7HAXJql6d1tWtBnqd3CCaCAw+1OSPfkyZ0NPEFErwX5dJTzf7LzrpyuWVcXX7+FqLwRWjvB5EAdJhz2vop54obpjR9v8IsDI+Mnl6SQrFq28syPf/iTjy6Ugr9L1JlSrhTsPLQrV41rNJ7boOlaNNIWsWvRcjEtzSLhY+9IvCPB4bwn0Syzn+vyfnHacWPPzF2aTVFV5zVtpr6+f1ob28eV0C5m/pi9+LtQwshaceUiIlJRhXjfQYpnHE+4fAm+1syMo97j45jiymWMXvtbgi8V+dxzHk9U/xWXlqdYm+YJUFIRJr2jIOYwvbj6trNyyWKCgHi0iU8SJDCHYUGGgEoCWGuZbtZpxHVeuu4U3nTWo1jHVTT2fAlxDWxUaodEtcD0YvsvRtNRMD3gxgEORn0gOTGHrw1zqeBCXSyIOsA6y/pyD0/ZfYD7GPSSctZ77Zg5a60ctIH9H0t6gbh4S23vvmWDPSWVYk7UZdEsIoqxAb7lDQ1vaTmkCRe/qXFf15fL3ppX8AiKJTABAYpeA9RAnu49344iHlKZlLOmJvH9uWuM5xRMxxVHY0zQC2mRZbnaCbj+/5mamqQ/HAhOWHoijz3uopc10vp4aqqfbsTjh3InPkaCKNS+YMm93pbCe85i8+aTieOYscGRoP+0FZJMN9LR1/1KgxesJ622OdC7KVceEQkDEBOGILIL9bjJaQmGeik94lSmLrucoJRH287WPnUUVgyz/+dXI6U8H3/0WcST1/LloQarWyEB4BCaqnO1o04xocGWA7Bt96AluQwRY5ch4uzdWZo/Y1H17JseZ3U+4qMPv5g/3HQcduyL1A59j8AGSFhE1YMYNI2xA89BTT+a7EWCgmhaA2GXBCDGYM9N5pTTHaA6X4nWVZv2t/tA278IvL7qeVfJYK0FcEmcms9Pt3Y9EW4S1V3J+BQ+n5Ms10qHagsaRJB4GW02pd5oENyX4VddcPGbmgBc9tYCZKHJCGJBbwUJVTk/DPVz9ZQzRw9aM7h0By6dwMxE/jtMUKal/Swt7OsnH93RmKqMDEXLli7pHfYHKgf6cti3bRnf+qyDlYPXTremD1VaVfPun7wrc7pOm7TSJq12PtDYJ7RcSqyORFPSGUroSCGjiKqkZMyZRzujmypMVSfGdgM31sP8dlXveweKZuWnHj/HUr3vbm7LsCgSbtqynVuOW68EFhPYQ66Z4ms1k05MUXjI8VQvvwHfaCFRmAW3qqLqKS4ZYv/3rgD1fOGckxk4cAsfX9liTSPoyhcomfIFsKUQU2jHn7XpvgRCbmmBeLyJa6RdiCiE1jLdqlNp1njZhpN449nPZn1ujGTX22hV7yAMc2CCTKYQC66OyR2H6X0sJPsRCcBNGnUTiGFnNklV/dUR5tx4ppwjuZHNd4yS+2dfnRl4Q81zSTn73oxVb7zkOcL/+doNXzhpxe50oopZMayYdly8KhhLUmuhzuvORl2rtSoDJrxf63zxmxpc9tZ8R2nlwBiQG0V8v/esNYF+f+Rg9KSNJ9a9xrtMmF+ZOXeTxfclvkCoFE4/LX/gpttHd9Sq8dKx5ph85NqPcs6Sh0igwbnVuHputVmjEteoJXXqSYN60qDhmjR8myXtjn7wmUN2op4ET6pK0mFHAac6sxy7LHzJC1IJbTDaY8ODxsg3vPKvRqTm1YuIUSsBKz/1BMAfMzIuioRbj99ArIqNQiQKatQapBMVscMDagqRFB+6mcqPriNYEs2yxF5Ra8gP9LH/B7/GFgL+dcMGzK67+Nh6x+patjp77zHGYMshEpk28umsET5VsEJuqI2I9QQbWjywd3qMoSjHl897Js879SnoxA9pbX0vmkxio3bktvrZowfb/0yyINQmSEnxk4JWFWGfZBY/9YdJqp18XXNRbi5StgfL35uhTMcGr696Likb+sqBfv/Lvwly3zw+HSzmjKsnRFE4Y1wUzcak1UhwqacujoakFO//KnPxm5ptitiRflVAr1CVp1qrV9Sr5sJqlTBv9mihuL5tyBFEVDxFWgnD33hWfmrTW1q/vevQnecsX9WrlaRqfjHyKzMQ9rsAS+qcSUhITIpGnjAIQAtEGrUjH9xM5EMnLrCDbJ3kYZ2u8TOGp+zepkvMZNLsG23W+8bj+iYr5tyeMPcK0NcZMd9QxTict2KO5qk2BxZFwuPaTtxiLSa0FVUSX6uHgseNTVE4fSO1X92CJo7Z2CXNPNRDS76nzL7v/hr/rPP4aO9yxO3lo8cpK6cgiCz0hJnB2s1VgHQQUb2iouSGCqTGMDVVY7o5wRNWb+YT5/0+64ZPwu/4EPGBTyGGTAGjzHahCKR1TOnhSO54NNlPJwJe0wpoM5FADqkoKhCem3I0mKM/FbBGZqzo1t6Hdu9F4MwVyykOFqiM13Ts0BR9gz2nqArlvhJp6rL2aoqXgNQbnE+ZSpVG6ijfl3b6Y+vJDqPhFL3BWlmSJtw1NcmJJj+SRTvMMNRKEA0w0WLJmRc0U2Lu2DG2i1Mam6Q/10dKKg3fsIpirFFjjYRRSCQRM/Hwbaft7NhZXmVG6XX4knuY1VNV0dQ7ppKG7qpO8NvJ/cH2yviGUhh9vWCj9000J/82MDlTDnPqVXXFJy48pg1tj8hHiaqKEcSaCtDyjRbqHL7awJQicievxVUbbd/QLnWf85ALCKMch/77avbWK3xkZx9/envCvpUhpjfCauaiNmuJm6U0HbQMsajzHCo0MbmYdz/0aXz/GW9i3eBG0tteR7LvE5jAIkGBmRibzpt8AqaM6XsKmmb+rPh28EA6hno3YnpP2Sf5MopdQIzWRc+UDOmiyJADwkDJRfcvS/o/G1eCg6SamL7BHrdq3fKTm9OtR/f0lin0FI1LsqQKxhpiCWiOTpEGVncfqPgDFailR1907gu4+E2NGTlRQZ+x99/wUbrbWr1DlTvqdYiTWhboMaMmVjG2wHSdPPF0yBi3jtYm/Fh9TJx6DUxAZCJyJiIkEIvBqCCemS0VnHOkzpGkKa00oZUmNNOYRpJ96kmLWtKi0v5UkxbTXefTcUsqSVMaLpVSkDdnL1lrfn/DQ/Rpa04G1E8nzdcNFfs/XS5aKs1YrBHxzrPs4489ap8cceYYEQ1zIVGpMC5K0zdaaByjLsVVahROW4dYM5stu3vpcB5TjLAe9n/vWnYFKZ/Y0ctr7vLs6DOoQtDBW7rXvAzyJqLqmuyoHOLc4hJ+8oy/4+8e+7f46gGSW16Cn/w+kiuAhJmI0Q1iUBdjei4E05f5I6JASpZaewKBvebkHzWCJYMLynRz1EddXzqJyMJAiEKhByjmhSC4/yjL/2xcSR1omATf9IFpQG2y/ldJLS6vOWGV884LZBnabBRQtQUah0ZpBZJUYtI6M9z/AwhZf31r1Z+LjUONCnqnd3JXkkAcN0R9Gwk7i6sYbcTQ2NJcwT521ONaY6IxSSNpUEvq2YYsLs7kPhfTcq1FP/FRflvs9yytoifxjtFWjZZz8rCl6+UFG882PUHkJ+PGSwKfe+8FJ53gBSM2NDgPwx+74Ig9cUQkVJTi2kEGHnvSGEJVmzE+iVW9w03XsAMlovXD+Hork7O7YnZEMsO7K0b0NlLKv9pCs8/y3l+mvOqGOjuWBHjNnMRnWFHNkkVFNmR3fYR6s8IbNl/Idx/3Js5a/jTc+LeQvX+Mq/4WolJXpMI8JsI1MdEqTOnhkBxsY3jaNgCnip9C4dD+ty/31zx/F4jXwzumEw+pXV4ws4Gbgc2QsADkckJ0P7Gj/7NxJQBFkJJGuVJfLm655Hm18dpL+5f0sWzjctOqtxBr0STGLh1mfNsBXKvFpEvSpZAMArkHgH3uhi7ziE6PG3nD36wbcSk3ps40m82qON9SpBOcIkBIK4bRussDO2LfGp1sVHjo8jN1be9q8kEO01445/s7qSycmNEvcq7zflMyxUzDxVSSOpWkhpHMYeRAfZrlhT5euOkcU7ZROtVqvPaG7TtfZkU8Hmu83rNQppneQfT7l11BctkVrXNXrpj0teYMJUQVX2+QP2U18fZDXdQi47MTzTxjhsQwMNSDjtSoXXkXxYes5oM/mURSz4ce1svGQ0kWfCVKzka0fML2yT08pG8Nbz/jD3jyuifiXB63523YiX+BXINoME9SYZGYWwFNMT2Pb2cFa7Wb2Ra9NVVNxxBhf++ZcPI5GDPfRpj5hOLaPqkmtFAKwaVgDJILCSKTUUMgtIYwvG/Y0e+ftBrpDaGeorEK3ot6bODVD0RBa6rSenorcR9yxoSnPeks1ZwV0gATBmga45av5uDnfkYSGipxs3lqj2nc1fCYY3Igv2/hmW9q8s1/KpAvennlS/ara8lt3ku92YrzTnOEpgekDqYXLwVaCUzX1Khq9cWfeOnkSG1s3UN613DS0AnEPsG3kzCZ9jSYTX7I3OOcOdNxMmy7IHTSGMw8kemPVJWWjxlvTrJ1aif7aofIGc/SqEwtabEi38tLNz3MfOqOK2kkyTsiE/xYYRuBMT5xR0TDIyKhU2Vzz6CklXHFmEnfTNBmnKXfQ3DTdezSHsIV/aSjVUwhRL0n1iykaDiwFI0hTR2+N4fZM0U9b3AbBvngdyaIvOd95w+yfl+TYpjnYHOU6dYUrzruybzh9BeyoryZtDWG2f9XmKkvZAogYzHFJgEBaSVCusU5MZDWkPwpSHRC2xE4U07MgMaomwBhh+0BsZHBzFVvWmvQRkq6f5qoFCHjFdKrtuHiJMs5aiw2SYiKAaXjy+QKJcpFYfJpm6ATkh8IEtgs4rtcwvQNYAaHsavWEZ19EbrmVKrbbqV6+w009uygcegA8cQE8fQ0rlIlrTVxzRjfStGGw6cK3jvxoiokTSM9k4l7Tcv7v6q3kqHTlg/5vgPTprblICa0pNM1CutXcGDHfhpbd+lEyeAabve1TeI1ebqyCDyw0M7DokklwHjZ6ZGJONZB4p8qhEKSgglxzTqJg8oUBq4kV4oq+Z6AH27/seaDIgP5AfJBtkdjlhy6nRGtrdnsaD/b6WxnzrP7u6bHAl5aCoRiGciVWFYc4NxlZzDdnODSXT/jx9NbWZ0fpFHdzZJ8yQwP9Kc7D44utaF5A5aXoUoYWoY++GjGXv2Lu4+EAphSXoJ6r4ox05o4fByrpm0i7UBbQnT8MtIDk3hCUoUeY1gaBNg2RVTaHF9PDrN1glYgsLzAJV85REuVD18wjLntTlYVB/jE+W/i2esvQkyZtH4Hwb4/g9ovILDZtl3t+ERbTBEgrUTt7bykHf4SYMoXgJ8mq2AXcyIWfFPQFgh7jAWxBidzZcowEoIkhYkKuXKEGa+RHNiBM9nMNQ7sMiFXCOhbtpR8TfEJ9H/nLmCOlnsReOvdmqg/PHE1xhoIJI/zpxinTw5Vn11J9TRUzcnlsl/bUlO5cmumkxJBD4wjj30kW7/xY5qhYazZILKyZUNBCczRtuS5/+DiNzX45puLXP21NWygNb720dPjxukmm96YDVwCWEOSLCOOLdPV2L7n317C927ITW8/dJClK3rwuVHurG+jpZkNsOUzY3ysPrMFktn/UvWkyowdsJPUstsk4Q9zWJ+NfxUVyhqyubiSp64+ixeuv5B3b/8O3xq7iWW5QeJ6Sk8hb/O5iLSVPF8wH8DrLYnHeLd4Sr4jIqEVgZyBvggxMqapQ1txJie1QwZcJSUYLqN9RXwjYWkhYsAYnM6ypLMjrlCOsFsmaR2vsCzPhz6zj1qrwfaLHsNnTno1a/s2Zh1T+TnBnpdCvA1CS6bq6mIVUjDFlMAo6VQu87bxdUzxPIwdQpORLFUCc7SAqtq0+BYijHYu5c6Zh4SBYI0QeEMYpFhrs2h1aTufewhDj7FKTlLy1rCkFJiJp27yIvwD8AysHJLQBuQjpFxsU8KlGSV82JPRdWdQu+tWqrdfR333DpoHD9CaGCeeniatVElrDXwjwbcSNHbqE9+jqV+ZOu1NnPbj1fYb648v5FkSBKbuHBRCJAhIt+9j8CVPZkujzthNW5keKJh4OqEQBHfkDThVdQ+0XqYNl/1TAXWqL/jWTabSIk0m7XTgdUbRpUYRE9JKekmSg7SMhFfesJV9+3qq++7cTmFoUHuX9VPqzRHkA7xRnFccmS+obyd7carz5LzZ9pv21OzEi83M1RmQLNdTISDpNdwQ7uGqW+7i6UvP5B2nPIe3yDf4zeROlkU9pKoS9kdpsi/uQfSPEN4oImKOIIMflRIG1ojmQ0TY453Ht5J2iGmGEOoVZ6Cwfoi+Ww9SDiyJ84epS2baJaB5i902Tbyxj0aP8q9fmSR91Rso9i3P8GziM5i9rwStQ9jmnOY7yQrgwOQdgcSkk4DpwxTPRdOxdtRvOq/wIPMZ1XpDwnC/+gQR1fTqgKDLThiGgknb/rOhYH22LfUsfyIEVjEBFHKGvDNtcUIRkTOw5hwzmE+lXAykvx+zdAV25XqCE07DbHoUSdjL1PbrqNx6FY29e2gcPEA8Pk48OU1arZHWWrh6C205fOLQxEOqGKfkMAwZy5Io9CvCQAwide/BZjsFpbsO0nvhQ6mffzo3/tX78D0FPVSvSmjMAY+/seOM/L8FksEG5ciyfzu6bS+cscGXcr6tk+lYKQSmppqkTlEfSC0qYkrF8dR5arU6tdunM3uzMfOkwM7Xe074Z9zQjUBgMOU8uZU99J+8lK+PXMvBqyZ43UMv5lX1z9PSlJwL0HxgJLT42D0tGA7fHI+2EoORvveep1N/+8vDygiOVglrJKNERiZJHdpsKmGAuNkVpiQwuG4Av3OCVuyQQBYfaQWMQQOQPXXqRUckAT0+yhp74B/h4Nsz+S8UOFpiXQcm5wh6FO8f3Y6AqSMzypiODtUhJoe6cRBfFTu4X5hGUQ3mGeqjINv+zCpEocEmzGmPqhJYkEgIc4a0AQPLCxDC5EhLgzAi3eqQsIkUJnG5BFcaJx3Yiy9eRWvfNtz4QXKtmCBOKCcJPklR5zJfXKftLH0G1LRd+dBcIORFKBojVsQ0VfGGTHHQiHFjU/Q87iHYP3kaP3vjR0kaLcbyqDon1tprnepIe2LpG6r/K0RC0hS05OSEFehDT6XvtzfrUE82M0U77rw2YqpmcE7xPnCpN6iQZnuFG0/bQ4hOwoV7usrMyZ/C/Ig6QPHVBumNFRo7xhk+fxO/TLew8dZf8gerH8FHdvyQlVE/TlTCUkCjnpzsxt3pVuy13qksxn4cEQkz5aOg1oIxU6QeX4+REiSJw4gwEAX0oKhR3Moe2DYBYbhYeEe7RZqxj0mKaQX4VX34xGLGPwB73w4F02Y/53XKYj2XKKa8Hgk24abHs0lpknllehCn6iZFlaodftoY1Z+RVg4PMwlDwSCECFHoMV5mTBWd6kShYEKIykKtqbByEMoW4gmRXAn/ywPgaqAeTWNIErRZh6SJzeXJ5wpIGCI2wFiLZNl+EWPaqS5tpuETAQva3hbRobSyvSIzZK238NU6kosYeNGT8I8/mx+98z84dOsO0qES05VpE1nTcKo/F2Sqs7K/q2z434CIv/8a+MbHMAf34yZzbGglrO0pken/tR1HapYyPmUQB4FELZMtTM32HLNds2N2j/XfBRZWdGcTIBcIhVB8LZGRH9zG4OM3c1n6G17Z/yTWlJZQadbJBZHYQuBVsS5xD0O5FjDTr//lgh1+RCTsbDvcjuweFRFcPRa1WRKNoVxEpErSiiFNMctK6J7pzGPmaLK/gHqHMXkKf/p8JLwNpn6ebdhj5DCWfLFuybb1CsCeh5g6tuzwtSx1YpaDsrOceVQTcFUEdtZu/EwiIRL25Q9bLcJAZvZCiUIhSGZ8GGeC+mzbLFowSmKAE06Gvhxm8k6xhV6kfwzRdmQI7U7sJJVtb781s1Dp/LSIComb+d5p5kx3JGmGfEmChJbCI0+j9KxHM5am/OxvPsDY9v3oUImRyrSLrLHAD1HuEKO1zuv/NyAgwOffB85lMQCp47RWTG5oEIfL3JjEQrMxwMj4CAWgYGR6TV4xoj9xKucCa4GlQJEO+hyr9eWe5ODKjIaeUqTaiE31VzsxF6ziqr13sHr5ADc0psm7CBtZL1aMT/wp3nlMaLTvPecz9XdXHPbKIyLh5i3bufm49e2daZhoqkKcmgFC7RcjkjridioKaaVQCJAlBfRADXLBUahhFkKkrRZSjpBoAojvXiyWtCMvotNB+iAdQ2yILXlc1WWWCdt5n4LGitZA2EEEGiCygKE+DDKbvgVMIBg7Nx1F9jaBQEg1JfHAQx8BKwaQPYmEyzZS+9jlkMYQBHOQbcE2zHlxpuk1g70z90v3vd7jqg2Cpf2Uzj6R6OGnkC7p47e/uI7rPv1tms0WuqTEWGVaA2MssB/4gYhMq2p7ow1zdAvy/QD/8S7I5SBuobUGFIs83RoYGqItziuEMDFV0unpO2SgZOOiyPSynGCybGYfJUO+tQgrUQaB8G6xo8eW3EnJyMMAsAJYi/OWYuTiyaYt7mtwZ2GSE+M8uSDEq0cCIxjBez2u+vWt8PhR1zPwyAVn9xGR8M4skiLbWFmYNEhtqaPUa4ymzRTf0VWIZPPFe6Q/QkcaR0bA7g4A/MgI6KZsG61FemHBh1WzAN3gFNC2f6iLwYAtg6t6vAMxChhEG6ivgLDXRiAmWpDGRoHBt3f5CiIlaMyrkoKEBi0GSI/B1oETX5Q9+4gcZnAddt3nEe/arHkH12ZztS0KRtDE4XYfQvpKGYno9HGcEAz00P/yi5HVw9RbMVtuvovbPvifHLxlG/TkSfryTFWmscZom6n/giBV0K2dIl5ffWD8RudD6qDZRAZ68cuXMXznNs5bvgx6yhittcc3GmLnWD+1SpVif64ae61tqRucyhrgDOAW4CaUGxft2cUW9iOKOQu8RbAoJeA04GK8HkdoNB2pS3V1g8lGjTAXZPteCp1kROXhVz8krOypJN4vPK+PiIQnbNnO3s2bskxpMDFYiCp2Ii4leasamIyIdKdnUCAySDlEK0lbsXLkduEVTZJME6rNuzeKSkYFoZ1Gve3m5ACr2LJA1eNTRWyA+lRVm4iEh8Q6kACZLzsCUSQkPot+yocyw3rOgPdQLGAGerD9CVLpSra89iwah3ZT+vNnYPLtsB3paPlkNkpksQmgiu0rUfvYN2hccRPByiVonIAI1hhazZjx8SlGrr6ZHVfcQHXfKElg8YMlaprSrFWxxnhBjEe/K3B91hKzJyvR6SVly+ur918g8kLw8X/KOA7vMVMVXKXG7zdarNy0Lhu9GXkwWsv27RUNBMlbO1p1aaU/FAKxN6YqZTLKVGojWsKsFDWbVeRIc3Ch3w5PgtQxHDaASYQrUK4BXk5gHutaiWri5UB9miCXa+8YnLmOea/ldLoZGq+JLoLwR9WODgeBH1dnMLIb5TM+0de7/XU1y/LM3787E71MpqCopUcnaB1TR9wCbbQR6ViGsD2L7TIwa8FPtK915dd3OkMRqfiMNTUtaUfBbzVWQDxiDmfLIgtRCBpm+hGdt5aoekxfH2bFCmSdR6cPQnUHFMtM/uq7+PH9pONTpLX9JJUKrt4gbTTxcYLGbbND2tGCZp9O2kdNPWqE01/0FPJ7R2juHcUO9aJJigQWjRN+8u7P4bzH5EJa5RyJhXrcQL0nMMa33YRuAT4NrAb9ctbuTN//QCPgR98MDQ+RR1YN4B5yMsF//Yw/iULYtAGhASqKMVBNTuS2267W/iLkrdn/gh9VKm9/qPDyh4V7Hnblkq8B/cBqlCEy1nQ2G/rd1ZJ2U8zDn7VAGViOdvKKyntRDfA8Co+PvTPdOvmStdS8t0GxYJJESJvJgsUeFQnDW+7gjuPX644kpp76d53XW35cLtZz3WjLSY+1c9wKFBCXKSOiTGt5RKTqbOPbijNKeMzsaLuZwSlkOwnFLKjSau+8Y3s8rirqWzULSYKJDnW2FbLnLDIhfVtBK6Bdm4x0QrXM8AqCzafDRg/broIbfw5hSLzlBmg0mN63n3higmSyQlKp42pNfCPBxSkaezTRGUSkHZmhqhhjaUxM4YDzX/Vckjd8HG3ESC4kcY7eIOCRK5fxw+lJSqFlslZFE48VUWPafDe6BXizZHk4bwQ5ADOZ8R9Q+PA/ZooYYyF12NEa6fev5i/Gpzj9kefgCkWsn2ovsv3L2bo9z8GDd7FpU4R63Xflswb8julErp8CGoUUVx0lsaM4YKCt0u5Mn5S50T2Ltd0zi7radW1uZpWOm+kgcDJwLmiOxH8cK6d5r/2SeXO09zYyBAQ4p9ocqWp9qolZxL/4qEg4euJxbG3FOlF3bC5E6e4k/T/ro+DjtuE2e/BixMwns2L8rGZyUWhbXhQ0boFWabuTHQU6VHAdSE/bPc2ycJ4XmdlX3vZEkE6SNqgE+XBKvUPd4Yb6rFcExaFOsVEEQUb9ZmqeNAlOfAjRRS+A0jDuzrfzldf/My6OaVSr4BUXZxpjdR51GZZpRybw87KIdwVoJD5m9ZqlTPz0em49aQMnvfp5jL39s9i1wxgRat5zYm8v+13KVdMT9AQhtTTuOCsb0MuBfwZZCToJ/udZKeYBR8AP/UN7VDITsO0tkhrDCXtHeHM+B494KIZ6prAjcVA6k6t/cwgLMlgISL3+dlctpu68jKWBp9AAtbAKeCPw5yhf33ff+SI8eyV4RoGfk6Xcfx7OEw4Uv6+qzzeB0TYaYoGWB3Ve3E+3imsmcMryBV97VCRccvtWbj5uvZzRV1QbmkJlosHEucv/bujOsU+bhhvyoensQtPuYWaSCx0RoboNoq0YtEaWpPlooCAR2I1ke5qkLJ5oyQMhaATpVmdLtwXq7VhcsSPqcwTFREUOHzPJR1CtQxwj5V60quBrbd9TEJ9iTnoUTSmTJ6Ln997KTS98L0mrSdhWO8548rcF9I7nx0Kr8mx0d0YYK2nCQ1YOc8u/fp2e972K5c+9gMmv/5xw3XKkFTOZJpzfP8CORpVdzbr2iJFE/V7gO8DXgROyUvVrGT2fDZl4/QNkmvjQP7SFNYXAErziLaT/8Xb6mo4vjI0z+Pxn4qMCxk+AiEMKJfZNPJTrrvko65Zg8lZ8peVuaaQQGOGUcjrbn/sU/lKy2fzMlfe8kjPcHAvTj6zrMt+pwIybUu7L7mDlYXZJqQ8Rgnymik/V02NzxGkddc73jbS01qyiraEFiz0qEnZAM2mqHoZ2uFJvbs+v6/2H4l0TH8WrYCRLukxX5VWPnaolCfgqaHJs99v17XLqzPIM83tOyRIhe3C3OHR3gEg16Nd3BoNTkzgMOfWy/vBSzEAvvt4EG2OGh9FqE3XTSNveIWGOyq47qe6/haVP/zOqJAz1gMtbdCY5VyaE6RFdOGZDZWbKFmikTm6vTpq1/WV+8e7P8fR/fjXF23fR2L6fYGkfLk5IxPOM4eV8ePsOnfCp9EXmc2rkm87pkwTGFf2KIlWZMfM+sAiYxd9lbrdPO4+k8A56EuWTu/Zz9jmn4U49DavjYAKLbzpk9ZO4/Gs7mJqe9OtPKBivui123BlkokHWY9/Y9zvV627DM1dSOHUFgOI1JE4nzKreQxoGFwaBEOQC0VSJNaXflKi7SWi2xNaM0EzR+j2UCaGdT0VAAtEEGvlqvGH3mUt/uX6qeUl+tPFGNeLaM/QegKBxnLGjdCp5BEuplMEsBZ1qL/Bu7u0dDYcUMkrptjmYsqrBpK/L39il7jOaGONvcb7VuwQ6ftzdr1i2EmoJbqxJbtU6dHwU/I4ZgmLCkKkbrqRSDKid9l3SK24iTR3O+XY6PyDjSOz8rby7WgJzVq7s3U4hZ61ONRo60htKMFHj+x/9Ks98xXOJ3/hxXKOFjUJqLmUgivi9FSvko9t345x/cX/O7DaGm5zn1yIcNDxwIUsfe0sm+2WZGRHvsd5jyiXi71/FalU+tmMfT9+4kvQpTyagknkHaeowPUMcmj6HH3zvXaxdDkuKQr2lNxdCGbVt0/D9kTO1Az2XPCIbqfb2xqqE1ri01czlbTl8Y2u6GfauLmc4oEpgLaU05FCzAS0fju4dN+RAKwtr/48JCQ1o2RpsLnRVmqlPXbJmX21T35nDX2pdvX8N0/ELCUymWr470IkRSWLQCvMiHg4HBezqTHbUOPOrnPmhQ1VMxq76feD3OIgtLNni6vm3J+N7flg4+yxaP7pD4186Sr8/vmAx4YYT4Nab8Nv3EZ7zWGhtpfVflyP9pazaYmgcPEg9B8lvbyJ36ABGRH3WoF+RadEmAHt44sRZA7we1jgEqCv6yHxgjx+pTutwX69s/+VNXH7SOh736ucz8k+fxqxbTiDCZBxzSm+vPHXZEv+fB0ZXqeoLTl9jH/OHO1L3trIxTWf8OxpLGLnikC31eP6szuz21l3Fpq77I6ROcO1z5yBxgkuV1Ge+ns4rSQrO6cxzzmUxz93vchaSFGm18NE06Rd+iPzZH/OsVsw/7jrAWcevwr3g9wlyPhtOCQzacsimP+XrH7mS8akpvfCUglFP6pRfFkOp+iTl/Hqsaz71eONA5mc2zxiLedsmdHq3ba5Q1ZmjtrOUZyk7mXfe9uFt3++9iqqqqE9couWwaD7Ymm4+JyqFWhgqWBe7zJkml2d5kme8OgWx+maVbHuYZGGx6ZiQUBGqKhQLoQutZSBRHbCiyc6ptebE/g+4346vpeEeQyDzdUrH8vK2nbACi26T3Z6y0k+2UUiVw3ldJdv8x4HfDn7UI2pVl1zt0ye/wbWu8EEvy+LLr99vCiHlP/DYsxcmEtET/5jotLNJf/kz7DnPo3XdJzInAGlvwGoM8fg4Teup33E7ZqKJNVk2boVftbWR9dlVQhdt1TwwZFuJXSXoJYFI71itquWBgvz0k99m5Xv+ks0vehIjn/sfog0rMHHCRKvFU5YNm1vrTffr6ep51Z3uje8S3jZR8+xUz1+EB3nR+eq+d3cG5F6Ks/jkO5BcHs2FlLXEU174B7xg10EuqNXpOfck0qc9IxOjtAISGXzVYY57FjfcOMT3/vsyTjne6rKySKWpWwPDbc2kFRsRPj0wTNq1tfn+P/nRvVLfI0HPe85DwhAXOxsE5tlq9G9a0/EjTWjc4KZ+q84TYBhPKzyhZwP7tkxBq4WdbjX9GSYln88CIRaAY0LCohFWGiOMNX0xH02FDb8hPlAbpxwUOJgOmjWlN/qd1Y+T+NMwdwMRO+SglXQZ6heQirUdkGsG28jq574DyMIy6qAjim8A1ni/6j9d89EfFGtDMePr8dmecYJiz17cVtbQiMJZzyEYejRT+7fTuvN6oqgwk7BYjBBPTRPjqNy1HVtJcc53GOHloCeSbVZp6WrNEV1gZ79GwBYPHxGRN2b5LmPCHFz69k/zl+9/DUPbz2D6mtsIVgyRtmIaqePP16w027Zs93vi5C1O5M5E9cv9IfZjyWY//us7/6ZQ9MP1KjVj29xK1y6rHUrWTQlTl7kApw7SVEidkvo2RexQwFTblHKWEraf0STFOqXcarKxGXPqVIXhOKG0ahh91mNwp55DYNtSiIQGbXjM8tOYip/Gx/7l9eTL8LD1OeIsk8rlYtgWSs5/bPBEe2N+yAXocxycr+jkik9daI+JEnZ+94tTwpn9O7opYbYDfeDTZIVBz4kbboNPtZTry/mB9b1GQoPGnhaOXBhybrSBf975VSURfK1Z1z88P+HmPTD9O7Cj6+/YxvTJx2tghd7AXFNpuUFGmmXRXJVQ+jRxsSyJ/loPxZ/H64p2xoBjQ0QVNG7OIuFCM1UA6SWzuHdsgh39Pu3zSXCTbS2HdQTHvxOe8CVp7VyDbxTQuIlIBZPlGXXX2EVthKPf/xI9pUEKI9OMlFtE+3eTj3Kk2pHhhLTSIFVHbe8I+QSsSCeJxnay9MXNGa++I3bAnAkjZILxSYJcA/p5K/IC59UXImvGpuv867s+yz++4xXkdu6nNVUl6C1RixP68zn5P+tX8+dbdshe1U8OWbkjDYMbnlU8ULrq59GLznt867Qopz5JxLQnFp5MJ9ZhHxMnbYSDJBXSNEOwNG0jZ5qxodl1za533eMc2e+dZ9r+GoUcHL8WTjsOf/IpSNiD1elMD5exoB7pW49f8ibe+9q3sGX3CH9wQd73RpjJhm4PLFeoMvXUsTpP27DBrYmnVnnlI+r88s4aNh/lFvRS89o2D7e3tvdzETE7tu8hO/qZa4r3ihghLIYUBgu+PFw0HkVjT2gsO2sjvP6Ui7nrprsYrU1gJh3eMMV7f5FySj/0F+85Ej6qd5Cn7hnjG6sGxVpJCOQKkCfoeJyXnqCBsBQreyiYv6HuPgUU4DBhaFEkzGTC2hFu6pDxqS7Eo4toNhVamuUujKYITn499iFXGG49zvQWJJ30qboUkwtbWcp+gz1n8Q1BK1vuwId50sk61V5DT6WShRp1CjbgmynOp8TjDicBp6xcphfdshvgpvbnbsMl5Rnj6lbQPwC+AnKcoA8H3JKitbdt3cOnPvvf/Plrnkfr9f+GL+QJrWWi2WJ9sSivXbXM/d2eA2Xv+XylnjzsmzsqyXc+lPPX/zrHeRc2SSeV4tAz8I0bSeOdRIFkW5Sr4GbydLYj0b1kKR/a17xm8qDXjBlxnpnr3rWPfjZzdRRBbwlWDKC9w0AOQwUYz+RqDPiGh94NyMb38fG3/xs/ufIWnnBOxAlLDFN1xRq+rcrBptj9G057rF0eT7tU+Xu8Lrf5wGGyLEMLhALOFX218ydDPKudU+38n6WG2lb2a9dvZAtGkLcalUNMaEzachgVAmvZWj3Ek1edxSnJMH9y06VAAZ08CFGwm/NWdCbxgqv+MSHhf60coBwEVNNUjUMQJjHyKzyP0apzWGmirMFyGyJvRvU98/pkYejQiTgGqkeuhFY4TNGnbb+3bOcXi+S3Ep71f5AV2/BbNkMhISC1pbsCTVyorf6m+hgJ0yMKPY2DBzFhgaCWUK8l5Gu1zIDc5ZTuY4d3DnyKGI9P7g0lpGpb8NwD/Aw4H/gQsN6rLi9Y8atCY/77u79iwykbeeLLL+bQh75GuGEFofeMNZtctHTIXtdoui+OTZ6yHvmXHw70vmpouMnubYY7hnMcd2KLZlKmd/Vr4cCr2zOgI3N3jwuz9OWw6wscu2d+59NhWBKEJpm02wnncg6XgFn2CFj+ej7zvk/wua/+gLNPCXjUJutrLYzC9QZuUDj0vLGqPn9Dv1sZV85Vr3+MBdvXzrh8zFE3i5x2ezEsEpQvbW8KVRWfKL7pCMUSk7KzNsojl2zi1Wsv4q8v/QCxNZjdFfFZ+NqdmXvm4vPjmJBw+Pa7GD/puPa21GTLhLAX4XrgITidBJp4NgHfQ1gP/AWZuvMoZRhwLWB6Vlt6GCwqvymZ+dwi5SsIH/4P4Jv4vcchpSbaUBrXGZHR3qDXbJNTx5sXi/KN3xx5M5TW2DgmyBPGSss08M048zY22eoomMztLFHiVkIcQOSFzrZlnYodefXp3vFWu5/zUTb9r0lhHWgf8H6FdypqluZEDyXIhz74ZdZ/+HVsvPChTPziRqK1y5A4ZipJee2alfb2Vktvrjb+7LNDU1f94ycLW5oNf8Zvr7W+1B+YXPRFnFnLwNBfowc+gESdRXp+WNWcw92HDg6bdiylyQRQn4AWBrEb/oiGPp7Pvuv9fPrLP+P0zZannhrivEiSamItX1OlkYjcwfeh/9EDSFx5vVEKQU/OCWLV6ZwenE8Fj5EdO+qV7tEKxdAiZSKpMB03ecbKM3n1pqfw1m98htun9mFbBXWTNUM+bOH9TYsW0oZjNtYP3raV8ZOOm62RIIRyG4n2IBxPppJPyLZx/lcy7/ZntUf3CKYLA0mjy2/0bg2xR41Fer9C+PD34ceL4NcgxSZ+RHFbArRRRs2tUvQ3sBsuu0Nwk0dudjpVxYUtfKIkxLh6nPkgpZ2CZWYnKhGTUWTvf2dj+CXtDUYT0LaJ7zvAHwPbBT7jlD+JDO64orV76glvfc/n+OjbX0Fhx35aB8YJ+krEzSa5KOSdw0v5o8Zu9qX61ruuST+/8iR78NBeXXbjlZGe9Wgv1Z3/TFh6P+XBp6Dj381211I3d8YeQ+TV0YdIM0d15zMlR34JZuXjMANPY/tt0/z7+1/DD369jYeeFPKMMy2BFVdtqg0sX1VlD7DtOYfq9fI/XMzQ1O5nJE6flYReo8BbTY6eruowNlXmXlvoHuY/0z5J8cQ+JfUO75U1xUHesPmpnFXaxNu/+Vl+tu16TNiP27lXs2zQejOwZV7ytsPgmJEQuhCx89JEBeUahBLZXuRTZEH3a4B3kXn1ncuiiJg1M9vM8m559mfb3GHB9H+A4OzP4PctA9sDYRO/3eP25sHnEPMbCv5OdyBECoomctRZlVZbOJtm2j5Js4xnicf5bDFXkdkIErGIylFT4RwLvL7qeVe5ExzuJdNWyTeBF4B8W9CTYq+P7A3En16w5vt37eU9//Ft3vmq5xL/w7+T1BoYa5ioJizLR/LmJUP+5QdHV/3rv8VPecd7C1/tGeDl02OEd9yQZ90pdXbedAmbH/5OguZtaH17O13AERpyN0miigFThvww0ns8pu8ssKcweiDmJ1/7Fv/5pcvYN5FwwUMinnCSxRrx1abawHCjKt8FwooNbnjlCadxamsq2KPBG6aTBrmevLZcKjjtdjY6jCJ2U/KFPNGONX5cyZigUAIGol6OKy/jgqWbOaO8jrtGRvjrb3+Q20Z2EkT9pHceyBIzZeLL5UDzaIXcLSSEeRQxa4kCVwKPJzNSV8lCSkrA3wOfBVayKGegWQuPfbltR+gGFWToLZjNP8LtWDMbo71d8ZPlLBeF+QVpsJdGLHag7Y1TADnxyAW4RoIf7sFsXE3yvSsIzz+bnqdeQHFqGrEGUyoQfOQruDv3MDE5le1HsWb50ep9TPCG9pZnWTvFAAeAn4I+GvgIsK7pddX6UPT01Mp//uAqTl09zB9+9HX4QxOYIFvr1HkuGOoz7/qfX/p3fvKy0z7w3tauN7wtf1ka++eO7xOfKxVMccke7rz2E5x83tsRtzebDvPlPO75USSfTYM4T6PS4q6bdnLjNV/gRz+4itt3jrNkwPD8x+Q4Y5UhdWi1qSYwjCt8GBhQ+NEf/aYSv/LitQyoe/F0q/Lw5218uHvS+rPsZLOGFTNLYBbQQx/msD4rBC6otj782uyuTQahZCNKJkeaeO4aH+Gfr/oWV9x+FQ3Aak+GgOo9QWBQvYUMLzrKjnuHEnagCxE7iNUEriBDxDzQAJYAu4G/BT5BhpgLIKK0I98X/nXetU4M035k+HWYZbeiuzdkcVMTMf6gonEPInWQK/AyTpBkC97doFQaO+Jak8r4FMYL1akqe3fsIa7UwRiCXEirlWADwwqg55514xGggwG+43x9LehqYNjA+xy8L1W1Z7flww/85w+IjKFULhLHKca0N2ENQ5blc2ZDOa879jWf+p+fiP/9eX8aXn0g0XMPbRe/LB+ZSvVyzG8G6F9yMnFcBTWZlrOtPewctUvzqTMfnXPf7G+C9556vcbk5DgH9+5m69Y93LFtgulGQn8ZHnV6yCOOCxgsCtWWauIQa6grvKXd+N0Pqzdul+e/kA31Q31Nn/5dzgb0BgXZMrKPhouzVP7dzlLdmk5gJnJau7jB9jXt3hGnWxvauQWdkzfaqWeyWWf31DhbDu1h/8geWpoiRJipFHfgIBjRNgJ64FvAGEJtpqBF9q6/x+z+HGo4S9lXAY8hw35P5kF9F/AE4D3MZ8OtohMB4Tk1ej6yByYXrZG25VAD4S3I0tdAbgqaq8B6qKXopLSVGCOIXIFKHfxhHIeccvS2/fT4NaLeq4uT3qhY2BJXGsOtqWpmJFJQ731xsM+YKPhluaf3/LQRSz2u64U7997T7jwMupQ8ndkRgvwJMC7wWAd/XjL40QTzo6ZySPUww6wHwsCywntVrzIOky98cfTpM88MXjA9rsPWon2bYqk1Ha1m21aYZrbDpMsG2LElJimkSZftMJ1rF0zSuce4/S4MlPIw2AOrB0NOWB6wok9oJarNpC1aCw3gTWS5Y/od8slnP/S56fD0AZ+34T/g9W1ixE00q7bh4jYVbE+OjpG9Y9PrGORnVgbmrhR+1jCP6kxMZ/eKojPf517PRiSARJBaChN1tN7qpAV1ZKmJvgV8DeE6svQbBsUvhoT3eAmfx5Z21qO9wPXAQ8lQKgY2Av8NrAb+ioXkQ7NosofOu9sIGPwY+v8emhHUVqGSZjHaLQv0AttArkJx8xHwWJCvAwer7aRkqsh0mvkOlqKuKirVtAkObLPa0T3cV6DtuLAE+CboCxW+a5CT6l4fMxyKO8erPRhn2UQOe9g5jBGxAX65p//qz8dPOG1z8JUwz1+6plDZHWL7FOsUcYJRiIziAsGZtq0w0pmMaJktsW0j1E6mNMHr7D3eaTu4RoisoZyz9BWEgZKhFEErRacbqpolFBARDgJvBw4CG0D/41m2EfPLrTRNc12SC/6q3fVGVJlv8u72Be22+c31E+UwO6C2SfosZSdzHiGj5h2EznTWZKtN7JFGHZoJ2kwgMJALMt+HDAFvAb5Chni3t6u4KALC74CEsCAiAtwG9ADHkyFi2v7+CbL0dM+kGxE7Lp8LWVi784Ug/wH2/TCxHNVy9l7vUc0h5IGbOHnJTdwx3p4pzOiu5dS71647JsdnGtNNjxYA6cQJ6t3SKx0dOprWS8oG71FjVVAOAD8AHg/6MUE21ryu2ZgzfmOkZmE9X5v9ytQkNODUvb9N373sDLtcQ32ubxnnD+ZtJxDVyuGhoCLZaEknw+dCvzMrU3We76RHNSKkXrWVqk5k+d46WgAncDWZrEt7nnwJZOScmwcDJrek0zCMsnTGRnAUeeWwsToarzcjCOrCD823+Ld9sghtllGws31F1n3bgHeSiWI/Ycbu45VnruRep4QdOExRk8HVZDLgCjJEzJFpTN8JrAPOAlKEQD1IsGC8TwdRa8AHQL8ArY1kvpWdhD7ltmLoKix3cduodPSmM6h7NxEQIGfnMHaObIgcOrMpsZeMaLignSE7tcewD8w9BGOELDzfCHAjGVexGvR9wLsbXvMCKXN0hYe5FYEiasT3LJV1EvAZWpwhVo9nNhHEzJPKIszJEfy7Z0vqID5t0Uo7uChthE3I9AXfAH5EZg/tB/ka6DbA/KaWV6J2/8uc199zi8nvCrM7B3e8/mCWq7sBuARhCGUfcPNsnQ1HooT3yqZ6g7dt7T7t1PRKYJyMTWyRubL1AK8F7iBbALJVxB42rJ2ModuBv0b5MrC5/UwnKX0fShXlp1juwmFmqB8Z+3l3WNDFup1sAUGy/XEyYtGOnRSIvHi8+PtsZry+6lFVomxh0HZeqv8hU36NAR9tlx20+2zOR1Gr2XeDYHzLNxoH9A4JZKl6fW97jAKyuWB/l4/OO2/3WZaBU2gBu4CfAu8H/gH058CZ7aZeCumdWbemfibkKvND7tiwHtiPaopqZ5nvtHMv8CngzcAQ0MJz2ex6fIRVi9mBu1dgAY1pC7gceCIZVayTJcnZS6Yx/RSwFMVj6XY/6njZXN1u2EGEE8iQr8P0DQB7MFwN1HEYUnzHVeqeUL9FIAGum+nc2UXLAX3AbfedKDgLb6hl9kMBfHZwIJeB/jHwS2CYLAdnd6oBYA7ZUMAaK/72r8RXL7sgOAVkFRlC/EH72UX4sLsLM1a6mIyTOUjGqu0CxtteAWtANpFRkJ+BVDMBCz8vf28E8zYW6S7m/hiAw8usADuB6xB+jrIfOAmooXwFS9IlDB2RCsK9iISwICLWySbJ48goSp2MldqO8kbgY0AoVjsB6L5dp8uAd6GECMeRmUA6ObH6gDvwXE+ThCKGAp7twPJ7hfq166+AxmA+DpIDTXSWIfFklP3Qvdl/R4K59kMM6BSZwuu5ZNq4bzPHx+Ww2amASECuXDLVJ76i8IPL3lp/KZkd8s3MTvR7C9ouhTM7khmyxXhTFhTKbuAHgtwVEPmEpoGoLcynM9wsMIHyYzLK32ncbAl3B+QYnjvc761z5oAGygiwg4yY1FF6gYeRcXeXta/NZjT45tFTcNzbBq75gyBkE/Uq4JEzDYF1KFdJwDuAtxBoZ90wwMfbn6UIfe37O+qbMnAtcBsGpdhG3Ab3JgIy632MgPaAFoCOr01nsSiQrfL3G7y+6rmkbGm7tRhgK9kidx7IIdA2Ii06ywQljIpi/+38aT/8WPstG8kfkVGbBZxHf2ewZItv1K5vlUzEuFnR7b0MxFWmJaElIL6T3uSZ1w8AM6LFOMonyRbi3w2O1T1moXtnI84sQkCWiXsjWaV/SDbHO7L13VIO3OtIuIjpYjsZAp1Bx8dUOM4Mpl9Lb8ttVNUXYUlI5W2E+nWUdWSD12rLeQWyAb2cjA3o9tu/RxrQo4+EHtOPnd6+b3asX6z4OUVfDgyCriFbsI5UFVUgraPX/DLheS8ODzUP6A/IojUacz0r75WKJu06TZGxpHsytjP1YKgweRhtuvhNDXjmQPfoRmRKvbuHhPeEVT3SMzojM3dsVVMI16Jci2d0wa1ojoEKwn1ECRcxXfyWTEmzjiyVuPhxu941ow/Z5ekaDN/WhO9LgROYHUBFKJPJFj8jy8okzK6SWQzFvYqAHfCgJIj5ks76/s7qHBVRobMJst5fWPj6Wba0U0sEviOQyzajbe8eRScH/EIKfG2txTB6paO8QW4Bua3jk3+4g9K8R+fEKy32e8c6nqXcu/hNWSrLy97asfAFCCq+bf0WhGe+aR6Ozb46JtvU5ljyYS70/L31jG/XYRrlELALpQ50L3t3GwE7vXafwQKmiwC4kCx1eQWroY4GSf7Pxw8WXzGS4yDD2DnbiPeSsSNXANXD4n64N1nQ/3ugGwnnw7FEcnzznwpdZx0vQ0XkE1z8phfdq3W97K3ZZoMZdCfyml1FL37T785p3q/w7JUZiejoSOcj791AwO6euM+gCxE7CFQCLkIxRNrwu6Og+OpRLbxyxLBXPJF2PA96ybRpV5GtQPcbAs6f5PMtbh3dXzuCCcgCEO7PvJ6XlM2czhA6Po9zKeFipu2kqjzrQA93/Xs8r2vv7SnRTVtn9wo5IuIdnsB3rqXw7sCRCPaR3nfksmYZ5bjrXXcT+eY27j6GBRBxGXABoTb97tAVXzMqhVeMwl5xhBqRIeqtCDfhcd0U8P+PlO//l3B3Mmkv5PCiR7nnMLgbfgD3ENkWg/tSO7pYSw1wEOUqlPOAKayC4NpayBC4mr1sYQ3yIAL+/xTu5Yn+vxnuF3XC4G1bu71qPCDS73ZIoDcR0I+S4Oghk9EvR9nCqravxP1vjn0QHoT7Fe5vStgBjX/dJ8N6w29HzaklhJMpsl9H7K8ldhOs71LtteG+0YA+CA/CAw/3KxJ2my7s8ib75GEI/gYpeChzizzeVdiLMDXXB/RBeBD+X4b/D7zqJMFffJPnAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE5LTAzLTExVDIxOjAyOjIzLTA3OjAwXsTKJQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOS0wMy0xMVQyMTowMjoyMy0wNzowMC+ZcpkAAAAASUVORK5CYII=";
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${title} — RDS Techserv Inc</title>
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${title} - RDS Techserv Inc</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13.5px;padding:0}
@@ -10733,7 +10733,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       <div class="footer">
         <div>
           <div class="footer-co">RDS Techserv Inc</div>
-          <div class="footer-tag">CONFIDENTIAL — FOR INTERNAL USE</div>
+          <div class="footer-tag">CONFIDENTIAL - FOR INTERNAL USE</div>
         </div>
         <div class="footer-date">${todayDate}</div>
       </div>
@@ -10757,7 +10757,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   }
   function pdfAll(){
     const taskList=clientNames.flatMap(cl=>Object.values(clientMap[cl].projMap).flatMap(p=>p.tasks));
-    triggerPdf({title:"All Clients — "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",taskList,filename:`RDS_Billing_All_${year}_${month}`,clientKey:null});
+    triggerPdf({title:"All Clients - "+periodLabel,subtitle:`${taskList.length} tasks · ${fmtT(totalTons)} · ${fmtM(totalAmt)}`,note:"",taskList,filename:`RDS_Billing_All_${year}_${month}`,clientKey:null});
   }
   function pdfClient(cl){
     const taskList=Object.values(clientMap[cl]?.projMap||{}).flatMap(p=>p.tasks);
@@ -10776,10 +10776,10 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     const safeCl=(cl||"").replace(/[^a-z0-9]/gi,"_");
     const safeProjOrTask=(t._proj?.name||t.title||"Task").replace(/[^a-z0-9]/gi,"_");
     const fname="RDS_Billing_"+safeCl+"_"+safeProjOrTask+"_"+year+"_"+month;
-    triggerPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"—"}`,note,taskList:[t],filename:fname,hideProject:true,clientKey:cl});
+    triggerPdf({title:t.title,subtitle:`Client: ${cl} · Project: ${t._proj?.name||"-"}`,note,taskList:[t],filename:fname,hideProject:true,clientKey:cl});
   }
 
-  // ── Client-side PDF via jsPDF — works online & offline ──────
+  // ── Client-side PDF via jsPDF - works online & offline ──────
   async function downloadPdf({title,subtitle,note,taskList,filename,hideProject=false,clientKey,opts={},skipRecord=false}){
     setGeneratingPdf(true);
     try{
@@ -10810,7 +10810,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       if(opts.issueDate){doc.setFont("helvetica","normal").setTextColor("#64748b").text(`Issue Date: ${fmtDate(opts.issueDate)}`,PW-M,metaY,{align:"right"});metaY+=11;}
       if(opts.dueDate){doc.text(`Due Date:  ${fmtDate(opts.dueDate)}`,PW-M,metaY,{align:"right"});}
 
-      // Divider (fixed — header is now compact)
+      // Divider (fixed - header is now compact)
       doc.setDrawColor("#1e3a8a").setLineWidth(2).line(M,92,PW-M,92);
 
       // ── BILL FROM (left) | BILL TO (right) ──────────────────
@@ -10842,7 +10842,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       if(clInfo.phone){doc.text(clInfo.phone,billToX,btY);btY+=10;}
       if(clInfo.country&&clInfo.country!=="United States"){doc.text(clInfo.country,billToX,btY);btY+=10;}
 
-      // Vertical divider between BILL FROM and BILL TO — centered in gap between columns
+      // Vertical divider between BILL FROM and BILL TO - centered in gap between columns
       const divX=Math.round((billFromX+220+billToX)/2); // ~300, midpoint between left col end and right col start
       // Divider below bill-from/bill-to
       const afterBill=Math.max(bfY,btY)+8;
@@ -10896,10 +10896,10 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         if(i%2===0) doc.setFillColor("#f8faff").rect(M,y,CW,18,"F");
         doc.setDrawColor("#e2e8f0").setLineWidth(0.4).line(M,y+18,PW-M,y+18);
         const vals=hideProject
-          ?[t.title,t.client_sub_date||"—",fmtT(t._wt),`$${t._rate}/T`,fmtM(t._amt)]
-          :[t._proj?.name||"—",t.title,t.client_sub_date||"—",fmtT(t._wt),`$${t._rate}/T`,fmtM(t._amt)];
+          ?[t.title,t.client_sub_date||"-",fmtT(t._wt),`$${t._rate}/T`,fmtM(t._amt)]
+          :[t._proj?.name||"-",t.title,t.client_sub_date||"-",fmtT(t._wt),`$${t._rate}/T`,fmtM(t._amt)];
         doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor("#1e293b");
-        cols.forEach((c,ci)=>doc.text(String(vals[ci]||"—"),c.a==="right"?c.x+c.w:c.x+2,y+12,{align:c.a,maxWidth:c.w}));
+        cols.forEach((c,ci)=>doc.text(String(vals[ci]||"-"),c.a==="right"?c.x+c.w:c.x+2,y+12,{align:c.a,maxWidth:c.w}));
         y+=18;
       });
 
@@ -10952,7 +10952,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       const FY=841.89-45;
       doc.setDrawColor("#e2e8f0").setLineWidth(1).line(M,FY-10,PW-M,FY-10);
       doc.setFont("helvetica","bold").setFontSize(10).setTextColor("#1e3a8a").text("RDS Techserv Inc",M,FY+3);
-      doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#4b5563").text("Thank you for your business — your satisfaction is our commitment.",M,FY+15);
+      doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#4b5563").text("Thank you for your business - your satisfaction is our commitment.",M,FY+15);
       doc.setFont("helvetica","italic").setFontSize(8).setTextColor("#64748b").text("We value your trust and look forward to serving you again.",PW-M,FY+15,{align:"right"});
 
       doc.save((filename||"RDS_Invoice")+".pdf");
@@ -10968,10 +10968,10 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
 
   // Excel export
   function exportExcel(){
-    const rows=[["RDS Billing — "+periodLabel],[],["Client","Project","Task","Tons","Rate/T ($)","Amount ($)","Assignee","Sub Date"]];
+    const rows=[["RDS Billing - "+periodLabel],[],["Client","Project","Task","Tons","Rate/T ($)","Amount ($)","Assignee","Sub Date"]];
     clientNames.forEach(cl=>{
       Object.values(clientMap[cl].projMap).forEach(pg=>{
-        pg.tasks.forEach(t=>rows.push([cl,t._proj?.name||"—",t.title,+t._wt.toFixed(2),+t._rate.toFixed(2),+t._amt.toFixed(2),t.assignee||"",t.client_sub_date||""]));
+        pg.tasks.forEach(t=>rows.push([cl,t._proj?.name||"-",t.title,+t._wt.toFixed(2),+t._rate.toFixed(2),+t._amt.toFixed(2),t.assignee||"",t.client_sub_date||""]));
       });
     });
     rows.push([]); rows.push(["TOTAL","","",+totalTons.toFixed(2),"",+totalAmt.toFixed(2)]);
@@ -11110,7 +11110,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         <div style={{marginBottom:20}}>
           <label style={fldLbl}>Description / Notes (optional)</label>
           <textarea value={invoiceOpts.description} onChange={e=>setInvoiceOpts(p=>({...p,description:e.target.value}))} rows={2}
-            placeholder="e.g. Detailing services for July 2026 — Net 15 days"
+            placeholder="e.g. Detailing services for July 2026 - Net 15 days"
             style={{...inp3,resize:"vertical"}}/>
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
@@ -11129,9 +11129,9 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
     paid:   {label:"Paid",    bg:C.green+"22", color:C.green,  next:[]},
     overdue:{label:"Overdue", bg:C.red+"22",   color:C.red,    next:[]},  // auto → when due date passes
   };
-  const fmtShortDate=s=>{if(!s)return"—";try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return s;}};
+  const fmtShortDate=s=>{if(!s)return"-";try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch{return s;}};
   const clientInvoices=isClient?invoices.filter(i=>(i.clientKey||"").toLowerCase()===(me?.client_name||"").toLowerCase()):invoices;
-  // ── Advanced cascading filter options — sourced from system projects+tasks so dropdowns are always populated ──
+  // ── Advanced cascading filter options - sourced from system projects+tasks so dropdowns are always populated ──
   // Clients: all unique clients across all projects
   const invOptClients=[...new Set(projects.map(p=>p.client||"").filter(Boolean))].sort();
   // Projects: all projects, or only selected client's projects
@@ -11193,13 +11193,13 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:28,width:"min(560px,96vw)",boxShadow:"0 24px 64px #00000080",maxHeight:"90vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
-                <div style={{fontWeight:800,fontSize:17,color:C.t1}}>Invoice {invoiceDetail.invoiceNo||"#—"}</div>
+                <div style={{fontWeight:800,fontSize:17,color:C.t1}}>Invoice {invoiceDetail.invoiceNo||"#-"}</div>
                 <div style={{color:C.t3,fontSize:12,marginTop:2}}>{invoiceDetail.clientName} · {invoiceDetail.period}</div>
               </div>
               <span style={{background:INV_STATUS[invoiceDetail.status]?.bg||C.t3+"22",color:INV_STATUS[invoiceDetail.status]?.color||C.t3,borderRadius:8,padding:"4px 12px",fontWeight:700,fontSize:13}}>{INV_STATUS[invoiceDetail.status]?.label||invoiceDetail.status}</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-              {[["Amount",fmtM(invoiceDetail.amount||0)],["Tons",fmtT(invoiceDetail.tons||0)],["Issue Date",fmtShortDate(invoiceDetail.issueDate)],["Due Date",fmtShortDate(invoiceDetail.dueDate)],["File",invoiceDetail.filename||"—"]].map(([l,v])=>(
+              {[["Amount",fmtM(invoiceDetail.amount||0)],["Tons",fmtT(invoiceDetail.tons||0)],["Issue Date",fmtShortDate(invoiceDetail.issueDate)],["Due Date",fmtShortDate(invoiceDetail.dueDate)],["File",invoiceDetail.filename||"-"]].map(([l,v])=>(
                 <div key={l} style={{background:C.surface,borderRadius:8,padding:"10px 14px"}}>
                   <div style={{fontSize:10,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:3}}>{l}</div>
                   <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{v}</div>
@@ -11216,7 +11216,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
               {[["📝 Created",invoiceDetail.createdAt],["📤 Sent to Client",invoiceDetail.sentAt],["👁 Client Viewed",invoiceDetail.viewedAt],["✅ Payment Received",invoiceDetail.paidAt]].map(([lbl,ts])=>(
                 <div key={lbl} style={{display:"flex",gap:10,alignItems:"center",marginBottom:6}}>
                   <span style={{fontSize:12,color:ts?C.t1:C.t3+"66",minWidth:140}}>{lbl}</span>
-                  <span style={{fontSize:12,color:ts?C.green:C.t3}}>{ts?fmtShortDate(ts):"—"}</span>
+                  <span style={{fontSize:12,color:ts?C.green:C.t3}}>{ts?fmtShortDate(ts):"-"}</span>
                 </div>
               ))}
             </div>
@@ -11276,7 +11276,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       {/* ════════════════════════════ OVERVIEW TAB ════════════════════════════ */}
       {billingView==="overview"&&(<>
         {noWeightTasks.length>0&&<div style={{background:C.yellow+"18",border:`1px solid ${C.yellow}44`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
-          <span>⚠️</span><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks missing weight</span><span style={{color:C.t2,fontSize:12}}>— excluded from billing</span>
+          <span>⚠️</span><span style={{fontWeight:700,color:C.yellow,fontSize:13}}>{noWeightTasks.length} completed tasks missing weight</span><span style={{color:C.t2,fontSize:12}}>- excluded from billing</span>
         </div>}
 
         {/* Stat cards */}
@@ -11320,7 +11320,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                         </td>
                         <td style={{...td2,textAlign:"right",fontWeight:700,color:C.blue}}>{fmtT(cT)}</td>
                         <td style={{...td2,textAlign:"right",color:C.t3,fontSize:12}}>mixed</td>
-                        <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cA>0?fmtM(cA):"—"}</td>
+                        <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:15}}>{cA>0?fmtM(cA):"-"}</td>
                         <td style={{...td2,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
                           <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                             <button onClick={()=>openEdit("client",cl,cl)} title="Edit client details" style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
@@ -11340,8 +11340,8 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                                 {getLabel("project",pg.proj?.id)&&<span style={{marginLeft:8,fontSize:10,background:C.blue+"22",color:C.blue,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{getLabel("project",pg.proj?.id)}</span>}
                               </td>
                               <td style={{...td2,textAlign:"right",color:C.blue,borderBottom:`1px solid ${C.border}22`}}>{fmtT(pg.totalTons)}</td>
-                              <td style={{...td2,textAlign:"right",fontSize:12,color:C.t2,borderBottom:`1px solid ${C.border}22`}}>{pg.tasks[0]?`$${pg.tasks[0]._rate}/T`:"—"}</td>
-                              <td style={{...td2,textAlign:"right",fontWeight:700,color:C.green,borderBottom:`1px solid ${C.border}22`}}>{pg.totalAmt>0?fmtM(pg.totalAmt):"—"}</td>
+                              <td style={{...td2,textAlign:"right",fontSize:12,color:C.t2,borderBottom:`1px solid ${C.border}22`}}>{pg.tasks[0]?`$${pg.tasks[0]._rate}/T`:"-"}</td>
+                              <td style={{...td2,textAlign:"right",fontWeight:700,color:C.green,borderBottom:`1px solid ${C.border}22`}}>{pg.totalAmt>0?fmtM(pg.totalAmt):"-"}</td>
                               <td style={{...td2,textAlign:"center",borderBottom:`1px solid ${C.border}22`}} onClick={e=>e.stopPropagation()}>
                                 <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                                   <button onClick={()=>openEdit("project",pg.proj?.id,pName)} style={{...GBtn,padding:"3px 8px",fontSize:11}}>✏️</button>
@@ -11356,14 +11356,14 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                                   <span style={{color:C.t1}}>{t.title}</span>
                                   {t.assignee&&<span style={{color:C.t3,marginLeft:8,fontSize:11}}>· {t.assignee}</span>}
                                 </td>
-                                <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._wt>0?fmtT(t._wt):"—"}</td>
+                                <td style={{...td2,textAlign:"right",fontSize:12,color:C.blue,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._wt>0?fmtT(t._wt):"-"}</td>
                                 <td style={{...td2,textAlign:"right",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>
                                   <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>
                                     <span style={{fontSize:9,background:lvlBadge[t._level]?.bg,color:lvlBadge[t._level]?.color,borderRadius:4,padding:"1px 4px",fontWeight:700}}>{t._level}</span>
-                                    <span style={{fontSize:12,color:t._rate>0?C.t2:C.t3}}>{t._rate>0?`$${t._rate}/T`:"—"}</span>
+                                    <span style={{fontSize:12,color:t._rate>0?C.t2:C.t3}}>{t._rate>0?`$${t._rate}/T`:"-"}</span>
                                   </div>
                                 </td>
-                                <td style={{...td2,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._amt>0?fmtM(t._amt):"—"}</td>
+                                <td style={{...td2,textAlign:"right",fontSize:12,fontWeight:600,color:t._amt>0?C.t1:C.t3,padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}}>{t._amt>0?fmtM(t._amt):"-"}</td>
                                 <td style={{...td2,textAlign:"center",padding:"7px 14px",borderBottom:`1px solid ${C.border}11`}} onClick={e=>e.stopPropagation()}>
                                   <div style={{display:"flex",gap:4,justifyContent:"center"}}>
                                     <button onClick={()=>openEdit("task",t.id,t.title)} style={{...GBtn,padding:"3px 6px",fontSize:10}}>✏️</button>
@@ -11383,7 +11383,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                   <td style={{...td2,fontWeight:800,fontSize:14,color:C.t1,borderBottom:"none"}}>TOTAL</td>
                   <td style={{...td2,textAlign:"right",fontWeight:800,color:C.blue,fontSize:14,borderBottom:"none"}}>{fmtT(totalTons)}</td>
                   <td style={{...td2,borderBottom:"none"}}></td>
-                  <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtM(totalAmt):"—"}</td>
+                  <td style={{...td2,textAlign:"right",fontWeight:800,color:C.green,fontSize:16,borderBottom:"none"}}>{totalAmt>0?fmtM(totalAmt):"-"}</td>
                   <td style={{...td2,borderBottom:"none"}}></td>
                 </tr>
               </tbody>
@@ -11392,7 +11392,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
         }
 
         {pendingTasks.length>0&&<div style={{...card,marginTop:20}}>
-          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline — not yet billed</div>
+          <div style={{fontWeight:700,color:C.t1,fontSize:14,marginBottom:2}}>🔄 Pending Pipeline - not yet billed</div>
           <div style={{color:C.t3,fontSize:12,marginBottom:10}}>In-progress tasks with weight entered</div>
           <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
             <div style={{background:C.purple+"18",border:`1px solid ${C.purple}33`,borderRadius:10,padding:"12px 20px",textAlign:"center"}}>
@@ -11512,7 +11512,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           ))}
         </div>
 
-        {/* Advanced search filters — cascading */}
+        {/* Advanced search filters - cascading */}
         {(()=>{
           const selSt={background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",cursor:"pointer",minWidth:140,flex:1};
           const hasFilter=invFClient!=="all"||invFProject!=="all"||invFTask!=="all"||invFStatus!=="all";
@@ -11524,12 +11524,12 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                   <option value="all">All Clients</option>
                   {invOptClients.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
-                {/* Project — cascades from client */}
+                {/* Project - cascades from client */}
                 <select value={invFProject} onChange={e=>{setInvFProject(e.target.value);setInvFTask("all");}} style={{...selSt,opacity:invOptProjects.length===0?.5:1}} disabled={invOptProjects.length===0}>
                   <option value="all">All Projects</option>
                   {invOptProjects.map(p=><option key={p} value={p}>{p}</option>)}
                 </select>
-                {/* Task — cascades from project */}
+                {/* Task - cascades from project */}
                 <select value={invFTask} onChange={e=>setInvFTask(e.target.value)} style={{...selSt,opacity:invOptTasks.length===0?.5:1}} disabled={invOptTasks.length===0}>
                   <option value="all">All Tasks</option>
                   {invOptTasks.map(t=><option key={t} value={t}>{t}</option>)}
@@ -11552,7 +11552,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
           ?<div style={{...card,textAlign:"center",padding:48,color:C.t3}}>
             <div style={{fontSize:32,marginBottom:12}}>🧾</div>
             <div style={{fontWeight:700,marginBottom:6}}>{invoices.length===0?"No invoices yet":"No invoices match this filter"}</div>
-            <div style={{fontSize:13}}>{invoices.length===0?"Generate a PDF invoice from the Overview tab — it will appear here.":""}</div>
+            <div style={{fontSize:13}}>{invoices.length===0?"Generate a PDF invoice from the Overview tab - it will appear here.":""}</div>
           </div>
           :<div style={{display:"flex",flexDirection:"column",gap:10}}>
             {filteredInvoices.map(inv=>{
@@ -11668,7 +11668,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
                 return <div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,marginBottom:6}}>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:600,color:C.t1,fontSize:13}}>{t.title}</div>
-                    <div style={{fontSize:11,color:C.t3}}>{proj?.client||"—"} · {proj?.name||"—"}</div>
+                    <div style={{fontSize:11,color:C.t3}}>{proj?.client||"-"} · {proj?.name||"-"}</div>
                     {tv?.note&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>📝 {tv.note}</div>}
                   </div>
                   <span style={{color:tv?.rate>0?C.green:C.t3,fontWeight:700,fontSize:13}}>{tv?.rate>0?`$${tv.rate}/T`:"Inherited"}</span>
@@ -11685,7 +11685,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
             <div style={{fontWeight:700,color:C.t1,fontSize:14}}>🏦 Company & Bank Details</div>
             <span style={{fontSize:11,color:C.green,background:C.green+"18",borderRadius:6,padding:"2px 8px",fontWeight:600}}>Auto-saves as you type</span>
           </div>
-          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>One-time setup — printed on every invoice PDF. Fields save automatically.</p>
+          <p style={{margin:"0 0 16px",color:C.t3,fontSize:12}}>One-time setup - printed on every invoice PDF. Fields save automatically.</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
               <label style={fldLbl}>Company Email</label>
@@ -11914,20 +11914,20 @@ function AuditLogPage({users,projects,me}){
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <div style={{width:22,height:22,borderRadius:"50%",background:C.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:C.accent,flexShrink:0}}>{(l.actor_name||"?").charAt(0).toUpperCase()}</div>
                           <div>
-                            <div style={{color:C.t1,fontWeight:600,fontSize:12}}>{l.actor_name||"—"}</div>
+                            <div style={{color:C.t1,fontWeight:600,fontSize:12}}>{l.actor_name||"-"}</div>
                             {l.actor_role&&<div style={{color:C.t3,fontSize:10}}>{l.actor_role}</div>}
                           </div>
                         </div>
                       </td>
                       <td style={{padding:"7px 10px"}}><span style={{background:aclr+"18",color:aclr,borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,textTransform:"uppercase"}}>{l.entity_type||"task"}</span></td>
                       <td style={{padding:"7px 10px",maxWidth:160}}>
-                        <div style={{color:C.t1,fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.entity_label||"—"}</div>
+                        <div style={{color:C.t1,fontWeight:600,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.entity_label||"-"}</div>
                         {proj&&<div style={{color:C.t3,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {proj.name}</div>}
                       </td>
-                      <td style={{padding:"7px 10px"}}><span style={{color:aclr,fontWeight:700,fontSize:12}}>{ACTION_ICON[l.action]||"🔄"} {l.action||"—"}</span></td>
-                      <td style={{padding:"7px 10px",color:C.t2,fontSize:11}}>{l.field?(FIELD_ICON[l.field]||"")+" "+l.field:"—"}</td>
-                      <td style={{padding:"7px 10px",maxWidth:120}}>{l.old_value?<span style={{background:C.red+"15",color:C.red,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.old_value}</span>:<span style={{color:C.t3}}>—</span>}</td>
-                      <td style={{padding:"7px 10px",maxWidth:120}}>{l.new_value?<span style={{background:C.green+"15",color:C.green,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.new_value}</span>:<span style={{color:C.t3}}>—</span>}</td>
+                      <td style={{padding:"7px 10px"}}><span style={{color:aclr,fontWeight:700,fontSize:12}}>{ACTION_ICON[l.action]||"🔄"} {l.action||"-"}</span></td>
+                      <td style={{padding:"7px 10px",color:C.t2,fontSize:11}}>{l.field?(FIELD_ICON[l.field]||"")+" "+l.field:"-"}</td>
+                      <td style={{padding:"7px 10px",maxWidth:120}}>{l.old_value?<span style={{background:C.red+"15",color:C.red,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.old_value}</span>:<span style={{color:C.t3}}>-</span>}</td>
+                      <td style={{padding:"7px 10px",maxWidth:120}}>{l.new_value?<span style={{background:C.green+"15",color:C.green,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.new_value}</span>:<span style={{color:C.t3}}>-</span>}</td>
                     </tr>
                   );
                 })}
@@ -11968,29 +11968,29 @@ function BackupCenter({me}){
   const [restoreProgress,setRProg]=useState([]);
   const [restoreResult,setRRes]=useState(null);
   const [alerts,setAlerts]=useState([
-    {id:1,type:'warn',msg:'1 backup job failed on Jul 2 — Full Database',time:'2 days ago'},
-    {id:2,type:'info',msg:'Weekly backup completed successfully — 11.8 GB',time:'4 days ago'},
-    {id:3,type:'info',msg:'Monthly backup completed — Jun 01 snapshot verified',time:'32 days ago'},
+    {id:1,type:'warn',msg:'1 backup job failed on Jul 2 - Full Database',time:'2 days ago'},
+    {id:2,type:'info',msg:'Weekly backup completed successfully - 11.8 GB',time:'4 days ago'},
+    {id:3,type:'info',msg:'Monthly backup completed - Jun 01 snapshot verified',time:'32 days ago'},
   ]);
   const [incidents,setInc]=useState([
-    {id:1,title:'Supabase connection timeout during peak load',type:'Database Failure',status:'Resolved',priority:'Critical',created:'2026-06-28T09:15:00Z',resolved:'2026-06-28T11:42:00Z',rca:'Connection pool exhausted — 25 concurrent users',resolution:'Increased Supabase connection pool limit. Added retry logic.'},
+    {id:1,title:'Supabase connection timeout during peak load',type:'Database Failure',status:'Resolved',priority:'Critical',created:'2026-06-28T09:15:00Z',resolved:'2026-06-28T11:42:00Z',rca:'Connection pool exhausted - 25 concurrent users',resolution:'Increased Supabase connection pool limit. Added retry logic.'},
     {id:2,title:'Storage bucket ACL misconfiguration',type:'Security Incident',status:'Closed',priority:'High',created:'2026-06-15T14:22:00Z',resolved:'2026-06-15T15:10:00Z',rca:'IAM policy change during maintenance window',resolution:'Reverted policy. Added change-control checklist.'},
     {id:3,title:'Scheduled backup missed at 2:00 AM',type:'Application Failure',status:'Investigating',priority:'Medium',created:'2026-07-02T02:05:00Z',resolved:null,rca:'',resolution:''},
   ]);
   const [rps,setRPs]=useState([
-    {id:1,label:'Pre-deploy snapshot — Jul 03',type:'Manual',created:'2026-07-03T08:00:00Z',size:'10.2 GB',modules:['Database','Files','Documents'],status:'Verified'},
-    {id:2,label:'Daily auto — Jul 03',type:'Auto',created:'2026-07-03T02:00:00Z',size:'9.8 GB',modules:['Database','Files','Documents'],status:'Verified'},
-    {id:3,label:'Daily auto — Jul 02',type:'Auto',created:'2026-07-02T02:00:00Z',size:'9.6 GB',modules:['Database','Files','Documents'],status:'Failed'},
-    {id:4,label:'Daily auto — Jul 01',type:'Auto',created:'2026-07-01T02:00:00Z',size:'9.5 GB',modules:['Database','Files','Documents'],status:'Verified'},
-    {id:5,label:'Weekly auto — Jun 29',type:'Auto',created:'2026-06-29T02:00:00Z',size:'9.4 GB',modules:['Full System'],status:'Verified'},
-    {id:6,label:'Monthly auto — Jun 01',type:'Auto',created:'2026-06-01T02:00:00Z',size:'8.9 GB',modules:['Full System'],status:'Verified'},
+    {id:1,label:'Pre-deploy snapshot - Jul 03',type:'Manual',created:'2026-07-03T08:00:00Z',size:'10.2 GB',modules:['Database','Files','Documents'],status:'Verified'},
+    {id:2,label:'Daily auto - Jul 03',type:'Auto',created:'2026-07-03T02:00:00Z',size:'9.8 GB',modules:['Database','Files','Documents'],status:'Verified'},
+    {id:3,label:'Daily auto - Jul 02',type:'Auto',created:'2026-07-02T02:00:00Z',size:'9.6 GB',modules:['Database','Files','Documents'],status:'Failed'},
+    {id:4,label:'Daily auto - Jul 01',type:'Auto',created:'2026-07-01T02:00:00Z',size:'9.5 GB',modules:['Database','Files','Documents'],status:'Verified'},
+    {id:5,label:'Weekly auto - Jun 29',type:'Auto',created:'2026-06-29T02:00:00Z',size:'9.4 GB',modules:['Full System'],status:'Verified'},
+    {id:6,label:'Monthly auto - Jun 01',type:'Auto',created:'2026-06-01T02:00:00Z',size:'8.9 GB',modules:['Full System'],status:'Verified'},
   ]);
   const [auditLogs,setAudit]=useState([
-    {id:1,action:'Backup Created',detail:'Daily auto — Full Database',user:'System',time:'2026-07-03T02:00:00Z',status:'Success'},
-    {id:2,action:'Backup Created',detail:'Daily auto — File Storage',user:'System',time:'2026-07-03T02:04:00Z',status:'Success'},
-    {id:3,action:'Backup Created',detail:'Daily auto — Documents',user:'System',time:'2026-07-03T02:16:00Z',status:'Success'},
-    {id:4,action:'Restore Point Created',detail:'Pre-deploy snapshot — Jul 03',user:'Ramesh',time:'2026-07-03T08:00:00Z',status:'Success'},
-    {id:5,action:'Backup Failed',detail:'Daily auto — Full Database (Jul 02)',user:'System',time:'2026-07-02T02:00:45Z',status:'Failed'},
+    {id:1,action:'Backup Created',detail:'Daily auto - Full Database',user:'System',time:'2026-07-03T02:00:00Z',status:'Success'},
+    {id:2,action:'Backup Created',detail:'Daily auto - File Storage',user:'System',time:'2026-07-03T02:04:00Z',status:'Success'},
+    {id:3,action:'Backup Created',detail:'Daily auto - Documents',user:'System',time:'2026-07-03T02:16:00Z',status:'Success'},
+    {id:4,action:'Restore Point Created',detail:'Pre-deploy snapshot - Jul 03',user:'Ramesh',time:'2026-07-03T08:00:00Z',status:'Success'},
+    {id:5,action:'Backup Failed',detail:'Daily auto - Full Database (Jul 02)',user:'System',time:'2026-07-02T02:00:45Z',status:'Failed'},
     {id:6,action:'Recovery Test Executed',detail:'Database restore simulation',user:'Ramesh',time:'2026-06-28T10:00:00Z',status:'Success'},
     {id:7,action:'Restore Completed',detail:'Restored settings from Jul 01 snapshot',user:'Ramesh',time:'2026-06-27T14:30:00Z',status:'Success'},
   ]);
@@ -12000,7 +12000,7 @@ function BackupCenter({me}){
     {id:2,type:'Daily',module:'File Storage',status:'Success',started:'2026-07-03T02:04:00Z',dur:'12m 15s',size:'8.1 GB',ret:'30 days'},
     {id:3,type:'Daily',module:'Documents',status:'Success',started:'2026-07-03T02:16:00Z',dur:'3m 42s',size:'1.2 GB',ret:'30 days'},
     {id:4,type:'Weekly',module:'Full System',status:'Success',started:'2026-06-29T02:00:00Z',dur:'28m 10s',size:'11.8 GB',ret:'12 weeks'},
-    {id:5,type:'Daily',module:'Full Database',status:'Failed',started:'2026-07-02T02:00:00Z',dur:'0m 45s',size:'—',ret:'—'},
+    {id:5,type:'Daily',module:'Full Database',status:'Failed',started:'2026-07-02T02:00:00Z',dur:'0m 45s',size:'-',ret:'-'},
     {id:6,type:'Daily',module:'File Storage',status:'Success',started:'2026-07-01T02:04:00Z',dur:'11m 50s',size:'7.9 GB',ret:'30 days'},
     {id:7,type:'Monthly',module:'Full System',status:'Success',started:'2026-06-01T02:00:00Z',dur:'42m 08s',size:'8.9 GB',ret:'12 months'},
   ];
@@ -12063,12 +12063,12 @@ function BackupCenter({me}){
   const SB={background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'20px'};
   const statusCol=(s)=>s==='Success'?'#22c55e':s==='Failed'?'#ef4444':s==='Running'?'#3b82f6':s==='Verified'?'#22c55e':s==='Active'?'#22c55e':s==='Investigating'?'#eab308':s==='Resolved'||s==='Closed'?'#22c55e':'#94a3b8';
   const priCol=(p)=>p==='Critical'?'#ef4444':p==='High'?'#f97316':p==='Medium'?'#eab308':'#22c55e';
-  const fmtDate=(d)=>d?new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+  const fmtDate=(d)=>d?new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'-';
 
   function runManualJob(label){
     setRJ(label);setJP(0);
     let p=0;
-    const iv=setInterval(()=>{p+=Math.random()*15;if(p>=100){p=100;clearInterval(iv);setRJ(null);setJP(0);setAudit(a=>[{id:Date.now(),action:'Backup Created',detail:label+' — Manual',user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);}setJP(Math.min(Math.round(p),100));},400);
+    const iv=setInterval(()=>{p+=Math.random()*15;if(p>=100){p=100;clearInterval(iv);setRJ(null);setJP(0);setAudit(a=>[{id:Date.now(),action:'Backup Created',detail:label+' - Manual',user:me?.name||'Ramesh',time:new Date().toISOString(),status:'Success'},...a]);}setJP(Math.min(Math.round(p),100));},400);
   }
 
   function addRestorePoint(){
@@ -12411,12 +12411,12 @@ function BackupCenter({me}){
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
           <div style={{...SB,borderTop:`3px solid #ef4444`,textAlign:'center'}}>
             <div style={{fontSize:36,fontWeight:900,color:'#ef4444'}}>24h</div>
-            <div style={{fontWeight:700,color:C.t1,marginTop:4}}>RPO — Recovery Point Objective</div>
+            <div style={{fontWeight:700,color:C.t1,marginTop:4}}>RPO - Recovery Point Objective</div>
             <div style={{fontSize:12,color:C.t2,marginTop:6}}>Maximum acceptable data loss. Daily backups at 2:00 AM ensure no more than 24 hours of data can be lost in any failure scenario.</div>
           </div>
           <div style={{...SB,borderTop:`3px solid #f97316`,textAlign:'center'}}>
             <div style={{fontSize:36,fontWeight:900,color:'#f97316'}}>4h</div>
-            <div style={{fontWeight:700,color:C.t1,marginTop:4}}>RTO — Recovery Time Objective</div>
+            <div style={{fontWeight:700,color:C.t1,marginTop:4}}>RTO - Recovery Time Objective</div>
             <div style={{fontSize:12,color:C.t2,marginTop:6}}>Maximum acceptable downtime. Recovery procedures are designed to restore full operations within 4 hours of any critical failure.</div>
           </div>
         </div>
@@ -12548,7 +12548,7 @@ function BackupCenter({me}){
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14}}>
             <div>
               <div style={{fontWeight:800,color:C.t1,fontSize:16,marginBottom:4}}>📦 Download Full App Backup</div>
-              <div style={{fontSize:13,color:C.t2}}>Exports ALL data from Supabase — {ALL_TABLES.length} tables including users, projects, tasks, chat, clients, workflows and more.</div>
+              <div style={{fontSize:13,color:C.t2}}>Exports ALL data from Supabase - {ALL_TABLES.length} tables including users, projects, tasks, chat, clients, workflows and more.</div>
               <div style={{fontSize:12,color:C.t3,marginTop:4}}>Save this file safely. You can upload it below to restore your entire app data if anything goes wrong.</div>
             </div>
             <button onClick={downloadFullBackup} disabled={dlBackup} style={{background:C.green,border:'none',borderRadius:10,padding:'12px 28px',color:'#fff',fontSize:14,cursor:dlBackup?'not-allowed':'pointer',fontFamily:'inherit',fontWeight:700,flexShrink:0,opacity:dlBackup?0.7:1,minWidth:200,textAlign:'center'}}>
@@ -12976,7 +12976,7 @@ export default function App(){
   const [starredTasks,setStarredTasks]=useState(()=>{try{const u=JSON.parse(localStorage.getItem("rds_user")||"{}");return new Set(JSON.parse(localStorage.getItem("rds_starred_"+(u.id||""))||"[]"));}catch{return new Set();}});
   function togglePin(taskId){setPinnedTasks(prev=>{const n=new Set(prev);n.has(taskId)?n.delete(taskId):n.add(taskId);try{localStorage.setItem("rds_pinned_"+(me?.id||""),JSON.stringify([...n]));}catch{}return n;});}
   function toggleStar(taskId){setStarredTasks(prev=>{const n=new Set(prev);n.has(taskId)?n.delete(taskId):n.add(taskId);try{localStorage.setItem("rds_starred_"+(me?.id||""),JSON.stringify([...n]));}catch{}return n;});}
-  // Task ordering per project — stored in localStorage
+  // Task ordering per project - stored in localStorage
   const [taskOrderMap,setTaskOrderMap]=useState(()=>{try{return JSON.parse(localStorage.getItem("rds_task_order")||"{}");}catch{return {};}});
   const dragOverId=useRef(null);
   function applyTaskOrder(list,pid){
@@ -13288,7 +13288,7 @@ export default function App(){
     else if(bulkModal==="priority")await supabase.from("tasks").update({priority:val}).in("id",ids);
     setBM(null);clearSel();setBSO(false);await loadAll();showToast("Updated successfully ✓");
   }
-  // Fetch all tasks paginated — Supabase PostgREST caps at 1000 rows per call
+  // Fetch all tasks paginated - Supabase PostgREST caps at 1000 rows per call
   async function fetchAllTasks(){
     let all=[];
     let from=0;
@@ -13308,7 +13308,7 @@ export default function App(){
       const role=me?.role;
       const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Team Leader"&&role!=="Client"&&role!=="HR & Finance";
       if(isRegularUser){
-        // Fetch all then filter in JS — Supabase .or() silently fails for names with spaces
+        // Fetch all then filter in JS - Supabase .or() silently fails for names with spaces
         const mn=(me.name||"").toLowerCase().trim();
         const mu=(me.username||"").toLowerCase().trim();
         function taskBelongsToMe(tk){
@@ -13353,7 +13353,7 @@ export default function App(){
         const j=await r.json();
         setAllRevisions(Array.isArray(j.data)?j.data:[]);
       }else{
-        // Cloud: bulk select — anon key has SELECT grant, RLS disabled on task_revisions
+        // Cloud: bulk select - anon key has SELECT grant, RLS disabled on task_revisions
         const{data,error}=await supabase.from("task_revisions").select("*").order("revision_number",{ascending:true});
         console.log("loadAllRevisions cloud bulk:",data?.length,"rows, error:",error?.message);
         setAllRevisions(data||[]);
@@ -13394,14 +13394,14 @@ export default function App(){
   // ── Live updates ──────────────────────────────────────────────
   // Online: Supabase Realtime WebSocket (instant)
   // LAN:    SSE from server.js via createLocalClient channel (instant)
-  // Both paths use the same code — localClient mirrors the Supabase channel API
-  // Realtime postgres_changes removed — was exceeding Supabase quota.
+  // Both paths use the same code - localClient mirrors the Supabase channel API
+  // Realtime postgres_changes removed - was exceeding Supabase quota.
   // Data loads fresh on login via loadAll(). Use manual refresh if needed.
   useEffect(()=>{
     if(!me)return;
   },[me]);
   // ── Attendance functions ──────────────────────────────────────────────────
-  // ── Attendance helpers — route through supabase client so offline LAN site ──
+  // ── Attendance helpers - route through supabase client so offline LAN site ──
   // uses the local PostgreSQL proxy (/api/rpc) instead of calling Supabase
   // cloud directly (client browsers on the LAN have no internet access).
   async function loadAttendance(){
@@ -13515,7 +13515,7 @@ export default function App(){
 
 
 
-  // Keep URL in sync whenever state changes (replaceState — navTo handles pushState)
+  // Keep URL in sync whenever state changes (replaceState - navTo handles pushState)
   useEffect(()=>{
     if(!me||!initialParsed.current)return;
     const url=stateToUrl(view,activePid,activeClient,projects);
@@ -13541,7 +13541,7 @@ export default function App(){
     :isClient?projects.filter(p=>(p.client||"").toLowerCase()===(me?.client_name||"").toLowerCase())
     :projects.filter(p=>tasks.some(t=>t.project_id===p.id&&(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))))
   ,[projects,tasks,isAdmin,isManager,isTeamLeader,isClient,isFinance,tlClients,me]);
-  // O(1) lookup maps — rebuilt only when source arrays change
+  // O(1) lookup maps - rebuilt only when source arrays change
   const projectById=useMemo(()=>new Map(projects.map(p=>[p.id,p])),[projects]);
   const accessibleProjIds=useMemo(()=>new Set(accessibleProjects.map(p=>p.id)),[accessibleProjects]);
   // Parse initial URL after data loads (for direct-link support)
@@ -13613,8 +13613,8 @@ export default function App(){
     const el=timerElapsed(cur);const mins=Math.max(1,Math.floor(el/60));
     if(doSave&&el>=60){
       await fetch(SUPA_URL+"/rest/v1/time_logs",{method:"POST",headers:{apikey:SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({task_id:cur.taskId,project_id:cur.projectId,user_id:cur.userId,user_name:cur.userName,duration_minutes:mins,logged_date:localDateStr(),notes:"⏱ Timer auto-logged"})});
-      sToast({msg:`⏱ Logged ${fmtTimer(el)} — "${cur.taskTitle}"`,color:"#059669"});
-    }else if(doSave){sToast({msg:"Timer stopped (< 1 min — not logged)",color:"#f59e0b"});}
+      sToast({msg:`⏱ Logged ${fmtTimer(el)} - "${cur.taskTitle}"`,color:"#059669"});
+    }else if(doSave){sToast({msg:"Timer stopped (< 1 min - not logged)",color:"#f59e0b"});}
     setActTmr(null);saveTmrLS(null);
   }
   const isRegularUser=!isAdmin&&!isManager&&!isTeamLeader&&!isClient;
@@ -13644,7 +13644,7 @@ export default function App(){
     if(dashRevision==="Has Revisions"&&!allRevisions.some(rv=>String(rv.task_id)===String(t.id)))return false;
     return true;
   }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions]);
-  // Effective status per task — uses latest revision's status if task has revisions
+  // Effective status per task - uses latest revision's status if task has revisions
   const dashEffStatus=useMemo(()=>{
     const m=new Map();
     const list=hasDashFilter?filteredDashTasks:dashTasks;
@@ -13744,7 +13744,7 @@ export default function App(){
       if(f.custName&&f.custName.trim()){
         const exists=projects.find(p=>p.name.toLowerCase()===f.custName.trim().toLowerCase());
         if(!exists){
-          // Only assign the task's assignee/detailer/checker — NOT all users
+          // Only assign the task's assignee/detailer/checker - NOT all users
           const autoAssigned=[...new Set([f.assignee,f.detailer,f.checker].filter(name=>{if(!name)return false;const u=users.find(u=>u.name.toLowerCase()===name.toLowerCase()||u.username.toLowerCase()===name.toLowerCase());return u?u.username:false;}).map(name=>{const u=users.find(u=>u.name.toLowerCase()===name.toLowerCase()||u.username.toLowerCase()===name.toLowerCase());return u?.username;}).filter(Boolean))];
           const {data:np}=await supabase.from("projects").insert({name:f.custName.trim(),client:f.client||"",color:PROJECT_COLORS[projects.length%PROJECT_COLORS.length],description:"Auto-created.",assigned_users:autoAssigned}).select().single();if(np){sp(ps=>[...ps,np]);pid=np.id;}
         }
@@ -13817,7 +13817,7 @@ export default function App(){
   async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function syncRevDate(taskId,revDate,revNum){const{data,error}=await supabase.from("tasks").update({due_date:revDate}).eq("id",taskId).select().single();if(error){showToast("Update failed: "+error.message,false);return;}if(data)st(ts=>ts.map(t=>t.id===taskId?{...t,due_date:revDate}:t));showToast(`Due date synced to Rev ${revNum} date ✓`);}
-  // deleteProject — allowed for Admin, Manager, Team Leader (canEdit covers all three)
+  // deleteProject - allowed for Admin, Manager, Team Leader (canEdit covers all three)
   async function deleteProject(id){
     if(!canEdit)return;
     if(!window.confirm("Delete this project and all its tasks? This cannot be undone."))return;
@@ -13980,7 +13980,7 @@ export default function App(){
               const hr=new Date().getHours();
               const greet=hr<12?"Good Morning":hr<17?"Good Afternoon":"Good Evening";
               const dateStr=new Date().toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="clientfeedback"?"🏢 Client Feedback":view==="backup"?"Backup, Disaster Recovery & Business Continuity":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} — Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
+              const pageLabel=view==="dashboard"?`Welcome back to the RDS TechServ ${portalName} Portal.`:view==="kanban"?"Kanban Board":view==="analytics"?"Analytics & Reporting":view==="clientfeedback"?"🏢 Client Feedback":view==="backup"?"Backup, Disaster Recovery & Business Continuity":view==="submissions"?"📬 Submission List":view==="clientprojects"?`${activeClient} - Projects`:activePid?`Project: ${projects.find(p=>p.id===activePid)?.name||""}`: "Task List";
               return(<>
                 <h1 className="rds-greeting" style={{margin:0,fontSize:24,fontWeight:800,color:C.t1}}>{greet}, {displayName} 👋</h1>
                 <p className="rds-page-sub" style={{margin:"3px 0 0",color:C.t2,fontSize:13,fontWeight:500}}>{pageLabel}</p>
@@ -14036,13 +14036,13 @@ export default function App(){
                       <button onClick={closeExport} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 8px",color:C.t2,fontSize:13,cursor:"pointer",lineHeight:1.4}} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>✕</button>
                     </div>
 
-                    {/* 1 — All Tasks */}
+                    {/* 1 - All Tasks */}
                     <SBtn2 label="All Tasks" count={filtered.length} icon="📋" color={C.t1} indent={false}
                       onClick={()=>{exportExcel(accessibleProjects,filtered,`${me.name} - All Tasks`);closeExport();}}/>
 
                     <div style={{height:1,background:C.border,margin:"4px 0"}}/>
 
-                    {/* 2 — By Tasks */}
+                    {/* 2 - By Tasks */}
                     <SHdr id="tasks" icon="📄" label="By Tasks"/>
                     {exportSec==="tasks"&&(
                       <div style={{background:C.surface+"33",paddingBottom:4}}>
@@ -14061,7 +14061,7 @@ export default function App(){
 
                     <div style={{height:1,background:C.border,margin:"4px 0"}}/>
 
-                    {/* 3 — By Projects */}
+                    {/* 3 - By Projects */}
                     <SHdr id="projects" icon="📁" label="By Projects"/>
                     {exportSec==="projects"&&(
                       <div style={{background:C.surface+"33",paddingBottom:4}}>
@@ -14074,7 +14074,7 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 4 — By Users (admin/manager only) */}
+                    {/* 4 - By Users (admin/manager only) */}
                     {canEdit&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {canEdit&&<SHdr id="users" icon="👤" label="By Employees"/>}
                     {canEdit&&exportSec==="users"&&(
@@ -14093,7 +14093,7 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 5 — By Clients (admin/manager only) */}
+                    {/* 5 - By Clients (admin/manager only) */}
                     {canEdit&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {canEdit&&<SHdr id="clients" icon="🏢" label="By Clients"/>}
                     {canEdit&&exportSec==="clients"&&(
@@ -14107,7 +14107,7 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 6 — Submission List */}
+                    {/* 6 - Submission List */}
                     <div style={{height:1,background:C.border,margin:"4px 0"}}/>
                     <SHdr id="submissions" icon="📬" label="Submission List"/>
                     {exportSec==="submissions"&&(
@@ -14126,13 +14126,13 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 7 — Analytics Report (admin/manager/TL) */}
+                    {/* 7 - Analytics Report (admin/manager/TL) */}
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {(isAdmin||isManager||isTeamLeader)&&(
                       <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
                         onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
                     )}
-                    {/* 7 — Working Hours (all non-client roles) */}
+                    {/* 7 - Working Hours (all non-client roles) */}
                     {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {!isClient&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
                     {!isClient&&exportSec==="hours"&&(()=>{
@@ -14161,7 +14161,7 @@ export default function App(){
                           const xlsHead='<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="def"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1e293b" ss:Pattern="Solid"/></Style><Style ss:ID="hdr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#334155" ss:Pattern="Solid"/></Style><Style ss:ID="even"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="odd"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style><Style ss:ID="ctr"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="ctr_e"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/><Interior ss:Color="#f8fafc" ss:Pattern="Solid"/></Style><Style ss:ID="done"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#059669" ss:Pattern="Solid"/></Style><Style ss:ID="active"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#d97706" ss:Pattern="Solid"/></Style></Styles>';
                           let xml=xlsHead+'<Worksheet ss:Name="Working Hours"><Table ss:DefaultRowHeight="18">';
                           xml+='<Column ss:Width="90"/><Column ss:Width="140"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="85"/>';
-                          const empSuffix=isOwnOnly?" — "+(me.name||""):"";xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours — '+label+empSuffix+'</Data></Cell></Row>';
+                          const empSuffix=isOwnOnly?" - "+(me.name||""):"";xml+='<Row ss:Height="30"><Cell ss:MergeAcross="6" ss:StyleID="title"><Data ss:Type="String">Working Hours - '+label+empSuffix+'</Data></Cell></Row>';
                           xml+='<Row ss:Height="8"></Row>';
                           xml+='<Row ss:Height="20"><Cell ss:StyleID="hdr"><Data ss:Type="String">Date</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Employee</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock In</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Clock Out</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Work Hours</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Break (min)</Data></Cell><Cell ss:StyleID="hdr"><Data ss:Type="String">Status</Data></Cell></Row>';
                           rows.forEach((r,i)=>{
@@ -14221,7 +14221,7 @@ export default function App(){
                       );
                     })()}
 
-                    {/* 8 — Submission List */}
+                    {/* 8 - Submission List */}
                     <div style={{height:1,background:C.border,margin:"4px 0"}}/>
                     <SBtn2 label="Submission List" count={null} icon="📬" color={"#0891b2"} indent={false}
                       onClick={()=>{exportSubmissionList(accessibleProjects,tasks,today2);closeExport();}}/>
@@ -14258,7 +14258,7 @@ export default function App(){
               Press{" "}
               <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:C.t1,fontWeight:700}}>ctrl + k</kbd>
               {" "}<span style={{color:C.t2}}>(or{" "}<kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:C.t1,fontWeight:700}}>cmd k</kbd>{" "}on Mac)</span>
-              {" "}anywhere in the website — search projects, tasks, clients, people and files
+              {" "}anywhere in the website - search projects, tasks, clients, people and files
             </span>
           </div>
         )}
@@ -14403,7 +14403,7 @@ export default function App(){
               // ── CASE 2: Non-admin, no client/project selected → inline project cards ──
               if(!isAdminOrMgr&&!qnProject&&!qnClient){if(isTeamLeader)return null;return(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:isMobile?"12px":"14px 20px",marginBottom:16}}>
-                  <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12}}>⚡ Quick Nav — Select a Project</div>
+                  <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12}}>⚡ Quick Nav - Select a Project</div>
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
                     {qnClientProjects.map(p=>{
                       const pt=tasks.filter(t=>t.project_id===p.id);
@@ -14427,7 +14427,7 @@ export default function App(){
                   </div>
                 </div>
               );}
-              // ── CASE 3: Popup modal — project list (left) + tasks (right) ──
+              // ── CASE 3: Popup modal - project list (left) + tasks (right) ──
               // Filter projects by search term (name or any matching task)
               const splitProjects=qnClientProjects.filter(p=>{
                 if(!qnSearch)return true;
@@ -14640,13 +14640,13 @@ export default function App(){
                     <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>👤 Tasks by Client</div>
                     <MiniBarChart data={cData} onBarClick={d=>{
                       const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===d.label);
-                      ssm({title:`${d.label} — Tasks`,tasks:activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id))});
+                      ssm({title:`${d.label} - Tasks`,tasks:activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id))});
                     }}/>
                   </div>
                 </div>
               );
             })()}
-            {/* ── Birthday / Holiday / Anniversary / EOM — shown below charts for Admin/Manager/TL ── */}
+            {/* ── Birthday / Holiday / Anniversary / EOM - shown below charts for Admin/Manager/TL ── */}
             <HolidayBanner today={today}/>
             <BirthdayBanner me={me} users={users} today={today}/>
             <WorkAnniversaryBanner me={me} users={users} today={today}/>
@@ -15332,10 +15332,10 @@ export default function App(){
           items=accessibleProjects.map(p=>({label:p.name,sub:`${p.client||"No client"} · ${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
         } else if(DSM==="completed"){
           title="✅ Completed Tasks";color=C.green;isTaskList=true;
-          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
+          items=tasks.filter(t=>isDone(t.status)).map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"-"}${t.assignee?" · "+t.assignee:""}`,dot:C.green,raw:t};});
         } else if(DSM==="inprogress"){
           title="🔄 In Progress Tasks";color=C.accent;isTaskList=true;
-          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"—"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
+          items=tasks.filter(t=>t.status==="In Progress").map(t=>{const pj=projectById.get(t.project_id);return{label:t.title,sub:`${pj?pj.name:"-"}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:C.accent,raw:t};});
         } else if(DSM==="team"){
           title="👤 Team Members";color=C.blue;canDrill=true;drillType="employee";
           const teamMembers=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -15344,19 +15344,19 @@ export default function App(){
       } else if(lastDrill.type==="client"){
         // Client → Projects
         const cl=lastDrill.item;
-        title=`📁 ${cl.name} — Projects`;color=C.blue;canDrill=true;drillType="project";
+        title=`📁 ${cl.name} - Projects`;color=C.blue;canDrill=true;drillType="project";
         items=accessibleProjects.filter(p=>(p.client||"")===(cl.name||"")).map(p=>({label:p.name,sub:`${prog(p.id)}% done · ${tasks.filter(t=>t.project_id===p.id).length} tasks`,dot:p.color||C.blue,raw:p}));
       } else if(lastDrill.type==="project"){
         // Project → Tasks
         const proj=lastDrill.item;
-        title=`✅ ${proj.name} — Tasks`;color=proj.color||C.blue;isTaskList=true;
+        title=`✅ ${proj.name} - Tasks`;color=proj.color||C.blue;isTaskList=true;
         items=tasks.filter(t=>t.project_id===proj.id).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.assignee?" · "+t.assignee:""}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
       } else if(lastDrill.type==="employee"){
         // Employee → Projects they work in
         const emp=lastDrill.item;
         const empName=emp.name||emp.username;
         const empProjIds=new Set(tasks.filter(t=>t.assignee===empName||t.detailer===empName||t.checker===empName).map(t=>t.project_id));
-        title=`📁 ${empName} — Projects`;color=C.blue;canDrill=true;drillType="emp-project";
+        title=`📁 ${empName} - Projects`;color=C.blue;canDrill=true;drillType="emp-project";
         items=accessibleProjects.filter(p=>empProjIds.has(p.id)).map(p=>{
           const empProjTasks=tasks.filter(t=>t.project_id===p.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName));
           return{label:p.name,sub:`${p.client||"No client"} · ${empProjTasks.filter(t=>isDone(t.status)).length} done · ${empProjTasks.filter(t=>t.status==="In Progress").length} in progress`,dot:p.color||C.blue,raw:{proj:p,empName}};
@@ -15364,7 +15364,7 @@ export default function App(){
       } else if(lastDrill.type==="emp-project"){
         // Employee+Project → Tasks
         const {proj,empName}=lastDrill.item;
-        title=`✅ ${proj.name} — ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
+        title=`✅ ${proj.name} - ${empName}'s Tasks`;color=proj.color||C.blue;isTaskList=true;
         items=tasks.filter(t=>t.project_id===proj.id&&(t.assignee===empName||t.detailer===empName||t.checker===empName)).sort((a,b)=>a.title.localeCompare(b.title)).map(t=>({label:t.title,sub:`${t.status}${t.due_date?" · Due "+fmtD(t.due_date):""}`,dot:getStatusColor(t.status),raw:t}));
       }
 
