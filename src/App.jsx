@@ -377,10 +377,11 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     const proj=projects.find(p=>p.id===pid);
     sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
   }
+  // Active user helper
+  const isActiveU=u=>u.is_active!==false&&u.is_active!==null&&u.is_active!==0&&u.is_active!=="false";
   // Team Leaders only for Assignee
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&isActiveU(u)).map(u=>u.name).filter(Boolean).sort();
   const assigneeOptions=teamLeaders.length?teamLeaders:members;
-  const isActiveU=u=>u.is_active!==false&&u.is_active!==null&&u.is_active!==0&&u.is_active!=="false";
   const detailerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Rebar"||u.role==="Tekla"||u.role==="Team Leader")).map(u=>u.name).filter(Boolean).sort();
   const checkerOptions=users.filter(u=>isActiveU(u)&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla")).map(u=>u.name).filter(Boolean).sort();
   // Validation extras
