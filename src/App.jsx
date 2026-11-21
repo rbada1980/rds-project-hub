@@ -3937,7 +3937,7 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
   });
   const inp={width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",cursor:"pointer"};
   return(
-    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
+    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"92vw",maxWidth:1100,maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -4821,7 +4821,7 @@ function AnalyticsProjModal({title,projList,tasks,today,onClose}){
   });
   const inp={background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",cursor:"pointer"};
   return(
-    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
+    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"94vw",maxWidth:1100,maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <div><h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3><p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{shown.length} of {projList.length} projects</p></div>
@@ -4886,7 +4886,7 @@ function AnalyticsProjModal({title,projList,tasks,today,onClose}){
 }
 function AnalyticsClientModal({title,clientList,onClose}){
   return(
-    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
+    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"80vw",maxWidth:820,maxHeight:"85vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div><h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3><p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{clientList.length} clients with active projects</p></div>
@@ -4928,7 +4928,7 @@ function AnalyticsClientModal({title,clientList,onClose}){
 }
 function AnalyticsMemberModal({title,memberList,tasks,onClose}){
   return(
-    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
+    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:"75vw",maxWidth:780,maxHeight:"85vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div><h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3><p style={{margin:"3px 0 0",color:C.t3,fontSize:12}}>{memberList.length} team members</p></div>
@@ -9818,7 +9818,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
         {/* ── Holiday Edit/Add Modal ── */}
         {editHol&&(
-          <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditHol(null);}}>
+          <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} >
             <div style={{background:C.card,borderRadius:16,padding:28,width:380,maxWidth:"95vw",boxShadow:"0 20px 60px #0004"}}>
               <div style={{fontWeight:800,fontSize:15,color:C.t1,marginBottom:20}}>{editHol.id?"✏️ Edit Holiday":"➕ Add Holiday"}</div>
               {[
@@ -10029,7 +10029,7 @@ function HRFinanceDashboard({me,users,tasks,projects,clients}){
 
           {/* ── Employee Edit Modal ── */}
           {editEmp&&(
-            <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditEmp(null);}}>
+            <div style={{position:"fixed",inset:0,background:"#0008",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} >
               <div style={{background:C.card,borderRadius:16,padding:28,width:460,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px #0004"}}>
                 <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:20}}>✏️ Edit HR Info - {editEmp.name}</div>
                 {[
@@ -11003,7 +11003,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
   // ── Custom Edit Modal ────────────────────────────────────────────────
   const typeLabel={client:"Client",project:"Project",task:"Task",default:"Default"};
   const EditModal=editEntity&&(
-    <div style={{position:"fixed",inset:0,background:"#00000070",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditEntity(null);}}>
+    <div style={{position:"fixed",inset:0,background:"#00000070",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} >
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:28,width:"min(460px,94vw)",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{fontWeight:800,fontSize:16,color:C.t1,marginBottom:4}}>
           ✏️ Edit {typeLabel[editEntity.type]} Settings
@@ -11201,7 +11201,7 @@ function BillingSummaryPage({tasks,projects,clients,me,isClient=false,isFinance=
       {EditInvModal}
       {/* Invoice Detail Modal */}
       {invoiceDetail&&(
-        <div style={{position:"fixed",inset:0,background:"#00000080",zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setInvoiceDetail(null);}}>
+        <div style={{position:"fixed",inset:0,background:"#00000080",zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center"}} >
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:28,width:"min(560px,96vw)",boxShadow:"0 24px 64px #00000080",maxHeight:"90vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
