@@ -1,40 +1,40 @@
 {
-  "timestamp": "2026-11-20T10:46:53.548Z",
-  "ist_time": "2026-11-20 16:16:53 IST",
-  "duration_sec": 8.3,
-  "total_synced": 3553,
-  "total_pushed": 1190,
-  "total_pulled": 2363,
+  "timestamp": "2026-11-21T07:04:38.707Z",
+  "ist_time": "2026-11-21 12:34:38 IST",
+  "duration_sec": 8.9,
+  "total_synced": 3384,
+  "total_pushed": 1013,
+  "total_pulled": 2371,
   "total_failed": 0,
   "status": "success",
   "tables": [
     {
       "table": "users",
-      "synced": 39,
+      "synced": 40,
       "failed": 0,
-      "total": 39,
-      "pulled": 39
+      "total": 40,
+      "pulled": 40
     },
     {
       "table": "clients",
-      "synced": 5,
+      "synced": 6,
       "failed": 0,
-      "total": 5,
-      "pulled": 5
+      "total": 6,
+      "pulled": 6
     },
     {
       "table": "projects",
-      "synced": 183,
+      "synced": 0,
       "failed": 0,
-      "total": 183,
-      "pulled": 183
+      "total": 185,
+      "pulled": 185
     },
     {
       "table": "tasks",
-      "synced": 858,
+      "synced": 861,
       "failed": 0,
-      "total": 1058,
-      "pulled": 1058
+      "total": 1061,
+      "pulled": 1061
     },
     {
       "table": "task_files",
@@ -116,10 +116,10 @@
     },
     {
       "table": "settings",
-      "synced": 23,
+      "synced": 24,
       "failed": 0,
-      "total": 23,
-      "pulled": 23
+      "total": 24,
+      "pulled": 24
     },
     {
       "table": "attendance",
