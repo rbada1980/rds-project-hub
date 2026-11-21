@@ -13824,8 +13824,53 @@ export default function App(){
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {error}=await supabase.from("users").update(updates).eq("id",id);if(error)throw new Error(error.message);const merged={...(oldUser||{}),id,...updates};await logAudit(me,"user",id,merged.name,null,"update",oldUser,merged);const {data:fresh}=await supabase.from("users").select("*").order("name").limit(2000);if(fresh&&fresh.length>0)su(fresh);else su(us=>us.map(u=>u.id===id?merged:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){const delU=users.find(u=>u.id===id)||null;await logAudit(me,"user",id,delU?.name||id,null,"delete",delU,null);await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
-  async function addClient(f){const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).select().single();if(data)scl(cl=>[...cl,data]);showToast("Client added ✓");}
-  async function editClient(id,f){const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).eq("id",id).select().single();if(data)scl(cl=>cl.map(c=>c.id===id?data:c));showToast("Client updated ✓");}
+  async function addClient(f){
+    const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).select().single();
+    if(data)scl(cl=>[...cl,data]);
+    // Append this client to the team leader's client_name (comma-separated)
+    if(f.team_leader){
+      const tlUser=users.find(u=>u.name===f.team_leader&&u.role==="Team Leader");
+      if(tlUser){
+        const existing=(tlUser.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
+        if(!existing.map(x=>x.toLowerCase()).includes(f.name.toLowerCase())){
+          const updated=[...existing,f.name].join(",");
+          await supabase.from("users").update({client_name:updated}).eq("id",tlUser.id);
+          su(us=>us.map(u=>u.id===tlUser.id?{...u,client_name:updated}:u));
+        }
+      }
+    }
+    showToast("Client added ✓");
+  }
+  async function editClient(id,f){
+    const oldClient=clients.find(c=>c.id===id);
+    const {data}=await supabase.from("clients").update({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).eq("id",id).select().single();
+    if(data)scl(cl=>cl.map(c=>c.id===id?data:c));
+    // If team leader changed, remove client from old TL and add to new TL
+    if(oldClient&&oldClient.team_leader!==f.team_leader){
+      // Remove from old TL
+      if(oldClient.team_leader){
+        const oldTL=users.find(u=>u.name===oldClient.team_leader&&u.role==="Team Leader");
+        if(oldTL){
+          const updated=(oldTL.client_name||"").split(",").map(x=>x.trim()).filter(x=>x.toLowerCase()!==oldClient.name.toLowerCase()).join(",");
+          await supabase.from("users").update({client_name:updated}).eq("id",oldTL.id);
+          su(us=>us.map(u=>u.id===oldTL.id?{...u,client_name:updated}:u));
+        }
+      }
+    }
+    // Append client to new TL's client_name
+    if(f.team_leader){
+      const tlUser=users.find(u=>u.name===f.team_leader&&u.role==="Team Leader");
+      if(tlUser){
+        const existing=(tlUser.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
+        if(!existing.map(x=>x.toLowerCase()).includes(f.name.toLowerCase())){
+          const updated=[...existing,f.name].join(",");
+          await supabase.from("users").update({client_name:updated}).eq("id",tlUser.id);
+          su(us=>us.map(u=>u.id===tlUser.id?{...u,client_name:updated}:u));
+        }
+      }
+    }
+    showToast("Client updated ✓");
+  }
   async function deleteClient(id){
     const cl=clients.find(c=>c.id===id);
     await supabase.from("clients").delete().eq("id",id);
