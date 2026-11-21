@@ -639,23 +639,38 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   const [saving,setSaving]=useState(false);
   const [cq,scq]=useState("");
   const [selClients,setSC]=useState(new Set());
+  const [newTLUser,setNewTLUser]=useState("");// employee selected to promote to Team Leader
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false);
+  const promotableEmployees=users.filter(u=>u.is_active!==false&&u.role!=="Admin"&&u.role!=="Manager"&&u.role!=="Team Leader"&&u.role!=="Client").sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const isAddingNewTL=f.team_leader==="__new__";
   function toUn(str){return(str||"").toLowerCase().trim().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");}
   function startEdit(c){
     sei(c.id);
     const pu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===c.name.toLowerCase());
     sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||"",team_leader:c.team_leader||"",portal_username:pu?.username||toUn(c.name),portal_password:""});
+    setNewTLUser("");
     st("add");
   }
-  function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");}
+  function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");setNewTLUser("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
     if(!f.portal_username.trim()){se("Portal username is required.");return;}
+    // Promoting an employee to Team Leader
+    let resolvedTL=f.team_leader;
+    if(isAddingNewTL){
+      if(!newTLUser){se("Please select an employee to promote as Team Leader.");return;}
+      const emp=users.find(u=>u.id===newTLUser);
+      if(!emp){se("Selected employee not found.");return;}
+      // Promote role to Team Leader in DB
+      const {error:roleErr}=await supabase.from("users").update({role:"Team Leader"}).eq("id",emp.id);
+      if(roleErr){se("Failed to promote employee: "+roleErr.message);return;}
+      resolvedTL=emp.name;
+    }
     setSaving(true);
     try{
-      if(editId){await onEdit(editId,{name:f.name,email:f.email,phone:f.phone,address:f.address,team_leader:f.team_leader});}
-      else{await onAdd({name:f.name,email:f.email,phone:f.phone,address:f.address,team_leader:f.team_leader});}
+      if(editId){await onEdit(editId,{name:f.name,email:f.email,phone:f.phone,address:f.address,team_leader:resolvedTL});}
+      else{await onAdd({name:f.name,email:f.email,phone:f.phone,address:f.address,team_leader:resolvedTL});}
       await onSavePortal(f.name,f.portal_username,f.portal_password||null);
       reset();st("list");
     }catch(e){se("Error: "+e.message);}
@@ -730,11 +745,23 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}>
               <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.t3,fontSize:11}}>(optional)</span></label>
-              <select value={f.team_leader} onChange={e=>sf(p=>({...p,team_leader:e.target.value}))}
+              <select value={f.team_leader} onChange={e=>{sf(p=>({...p,team_leader:e.target.value}));setNewTLUser("");}}
                 style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:f.team_leader?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",boxSizing:"border-box"}}>
                 <option value="">— Select Team Leader —</option>
                 {teamLeaders.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
+                <option value="__new__">➕ Add New Team Leader from Employees</option>
               </select>
+              {isAddingNewTL&&(
+                <div style={{marginTop:8,padding:"10px 12px",background:C.accent+"11",border:`1px solid ${C.accent}44`,borderRadius:8}}>
+                  <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:6}}>Select employee to promote to Team Leader:</div>
+                  <select value={newTLUser} onChange={e=>setNewTLUser(e.target.value)}
+                    style={{width:"100%",background:C.surface,border:`1px solid ${newTLUser?C.accent:C.border}`,borderRadius:7,padding:"8px 10px",color:newTLUser?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                    <option value="">— Select Employee —</option>
+                    {promotableEmployees.map(u=><option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+                  </select>
+                  {newTLUser&&<div style={{fontSize:11,color:C.accent,marginTop:5}}>⚠ This employee's role will be changed to Team Leader on save.</div>}
+                </div>
+              )}
             </div>
             <div style={{flex:1}}><FInput label="Phone" value={f.phone} onChange={s("phone")} placeholder="e.g. +1 234 567 8900"/></div>
           </div>
