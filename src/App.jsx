@@ -376,6 +376,14 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     const proj=projects.find(p=>p.id===pid);
     sf(p=>({...p,project_id:pid,client:proj?.client||p.client}));
   }
+  function onClientChange(clientName){
+    sf(p=>{
+      const proj=projects.find(px=>px.id===p.project_id);
+      const resetProj=proj&&proj.client!==clientName;
+      return{...p,client:clientName,project_id:resetProj?"":p.project_id};
+    });
+  }
+  const filteredProjects=f.client?projects.filter(p=>p.client===f.client):projects;
   // Active = not explicitly deactivated (null/undefined = active by default)
   const isActiveU=u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false";
   // Team Leaders only for Assignee
@@ -405,7 +413,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
               <select value={f.project_id} onChange={e=>onProjectChange(e.target.value)}
                 style={{width:"100%",background:C.surface,border:`1px solid ${f.project_id?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.project_id?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                 <option value="">- Select Project -</option>
-                {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                {filteredProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
           )}
@@ -420,7 +428,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         <div style={col}><FInput label="Task Title *" value={f.title} onChange={s("title")} placeholder="Enter task title"/></div>
         <div style={col}>
                 <RLabel text="Client *"/>
-                <select value={f.client} onChange={e=>s("client")(e.target.value)}
+                <select value={f.client} onChange={e=>onClientChange(e.target.value)}
                   style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="">- Select Client -</option>
                   {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
