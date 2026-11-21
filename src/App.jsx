@@ -13913,7 +13913,7 @@ export default function App(){
                 const today2=localDateStr();
                 const closeExport=()=>{setExportOpen(false);setExportSec(null);};
                 const allProjTasks=tasks.filter(t=>accessibleProjects.some(p=>p.id===t.project_id));
-                const overdueTsk=allProjTasks.filter(t=>t.due_date&&t.due_date<today2&&!isDone(t.status));
+                const overdueTsk=allProjTasks.filter(t=>t.due_date&&t.due_date<today2&&!isDone(t.status)&&t.status!=="On Hold");
                 const UNKNOWN_NAMES=["tbd","tekla","siva kumar","unknown","nnj","rds user","rds","n/a","na","pdf check only","asap","high priority"];
                 const NAME_ALIAS={"danush":"Dhanush","lokesh":"Lokesh Reddy","allu sai":"Sai","allu sai/nanaji":"Sai","eswar/nanaji":"Eswar","lokesh reddy/nanaji":"Lokesh Reddy","balaram/jagadeesh":"Balaram","sridevi / vaishnavi":"Sridevi","siav kumar":"Siva Kumar","shiva":"Siva Kumar","shiva kumar":"Siva Kumar"};
                 function canonicalName(raw){
