@@ -7575,7 +7575,7 @@ function AttendancePage({users}){
     const blob=new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="attendance_report.csv";a.click();
   }
-  const nonClients=users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.is_active!==false);
+  const nonClients=users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.role!=="HR & Finance"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false");
   return(
     <div style={{marginTop:32,marginBottom:32}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
@@ -14460,7 +14460,8 @@ export default function App(){
                 return true;
               }):[];
               // Unique employees & statuses across all projects for this client (normalize "To Do"→"Review")
-              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(Boolean))].sort();
+              const qnActiveEmpNames=new Set(users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.role!=="HR & Finance"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.name));
+              const qnAllEmployees=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.assignee)).filter(n=>n&&qnActiveEmpNames.has(n)))].sort();
               const qnAllStatuses=[...new Set(qnClientProjects.flatMap(p=>tasks.filter(t=>t.project_id===p.id).map(t=>t.status)).filter(Boolean).map(qnNormStatus))].sort();
               const mobShowTasks=isMobile&&!!qnProject;
               const closePopup=()=>{setQnClient(null);setQnProject(null);};
@@ -14693,9 +14694,10 @@ export default function App(){
                 <select value={dashUser} onChange={e=>sdsu(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashUser!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashUser!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Employees</option>
                   {(()=>{
-                    if(dashClient==="All"&&dashProject==="All")return users.filter(u=>u.role!=="Client").map(u=><option key={u.username} value={u.name}>{u.name}</option>);
+                    const activeEmpNames=new Set(users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.role!=="HR & Finance"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.name));
+                    if(dashClient==="All"&&dashProject==="All")return[...activeEmpNames].sort().map(n=><option key={n} value={n}>{n}</option>);
                     const scopeTasks=dashProject!=="All"?dashTasks.filter(t=>t.project_id===dashProject):(()=>{const cPIds=new Set(accessibleProjects.filter(p=>(p.client||"Unassigned")===dashClient).map(p=>p.id));return dashTasks.filter(t=>cPIds.has(t.project_id));})();
-                    return[...new Set(scopeTasks.map(t=>t.assignee).filter(Boolean))].sort().map(n=><option key={n} value={n}>{n}</option>);
+                    return[...new Set(scopeTasks.map(t=>t.assignee).filter(n=>n&&activeEmpNames.has(n)))].sort().map(n=><option key={n} value={n}>{n}</option>);
                   })()}
                 </select>
                 {/* 5. All Statuses */}
@@ -15014,7 +15016,8 @@ export default function App(){
         {view==="projects"&&(isAdmin||isManager||isTeamLeader)&&(()=>{
           // Build filter options
           const projClientList=[...new Set(accessibleProjects.map(p=>p.client||"").filter(Boolean))].sort();
-          const projEmpList=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();
+          const activeEmpSet=new Set(users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.role!=="HR & Finance"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.name));
+          const projEmpList=[...new Set(tasks.map(t=>t.assignee).filter(n=>n&&activeEmpSet.has(n)))].sort();
           const hasFilter=projSearch||filterClient!=="All"||projFStatus!=="All"||projFEmp!=="All";
           const clearFilters=()=>{setProjSearch("");sfc("All");setProjFStatus("All");setProjFEmp("All");};
           const filteredProjs=accessibleProjects.filter(p=>{
