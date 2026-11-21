@@ -400,6 +400,16 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   const col={flex:1,minWidth:0},row={display:"flex",gap:16,flexWrap:"wrap"};
   return(
     <div>
+      {/* Client first - full width */}
+      <div style={{marginBottom:14}}>
+        <RLabel text="Client *"/>
+        <select value={f.client} onChange={e=>onClientChange(e.target.value)}
+          style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+          <option value="">- Select Client -</option>
+          {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+        </select>
+      </div>
+      {/* Project below, filtered by client */}
       <div style={{display:"flex",alignItems:"flex-end",gap:12,marginBottom:14}}>
         <div style={{flex:1}}>
           {custom?(
@@ -426,14 +436,6 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Task Title *" value={f.title} onChange={s("title")} placeholder="Enter task title"/></div>
-        <div style={col}>
-                <RLabel text="Client *"/>
-                <select value={f.client} onChange={e=>onClientChange(e.target.value)}
-                  style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                  <option value="">- Select Client -</option>
-                  {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
-              </div>
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}>
