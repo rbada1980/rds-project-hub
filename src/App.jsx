@@ -15303,7 +15303,17 @@ export default function App(){
               </div>
             )}
             {(canEdit||!editTask)?
-              <TaskForm key={taskFormKey} initial={editTask||(activePid?{project_id:activePid}:{})} projects={accessibleProjects} members={members} clients={clients} users={users} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
+              <TaskForm key={taskFormKey} initial={(()=>{
+                if(editTask)return editTask;
+                if(activePid)return{project_id:activePid};
+                if(isTeamLeader&&me.client_name){
+                  const tlClients=(me.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
+                  const autoClient=tlClients.length===1?tlClients[0]:"";
+                  const autoProject=autoClient?(accessibleProjects.find(p=>p.client===autoClient)||null):null;
+                  return{client:autoClient,project_id:autoProject?.id||""};
+                }
+                return{};
+              })()} projects={accessibleProjects} members={members} clients={clients} users={users} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
               <UserTaskEditForm key={taskFormKey} task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
             }
             {editTask&&<TaskTabPanel key={editTask.id} taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
