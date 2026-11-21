@@ -185,7 +185,7 @@ function MiniBarChart({data,onBarClick}){
 
 function Modal({title,onClose,children,wide=false}){
   return(
-    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
+    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
       <div className="rds-modal-inner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",minWidth:0,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3>
@@ -2396,7 +2396,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
         const acC=actP?.color||C.blue;
         const closeTLQn=()=>{setTLCM(null);setTLCP(null);setTLCS("");};
         return(
-          <div onClick={e=>{if(e.target===e.currentTarget)closeTLQn();}} style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
+          <div style={{position:"fixed",inset:0,zIndex:1500,background:"rgba(8,10,18,.82)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:isMobile?"8px":"20px"}}>
             <div style={{background:C.surface,borderRadius:isMobile?16:22,border:`1px solid ${C.border}`,boxShadow:"0 32px 80px rgba(0,0,0,.7)",width:"100%",maxWidth:isMobile?"100%":1160,height:isMobile?"95vh":"85vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 14px":"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
                 <div style={{flex:1,display:"flex",alignItems:"center",gap:10,minWidth:0}}>
@@ -3107,8 +3107,8 @@ function ClientReviewModal({task,project,onSave,onClose,saving}){
   const tdy=localDateStr();
   const isOv=task.due_date&&task.due_date<tdy&&!isDone(task.status);
   return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"#00000088",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:18,width:"100%",maxWidth:520,display:"flex",flexDirection:"column",boxShadow:"0 32px 80px #00000090",border:`1px solid ${C.teal}33`}}>
+    <div style={{position:"fixed",inset:0,background:"#00000088",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
+      <div style={{background:C.card,borderRadius:18,width:"100%",maxWidth:520,display:"flex",flexDirection:"column",boxShadow:"0 32px 80px #00000090",border:`1px solid ${C.teal}33`}}>
         {/* Header */}
         <div style={{padding:"18px 22px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:40,height:40,borderRadius:10,background:C.teal+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,border:`1px solid ${C.teal}33`}}>📋</div>
