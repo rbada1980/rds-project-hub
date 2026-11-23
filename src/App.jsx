@@ -6823,7 +6823,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const [saveError,setSaveError]=useState("");
   const [editId,setEditId]=useState(null);
   const staffNames=users.filter(u=>u.role!=="Client").map(u=>u.name||u.username).filter(Boolean).sort();
-  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",checker:""};
+  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",checker:"",hours:""};
   const [form,setForm]=useState(blankForm);
 
   useEffect(()=>{load();},[taskId]);
@@ -6848,7 +6848,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
 
   function openAdd(){setForm(blankForm);setEditId(null);setShowForm(true);}
   function openEdit(rev){
-    setForm({status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",checker:rev.checker||""});
+    setForm({status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",checker:rev.checker||"",hours:rev.hours!=null?String(rev.hours):""});
     setEditId(rev.id);setShowForm(true);
   }
 
@@ -6868,19 +6868,20 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   async function saveRevision(){
     if(!form.status){return;}
     setSaving(true);setSaveError("");
+    const cleanForm={...form,hours:form.hours!==""&&form.hours!=null?parseFloat(form.hours):null};
     try{
       if(editId){
         // UPDATE
         if(IS_LOCAL){
-          await fetch(LOCAL_BASE+"/api/task-revisions/"+editId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});
+          await fetch(LOCAL_BASE+"/api/task-revisions/"+editId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(cleanForm)});
         } else {
-          const{error}=await supabase.from("task_revisions").update({...form,updated_at:new Date().toISOString()}).eq("id",editId);
+          const{error}=await supabase.from("task_revisions").update({...cleanForm,updated_at:new Date().toISOString()}).eq("id",editId);
           if(error)throw new Error(error.message);
         }
       } else {
         // INSERT - calculate next revision_number first
         const revNum=revisions.length+1;
-        const payload={task_id:taskId,...form,revision_number:revNum,created_by:me?.name||me?.username||"Unknown"};
+        const payload={task_id:taskId,...cleanForm,revision_number:revNum,created_by:me?.name||me?.username||"Unknown"};
         if(IS_LOCAL){
           await fetch(LOCAL_BASE+"/api/task-revisions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
         } else {
@@ -6961,6 +6962,15 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
                 {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
               </select>
             </div>
+          </div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Est. Hours</div>
+              <input type="number" min="0" step="0.5" value={form.hours} onChange={e=>setForm(p=>({...p,hours:e.target.value}))}
+                placeholder="e.g. 8"
+                style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{flex:1,minWidth:140}}/>
           </div>
           <div style={{marginBottom:12}}>
             <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Notes (what changed?)</div>
