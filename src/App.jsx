@@ -5516,8 +5516,8 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
           else if(dl<=3){dlDisp=`${dl}d left`;dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
           else{dlDisp=`${dl}d left`;dlSty="color:#166534;background:#DCFCE7;text-align:center";}
         }
-        // Est.Hrs is a separate independent value — NOT derived from Det.Wt
-        const hrs=parseFloat(t.est_hrs)||0;
+        // Est.Hrs is a separate independent value — NOT derived from Det.Wt (blank if no est_hrs column yet)
+        const hrs=parseFloat(t.est_hrs||0)||0;
         s+=TR(
           `${TD(i+1,"text-align:center;width:32px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(dsSt),`text-align:center;background:${dsBg(dsSt)};color:${dsClr(dsSt)};font-weight:700`)}${TD(esc(t.checker||""))}${TD(esc(chkSt),`text-align:center;background:${dsBg(chkSt)};color:${dsClr(chkSt)};font-weight:700`)}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${wt>0?NUM(wt.toFixed(2)):TD("-","text-align:center;color:#aaa")}${hrs>0?NUM(hrs.toFixed(1)):TD("-","text-align:center;color:#aaa")}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(dlDisp,dlSty)}`,
           `background:${rowBg}`
@@ -5526,9 +5526,9 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
       const dEnd=rn;
       // Pre-compute fallback values (shown if Excel formulas don't execute)
       const totWt=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
-      const totHrs=rows.reduce((s,t)=>s+(parseFloat(t.est_hrs)||0),0);
+      const totHrs=rows.reduce((s,t)=>s+(parseFloat(t.est_hrs||0)||0),0);
       const doneWt=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
-      const doneHrs=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.est_hrs)||0),0);
+      const doneHrs=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.est_hrs||0)||0),0);
       const remWt=totWt-doneWt;
       const remHrs=totHrs-doneHrs;
       const SL="text-align:right;padding:5px 10px;font-weight:700;border:2px solid";
@@ -13519,7 +13519,7 @@ export default function App(){
     let from=0;
     const PAGE=1000;
     while(true){
-      const {data,error}=await supabase.from("tasks").select("id,project_id,title,client,status,priority,assignee,due_date,tags,created_at,updated_at,detailer,checker,scope,client_sub_date,client_approval,client_comment,det_weight,est_hrs,notes,detailer_status,checker_status").order("created_at").range(from,from+PAGE-1);
+      const {data,error}=await supabase.from("tasks").select("id,project_id,title,client,status,priority,assignee,due_date,tags,created_at,updated_at,detailer,checker,scope,client_sub_date,client_approval,client_comment,det_weight,notes,detailer_status,checker_status").order("created_at").range(from,from+PAGE-1);
       if(error||!data||data.length===0)break;
       all=all.concat(data);
       if(data.length<PAGE)break;
