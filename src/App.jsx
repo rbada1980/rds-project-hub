@@ -5601,7 +5601,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${isMonthly?"Monthly Report":"Weekly Report"}</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>4</x:FitHeight><x:LeftMargin>0.25</x:LeftMargin><x:RightMargin>0.25</x:RightMargin><x:TopMargin>0.4</x:TopMargin><x:BottomMargin>0.4</x:BottomMargin></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${isMonthly?"Monthly Report":"Weekly Report"}</x:Name><x:WorksheetOptions><x:FitToPage/><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>4</x:FitHeight><x:LeftMargin>0.25</x:LeftMargin><x:RightMargin>0.25</x:RightMargin><x:TopMargin>0.4</x:TopMargin><x:BottomMargin>0.4</x:BottomMargin></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 <style>body{font-family:Arial,sans-serif;font-size:10pt;}table{border-collapse:collapse;width:100%;}td,th{vertical-align:top;}</style>
 </head><body><table>${titleRows}${bodyRows}</table></body></html>`;
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
