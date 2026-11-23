@@ -13166,6 +13166,7 @@ export default function App(){
   const [clientReviewSaving,setCRS]=useState(false);
   const [exportOpen,setExportOpen] = useState(false);
   const [exportSec,setExportSec] = useState(null);
+  const [weeklyRptOpen,setWeeklyRptOpen] = useState(false);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -14354,11 +14355,11 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 7 - Analytics Report (admin/manager/TL) */}
+                    {/* 7 - Weekly Report (admin/manager/TL) */}
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {(isAdmin||isManager||isTeamLeader)&&(
-                      <SBtn2 label="Analytics Report" count={null} icon="📊" color={"#7c3aed"} indent={false}
-                        onClick={()=>{exportAnalyticsReport(accessibleProjects,tasks,users,clients,today2);closeExport();}}/>
+                      <SBtn2 label="Weekly Report" count={null} icon="🗓" color={"#0891B2"} indent={false}
+                        onClick={()=>{closeExport();setWeeklyRptOpen(true);}}/>
                     )}
                     {/* 7 - Working Hours (all non-client roles) */}
                     {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
@@ -15498,6 +15499,7 @@ export default function App(){
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
+      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>setWeeklyRptOpen(false)}/>}
       {taskModal&&(()=>{
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
