@@ -5429,8 +5429,8 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 }
 
 // ── Weekly Report Modal ────────────────────────────────────────────────────
-function WeeklyReportModal({tasks,projects,clients,today,onClose}){
-  const [period,setPeriod]=useState("this_week");
+function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="this_week"}){
+  const [period,setPeriod]=useState(initialPeriod);
   const projectById=new Map(projects.map(p=>[p.id,p]));
   // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
   const addD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
@@ -13194,6 +13194,7 @@ export default function App(){
   const [exportOpen,setExportOpen] = useState(false);
   const [exportSec,setExportSec] = useState(null);
   const [weeklyRptOpen,setWeeklyRptOpen] = useState(false);
+  const [weeklyRptPeriod,setWeeklyRptPeriod] = useState("this_week");
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -14382,11 +14383,27 @@ export default function App(){
                       </div>
                     )}
 
-                    {/* 7 - Weekly Report (admin/manager/TL) */}
+                    {/* 7 - Weekly / Monthly Report (admin/manager/TL) */}
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
-                    {(isAdmin||isManager||isTeamLeader)&&(
-                      <SBtn2 label="Weekly Report" count={null} icon="🗓" color={"#0891B2"} indent={false}
-                        onClick={()=>{closeExport();setWeeklyRptOpen(true);}}/>
+                    {(isAdmin||isManager||isTeamLeader)&&<SHdr id="weekly_report" icon="🗓" label="Weekly Report"/>}
+                    {(isAdmin||isManager||isTeamLeader)&&exportSec==="weekly_report"&&(
+                      <div style={{background:C.surface+"33",paddingBottom:4}}>
+                        {[
+                          {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e"},
+                          {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b"},
+                          {id:"next_week",icon:"➡",label:"Next Week",color:"#8b5cf6"},
+                          {id:"week1",icon:"📋",label:"1st Week",color:"#f59e0b"},
+                          {id:"week2",icon:"📋",label:"2nd Week",color:"#f59e0b"},
+                          {id:"week3",icon:"📋",label:"3rd Week",color:"#f59e0b"},
+                          {id:"week4",icon:"📋",label:"4th Week",color:"#f59e0b"},
+                          {id:"this_month",icon:"📆",label:"This Month",color:"#0891b2"},
+                          {id:"last_month",icon:"⬅",label:"Last Month",color:"#64748b"},
+                          {id:"next_month",icon:"➡",label:"Next Month",color:"#06b6d4"},
+                        ].map(wp=>(
+                          <SBtn2 key={wp.id} label={wp.label} count={null} icon={wp.icon} color={wp.color}
+                            onClick={()=>{setWeeklyRptPeriod(wp.id);setWeeklyRptOpen(true);closeExport();}}/>
+                        ))}
+                      </div>
                     )}
                     {/* 7 - Working Hours (all non-client roles) */}
                     {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
@@ -15522,7 +15539,7 @@ export default function App(){
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
-      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>setWeeklyRptOpen(false)}/>}
+      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>setWeeklyRptOpen(false)} initialPeriod={weeklyRptPeriod}/>}
       {taskModal&&(()=>{
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
