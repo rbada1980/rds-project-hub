@@ -5455,8 +5455,21 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
     return[tue,mon];
   }
   const[curStart,curEnd]=getPeriodRange(period);
-  const prevStart=addD(curStart,-7),prevEnd=addD(curStart,-1);
-  const nextStart=addD(curEnd,1),nextEnd=addD(curEnd,7);
+  const isMonthly=["this_month","last_month","next_month"].includes(period);
+  // Prev/next — full calendar months when monthly, else 7-day weeks
+  let prevStart,prevEnd,nextStart,nextEnd;
+  if(isMonthly){
+    const[cyr,cmo]=curStart.split("-").map(Number);
+    const pd=new Date(Date.UTC(cyr,cmo-2,1));
+    prevStart=pd.toISOString().slice(0,7)+"-01";
+    prevEnd=new Date(Date.UTC(pd.getUTCFullYear(),pd.getUTCMonth()+1,0)).toISOString().slice(0,10);
+    const nd=new Date(Date.UTC(cyr,cmo,1));
+    nextStart=nd.toISOString().slice(0,7)+"-01";
+    nextEnd=new Date(Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth()+1,0)).toISOString().slice(0,10);
+  }else{
+    prevStart=addD(curStart,-7);prevEnd=addD(curStart,-1);
+    nextStart=addD(curEnd,1);nextEnd=addD(curEnd,7);
+  }
   const inR=(t,s,e)=>{const d=(t.client_sub_date||t.due_date||"").slice(0,10);return d&&d>=s&&d<=e;};
   const srt=ts=>[...ts].sort((a,b)=>{const da=(a.client_sub_date||a.due_date||"9999");const db=(b.client_sub_date||b.due_date||"9999");return da.localeCompare(db)||(a.client||"").localeCompare(b.client||"");});
   const lastWk=srt(tasks.filter(t=>inR(t,prevStart,prevEnd)));
@@ -5464,6 +5477,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
   const nextWk=srt(tasks.filter(t=>inR(t,nextStart,nextEnd)));
   const inHand=srt(tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&!inR(t,prevStart,nextEnd)));
   const revisions=srt(tasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
+  const fmtMonth=ds=>ds?new Date(ds+"T12:00:00Z").toLocaleDateString("en-GB",{month:"long",year:"numeric"}):"";
 
   function doExcel(){
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -5560,15 +5574,27 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
     }));
 
     // Build main HTML (expressions evaluated left-to-right, so rn stays sequential)
+    const rptTitle=isMonthly
+      ?"RDS TechServ - Rebar Department Monthly Project Status Report"
+      :"RDS TechServ - Rebar Department Weekly Project Status Report";
+    const periodLabel=isMonthly
+      ?`${fmtD2(curStart)} to ${fmtD2(curEnd)}`
+      :`${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)`;
     const titleRows=
-      TR(`<td colspan="${NC}" style="font-size:14pt;font-weight:bold;color:#1E3A5F;text-align:center;padding:10px">RDS TechServ - Rebar Department Weekly Project Status Report</td>`)+
-      TR(`<td colspan="${NC}" style="font-size:10pt;color:#555;text-align:center;padding:4px">Reference Period: ${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)&nbsp;|&nbsp;Generated: ${dateStr}&nbsp;|&nbsp;Confidential</td>`)+
+      TR(`<td colspan="${NC}" style="font-size:14pt;font-weight:bold;color:#1E3A5F;text-align:center;padding:10px">${rptTitle}</td>`)+
+      TR(`<td colspan="${NC}" style="font-size:10pt;color:#555;text-align:center;padding:4px">Reference Period: ${periodLabel}&nbsp;|&nbsp;Generated: ${dateStr}&nbsp;|&nbsp;Confidential</td>`)+
       TR(`<td colspan="${NC}" style="height:12px"></td>`);
+    const s1lbl=isMonthly?`LAST MONTH'S WORK (${fmtMonth(prevStart)})`:"LAST WEEK'S WORK";
+    const s1rng=isMonthly?`${fmtD2(prevStart)} to ${fmtD2(prevEnd)}`:`${fmtD2(prevStart)} to ${fmtD2(prevEnd)}`;
+    const s2lbl=isMonthly?`PRESENT MONTH'S WORK (${fmtMonth(curStart)})`:"PRESENT WEEK'S WORK";
+    const s2rng=`${fmtD2(curStart)} to ${fmtD2(curEnd)}`;
+    const s3lbl=isMonthly?`NEXT MONTH'S PLANNED WORK (${fmtMonth(nextStart)})`:"NEXT WEEK'S PLANNED WORK";
+    const s3rng=`${fmtD2(nextStart)} to ${fmtD2(nextEnd)}`;
     const bodyRows=
-      buildSection("LAST WEEK'S WORK",`(${fmtD2(prevStart)} to ${fmtD2(prevEnd)})`,noHold(lastWk),true)+
-      buildSection("PRESENT WEEK'S WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(thisWk),false)+
-      buildSection("NEXT WEEK'S PLANNED WORK",`(${fmtD2(nextStart)} to ${fmtD2(nextEnd)})`,noHold(nextWk),false)+
-      buildSection("IN-HAND WORK","(Ongoing - no specific week deadline)",noHold(inHand),false)+
+      buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)+
+      buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),false)+
+      buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
+      buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)+
       buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false);
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -5613,11 +5639,11 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
           ))}
         </div>
       </div>
-      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Period: <b style={{color:C.accent}}>{fmtD2(curStart)} (Tue) → {fmtD2(curEnd)} (Mon)</b></div>
+      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Period: <b style={{color:C.accent}}>{isMonthly?`${fmtD2(curStart)} → ${fmtD2(curEnd)}`:`${fmtD2(curStart)} (Tue) → ${fmtD2(curEnd)} (Mon)`}</b></div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:16}}>
-        <SecRow label="📌 Last Week's Work" tl={lastWk} clr={C.green} start={prevStart} end={prevEnd}/>
-        <SecRow label="📋 Present Week's Work" tl={thisWk} clr={C.accent} start={curStart} end={curEnd}/>
-        <SecRow label="📅 Next Week Planned" tl={nextWk} clr={C.blue} start={nextStart} end={nextEnd}/>
+        <SecRow label={isMonthly?`📌 Last Month's Work (${fmtMonth(prevStart)})`:"📌 Last Week's Work"} tl={lastWk} clr={C.green} start={prevStart} end={prevEnd}/>
+        <SecRow label={isMonthly?`📋 Present Month's Work (${fmtMonth(curStart)})`:"📋 Present Week's Work"} tl={thisWk} clr={C.accent} start={curStart} end={curEnd}/>
+        <SecRow label={isMonthly?`📅 Next Month Planned (${fmtMonth(nextStart)})`:"📅 Next Week Planned"} tl={nextWk} clr={C.blue} start={nextStart} end={nextEnd}/>
         <SecRow label="🔄 In-Hand Work" tl={inHand} clr={C.teal}/>
         <SecRow label="🔁 Revision Tasks" tl={revisions} clr="#f59e0b"/>
       </div>
