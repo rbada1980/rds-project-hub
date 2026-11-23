@@ -5605,7 +5605,8 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    a.href=url;a.download=`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;
+    const fname=isMonthly?`RDS_Monthly_Report_${curStart}_to_${curEnd}.xls`:`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;
+    a.href=url;a.download=fname;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
