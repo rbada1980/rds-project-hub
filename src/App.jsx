@@ -865,7 +865,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     <Modal title="Manage Employees" onClose={onClose} wide>
       <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
         <button onClick={()=>{resetForm();st("list");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="list"?C.accent:C.surface,color:tab==="list"?"#fff":C.t2,border:`1px solid ${tab==="list"?C.accent:C.border}`}}>👥 Employees</button>
-        <button onClick={()=>{resetForm();st("clients");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="clients"?C.teal:C.surface,color:tab==="clients"?"#fff":C.t2,border:`1px solid ${tab==="clients"?C.teal:C.border}`}}>👤 Clients</button>
+
         <button onClick={()=>{resetForm();st("add");}} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="add"?C.accent:C.surface,color:tab==="add"?"#fff":C.t2,border:`1px solid ${tab==="add"?C.accent:C.border}`}}>➕ Add Employee</button>
         {editUser&&<button onClick={()=>st("edit")} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",background:tab==="edit"?C.accent:C.surface,color:tab==="edit"?"#fff":C.t2,border:`1px solid ${tab==="edit"?C.accent:C.border}`}}>✏️ Edit: {editUser.name}</button>}
       </div>
