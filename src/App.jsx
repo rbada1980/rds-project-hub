@@ -5503,7 +5503,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     // Col layout: 1=S.No 2=Client 3=Project 4=Title 5=Detailer 6=DetStatus 7=Checker 8=ChkStatus 9=Status 10=SubDate 11=Det.Wt 12=Est.Hrs 13=Notes 14=DaysLeft
     function buildSection(label,range,rows,isFirst){
       let s="";
-      const br=isFirst?"":"mso-page-break-before:always;";
+      const br="";
       s+=TR(`<td colspan="${NC}" style="${br}background:#1E3A5F;color:#fff;font-weight:700;font-size:11pt;padding:9px 13px">${esc(label)}&nbsp;&nbsp;<span style="font-weight:400;font-size:9pt">${range}</span></td>`);
       s+=TR(["S.No","Client","Project Name","Task Title / Description","Detailer","Det. Status","Checker","Chk. Status","Status","Client Sub Date","Det.Wt (T)","Est. Hrs","Notes","Days Left"].map(h=>TH(h)).join(""));
       if(!rows.length){
@@ -5601,7 +5601,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${isMonthly?"Monthly Report":"Weekly Report"}</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${isMonthly?"Monthly Report":"Weekly Report"}</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>4</x:FitHeight><x:LeftMargin>0.25</x:LeftMargin><x:RightMargin>0.25</x:RightMargin><x:TopMargin>0.4</x:TopMargin><x:BottomMargin>0.4</x:BottomMargin></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 <style>body{font-family:Arial,sans-serif;font-size:10pt;}table{border-collapse:collapse;width:100%;}td,th{vertical-align:top;}</style>
 </head><body><table>${titleRows}${bodyRows}</table></body></html>`;
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
