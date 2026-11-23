@@ -6814,7 +6814,7 @@ function MoveTaskModal({task,projects,onMove,onClose}){
 function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const isClient=me?.role==="Client";
   const isStaff=me?.role==="Admin"||me?.role==="Manager"||me?.role==="Team Leader"||me?.role==="Employee";
-  const canAdd=isStaff&&taskStatus==="Completed";// Add only when main task is Completed
+  const canAdd=isStaff;// Allow adding revisions for any task status
   const canEditRev=isStaff;// Edit existing revisions always allowed
   const [revisions,setRevisions]=useState([]);
   const [loading,setLoading]=useState(true);
