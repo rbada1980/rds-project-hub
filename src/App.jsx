@@ -13849,7 +13849,8 @@ export default function App(){
   async function editUserFn(id,f){try{const oldUser=users.find(u=>u.id===id)||null;const updates={name:f.name,username:(f.username||"").trim().toLowerCase(),role:f.role,client_name:f.client_name||"",email:f.email||"",is_active:f.is_active!==false,date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null};if(f.password&&f.password.trim())updates.password=f.password.trim();const {error}=await supabase.from("users").update(updates).eq("id",id);if(error)throw new Error(error.message);const merged={...(oldUser||{}),id,...updates};await logAudit(me,"user",id,merged.name,null,"update",oldUser,merged);const {data:fresh}=await supabase.from("users").select("*").order("name").limit(2000);if(fresh&&fresh.length>0)su(fresh);else su(us=>us.map(u=>u.id===id?merged:u));showToast("User updated ✓");}catch(e){showToast("Error: "+e.message,false);throw e;}}
   async function delUser(id){const delU=users.find(u=>u.id===id)||null;await logAudit(me,"user",id,delU?.name||id,null,"delete",delU,null);await supabase.from("users").delete().eq("id",id);su(us=>us.filter(u=>u.id!==id));showToast("Employee removed ✓");}
   async function addClient(f){
-    const {data}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).select().single();
+    const {data,error:insErr}=await supabase.from("clients").insert({name:f.name,email:f.email||"",phone:f.phone||"",address:f.address||"",team_leader:f.team_leader||""}).select().single();
+    if(insErr)throw new Error(insErr.message);
     if(data)scl(cl=>[...cl,data]);
     // Append this client to each selected team leader's client_name (comma-separated multi-TL)
     const newTLNames=(f.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
@@ -13914,11 +13915,13 @@ export default function App(){
     if(existing){
       const updates={username:username.toLowerCase(),client_name:clientName};
       if(password&&password.trim())updates.password=password.trim();
-      const {data}=await supabase.from("users").update(updates).eq("id",existing.id).select().single();
+      const {data,error:upErr}=await supabase.from("users").update(updates).eq("id",existing.id).select().single();
+      if(upErr)throw new Error(upErr.message);
       if(data)su(us=>us.map(u=>u.id===existing.id?data:u));
       showToast("Portal access updated ✓");
     }else{
-      const {data}=await supabase.from("users").insert({name:clientName,username:username.toLowerCase(),password:password||"Client@RDS2026",role:"Client",client_name:clientName,email:""}).select().single();
+      const {data,error:insErr}=await supabase.from("users").insert({name:clientName,username:username.toLowerCase(),password:password||"Client@RDS2026",role:"Client",client_name:clientName,email:""}).select().single();
+      if(insErr)throw new Error(insErr.message);
       if(data)su(us=>[...us,data]);
       showToast("Portal account created ✓");
     }
