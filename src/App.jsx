@@ -652,7 +652,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   const [newTLUser,setNewTLUser]=useState("");// employee selected to promote to Team Leader
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false);
-  const promotableEmployees=users.filter(u=>u.is_active!==false&&u.role!=="Admin"&&u.role!=="Manager"&&u.role!=="Team Leader"&&u.role!=="Client").sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const promotableEmployees=users.filter(u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false"&&u.role!=="Admin"&&u.role!=="Manager"&&u.role!=="Team Leader"&&u.role!=="Client"&&u.role!=="HR & Finance").sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   const isAddingNewTL=false;// multi-select replaces __new__ flow
   const selTLs=(f.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
   function toggleTL(name){
@@ -671,7 +671,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");setNewTLUser("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
-    if(!f.team_leader||!(f.team_leader||"").trim()){se("Please select at least one Team Leader.");return;}
+    if((!f.team_leader||!(f.team_leader||"").trim())&&!newTLUser){se("Please select at least one Team Leader.");return;}
     if(!f.portal_username.trim()){se("Portal username is required.");return;}
     // Promote new employee to Team Leader if selected
     let resolvedTL=f.team_leader;
