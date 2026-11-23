@@ -5590,12 +5590,17 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     const s2rng=`${fmtD2(curStart)} to ${fmtD2(curEnd)}`;
     const s3lbl=isMonthly?`NEXT MONTH'S PLANNED WORK (${fmtMonth(nextStart)})`:"NEXT WEEK'S PLANNED WORK";
     const s3rng=`${fmtD2(nextStart)} to ${fmtD2(nextEnd)}`;
-    const bodyRows=
-      buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)+
-      buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),false)+
-      buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
-      buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)+
-      buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false);
+    const bodyRows=isMonthly
+      ?(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)+
+        buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),false)+
+        buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
+        buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)+
+        buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false))
+      :(buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)+
+        buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),false)+
+        buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
+        buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)+
+        buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false));
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
