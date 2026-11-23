@@ -14450,10 +14450,6 @@ export default function App(){
                       );
                     })()}
 
-                    {/* 8 - Submission List */}
-                    <div style={{height:1,background:C.border,margin:"4px 0"}}/>
-                    <SBtn2 label="Submission List" count={null} icon="📬" color={"#0891b2"} indent={false}
-                      onClick={()=>{exportSubmissionList(accessibleProjects,tasks,today2);closeExport();}}/>
                   </div>
                 );
               })()}

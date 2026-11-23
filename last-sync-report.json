@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-11-23T08:54:34.052Z",
-  "ist_time": "2026-11-23 14:24:34 IST",
-  "duration_sec": 7.4,
-  "total_synced": 3566,
-  "total_pushed": 1199,
+  "timestamp": "2026-11-23T08:57:34.073Z",
+  "ist_time": "2026-11-23 14:27:34 IST",
+  "duration_sec": 8.4,
+  "total_synced": 3569,
+  "total_pushed": 1202,
   "total_pulled": 2367,
   "total_failed": 0,
   "status": "success",
@@ -31,7 +31,7 @@
     },
     {
       "table": "tasks",
-      "synced": 1052,
+      "synced": 1055,
       "failed": 0,
       "total": 1055,
       "pulled": 1055
