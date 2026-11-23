@@ -365,7 +365,10 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   const s=k=>v=>sf(p=>{
     const next={...p,[k]:v};
     if(k==="detailer_status"||k==="checker_status"){
-      next.status=computeAutoStatus(k==="detailer_status"?v:p.detailer_status,k==="checker_status"?v:p.checker_status);
+      // Don't override if user manually set On Hold
+      if(p.status!=="On Hold"){
+        next.status=computeAutoStatus(k==="detailer_status"?v:p.detailer_status,k==="checker_status"?v:p.checker_status);
+      }
     }
     return next;
   });
@@ -442,19 +445,18 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
           <div style={{marginBottom:14}}>
             <RLabel text="Assignee *"/>
             <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee||f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Team Leader -</option>
               {assigneeOptions.map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
         </div>
         <div style={col}>
-          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Status <span style={{color:C.t3,fontWeight:400,fontSize:11}}>(auto)</span></label>
-          <div style={{background:C.surface,border:`2px solid ${STATUS_CLR[f.status]||C.border}`,borderRadius:8,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_CLR[f.status]||C.t3,flexShrink:0,display:"inline-block"}}/>
-            <span style={{color:STATUS_CLR[f.status]||C.t1,fontWeight:700,fontSize:14}}>{f.status}</span>
-            <span style={{color:C.t3,fontSize:11,marginLeft:"auto"}}>auto</span>
-          </div>
+          <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Status</label>
+          <select value={f.status} onChange={e=>s("status")(e.target.value)}
+            style={{width:"100%",background:C.surface,border:`2px solid ${STATUS_CLR[f.status]||C.border}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.status]||C.t1,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+            {ALL_STATUSES.map(st=><option key={st} value={st}>{st}</option>)}
+          </select>
         </div>
       </div>
       <div className="rds-form-row" style={row}>
@@ -465,17 +467,17 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         {/* Detailer + Detailer Status side by side */}
         <div style={{...col,display:"flex",gap:8}}>
           <div style={{flex:1,minWidth:0}}>
-            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>Detailer *</label>
+            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>{f.status==="On Hold"?"Detailer":"Detailer *"}</label>
             <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer||f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Detailer -</option>
               {(detailerOptions.length?detailerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Detailer Status *</label>
+            <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>{f.status==="On Hold"?"Detailer Status":"Detailer Status *"}</label>
             <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`2px solid ${f.detailer_status?STATUS_CLR[f.detailer_status]||C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              style={{width:"100%",background:C.surface,border:`2px solid ${f.detailer_status?STATUS_CLR[f.detailer_status]||C.border:f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
               <option value="">- Select -</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
@@ -484,17 +486,17 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         {/* Checker + Checker Status side by side */}
         <div style={{...col,display:"flex",gap:8}}>
           <div style={{flex:1,minWidth:0}}>
-            <RLabel text={isEdit?"Checker":"Checker *"}/>
+            <RLabel text={isEdit||f.status==="On Hold"?"Checker":"Checker *"}/>
             <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit)?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit&&f.status!=="On Hold")?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Checker -</option>
               {(checkerOptions.length?checkerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Checker Status *</label>
+            <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>{f.status==="On Hold"?"Checker Status":"Checker Status *"}</label>
             <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`2px solid ${f.checker_status?STATUS_CLR[f.checker_status]||C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+              style={{width:"100%",background:C.surface,border:`2px solid ${f.checker_status?STATUS_CLR[f.checker_status]||C.border:f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
               <option value="">- Select -</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
@@ -503,7 +505,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
-        <div style={col}><FInput label="Client Sub Date *" value={f.client_sub_date} onChange={s("client_sub_date")} type="date" required/></div>
+        <div style={col}><FInput label={f.status==="On Hold"?"Client Sub Date":"Client Sub Date *"} value={f.client_sub_date} onChange={s("client_sub_date")} type="date" required={f.status!=="On Hold"}/></div>
       </div>
       <div className="rds-form-row" style={row}>
         <div style={{...col,maxWidth:200}}><FInput label="Det. Wt. (Tons)" value={f.det_weight} onChange={s("det_weight")} type="number" placeholder="e.g. 12.5"/></div>
@@ -519,15 +521,19 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
           {initial.client_comment&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",lineHeight:1.5,borderTop:initial.client_approval?`1px solid ${C.teal}22`:"none",paddingTop:initial.client_approval?8:0}}>"{initial.client_comment}"</div>}
         </div>
       )}
-      {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status||assigneeEqualsDetailer)&&(
-        <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
-          {assigneeEqualsDetailer?<div>⚠ Assignee and Detailer cannot be the same person</div>:null}
-          {((!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)&&<div>⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!f.assignee&&"Assignee",!f.detailer&&"Detailer",!f.status&&"Status",(!f.checker&&!isEdit)&&"Checker",!f.client_sub_date&&"Client Sub Date",!f.detailer_status&&"Detailer Status",!f.checker_status&&"Checker Status"].filter(Boolean).join(", ")}</div>}
-        </div>
-      )}
+      {(()=>{
+        const oh=f.status==="On Hold";
+        const invalid=(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;
+        return invalid?(
+          <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
+            {assigneeEqualsDetailer?<div>⚠ Assignee and Detailer cannot be the same person</div>:null}
+            {((!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)))&&<div>⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!oh&&!f.assignee&&"Assignee",!oh&&!f.detailer&&"Detailer",!oh&&!f.status&&"Status",!oh&&(!f.checker&&!isEdit)&&"Checker",!oh&&!f.client_sub_date&&"Client Sub Date",!oh&&!f.detailer_status&&"Detailer Status",!oh&&!f.checker_status&&"Checker Status"].filter(Boolean).join(", ")}</div>}
+          </div>
+        ):null;
+      })()}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status||assigneeEqualsDetailer} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status||assigneeEqualsDetailer)?0.5:1}}>
+        <button disabled={(()=>{const oh=f.status==="On Hold";return saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;})()} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(()=>{const oh=f.status==="On Hold";return (saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer)?0.5:1;})()}}>
           {saving?"Saving…":"Save Task"}
         </button>
       </div>
