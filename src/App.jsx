@@ -764,7 +764,7 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
           <div style={{display:"flex",gap:16}}>
             <div style={{flex:1}}>
               <label style={{display:"block",color:C.t2,fontSize:12,marginBottom:5,fontWeight:600}}>Team Leader <span style={{color:C.red}}>*</span> {selTLs.length>0&&<span style={{color:C.accent,fontWeight:700}}>({selTLs.length} selected)</span>}</label>
-              <div style={{background:C.surface,border:`1px solid ${selTLs.length?C.border:C.red+"88"}`,borderRadius:8,padding:"8px 10px",maxHeight:140,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+              <div style={{background:C.surface,border:`1px solid ${(selTLs.length||newTLUser)?C.border:C.red+"88"}`,borderRadius:8,padding:"8px 10px",maxHeight:140,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
                 {teamLeaders.length===0&&<div style={{color:C.t3,fontSize:12,padding:"4px 0"}}>No team leaders yet - use "Add New" below.</div>}
                 {teamLeaders.map(u=>{
                   const checked=selTLs.includes(u.name);
