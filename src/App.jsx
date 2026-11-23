@@ -5601,7 +5601,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
       isMonthly
         ?buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
       :period==="last_week"
-        ?buildSection("LAST WEEK'S WORK",`(${s2rng})`,noHold(thisWk),true)
+        ?buildSection("LAST WEEK'S WORK",`(${s2rng})`,noHold(thisWk),true,true,true)
       :period==="custom"
         ?buildSection("CUSTOM PERIOD WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold"))),true,false)
       :(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
