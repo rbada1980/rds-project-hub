@@ -5614,7 +5614,6 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
   const isMobile=useMobile();
   const periods=[
     ["this_week","This Week"],["last_week","Last Week"],["next_week","Next Week"],
-    ["week1","1st Week"],["week2","2nd Week"],["week3","3rd Week"],["week4","4th Week"],
     ["this_month","This Month"],["last_month","Last Month"],["next_month","Next Month"],
   ];
   // Auto-download: trigger doExcel + close without showing modal UI
@@ -14410,10 +14409,6 @@ export default function App(){
                             {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e"},
                             {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b"},
                             {id:"next_week",icon:"➡",label:"Next Week",color:"#8b5cf6"},
-                            {id:"week1",icon:"📋",label:"1st Week",color:"#f59e0b"},
-                            {id:"week2",icon:"📋",label:"2nd Week",color:"#f59e0b"},
-                            {id:"week3",icon:"📋",label:"3rd Week",color:"#f59e0b"},
-                            {id:"week4",icon:"📋",label:"4th Week",color:"#f59e0b"},
                             {id:"this_month",icon:"📆",label:"This Month",color:"#0891b2"},
                             {id:"last_month",icon:"⬅",label:"Last Month",color:"#64748b"},
                             {id:"next_month",icon:"➡",label:"Next Month",color:"#06b6d4"},
