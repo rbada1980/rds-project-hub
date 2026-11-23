@@ -14215,12 +14215,12 @@ export default function App(){
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
       <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:`linear-gradient(180deg,${C.sideBg} 0%,${C.sideActive} 100%)`,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.sideBorder}`,marginBottom:12,flexShrink:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
             <div onClick={()=>window.location.reload()} title="Refresh" className="rds-logo-anim" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
               {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>}
             </div>
             <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}}}/>
-            <div><div style={{fontSize:13,fontWeight:800,color:C.sideT1,lineHeight:1.2}}>RDS</div><div style={{fontSize:9,color:C.sideT3}}>PROJECT HUB</div></div>
+            <div style={{fontSize:9,fontWeight:700,color:C.sideT3,letterSpacing:".08em",textTransform:"uppercase"}}>PROJECT HUB</div>
           </div>
         </div>
         <div style={{padding:"0 12px",flex:1,overflow:"auto"}}>
