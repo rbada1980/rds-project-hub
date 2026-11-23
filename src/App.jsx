@@ -5429,8 +5429,10 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 }
 
 // ── Weekly Report Modal ────────────────────────────────────────────────────
-function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="this_week",autoDownload=false}){
+function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="this_week",autoDownload=false,initialCustomStart="",initialCustomEnd=""}){
   const [period,setPeriod]=useState(initialPeriod);
+  const [customStart,setCustomStart]=useState(initialCustomStart||today);
+  const [customEnd,setCustomEnd]=useState(initialCustomEnd||today);
   const projectById=new Map(projects.map(p=>[p.id,p]));
   // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
   const addD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
@@ -5454,7 +5456,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     if(key==="next_month"){const d=new Date(Date.UTC(yr,mo,1));const s=d.toISOString().slice(0,7)+"-01";const e=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10);return[s,e];}
     return[tue,mon];
   }
-  const[curStart,curEnd]=getPeriodRange(period);
+  const[curStart,curEnd]=period==="custom"?[customStart||today,customEnd||today]:getPeriodRange(period);
   const isMonthly=["this_month","last_month","next_month"].includes(period);
   // Prev/next — full calendar months when monthly, else 7-day weeks
   let prevStart,prevEnd,nextStart,nextEnd;
@@ -5591,13 +5593,14 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     const s2rng=`${fmtD2(curStart)} to ${fmtD2(curEnd)}`;
     const s3lbl=isMonthly?`NEXT MONTH'S PLANNED WORK (${fmtMonth(nextStart)})`:"NEXT WEEK'S PLANNED WORK";
     const s3rng=`${fmtD2(nextStart)} to ${fmtD2(nextEnd)}`;
-    const bodyRows=isMonthly
-      ?(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true))
-      :(buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)+
-        buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),false)+
-        buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
-        buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)+
-        buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false));
+    const bodyRows=
+      isMonthly
+        ?buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
+      :period==="last_week"
+        ?buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)
+      :period==="custom"
+        ?buildSection(`CUSTOM PERIOD WORK`,`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold"))),true)
+      :(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true));
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
@@ -5607,22 +5610,20 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    const fname=isMonthly?`RDS_Monthly_Report_${curStart}_to_${curEnd}.xls`:`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;
+    const fname=isMonthly?`RDS_Monthly_Report_${curStart}_to_${curEnd}.xls`:period==="custom"?`RDS_Custom_Report_${curStart}_to_${curEnd}.xls`:`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;
     a.href=url;a.download=fname;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
   const isMobile=useMobile();
-  const periods=[
-    ["this_week","This Week"],["last_week","Last Week"],["next_week","Next Week"],
-    ["this_month","This Month"],["last_month","Last Month"],["next_month","Next Month"],
-  ];
+  const periods=[["this_week","📅 This Week"],["last_week","⬅ Last Week"],["custom","🗂 Custom"]];
   // Auto-download: trigger doExcel + close without showing modal UI
   useEffect(()=>{if(autoDownload){doExcel();onClose();}},[]);
   if(autoDownload)return null;
 
   const totWt=ts=>ts.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+  const activeTasks=period==="last_week"?lastWk:period==="custom"?srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold")):thisWk;
   const SecRow=({label,tl,clr,start,end})=>(
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:9,background:C.surface,border:`1px solid ${C.border}`,marginBottom:8}}>
       <div>
@@ -5635,23 +5636,32 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
       </div>
     </div>
   );
+  const periodLabel=period==="last_week"?`${fmtD2(prevStart)} → ${fmtD2(prevEnd)}`:period==="custom"?`${fmtD2(curStart)} → ${fmtD2(curEnd)}`:`${fmtD2(curStart)} (Tue) → ${fmtD2(curEnd)} (Mon)`;
   return(
     <Modal title="🗓 Weekly Report" onClose={onClose} wide>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Select Period</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
           {periods.map(([k,l])=>(
-            <button key={k} onClick={()=>setPeriod(k)} style={{padding:"5px 11px",borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${period===k?C.accent:C.border}`,background:period===k?C.accent:C.surface,color:period===k?"#fff":C.t2,transition:"all .15s"}}>{l}</button>
+            <button key={k} onClick={()=>setPeriod(k)} style={{padding:"5px 14px",borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${period===k?C.accent:C.border}`,background:period===k?C.accent:C.surface,color:period===k?"#fff":C.t2,transition:"all .15s"}}>{l}</button>
           ))}
         </div>
+        {period==="custom"&&(
+          <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10,flexWrap:"wrap"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              <label style={{fontSize:11,color:C.t3,fontWeight:600}}>From</label>
+              <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} style={{padding:"5px 8px",borderRadius:7,border:`1px solid ${C.border}`,background:C.surface,color:C.t1,fontSize:12,fontFamily:"inherit"}}/>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              <label style={{fontSize:11,color:C.t3,fontWeight:600}}>To</label>
+              <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} style={{padding:"5px 8px",borderRadius:7,border:`1px solid ${C.border}`,background:C.surface,color:C.t1,fontSize:12,fontFamily:"inherit"}}/>
+            </div>
+          </div>
+        )}
       </div>
-      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Period: <b style={{color:C.accent}}>{isMonthly?`${fmtD2(curStart)} → ${fmtD2(curEnd)}`:`${fmtD2(curStart)} (Tue) → ${fmtD2(curEnd)} (Mon)`}</b></div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:16}}>
-        <SecRow label={isMonthly?`📌 Last Month's Work (${fmtMonth(prevStart)})`:"📌 Last Week's Work"} tl={lastWk} clr={C.green} start={prevStart} end={prevEnd}/>
-        <SecRow label={isMonthly?`📋 Present Month's Work (${fmtMonth(curStart)})`:"📋 Present Week's Work"} tl={thisWk} clr={C.accent} start={curStart} end={curEnd}/>
-        <SecRow label={isMonthly?`📅 Next Month Planned (${fmtMonth(nextStart)})`:"📅 Next Week Planned"} tl={nextWk} clr={C.blue} start={nextStart} end={nextEnd}/>
-        <SecRow label="🔄 In-Hand Work" tl={inHand} clr={C.teal}/>
-        <SecRow label="🔁 Revision Tasks" tl={revisions} clr="#f59e0b"/>
+      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Period: <b style={{color:C.accent}}>{periodLabel}</b></div>
+      <div style={{marginBottom:16}}>
+        <SecRow label={period==="last_week"?"📌 Last Week's Work":period==="custom"?"🗂 Custom Period Work":"📋 This Week's Work"} tl={activeTasks} clr={C.accent} start={curStart} end={curEnd}/>
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
         <button onClick={onClose} style={GBtn}>Close</button>
@@ -14408,16 +14418,13 @@ export default function App(){
                       return(
                         <div style={{background:C.surface+"33",paddingBottom:4}}>
                           {[
-                            {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e"},
-                            {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b"},
-                            {id:"next_week",icon:"➡",label:"Next Week",color:"#8b5cf6"},
-                            {id:"this_month",icon:"📆",label:"This Month",color:"#0891b2"},
-                            {id:"last_month",icon:"⬅",label:"Last Month",color:"#64748b"},
-                            {id:"next_month",icon:"➡",label:"Next Month",color:"#06b6d4"},
+                            {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e",direct:true},
+                            {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b",direct:true},
+                            {id:"custom",icon:"🗂",label:"Custom Range",color:"#f59e0b",direct:false},
                           ].map(wp=>{
                             const[s,e]=ranges[wp.id]||["",""];
                             return(
-                              <button key={wp.id} onClick={()=>{setWeeklyRptPeriod(wp.id);setWeeklyRptAutoDownload(true);setWeeklyRptOpen(true);closeExport();}}
+                              <button key={wp.id} onClick={()=>{setWeeklyRptPeriod(wp.id);setWeeklyRptAutoDownload(wp.direct);setWeeklyRptOpen(true);closeExport();}}
                                 style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"6px 16px 6px 36px",color:wp.color,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}
                                 onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
                                 <span style={{display:"flex",alignItems:"center",gap:7}}>
@@ -14425,9 +14432,10 @@ export default function App(){
                                   <span style={{display:"flex",flexDirection:"column",lineHeight:1.3}}>
                                     <span style={{fontWeight:600}}>{wp.label}</span>
                                     {s&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>{fS(s)} – {fS(e)}</span>}
+                                    {wp.id==="custom"&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>Pick any date range</span>}
                                   </span>
                                 </span>
-                                <span style={{fontSize:10,opacity:0.6}}>⬇</span>
+                                <span style={{fontSize:10,opacity:0.6}}>{wp.direct?"⬇":"→"}</span>
                               </button>
                             );
                           })}
