@@ -5516,24 +5516,34 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
           else if(dl<=3){dlDisp=`${dl}d left`;dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
           else{dlDisp=`${dl}d left`;dlSty="color:#166534;background:#DCFCE7;text-align:center";}
         }
-        // Est.Hrs formula: A1-style (K=col11 Det.Wt, L=col12 Est.Hrs) — better Excel compatibility
-        const hrsFmla=`=IF(ISNUMBER(K${curR}),K${curR}*10,0)`;
+        // Est.Hrs is a separate independent value — NOT derived from Det.Wt
+        const hrs=parseFloat(t.est_hrs)||0;
         s+=TR(
-          `${TD(i+1,"text-align:center;width:32px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(dsSt),`text-align:center;background:${dsBg(dsSt)};color:${dsClr(dsSt)};font-weight:700`)}${TD(esc(t.checker||""))}${TD(esc(chkSt),`text-align:center;background:${dsBg(chkSt)};color:${dsClr(chkSt)};font-weight:700`)}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${wt>0?NUM(wt.toFixed(2)):TD("-","text-align:center;color:#aaa")}${NUM(wt>0?(wt*10).toFixed(1):"0","",hrsFmla)}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(dlDisp,dlSty)}`,
+          `${TD(i+1,"text-align:center;width:32px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(dsSt),`text-align:center;background:${dsBg(dsSt)};color:${dsClr(dsSt)};font-weight:700`)}${TD(esc(t.checker||""))}${TD(esc(chkSt),`text-align:center;background:${dsBg(chkSt)};color:${dsClr(chkSt)};font-weight:700`)}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${wt>0?NUM(wt.toFixed(2)):TD("-","text-align:center;color:#aaa")}${hrs>0?NUM(hrs.toFixed(1)):TD("-","text-align:center;color:#aaa")}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(dlDisp,dlSty)}`,
           `background:${rowBg}`
         );
       });
       const dEnd=rn;
-      // Pre-compute for fallback values
+      // Pre-compute fallback values (shown if Excel formulas don't execute)
       const totWt=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      const totHrs=rows.reduce((s,t)=>s+(parseFloat(t.est_hrs)||0),0);
       const doneWt=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      const doneHrs=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.est_hrs)||0),0);
       const remWt=totWt-doneWt;
+      const remHrs=totHrs-doneHrs;
       const SL="text-align:right;padding:5px 10px;font-weight:700;border:2px solid";
       const SN="text-align:center;font-weight:700;border:2px solid;font-size:10pt";
-      // Total row — live SUM formulas using A1 notation (K=Det.Wt col, L=Est.Hrs col)
-      s+=TR(`<td colspan="10" style="${SL} #1E3A5F;color:#1E3A5F;background:#DBEAFE">Total Det.Wt (Tons) / Est. Hours:</td>${NUM(totWt.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(K${dStart}:K${dEnd})`)}${NUM((totWt*10).toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(L${dStart}:L${dEnd})`)}<td colspan="2" style="border:2px solid #1E3A5F;background:#DBEAFE"></td>`);
-      s+=TR(`<td colspan="10" style="${SL} #A7F3D0;color:#166534;background:#DCFCE7">Completed Det.Wt / Hours:</td>${NUM(doneWt.toFixed(2),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`)}${NUM((doneWt*10).toFixed(1),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`)}<td colspan="2" style="border:1px solid #A7F3D0;background:#DCFCE7"></td>`);
-      s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">Remaining Det.Wt / Hours (Move to Next Week):</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`)}${NUM((remWt*10).toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
+      // Col I = Status (col 9), K = Det.Wt (col 11), L = Est.Hrs (col 12)
+      // Total — SUM formulas
+      s+=TR(`<td colspan="10" style="${SL} #1E3A5F;color:#1E3A5F;background:#DBEAFE">Total Det.Wt (Tons) / Est. Hours:</td>${NUM(totWt.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(K${dStart}:K${dEnd})`)}${NUM(totHrs.toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(L${dStart}:L${dEnd})`)}<td colspan="2" style="border:2px solid #1E3A5F;background:#DBEAFE"></td>`);
+      // Completed — SUMIF on Status column I for "Completed" or "Done"
+      const cmpFmlaK=`=SUMIF(I${dStart}:I${dEnd},"Completed",K${dStart}:K${dEnd})+SUMIF(I${dStart}:I${dEnd},"Done",K${dStart}:K${dEnd})`;
+      const cmpFmlaL=`=SUMIF(I${dStart}:I${dEnd},"Completed",L${dStart}:L${dEnd})+SUMIF(I${dStart}:I${dEnd},"Done",L${dStart}:L${dEnd})`;
+      s+=TR(`<td colspan="10" style="${SL} #A7F3D0;color:#166534;background:#DCFCE7">Completed Det.Wt / Hours:</td>${NUM(doneWt.toFixed(2),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`,cmpFmlaK)}${NUM(doneHrs.toFixed(1),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`,cmpFmlaL)}<td colspan="2" style="border:1px solid #A7F3D0;background:#DCFCE7"></td>`);
+      // Remaining — Total minus Completed (Not Yet Started + In Progress)
+      const remFmlaK=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",K${dStart}:K${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",K${dStart}:K${dEnd})`;
+      const remFmlaL=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",L${dStart}:L${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",L${dStart}:L${dEnd})`;
+      s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">Remaining Det.Wt / Hours (Move to Next Week):</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaK)}${NUM(remHrs.toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaL)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
       s+=TR(`<td colspan="${NC}" style="height:14px"></td>`);
       return s;
     }
@@ -13509,7 +13519,7 @@ export default function App(){
     let from=0;
     const PAGE=1000;
     while(true){
-      const {data,error}=await supabase.from("tasks").select("id,project_id,title,client,status,priority,assignee,due_date,tags,created_at,updated_at,detailer,checker,scope,client_sub_date,client_approval,client_comment,det_weight,notes").order("created_at").range(from,from+PAGE-1);
+      const {data,error}=await supabase.from("tasks").select("id,project_id,title,client,status,priority,assignee,due_date,tags,created_at,updated_at,detailer,checker,scope,client_sub_date,client_approval,client_comment,det_weight,est_hrs,notes,detailer_status,checker_status").order("created_at").range(from,from+PAGE-1);
       if(error||!data||data.length===0)break;
       all=all.concat(data);
       if(data.length<PAGE)break;
