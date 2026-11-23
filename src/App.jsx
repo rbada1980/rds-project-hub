@@ -5503,7 +5503,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     const daysLeft=ds=>{if(!ds)return null;return Math.ceil((new Date(ds+"T12:00:00Z")-new Date(today+"T12:00:00Z"))/86400000);};
 
     // Col layout: 1=S.No 2=Client 3=Project 4=Title 5=Detailer 6=DetStatus 7=Checker 8=ChkStatus 9=Status 10=SubDate 11=Det.Wt 12=Est.Hrs 13=Notes 14=DaysLeft
-    function buildSection(label,range,rows,isFirst){
+    function buildSection(label,range,rows,isFirst,showRemaining=true){
       let s="";
       const br="";
       s+=TR(`<td colspan="${NC}" style="${br}background:#1E3A5F;color:#fff;font-weight:700;font-size:11pt;padding:9px 13px">${esc(label)}&nbsp;&nbsp;<span style="font-weight:400;font-size:9pt">${range}</span></td>`);
@@ -5559,8 +5559,10 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
       // Remaining — Total minus Completed (Not Yet Started + In Progress)
       const remFmlaK=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",K${dStart}:K${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",K${dStart}:K${dEnd})`;
       const remFmlaL=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",L${dStart}:L${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",L${dStart}:L${dEnd})`;
-      const remLbl=isMonthly?"Remaining Det.Wt / Hours (Move to Next Month):":"Remaining Det.Wt / Hours (Move to Next Week):";
-      s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">${remLbl}</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaK)}${NUM(remHrs.toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaL)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
+      if(showRemaining){
+        const remLbl=isMonthly?"Remaining Det.Wt / Hours (Move to Next Month):":"Remaining Det.Wt / Hours (Move to Next Week):";
+        s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">${remLbl}</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaK)}${NUM(remHrs.toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaL)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
+      }
       s+=TR(`<td colspan="${NC}" style="height:14px"></td>`);
       return s;
     }
@@ -5597,10 +5599,13 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
       isMonthly
         ?buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
       :period==="last_week"
-        ?buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)
+        ?buildSection("LAST WEEK'S WORK",`(${s2rng})`,noHold(thisWk),true)
       :period==="custom"
-        ?buildSection(`CUSTOM PERIOD WORK`,`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold"))),true)
-      :(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true));
+        ?buildSection("CUSTOM PERIOD WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold"))),true,false)
+      :(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
+        +buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)
+        +buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)
+        +buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false));
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
