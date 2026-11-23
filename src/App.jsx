@@ -6756,7 +6756,7 @@ function TaskTabPanel({taskId,projectId,me,isClient,task,activeTimer,timerStart,
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:0}}>
         {!isHideTimeLogs&&tabBtn("timelogs","⏱ Time Logs")}
         {tabBtn("comments","💬 Comments")}
-        {task?.status==="Completed"&&tabBtn("revisions","🔁 Revisions")}
+        {!isClient&&tabBtn("revisions","🔁 Revisions")}
         {!isClient&&tabBtn("history","📋 History")}
       </div>
       <div style={{padding:"4px 0"}}>
