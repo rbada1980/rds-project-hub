@@ -14203,7 +14203,7 @@ export default function App(){
       <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:`linear-gradient(180deg,${C.sideBg} 0%,${C.sideActive} 100%)`,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.sideBorder}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div onClick={()=>logoRef.current.click()} title="Click to upload logo" className="rds-logo-anim" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
+            <div onClick={()=>window.location.reload()} title="Refresh" className="rds-logo-anim" style={{width:80,height:36,borderRadius:8,background:logo?"transparent":"#000",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
               {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<img src="/logo.png" alt="RDS" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>}
             </div>
             <input ref={logoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>sLogo(ev.target.result);r.readAsDataURL(f);}}}/>
