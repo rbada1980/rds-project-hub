@@ -5557,7 +5557,8 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
       // Remaining — Total minus Completed (Not Yet Started + In Progress)
       const remFmlaK=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",K${dStart}:K${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",K${dStart}:K${dEnd})`;
       const remFmlaL=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",L${dStart}:L${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",L${dStart}:L${dEnd})`;
-      s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">Remaining Det.Wt / Hours (Move to Next Week):</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaK)}${NUM(remHrs.toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaL)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
+      const remLbl=isMonthly?"Remaining Det.Wt / Hours (Move to Next Month):":"Remaining Det.Wt / Hours (Move to Next Week):";
+      s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">${remLbl}</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaK)}${NUM(remHrs.toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`,remFmlaL)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
       s+=TR(`<td colspan="${NC}" style="height:14px"></td>`);
       return s;
     }
@@ -5591,11 +5592,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     const s3lbl=isMonthly?`NEXT MONTH'S PLANNED WORK (${fmtMonth(nextStart)})`:"NEXT WEEK'S PLANNED WORK";
     const s3rng=`${fmtD2(nextStart)} to ${fmtD2(nextEnd)}`;
     const bodyRows=isMonthly
-      ?(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)+
-        buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),false)+
-        buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
-        buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false)+
-        buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false))
+      ?(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true))
       :(buildSection(s1lbl,`(${s1rng})`,noHold(lastWk),true)+
         buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),false)+
         buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false)+
@@ -5604,7 +5601,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Weekly Report</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${isMonthly?"Monthly Report":"Weekly Report"}</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 <style>body{font-family:Arial,sans-serif;font-size:10pt;}table{border-collapse:collapse;width:100%;}td,th{vertical-align:top;}</style>
 </head><body><table>${titleRows}${bodyRows}</table></body></html>`;
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
