@@ -5428,10 +5428,124 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
   );
 }
 
+// ── Weekly Report Modal ────────────────────────────────────────────────────
+function WeeklyReportModal({tasks,projects,clients,today,onClose}){
+  const [period,setPeriod]=useState("this_week");
+  const projectById=new Map(projects.map(p=>[p.id,p]));
+  const fmtD2=d=>d?new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"";
+  const addD=(d,n)=>{const r=new Date(d+"T00:00:00");r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
+  // Tuesday-based week start
+  function tuesdayOf(ds){const d=new Date(ds+"T00:00:00");const dow=d.getDay();const back=dow===0?5:dow===1?6:dow-2;d.setDate(d.getDate()-back);return d.toISOString().slice(0,10);}
+  function getPeriodRange(key){
+    const tue=tuesdayOf(today);
+    const mon=addD(tue,6);
+    const yr=parseInt(today.slice(0,4));const mo=parseInt(today.slice(5,7));
+    const lastDayOfMonth=new Date(yr,mo,0).toISOString().slice(0,10);
+    if(key==="this_week")return[tue,mon];
+    if(key==="last_week")return[addD(tue,-7),addD(tue,-1)];
+    if(key==="next_week")return[addD(tue,7),addD(tue,13)];
+    if(key==="week1")return[`${today.slice(0,7)}-01`,`${today.slice(0,7)}-07`];
+    if(key==="week2")return[`${today.slice(0,7)}-08`,`${today.slice(0,7)}-14`];
+    if(key==="week3")return[`${today.slice(0,7)}-15`,`${today.slice(0,7)}-21`];
+    if(key==="week4")return[`${today.slice(0,7)}-22`,lastDayOfMonth];
+    if(key==="this_month")return[`${today.slice(0,7)}-01`,lastDayOfMonth];
+    if(key==="last_month"){const d=new Date(yr,mo-2,1);const s=d.toISOString().slice(0,7)+"-01";const e=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);return[s,e];}
+    if(key==="next_month"){const d=new Date(yr,mo,1);const s=d.toISOString().slice(0,7)+"-01";const e=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);return[s,e];}
+    return[tue,mon];
+  }
+  const[curStart,curEnd]=getPeriodRange(period);
+  const prevStart=addD(curStart,-7),prevEnd=addD(curStart,-1);
+  const nextStart=addD(curEnd,1),nextEnd=addD(curEnd,7);
+  const inR=(t,s,e)=>{const d=(t.client_sub_date||t.due_date||"").slice(0,10);return d&&d>=s&&d<=e;};
+  const srt=ts=>[...ts].sort((a,b)=>{const da=(a.client_sub_date||a.due_date||"9999");const db=(b.client_sub_date||b.due_date||"9999");return da.localeCompare(db)||(a.client||"").localeCompare(b.client||"");});
+  const lastWk=srt(tasks.filter(t=>inR(t,prevStart,prevEnd)));
+  const thisWk=srt(tasks.filter(t=>inR(t,curStart,curEnd)));
+  const nextWk=srt(tasks.filter(t=>inR(t,nextStart,nextEnd)));
+  const inHand=srt(tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&!inR(t,prevStart,nextEnd)));
+  const revisions=srt(tasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
+  function doPrint(){
+    const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+    function tbl(rows,label){
+      const sCols=["Completed","Done"].includes;
+      const tot=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      if(!rows.length)return`<div style="color:#888;font-size:11px;padding:4px 8px">No tasks in this period.</div>`;
+      return`<table><thead><tr><th style="width:40px">S.No</th><th>Client</th><th>Project Name</th><th>Task Title / Description</th><th>Detailer</th><th>Checker</th><th>Status</th><th>Client Sub Date</th><th>Det.Wt(T)</th><th>Notes</th></tr></thead><tbody>
+        ${rows.map((t,i)=>{const pj=projectById.get(t.project_id);const sc=isDone(t.status)?"#166534":t.status==="In Progress"?"#1d4ed8":t.status==="On Hold"?"#991b1b":"#374151";return`<tr><td style="text-align:center">${i+1}</td><td>${t.client||pj?.client||"-"}</td><td>${pj?.name||t.custName||"-"}</td><td style="text-align:left;font-weight:600">${t.title||"-"}</td><td>${t.detailer||"-"}</td><td>${t.checker||"-"}</td><td style="color:${sc};font-weight:700">${t.status||"-"}</td><td style="color:#0891b2;font-weight:700">${fmtD2(t.client_sub_date||t.due_date)}</td><td style="text-align:center">${t.det_weight||"-"}</td><td style="font-size:10px;color:#555">${t.notes?t.notes.slice(0,80):"-"}</td></tr>`;}).join("")}
+        <tr class="tot"><td colspan="8" style="text-align:right;padding-right:10px">Total Det.Wt:</td><td style="text-align:center;font-weight:800">${tot>0?tot.toFixed(2)+"T":"-"}</td><td></td></tr>
+      </tbody></table>`;
+    }
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>RDS Weekly Report</title><style>
+      body{font-family:Arial,sans-serif;font-size:11px;margin:14px;color:#111;}
+      h1{font-size:15px;text-align:center;margin:0 0 2px;color:#1e3a5f;font-weight:900;}
+      .sub{text-align:center;font-size:10px;color:#555;margin-bottom:14px;}
+      .sec{font-size:12px;font-weight:800;color:#1e3a5f;padding:7px 10px;background:#e8f0fe;border-left:4px solid #1e3a5f;margin:16px 0 5px;text-transform:uppercase;letter-spacing:.04em;}
+      table{width:100%;border-collapse:collapse;margin-bottom:4px;font-size:10.5px;}
+      th{background:#1e3a5f;color:#fff;padding:6px 7px;font-size:9.5px;border:1px solid #aaa;text-align:center;}
+      td{padding:5px 7px;border:1px solid #ddd;vertical-align:top;}
+      tr:nth-child(even){background:#f8faff;}
+      .tot{background:#dbeafe!important;font-weight:800;}
+      footer{text-align:center;font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px;}
+      @media print{@page{margin:10mm;size:A4 landscape;}body{margin:0;}button{display:none!important;}}
+    </style></head><body>
+    <h1>🏗 RDS TechServ — Rebar Department Weekly Project Status Report</h1>
+    <div class="sub">Reference Period: ${fmtD2(curStart)} to ${fmtD2(curEnd)} &nbsp;·&nbsp; Generated: ${dateStr} &nbsp;·&nbsp; Confidential</div>
+    <div class="sec">📌 Last Week's Work (${fmtD2(prevStart)} – ${fmtD2(prevEnd)})</div>${tbl(lastWk)}
+    <div class="sec">📋 Present Week's Work (${fmtD2(curStart)} – ${fmtD2(curEnd)})</div>${tbl(thisWk)}
+    <div class="sec">📅 Next Week's Planned Work (${fmtD2(nextStart)} – ${fmtD2(nextEnd)})</div>${tbl(nextWk)}
+    <div class="sec">🔄 In-Hand Work (Ongoing — no specific week deadline)</div>${tbl(inHand)}
+    <div class="sec">🔁 Revision Tasks</div>${tbl(revisions)}
+    <footer>RDS Project Hub · Weekly Report · ${dateStr} · Confidential</footer>
+    </body></html>`;
+    const w=window.open("","_blank");w.document.write(html);w.document.close();w.focus();setTimeout(()=>w.print(),400);
+  }
+  const isMobile=useMobile();
+  const periods=[
+    ["this_week","This Week"],["last_week","Last Week"],["next_week","Next Week"],
+    ["week1","1st Week"],["week2","2nd Week"],["week3","3rd Week"],["week4","4th Week"],
+    ["this_month","This Month"],["last_month","Last Month"],["next_month","Next Month"],
+  ];
+  const SecRow=({label,tasks,clr})=>(
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:9,background:C.surface,border:`1px solid ${C.border}`,marginBottom:8}}>
+      <div>
+        <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{label}</div>
+        <div style={{fontSize:11,color:C.t3,marginTop:2}}>{fmtD2(tasks===lastWk?prevStart:tasks===thisWk?curStart:tasks===nextWk?nextStart:"")} {tasks===lastWk?`– ${fmtD2(prevEnd)}`:tasks===thisWk?`– ${fmtD2(curEnd)}`:tasks===nextWk?`– ${fmtD2(nextEnd)}`:""}</div>
+      </div>
+      <span style={{fontSize:22,fontWeight:900,color:clr}}>{tasks.length}</span>
+    </div>
+  );
+  return(
+    <Modal title="🗓 Weekly Report" onClose={onClose} wide>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Select Period</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {periods.map(([k,l])=>(
+            <button key={k} onClick={()=>setPeriod(k)} style={{padding:"5px 11px",borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${period===k?C.accent:C.border}`,background:period===k?C.accent:C.surface,color:period===k?"#fff":C.t2,transition:"all .15s"}}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Reference week: <b style={{color:C.accent}}>{fmtD2(curStart)} → {fmtD2(curEnd)}</b></div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:16}}>
+        <SecRow label="📌 Last Week's Work" tasks={lastWk} clr={C.green}/>
+        <SecRow label="📋 Present Week's Work" tasks={thisWk} clr={C.accent}/>
+        <SecRow label="📅 Next Week Planned" tasks={nextWk} clr={C.blue}/>
+        <SecRow label="🔄 In-Hand Work" tasks={inHand} clr={C.teal}/>
+        <SecRow label="🔁 Revision Tasks" tasks={revisions} clr="#f59e0b"/>
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+        <button onClick={onClose} style={GBtn}>Close</button>
+        <button onClick={doPrint} style={{...SBtn,display:"flex",alignItems:"center",gap:7}}>
+          🖨️ Print / Export Excel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevisions=[]}){
   const isMobile=useMobile();
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
+  const [weeklyReport,setWR]=useState(false);
 
   // Period filter - apply to tasks before all KPI computations
   const ds=v=>v?String(v).slice(0,10):null;
@@ -5573,10 +5687,13 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
           <h2 style={{margin:0,fontSize:isMobile?16:20,fontWeight:900,color:C.t1}}>📊 Business Analytics</h2>
           {!isMobile&&<p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>}
         </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <button onClick={()=>setWR(true)} style={{padding:"7px 14px",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🗓 Weekly Report</button>
         <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3,flexShrink:0}}>
           {[["all",isMobile?"All":"All Time"],["quarter",isMobile?"Q":"Quarter"],["month",isMobile?"Mo":"Month"],["week",isMobile?"Wk":"Week"]].map(([v,l])=>(
             <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:isMobile?"5px 10px":"6px 14px",fontSize:isMobile?11:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
           ))}
+        </div>
         </div>
       </div>
 
@@ -5724,6 +5841,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
       {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={periodTasks} today={today} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="clients"&&<AnalyticsClientModal title={modal.title} clientList={modal.list} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="members"&&<AnalyticsMemberModal title={modal.title} memberList={modal.list} tasks={tasks} onClose={()=>setModal(null)}/>}
+      {weeklyReport&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>setWR(false)}/>}
     </div>
   );
 }
