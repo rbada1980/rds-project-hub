@@ -5432,25 +5432,26 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 function WeeklyReportModal({tasks,projects,clients,today,onClose}){
   const [period,setPeriod]=useState("this_week");
   const projectById=new Map(projects.map(p=>[p.id,p]));
-  const fmtD2=d=>d?new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"";
-  const addD=(d,n)=>{const r=new Date(d+"T00:00:00");r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
-  // Tuesday-based week start
-  function tuesdayOf(ds){const d=new Date(ds+"T00:00:00");const dow=d.getDay();const back=dow===0?5:dow===1?6:dow-2;d.setDate(d.getDate()-back);return d.toISOString().slice(0,10);}
+  // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
+  const addD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+  const fmtD2=d=>d?new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"";
+  // Tuesday-based week start (UTC-safe)
+  function tuesdayOf(ds){const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));const dow=d.getUTCDay();const back=dow===0?5:dow===1?6:dow-2;d.setUTCDate(d.getUTCDate()-back);return d.toISOString().slice(0,10);}
   function getPeriodRange(key){
-    const tue=tuesdayOf(today);
-    const mon=addD(tue,6);
+    const tue=tuesdayOf(today);const mon=addD(tue,6);
     const yr=parseInt(today.slice(0,4));const mo=parseInt(today.slice(5,7));
-    const lastDayOfMonth=new Date(yr,mo,0).toISOString().slice(0,10);
+    const lastDay=new Date(Date.UTC(yr,mo,0)).toISOString().slice(0,10); // last day of CURRENT month
+    const moStr=today.slice(0,7);
     if(key==="this_week")return[tue,mon];
     if(key==="last_week")return[addD(tue,-7),addD(tue,-1)];
     if(key==="next_week")return[addD(tue,7),addD(tue,13)];
-    if(key==="week1")return[`${today.slice(0,7)}-01`,`${today.slice(0,7)}-07`];
-    if(key==="week2")return[`${today.slice(0,7)}-08`,`${today.slice(0,7)}-14`];
-    if(key==="week3")return[`${today.slice(0,7)}-15`,`${today.slice(0,7)}-21`];
-    if(key==="week4")return[`${today.slice(0,7)}-22`,lastDayOfMonth];
-    if(key==="this_month")return[`${today.slice(0,7)}-01`,lastDayOfMonth];
-    if(key==="last_month"){const d=new Date(yr,mo-2,1);const s=d.toISOString().slice(0,7)+"-01";const e=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);return[s,e];}
-    if(key==="next_month"){const d=new Date(yr,mo,1);const s=d.toISOString().slice(0,7)+"-01";const e=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10);return[s,e];}
+    if(key==="week1")return[`${moStr}-01`,`${moStr}-07`];
+    if(key==="week2")return[`${moStr}-08`,`${moStr}-14`];
+    if(key==="week3")return[`${moStr}-15`,`${moStr}-21`];
+    if(key==="week4")return[`${moStr}-22`,lastDay];
+    if(key==="this_month")return[`${moStr}-01`,lastDay];
+    if(key==="last_month"){const d=new Date(Date.UTC(yr,mo-2,1));const s=d.toISOString().slice(0,7)+"-01";const e=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10);return[s,e];}
+    if(key==="next_month"){const d=new Date(Date.UTC(yr,mo,1));const s=d.toISOString().slice(0,7)+"-01";const e=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10);return[s,e];}
     return[tue,mon];
   }
   const[curStart,curEnd]=getPeriodRange(period);
@@ -5463,54 +5464,100 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
   const nextWk=srt(tasks.filter(t=>inR(t,nextStart,nextEnd)));
   const inHand=srt(tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&!inR(t,prevStart,nextEnd)));
   const revisions=srt(tasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
-  function doPrint(){
+
+  function doExcel(){
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-    function tbl(rows,label){
-      const sCols=["Completed","Done"].includes;
-      const tot=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
-      if(!rows.length)return`<div style="color:#888;font-size:11px;padding:4px 8px">No tasks in this period.</div>`;
-      return`<table><thead><tr><th style="width:40px">S.No</th><th>Client</th><th>Project Name</th><th>Task Title / Description</th><th>Detailer</th><th>Checker</th><th>Status</th><th>Client Sub Date</th><th>Det.Wt(T)</th><th>Notes</th></tr></thead><tbody>
-        ${rows.map((t,i)=>{const pj=projectById.get(t.project_id);const sc=isDone(t.status)?"#166534":t.status==="In Progress"?"#1d4ed8":t.status==="On Hold"?"#991b1b":"#374151";return`<tr><td style="text-align:center">${i+1}</td><td>${t.client||pj?.client||"-"}</td><td>${pj?.name||t.custName||"-"}</td><td style="text-align:left;font-weight:600">${t.title||"-"}</td><td>${t.detailer||"-"}</td><td>${t.checker||"-"}</td><td style="color:${sc};font-weight:700">${t.status||"-"}</td><td style="color:#0891b2;font-weight:700">${fmtD2(t.client_sub_date||t.due_date)}</td><td style="text-align:center">${t.det_weight||"-"}</td><td style="font-size:10px;color:#555">${t.notes?t.notes.slice(0,80):"-"}</td></tr>`;}).join("")}
-        <tr class="tot"><td colspan="8" style="text-align:right;padding-right:10px">Total Det.Wt:</td><td style="text-align:center;font-weight:800">${tot>0?tot.toFixed(2)+"T":"-"}</td><td></td></tr>
-      </tbody></table>`;
+    let rn=0;
+    // Cell helpers
+    const XC=(v,st,type="String",formula=null)=>formula!==null
+      ?`<Cell ss:StyleID="${st}" ss:Formula="${esc(formula)}"><Data ss:Type="Number">0</Data></Cell>`
+      :`<Cell ss:StyleID="${st}"><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
+    const XMC=(v,st,span,type="String")=>`<Cell ss:StyleID="${st}" ss:MergeAcross="${span-1}"><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
+    const XRow=(h,cells)=>{rn++;return`<Row ss:Height="${h}">${cells}</Row>\n`;};
+    const XBlank=()=>{rn++;return`<Row ss:Height="8"></Row>\n`;};
+    const stSt=st=>isDone(st)?"s_sc":st==="In Progress"?"s_sp":st==="On Hold"?"s_sh":"s_sn";
+
+    let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office">\n`;
+    xml+=`<Styles>
+<Style ss:ID="s_title"><Font ss:Bold="1" ss:Size="14" ss:Color="#1E3A5F" ss:Name="Arial"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+<Style ss:ID="s_sub"><Font ss:Size="10" ss:Color="#555555" ss:Name="Arial"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+<Style ss:ID="s_sec"><Font ss:Bold="1" ss:Size="11" ss:Color="#FFFFFF" ss:Name="Arial"/><Interior ss:Color="#1E3A5F" ss:Pattern="Solid"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/></Style>
+<Style ss:ID="s_hdr"><Font ss:Bold="1" ss:Size="10" ss:Color="#FFFFFF" ss:Name="Arial"/><Interior ss:Color="#2563EB" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E40AF"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#3B82F6"/></Borders></Style>
+<Style ss:ID="s_d"><Font ss:Size="10" ss:Name="Arial"/><Alignment ss:Vertical="Top" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+<Style ss:ID="s_da"><Font ss:Size="10" ss:Name="Arial"/><Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/><Alignment ss:Vertical="Top" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+<Style ss:ID="s_n"><Font ss:Size="10" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+<Style ss:ID="s_na"><Font ss:Size="10" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+<Style ss:ID="s_dt"><Font ss:Size="10" ss:Color="#0891B2" ss:Name="Arial"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+<Style ss:ID="s_dta"><Font ss:Size="10" ss:Color="#0891B2" ss:Name="Arial"/><Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+<Style ss:ID="s_sc"><Font ss:Bold="1" ss:Size="10" ss:Color="#166534" ss:Name="Arial"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
+<Style ss:ID="s_sp"><Font ss:Bold="1" ss:Size="10" ss:Color="#1D4ED8" ss:Name="Arial"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
+<Style ss:ID="s_sh"><Font ss:Bold="1" ss:Size="10" ss:Color="#92400E" ss:Name="Arial"/><Interior ss:Color="#FEF3C7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
+<Style ss:ID="s_sn"><Font ss:Bold="1" ss:Size="10" ss:Color="#374151" ss:Name="Arial"/><Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
+<Style ss:ID="s_tot"><Font ss:Bold="1" ss:Size="10" ss:Color="#1E3A5F" ss:Name="Arial"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/></Borders></Style>
+<Style ss:ID="s_totn"><Font ss:Bold="1" ss:Size="11" ss:Color="#1E3A5F" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/></Borders></Style>
+<Style ss:ID="s_comp"><Font ss:Bold="1" ss:Size="10" ss:Color="#166534" ss:Name="Arial"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
+<Style ss:ID="s_compn"><Font ss:Bold="1" ss:Size="10" ss:Color="#166534" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+<Style ss:ID="s_rem"><Font ss:Bold="1" ss:Size="10" ss:Color="#991B1B" ss:Name="Arial"/><Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
+<Style ss:ID="s_remn"><Font ss:Bold="1" ss:Size="10" ss:Color="#991B1B" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+</Styles>\n`;
+    // Columns: A=S.No B=Client C=Project D=Title E=Detailer F=Checker G=Status H=SubDate I=DetWt J=Notes K=EstHours
+    xml+=`<Worksheet ss:Name="Weekly Report"><Table ss:ExpandedColumnCount="11"><Column ss:Width="35"/><Column ss:Width="100"/><Column ss:Width="130"/><Column ss:Width="180"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="100"/><Column ss:Width="95"/><Column ss:Width="65"/><Column ss:Width="160"/><Column ss:Width="70"/>`;
+    xml+=XRow(28,XMC("RDS TechServ — Rebar Department Weekly Project Status Report","s_title",11));
+    xml+=XRow(16,XMC(`Reference Period: ${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)  |  Generated: ${dateStr}  |  Confidential`,"s_sub",11));
+    xml+=XBlank();
+
+    function buildSection(label,rows){
+      let s="";
+      s+=XRow(22,XMC(label,"s_sec",11));
+      s+=XRow(28,["S.No","Client","Project Name","Task Title / Description","Detailer","Checker","Status","Client Sub Date","Det.Wt (T)","Notes","Est. Hours (T×10)"].map(h=>XC(h,"s_hdr")).join(""));
+      if(!rows.length){s+=XRow(16,XMC("No tasks in this period.","s_d",11));s+=XBlank();return s;}
+      const dStart=rn+1;
+      rows.forEach((t,i)=>{
+        const pj=projectById.get(t.project_id);
+        const a=i%2===1,dr=rn+1;
+        const wt=parseFloat(t.det_weight)||0;
+        s+=XRow(16,`${XC(i+1,a?"s_da":"s_d","Number")}${XC(t.client||pj?.client||"",a?"s_da":"s_d")}${XC(pj?.name||t.custName||"",a?"s_da":"s_d")}${XC(t.title||"",a?"s_da":"s_d")}${XC(t.detailer||"",a?"s_da":"s_d")}${XC(t.checker||"",a?"s_da":"s_d")}${XC(t.status||"",stSt(t.status))}${XC(fmtD2(t.client_sub_date||t.due_date),a?"s_dta":"s_dt")}${wt>0?XC(wt,a?"s_na":"s_n","Number"):`<Cell ss:StyleID="${a?"s_na":"s_n"}"><Data ss:Type="String">-</Data></Cell>`}${XC((t.notes||"").slice(0,120),a?"s_da":"s_d")}${XC(0,a?"s_na":"s_n","Number",`=IF(ISNUMBER(I${dr}),I${dr}*10,0)`)}`);
+      });
+      const dEnd=rn,totR=rn+1;
+      s+=XRow(20,`${XMC("Total Det.Wt (Tons):","s_tot",8)}${XC(0,"s_totn","Number",`=SUM(I${dStart}:I${dEnd})`)}${XC("","s_tot")}${XC(0,"s_totn","Number",`=SUM(K${dStart}:K${dEnd})`)}`);
+      const compR=rn+1;
+      s+=XRow(18,`${XMC("Completed Det.Wt (Tons):","s_comp",8)}${XC(0,"s_compn","Number",`=SUMIF(G${dStart}:G${dEnd},"Completed",I${dStart}:I${dEnd})+SUMIF(G${dStart}:G${dEnd},"Done",I${dStart}:I${dEnd})`)}${XC("","s_comp")}${XC(0,"s_compn","Number",`=SUMIF(G${dStart}:G${dEnd},"Completed",K${dStart}:K${dEnd})+SUMIF(G${dStart}:G${dEnd},"Done",K${dStart}:K${dEnd})`)}`);
+      s+=XRow(18,`${XMC("Remaining Det.Wt (Tons):","s_rem",8)}${XC(0,"s_remn","Number",`=I${totR}-I${compR}`)}${XC("","s_rem")}${XC(0,"s_remn","Number",`=K${totR}-K${compR}`)}`);
+      s+=XBlank();
+      return s;
     }
-    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>RDS Weekly Report</title><style>
-      body{font-family:Arial,sans-serif;font-size:11px;margin:14px;color:#111;}
-      h1{font-size:15px;text-align:center;margin:0 0 2px;color:#1e3a5f;font-weight:900;}
-      .sub{text-align:center;font-size:10px;color:#555;margin-bottom:14px;}
-      .sec{font-size:12px;font-weight:800;color:#1e3a5f;padding:7px 10px;background:#e8f0fe;border-left:4px solid #1e3a5f;margin:16px 0 5px;text-transform:uppercase;letter-spacing:.04em;}
-      table{width:100%;border-collapse:collapse;margin-bottom:4px;font-size:10.5px;}
-      th{background:#1e3a5f;color:#fff;padding:6px 7px;font-size:9.5px;border:1px solid #aaa;text-align:center;}
-      td{padding:5px 7px;border:1px solid #ddd;vertical-align:top;}
-      tr:nth-child(even){background:#f8faff;}
-      .tot{background:#dbeafe!important;font-weight:800;}
-      footer{text-align:center;font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px;}
-      @media print{@page{margin:10mm;size:A4 landscape;}body{margin:0;}button{display:none!important;}}
-    </style></head><body>
-    <h1>🏗 RDS TechServ — Rebar Department Weekly Project Status Report</h1>
-    <div class="sub">Reference Period: ${fmtD2(curStart)} to ${fmtD2(curEnd)} &nbsp;·&nbsp; Generated: ${dateStr} &nbsp;·&nbsp; Confidential</div>
-    <div class="sec">📌 Last Week's Work (${fmtD2(prevStart)} – ${fmtD2(prevEnd)})</div>${tbl(lastWk)}
-    <div class="sec">📋 Present Week's Work (${fmtD2(curStart)} – ${fmtD2(curEnd)})</div>${tbl(thisWk)}
-    <div class="sec">📅 Next Week's Planned Work (${fmtD2(nextStart)} – ${fmtD2(nextEnd)})</div>${tbl(nextWk)}
-    <div class="sec">🔄 In-Hand Work (Ongoing — no specific week deadline)</div>${tbl(inHand)}
-    <div class="sec">🔁 Revision Tasks</div>${tbl(revisions)}
-    <footer>RDS Project Hub · Weekly Report · ${dateStr} · Confidential</footer>
-    </body></html>`;
-    const w=window.open("","_blank");w.document.write(html);w.document.close();w.focus();setTimeout(()=>w.print(),400);
+    xml+=buildSection(`LAST WEEK'S WORK   (${fmtD2(prevStart)} to ${fmtD2(prevEnd)})`,lastWk);
+    xml+=buildSection(`PRESENT WEEK'S WORK   (${fmtD2(curStart)} to ${fmtD2(curEnd)})`,thisWk);
+    xml+=buildSection(`NEXT WEEK'S PLANNED WORK   (${fmtD2(nextStart)} to ${fmtD2(nextEnd)})`,nextWk);
+    xml+=buildSection(`IN-HAND WORK   (Ongoing - no specific week deadline)`,inHand);
+    xml+=buildSection(`REVISION TASKS`,revisions);
+    xml+=`</Table></Worksheet></Workbook>`;
+    const blob=new Blob([xml],{type:"application/vnd.ms-excel;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
+
   const isMobile=useMobile();
   const periods=[
     ["this_week","This Week"],["last_week","Last Week"],["next_week","Next Week"],
     ["week1","1st Week"],["week2","2nd Week"],["week3","3rd Week"],["week4","4th Week"],
     ["this_month","This Month"],["last_month","Last Month"],["next_month","Next Month"],
   ];
-  const SecRow=({label,tasks,clr})=>(
+  const totWt=ts=>ts.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+  const SecRow=({label,tl,clr,start,end})=>(
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:9,background:C.surface,border:`1px solid ${C.border}`,marginBottom:8}}>
       <div>
         <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{label}</div>
-        <div style={{fontSize:11,color:C.t3,marginTop:2}}>{fmtD2(tasks===lastWk?prevStart:tasks===thisWk?curStart:tasks===nextWk?nextStart:"")} {tasks===lastWk?`– ${fmtD2(prevEnd)}`:tasks===thisWk?`– ${fmtD2(curEnd)}`:tasks===nextWk?`– ${fmtD2(nextEnd)}`:""}</div>
+        {start&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{fmtD2(start)} → {fmtD2(end)}</div>}
       </div>
-      <span style={{fontSize:22,fontWeight:900,color:clr}}>{tasks.length}</span>
+      <div style={{textAlign:"right"}}>
+        <div style={{fontSize:22,fontWeight:900,color:clr}}>{tl.length}</div>
+        <div style={{fontSize:10,color:C.t3,marginTop:1}}>{totWt(tl).toFixed(1)} T</div>
+      </div>
     </div>
   );
   return(
@@ -5523,18 +5570,18 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
           ))}
         </div>
       </div>
-      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Reference week: <b style={{color:C.accent}}>{fmtD2(curStart)} → {fmtD2(curEnd)}</b></div>
+      <div style={{fontSize:11,color:C.t3,marginBottom:12}}>Period: <b style={{color:C.accent}}>{fmtD2(curStart)} (Tue) → {fmtD2(curEnd)} (Mon)</b></div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:16}}>
-        <SecRow label="📌 Last Week's Work" tasks={lastWk} clr={C.green}/>
-        <SecRow label="📋 Present Week's Work" tasks={thisWk} clr={C.accent}/>
-        <SecRow label="📅 Next Week Planned" tasks={nextWk} clr={C.blue}/>
-        <SecRow label="🔄 In-Hand Work" tasks={inHand} clr={C.teal}/>
-        <SecRow label="🔁 Revision Tasks" tasks={revisions} clr="#f59e0b"/>
+        <SecRow label="📌 Last Week's Work" tl={lastWk} clr={C.green} start={prevStart} end={prevEnd}/>
+        <SecRow label="📋 Present Week's Work" tl={thisWk} clr={C.accent} start={curStart} end={curEnd}/>
+        <SecRow label="📅 Next Week Planned" tl={nextWk} clr={C.blue} start={nextStart} end={nextEnd}/>
+        <SecRow label="🔄 In-Hand Work" tl={inHand} clr={C.teal}/>
+        <SecRow label="🔁 Revision Tasks" tl={revisions} clr="#f59e0b"/>
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
         <button onClick={onClose} style={GBtn}>Close</button>
-        <button onClick={doPrint} style={{...SBtn,display:"flex",alignItems:"center",gap:7}}>
-          🖨️ Print / Export Excel
+        <button onClick={doExcel} style={{...SBtn,display:"flex",alignItems:"center",gap:7}}>
+          ⬇ Download Excel
         </button>
       </div>
     </Modal>
