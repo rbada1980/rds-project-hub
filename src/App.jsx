@@ -5466,51 +5466,105 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
   const revisions=srt(tasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
 
   function doExcel(){
-    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+    const NC=14; // total columns
+    // Status / detailer-status coloring
     const stBg=st=>isDone(st)?"#DCFCE7":st==="In Progress"?"#DBEAFE":st==="On Hold"?"#FEF3C7":"#F3F4F6";
     const stClr=st=>isDone(st)?"#166534":st==="In Progress"?"#1D4ED8":st==="On Hold"?"#92400E":"#374151";
-    const TD=(v,sty="")=>`<td style="border:1px solid #E5E7EB;padding:5px 7px;font-size:9pt;vertical-align:top;${sty}">${v}</td>`;
-    const TH=(v,sty="")=>`<th style="background:#2563EB;color:#fff;border:1px solid #3B82F6;padding:6px 8px;font-size:9pt;text-align:center;${sty}">${v}</th>`;
+    const dsBg=s=>s==="Completed"||s==="Done"?"#DCFCE7":s==="In Progress"?"#DBEAFE":s==="Pending"||s==="Not Yet Started"?"#F3F4F6":s?"#EFF6FF":"";
+    const dsClr=s=>s==="Completed"||s==="Done"?"#166534":s==="In Progress"?"#1D4ED8":"#374151";
+    // Helpers
+    let rn=0;
+    const TR=(cells,sty="")=>{rn++;return`<tr style="${sty}">${cells}</tr>\n`;};
+    const TD=(v,sty="")=>`<td style="border:1px solid #E5E7EB;padding:5px 6px;font-size:9pt;vertical-align:top;${sty}">${v}</td>`;
+    const TH=(v,sty="")=>`<th style="background:#1E40AF;color:#fff;border:1px solid #3B82F6;padding:6px 7px;font-size:9pt;text-align:center;white-space:nowrap;${sty}">${v}</th>`;
+    // Numeric cell — x:num marks it as number; x:fmla adds live formula; initial value shown if formula unsupported
+    const NUM=(val,sty="",fmla=null)=>fmla
+      ?`<td style="text-align:center;border:1px solid #E5E7EB;padding:5px 6px;font-size:9pt;${sty}" x:num x:fmla="${esc(fmla)}">${val}</td>`
+      :`<td style="text-align:center;border:1px solid #E5E7EB;padding:5px 6px;font-size:9pt;${sty}" x:num>${val}</td>`;
+    // Days remaining helper
+    const daysLeft=ds=>{if(!ds)return null;return Math.ceil((new Date(ds+"T12:00:00Z")-new Date(today+"T12:00:00Z"))/86400000);};
 
-    function buildRows(rows){
-      if(!rows.length) return`<tr><td colspan="11" style="color:#888;font-style:italic;padding:10px;text-align:center;border:1px solid #E5E7EB">No tasks in this period.</td></tr>`;
-      const tot=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
-      const done=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
-      const rem=tot-done;
-      let html=rows.map((t,i)=>{
+    // Col layout: 1=S.No 2=Client 3=Project 4=Title 5=Detailer 6=DetStatus 7=Checker 8=ChkStatus 9=Status 10=SubDate 11=Det.Wt 12=Est.Hrs 13=Notes 14=DaysLeft
+    function buildSection(label,range,rows,isFirst){
+      let s="";
+      const br=isFirst?"":"mso-page-break-before:always;";
+      s+=TR(`<td colspan="${NC}" style="${br}background:#1E3A5F;color:#fff;font-weight:700;font-size:11pt;padding:9px 13px">${esc(label)}&nbsp;&nbsp;<span style="font-weight:400;font-size:9pt">${range}</span></td>`);
+      s+=TR(["S.No","Client","Project Name","Task Title / Description","Detailer","Det. Status","Checker","Chk. Status","Status","Client Sub Date","Det.Wt (T)","Est. Hrs","Notes","Days Left"].map(h=>TH(h)).join(""));
+      if(!rows.length){
+        s+=TR(`<td colspan="${NC}" style="color:#888;font-style:italic;padding:10px;text-align:center;border:1px solid #E5E7EB">No tasks in this period.</td>`);
+        s+=TR(`<td colspan="${NC}" style="height:14px"></td>`);
+        return s;
+      }
+      const dStart=rn+1;
+      rows.forEach((t,i)=>{
         const pj=projectById.get(t.project_id);
         const wt=parseFloat(t.det_weight)||0;
-        const bg=i%2===0?"#FFFFFF":"#EFF6FF";
-        return`<tr style="background:${bg}">${TD(i+1,"text-align:center;width:35px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(t.checker||""))}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${TD(wt>0?wt.toFixed(2):"-","text-align:center")}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(wt>0?(wt*10).toFixed(1):"-","text-align:center")}</tr>`;
-      }).join("");
+        const dl=daysLeft(t.client_sub_date||t.due_date);
+        const isOvd=!isDone(t.status)&&dl!==null&&dl<0;
+        const rowBg=isOvd?"#FFF0F0":i%2===0?"#FFFFFF":"#EFF6FF";
+        const curR=rn+1; // this row number (before TR increments)
+        const dsSt=t.detailer_status||"";
+        const chkSt=t.checker_status||"";
+        // Days left display
+        let dlDisp="-",dlSty="color:#888;text-align:center";
+        if(dl!==null){
+          if(dl<0){dlDisp=`${Math.abs(dl)}d over`;dlSty="color:#991B1B;font-weight:700;background:#FEE2E2;text-align:center";}
+          else if(dl===0){dlDisp="Today";dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
+          else if(dl<=3){dlDisp=`${dl}d left`;dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
+          else{dlDisp=`${dl}d left`;dlSty="color:#166534;background:#DCFCE7;text-align:center";}
+        }
+        // Est.Hrs formula: same row col 11 * 10 (uses x:fmla R1C1 absolute ref)
+        const hrsFmla=`=IF(ISNUMBER(R${curR}C11),R${curR}C11*10,0)`;
+        s+=TR(
+          `${TD(i+1,"text-align:center;width:32px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(dsSt),`text-align:center;background:${dsBg(dsSt)};color:${dsClr(dsSt)};font-weight:700`)}${TD(esc(t.checker||""))}${TD(esc(chkSt),`text-align:center;background:${dsBg(chkSt)};color:${dsClr(chkSt)};font-weight:700`)}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${wt>0?NUM(wt.toFixed(2)):TD("-","text-align:center;color:#aaa")}${NUM(wt>0?(wt*10).toFixed(1):"0","",hrsFmla)}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(dlDisp,dlSty)}`,
+          `background:${rowBg}`
+        );
+      });
+      const dEnd=rn;
+      // Pre-compute for fallback values
+      const totWt=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      const doneWt=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      const remWt=totWt-doneWt;
       const SL="text-align:right;padding:5px 10px;font-weight:700;border:2px solid";
-      const SN="text-align:center;font-weight:700;border:2px solid";
-      html+=`<tr style="background:#DBEAFE"><td colspan="8" style="${SL} #1E3A5F;color:#1E3A5F">Total Det.Wt (Tons) / Est. Hours (T x 10):</td>${TD(tot.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;font-size:10pt`)}${TD("",`border:2px solid #1E3A5F`)}${TD((tot*10).toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;font-size:10pt`)}</tr>`;
-      html+=`<tr style="background:#DCFCE7"><td colspan="8" style="${SL} #A7F3D0;color:#166534">Completed Det.Wt / Hours:</td>${TD(done.toFixed(2),`${SN} #A7F3D0;color:#166534`)}${TD("",`border:1px solid #A7F3D0`)}${TD((done*10).toFixed(1),`${SN} #A7F3D0;color:#166534`)}</tr>`;
-      html+=`<tr style="background:#FEE2E2"><td colspan="8" style="${SL} #FECACA;color:#991B1B">Remaining Det.Wt / Hours (Move to Next Week):</td>${TD(rem.toFixed(2),`${SN} #FECACA;color:#991B1B`)}${TD("",`border:1px solid #FECACA`)}${TD((rem*10).toFixed(1),`${SN} #FECACA;color:#991B1B`)}</tr>`;
-      return html;
+      const SN="text-align:center;font-weight:700;border:2px solid;font-size:10pt";
+      // Total row — live SUM formulas over data rows (fallback=pre-calc value)
+      s+=TR(`<td colspan="10" style="${SL} #1E3A5F;color:#1E3A5F;background:#DBEAFE">Total Det.Wt (Tons) / Est. Hours:</td>${NUM(totWt.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(R${dStart}C11:R${dEnd}C11)`)}${NUM((totWt*10).toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(R${dStart}C12:R${dEnd}C12)`)}<td colspan="2" style="border:2px solid #1E3A5F;background:#DBEAFE"></td>`);
+      s+=TR(`<td colspan="10" style="${SL} #A7F3D0;color:#166534;background:#DCFCE7">Completed Det.Wt / Hours:</td>${NUM(doneWt.toFixed(2),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`)}${NUM((doneWt*10).toFixed(1),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`)}<td colspan="2" style="border:1px solid #A7F3D0;background:#DCFCE7"></td>`);
+      s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">Remaining Det.Wt / Hours (Move to Next Week):</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`)}${NUM((remWt*10).toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
+      s+=TR(`<td colspan="${NC}" style="height:14px"></td>`);
+      return s;
     }
-    function section(title,range,rows){
-      return`<tr><td colspan="11" style="background:#1E3A5F;color:#fff;font-weight:700;font-size:11pt;padding:8px 12px">${esc(title)}&nbsp;&nbsp;<span style="font-weight:400;font-size:9pt">${range}</span></td></tr>
-<tr>${["S.No","Client","Project Name","Task Title / Description","Detailer","Checker","Status","Client Sub Date","Det.Wt (T)","Notes","Est. Hrs"].map(h=>TH(h)).join("")}</tr>
-${buildRows(rows)}<tr><td colspan="11" style="height:14px"></td></tr>`;
-    }
+
+    // Filter out On Hold from every section
+    const noHold=arr=>arr.filter(t=>t.status!=="On Hold");
+    // Revision tasks = revision keywords AND falls within current+next week only
+    const revThis=srt(tasks.filter(t=>{
+      const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();
+      if(!tl.includes("revis")&&!nt.includes("revis")) return false;
+      if(t.status==="On Hold") return false;
+      const d=(t.client_sub_date||t.due_date||"").slice(0,10);
+      return d&&d>=curStart&&d<=nextEnd;
+    }));
+
+    // Build main HTML (expressions evaluated left-to-right, so rn stays sequential)
+    const titleRows=
+      TR(`<td colspan="${NC}" style="font-size:14pt;font-weight:bold;color:#1E3A5F;text-align:center;padding:10px">RDS TechServ - Rebar Department Weekly Project Status Report</td>`)+
+      TR(`<td colspan="${NC}" style="font-size:10pt;color:#555;text-align:center;padding:4px">Reference Period: ${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)&nbsp;|&nbsp;Generated: ${dateStr}&nbsp;|&nbsp;Confidential</td>`)+
+      TR(`<td colspan="${NC}" style="height:12px"></td>`);
+    const bodyRows=
+      buildSection("LAST WEEK'S WORK",`(${fmtD2(prevStart)} to ${fmtD2(prevEnd)})`,noHold(lastWk),true)+
+      buildSection("PRESENT WEEK'S WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(thisWk),false)+
+      buildSection("NEXT WEEK'S PLANNED WORK",`(${fmtD2(nextStart)} to ${fmtD2(nextEnd)})`,noHold(nextWk),false)+
+      buildSection("IN-HAND WORK","(Ongoing - no specific week deadline)",noHold(inHand),false)+
+      buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false);
+
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Weekly Report</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Weekly Report</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/><x:FitWidth>1</x:FitWidth><x:FitHeight>0</x:FitHeight></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 <style>body{font-family:Arial,sans-serif;font-size:10pt;}table{border-collapse:collapse;width:100%;}td,th{vertical-align:top;}</style>
-</head><body>
-<table>
-<tr><td colspan="11" style="font-size:14pt;font-weight:bold;color:#1E3A5F;text-align:center;padding:10px">RDS TechServ - Rebar Department Weekly Project Status Report</td></tr>
-<tr><td colspan="11" style="font-size:10pt;color:#555;text-align:center;padding:4px">Reference Period: ${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)&nbsp;|&nbsp;Generated: ${dateStr}&nbsp;|&nbsp;Confidential</td></tr>
-<tr><td colspan="11" style="height:12px"></td></tr>
-${section("LAST WEEK'S WORK",`(${fmtD2(prevStart)} to ${fmtD2(prevEnd)})`,lastWk)}
-${section("PRESENT WEEK'S WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,thisWk)}
-${section("NEXT WEEK'S PLANNED WORK",`(${fmtD2(nextStart)} to ${fmtD2(nextEnd)})`,nextWk)}
-${section("IN-HAND WORK","(Ongoing — no specific week deadline)",inHand)}
-${section("REVISION TASKS","",revisions)}
-</table></body></html>`;
+</head><body><table>${titleRows}${bodyRows}</table></body></html>`;
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
