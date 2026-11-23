@@ -683,7 +683,6 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
         // Add promoted TL to the selection if not already there
         const cur=resolvedTL.split(",").map(x=>x.trim()).filter(Boolean);
         if(!cur.map(x=>x.toLowerCase()).includes(emp.name.toLowerCase()))resolvedTL=[...cur,emp.name].join(",");
-        su(us=>us.map(u=>u.id===emp.id?{...u,role:"Team Leader"}:u));
       }
     }
     setSaving(true);
@@ -13855,13 +13854,13 @@ export default function App(){
     // Append this client to each selected team leader's client_name (comma-separated multi-TL)
     const newTLNames=(f.team_leader||"").split(",").map(x=>x.trim()).filter(Boolean);
     for(const tlName of newTLNames){
-      const tlUser=users.find(u=>u.name===tlName&&u.role==="Team Leader");
+      const tlUser=users.find(u=>u.name===tlName&&(u.role==="Team Leader"||u.role==="Rebar"||u.role==="Tekla"||u.role==="Precast"||u.role==="Manager"));
       if(tlUser){
         const existing=(tlUser.client_name||"").split(",").map(x=>x.trim()).filter(Boolean);
         if(!existing.map(x=>x.toLowerCase()).includes(f.name.toLowerCase())){
           const updated=[...existing,f.name].join(",");
-          await supabase.from("users").update({client_name:updated}).eq("id",tlUser.id);
-          su(us=>us.map(u=>u.id===tlUser.id?{...u,client_name:updated}:u));
+          await supabase.from("users").update({client_name:updated,role:"Team Leader"}).eq("id",tlUser.id);
+          su(us=>us.map(u=>u.id===tlUser.id?{...u,client_name:updated,role:"Team Leader"}:u));
         }
       }
     }
