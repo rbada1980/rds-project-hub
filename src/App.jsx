@@ -5466,74 +5466,52 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
   const revisions=srt(tasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
 
   function doExcel(){
-    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-    let rn=0;
-    // Cell helpers
-    const XC=(v,st,type="String",formula=null)=>formula!==null
-      ?`<Cell ss:StyleID="${st}" ss:Formula="${esc(formula)}"><Data ss:Type="Number">0</Data></Cell>`
-      :`<Cell ss:StyleID="${st}"><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
-    const XMC=(v,st,span,type="String")=>`<Cell ss:StyleID="${st}" ss:MergeAcross="${span-1}"><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
-    const XRow=(h,cells)=>{rn++;return`<Row ss:Height="${h}">${cells}</Row>\n`;};
-    const XBlank=()=>{rn++;return`<Row ss:Height="8"></Row>\n`;};
-    const stSt=st=>isDone(st)?"s_sc":st==="In Progress"?"s_sp":st==="On Hold"?"s_sh":"s_sn";
+    const stBg=st=>isDone(st)?"#DCFCE7":st==="In Progress"?"#DBEAFE":st==="On Hold"?"#FEF3C7":"#F3F4F6";
+    const stClr=st=>isDone(st)?"#166534":st==="In Progress"?"#1D4ED8":st==="On Hold"?"#92400E":"#374151";
+    const TD=(v,sty="")=>`<td style="border:1px solid #E5E7EB;padding:5px 7px;font-size:9pt;vertical-align:top;${sty}">${v}</td>`;
+    const TH=(v,sty="")=>`<th style="background:#2563EB;color:#fff;border:1px solid #3B82F6;padding:6px 8px;font-size:9pt;text-align:center;${sty}">${v}</th>`;
 
-    let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office">\n`;
-    xml+=`<Styles>
-<Style ss:ID="s_title"><Font ss:Bold="1" ss:Size="14" ss:Color="#1E3A5F" ss:Name="Arial"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-<Style ss:ID="s_sub"><Font ss:Size="10" ss:Color="#555555" ss:Name="Arial"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-<Style ss:ID="s_sec"><Font ss:Bold="1" ss:Size="11" ss:Color="#FFFFFF" ss:Name="Arial"/><Interior ss:Color="#1E3A5F" ss:Pattern="Solid"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/></Style>
-<Style ss:ID="s_hdr"><Font ss:Bold="1" ss:Size="10" ss:Color="#FFFFFF" ss:Name="Arial"/><Interior ss:Color="#2563EB" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E40AF"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#3B82F6"/></Borders></Style>
-<Style ss:ID="s_d"><Font ss:Size="10" ss:Name="Arial"/><Alignment ss:Vertical="Top" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
-<Style ss:ID="s_da"><Font ss:Size="10" ss:Name="Arial"/><Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/><Alignment ss:Vertical="Top" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
-<Style ss:ID="s_n"><Font ss:Size="10" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
-<Style ss:ID="s_na"><Font ss:Size="10" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
-<Style ss:ID="s_dt"><Font ss:Size="10" ss:Color="#0891B2" ss:Name="Arial"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
-<Style ss:ID="s_dta"><Font ss:Size="10" ss:Color="#0891B2" ss:Name="Arial"/><Interior ss:Color="#EFF6FF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
-<Style ss:ID="s_sc"><Font ss:Bold="1" ss:Size="10" ss:Color="#166534" ss:Name="Arial"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
-<Style ss:ID="s_sp"><Font ss:Bold="1" ss:Size="10" ss:Color="#1D4ED8" ss:Name="Arial"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
-<Style ss:ID="s_sh"><Font ss:Bold="1" ss:Size="10" ss:Color="#92400E" ss:Name="Arial"/><Interior ss:Color="#FEF3C7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
-<Style ss:ID="s_sn"><Font ss:Bold="1" ss:Size="10" ss:Color="#374151" ss:Name="Arial"/><Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1"/></Style>
-<Style ss:ID="s_tot"><Font ss:Bold="1" ss:Size="10" ss:Color="#1E3A5F" ss:Name="Arial"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/></Borders></Style>
-<Style ss:ID="s_totn"><Font ss:Bold="1" ss:Size="11" ss:Color="#1E3A5F" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#1E3A5F"/></Borders></Style>
-<Style ss:ID="s_comp"><Font ss:Bold="1" ss:Size="10" ss:Color="#166534" ss:Name="Arial"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
-<Style ss:ID="s_compn"><Font ss:Bold="1" ss:Size="10" ss:Color="#166534" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-<Style ss:ID="s_rem"><Font ss:Bold="1" ss:Size="10" ss:Color="#991B1B" ss:Name="Arial"/><Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
-<Style ss:ID="s_remn"><Font ss:Bold="1" ss:Size="10" ss:Color="#991B1B" ss:Name="Arial"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
-</Styles>\n`;
-    // Columns: A=S.No B=Client C=Project D=Title E=Detailer F=Checker G=Status H=SubDate I=DetWt J=Notes K=EstHours
-    xml+=`<Worksheet ss:Name="Weekly Report"><Table ss:ExpandedColumnCount="11"><Column ss:Width="35"/><Column ss:Width="100"/><Column ss:Width="130"/><Column ss:Width="180"/><Column ss:Width="90"/><Column ss:Width="90"/><Column ss:Width="100"/><Column ss:Width="95"/><Column ss:Width="65"/><Column ss:Width="160"/><Column ss:Width="70"/>`;
-    xml+=XRow(28,XMC("RDS TechServ — Rebar Department Weekly Project Status Report","s_title",11));
-    xml+=XRow(16,XMC(`Reference Period: ${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)  |  Generated: ${dateStr}  |  Confidential`,"s_sub",11));
-    xml+=XBlank();
-
-    function buildSection(label,rows){
-      let s="";
-      s+=XRow(22,XMC(label,"s_sec",11));
-      s+=XRow(28,["S.No","Client","Project Name","Task Title / Description","Detailer","Checker","Status","Client Sub Date","Det.Wt (T)","Notes","Est. Hours (T×10)"].map(h=>XC(h,"s_hdr")).join(""));
-      if(!rows.length){s+=XRow(16,XMC("No tasks in this period.","s_d",11));s+=XBlank();return s;}
-      const dStart=rn+1;
-      rows.forEach((t,i)=>{
+    function buildRows(rows){
+      if(!rows.length) return`<tr><td colspan="11" style="color:#888;font-style:italic;padding:10px;text-align:center;border:1px solid #E5E7EB">No tasks in this period.</td></tr>`;
+      const tot=rows.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      const done=rows.filter(t=>isDone(t.status)).reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
+      const rem=tot-done;
+      let html=rows.map((t,i)=>{
         const pj=projectById.get(t.project_id);
-        const a=i%2===1,dr=rn+1;
         const wt=parseFloat(t.det_weight)||0;
-        s+=XRow(16,`${XC(i+1,a?"s_da":"s_d","Number")}${XC(t.client||pj?.client||"",a?"s_da":"s_d")}${XC(pj?.name||t.custName||"",a?"s_da":"s_d")}${XC(t.title||"",a?"s_da":"s_d")}${XC(t.detailer||"",a?"s_da":"s_d")}${XC(t.checker||"",a?"s_da":"s_d")}${XC(t.status||"",stSt(t.status))}${XC(fmtD2(t.client_sub_date||t.due_date),a?"s_dta":"s_dt")}${wt>0?XC(wt,a?"s_na":"s_n","Number"):`<Cell ss:StyleID="${a?"s_na":"s_n"}"><Data ss:Type="String">-</Data></Cell>`}${XC((t.notes||"").slice(0,120),a?"s_da":"s_d")}${XC(0,a?"s_na":"s_n","Number",`=IF(ISNUMBER(I${dr}),I${dr}*10,0)`)}`);
-      });
-      const dEnd=rn,totR=rn+1;
-      s+=XRow(20,`${XMC("Total Det.Wt (Tons):","s_tot",8)}${XC(0,"s_totn","Number",`=SUM(I${dStart}:I${dEnd})`)}${XC("","s_tot")}${XC(0,"s_totn","Number",`=SUM(K${dStart}:K${dEnd})`)}`);
-      const compR=rn+1;
-      s+=XRow(18,`${XMC("Completed Det.Wt (Tons):","s_comp",8)}${XC(0,"s_compn","Number",`=SUMIF(G${dStart}:G${dEnd},"Completed",I${dStart}:I${dEnd})+SUMIF(G${dStart}:G${dEnd},"Done",I${dStart}:I${dEnd})`)}${XC("","s_comp")}${XC(0,"s_compn","Number",`=SUMIF(G${dStart}:G${dEnd},"Completed",K${dStart}:K${dEnd})+SUMIF(G${dStart}:G${dEnd},"Done",K${dStart}:K${dEnd})`)}`);
-      s+=XRow(18,`${XMC("Remaining Det.Wt (Tons):","s_rem",8)}${XC(0,"s_remn","Number",`=I${totR}-I${compR}`)}${XC("","s_rem")}${XC(0,"s_remn","Number",`=K${totR}-K${compR}`)}`);
-      s+=XBlank();
-      return s;
+        const bg=i%2===0?"#FFFFFF":"#EFF6FF";
+        return`<tr style="background:${bg}">${TD(i+1,"text-align:center;width:35px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(t.checker||""))}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${TD(wt>0?wt.toFixed(2):"-","text-align:center")}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(wt>0?(wt*10).toFixed(1):"-","text-align:center")}</tr>`;
+      }).join("");
+      const SL="text-align:right;padding:5px 10px;font-weight:700;border:2px solid";
+      const SN="text-align:center;font-weight:700;border:2px solid";
+      html+=`<tr style="background:#DBEAFE"><td colspan="8" style="${SL} #1E3A5F;color:#1E3A5F">Total Det.Wt (Tons) / Est. Hours (T x 10):</td>${TD(tot.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;font-size:10pt`)}${TD("",`border:2px solid #1E3A5F`)}${TD((tot*10).toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;font-size:10pt`)}</tr>`;
+      html+=`<tr style="background:#DCFCE7"><td colspan="8" style="${SL} #A7F3D0;color:#166534">Completed Det.Wt / Hours:</td>${TD(done.toFixed(2),`${SN} #A7F3D0;color:#166534`)}${TD("",`border:1px solid #A7F3D0`)}${TD((done*10).toFixed(1),`${SN} #A7F3D0;color:#166534`)}</tr>`;
+      html+=`<tr style="background:#FEE2E2"><td colspan="8" style="${SL} #FECACA;color:#991B1B">Remaining Det.Wt / Hours (Move to Next Week):</td>${TD(rem.toFixed(2),`${SN} #FECACA;color:#991B1B`)}${TD("",`border:1px solid #FECACA`)}${TD((rem*10).toFixed(1),`${SN} #FECACA;color:#991B1B`)}</tr>`;
+      return html;
     }
-    xml+=buildSection(`LAST WEEK'S WORK   (${fmtD2(prevStart)} to ${fmtD2(prevEnd)})`,lastWk);
-    xml+=buildSection(`PRESENT WEEK'S WORK   (${fmtD2(curStart)} to ${fmtD2(curEnd)})`,thisWk);
-    xml+=buildSection(`NEXT WEEK'S PLANNED WORK   (${fmtD2(nextStart)} to ${fmtD2(nextEnd)})`,nextWk);
-    xml+=buildSection(`IN-HAND WORK   (Ongoing - no specific week deadline)`,inHand);
-    xml+=buildSection(`REVISION TASKS`,revisions);
-    xml+=`</Table></Worksheet></Workbook>`;
-    const blob=new Blob([xml],{type:"application/vnd.ms-excel;charset=utf-8"});
+    function section(title,range,rows){
+      return`<tr><td colspan="11" style="background:#1E3A5F;color:#fff;font-weight:700;font-size:11pt;padding:8px 12px">${esc(title)}&nbsp;&nbsp;<span style="font-weight:400;font-size:9pt">${range}</span></td></tr>
+<tr>${["S.No","Client","Project Name","Task Title / Description","Detailer","Checker","Status","Client Sub Date","Det.Wt (T)","Notes","Est. Hrs"].map(h=>TH(h)).join("")}</tr>
+${buildRows(rows)}<tr><td colspan="11" style="height:14px"></td></tr>`;
+    }
+    const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Weekly Report</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/><x:Landscape/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>body{font-family:Arial,sans-serif;font-size:10pt;}table{border-collapse:collapse;width:100%;}td,th{vertical-align:top;}</style>
+</head><body>
+<table>
+<tr><td colspan="11" style="font-size:14pt;font-weight:bold;color:#1E3A5F;text-align:center;padding:10px">RDS TechServ - Rebar Department Weekly Project Status Report</td></tr>
+<tr><td colspan="11" style="font-size:10pt;color:#555;text-align:center;padding:4px">Reference Period: ${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)&nbsp;|&nbsp;Generated: ${dateStr}&nbsp;|&nbsp;Confidential</td></tr>
+<tr><td colspan="11" style="height:12px"></td></tr>
+${section("LAST WEEK'S WORK",`(${fmtD2(prevStart)} to ${fmtD2(prevEnd)})`,lastWk)}
+${section("PRESENT WEEK'S WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,thisWk)}
+${section("NEXT WEEK'S PLANNED WORK",`(${fmtD2(nextStart)} to ${fmtD2(nextEnd)})`,nextWk)}
+${section("IN-HAND WORK","(Ongoing — no specific week deadline)",inHand)}
+${section("REVISION TASKS","",revisions)}
+</table></body></html>`;
+    const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
     a.href=url;a.download=`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;

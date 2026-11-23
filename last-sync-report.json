@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-11-23T06:33:32.966Z",
-  "ist_time": "2026-11-23 12:03:32 IST",
-  "duration_sec": 6.1,
-  "total_synced": 3761,
-  "total_pushed": 1394,
+  "timestamp": "2026-11-23T06:42:33.015Z",
+  "ist_time": "2026-11-23 12:12:33 IST",
+  "duration_sec": 9.5,
+  "total_synced": 3661,
+  "total_pushed": 1294,
   "total_pulled": 2367,
-  "total_failed": 0,
-  "status": "success",
+  "total_failed": 100,
+  "status": "partial",
   "tables": [
     {
       "table": "users",
@@ -31,8 +31,8 @@
     },
     {
       "table": "tasks",
-      "synced": 1055,
-      "failed": 0,
+      "synced": 955,
+      "failed": 100,
       "total": 1055,
       "pulled": 1055
     },
