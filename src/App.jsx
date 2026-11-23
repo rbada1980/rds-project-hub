@@ -5429,7 +5429,7 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 }
 
 // ── Weekly Report Modal ────────────────────────────────────────────────────
-function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="this_week"}){
+function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="this_week",autoDownload=false}){
   const [period,setPeriod]=useState(initialPeriod);
   const projectById=new Map(projects.map(p=>[p.id,p]));
   // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
@@ -5617,6 +5617,10 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     ["week1","1st Week"],["week2","2nd Week"],["week3","3rd Week"],["week4","4th Week"],
     ["this_month","This Month"],["last_month","Last Month"],["next_month","Next Month"],
   ];
+  // Auto-download: trigger doExcel + close without showing modal UI
+  useEffect(()=>{if(autoDownload){doExcel();onClose();}},[]);
+  if(autoDownload)return null;
+
   const totWt=ts=>ts.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
   const SecRow=({label,tl,clr,start,end})=>(
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:9,background:C.surface,border:`1px solid ${C.border}`,marginBottom:8}}>
@@ -13195,6 +13199,7 @@ export default function App(){
   const [exportSec,setExportSec] = useState(null);
   const [weeklyRptOpen,setWeeklyRptOpen] = useState(false);
   const [weeklyRptPeriod,setWeeklyRptPeriod] = useState("this_week");
+  const [weeklyRptAutoDownload,setWeeklyRptAutoDownload] = useState(false);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -14386,25 +14391,52 @@ export default function App(){
                     {/* 7 - Weekly / Monthly Report (admin/manager/TL) */}
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {(isAdmin||isManager||isTeamLeader)&&<SHdr id="weekly_report" icon="🗓" label="Weekly Report"/>}
-                    {(isAdmin||isManager||isTeamLeader)&&exportSec==="weekly_report"&&(
-                      <div style={{background:C.surface+"33",paddingBottom:4}}>
-                        {[
-                          {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e"},
-                          {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b"},
-                          {id:"next_week",icon:"➡",label:"Next Week",color:"#8b5cf6"},
-                          {id:"week1",icon:"📋",label:"1st Week",color:"#f59e0b"},
-                          {id:"week2",icon:"📋",label:"2nd Week",color:"#f59e0b"},
-                          {id:"week3",icon:"📋",label:"3rd Week",color:"#f59e0b"},
-                          {id:"week4",icon:"📋",label:"4th Week",color:"#f59e0b"},
-                          {id:"this_month",icon:"📆",label:"This Month",color:"#0891b2"},
-                          {id:"last_month",icon:"⬅",label:"Last Month",color:"#64748b"},
-                          {id:"next_month",icon:"➡",label:"Next Month",color:"#06b6d4"},
-                        ].map(wp=>(
-                          <SBtn2 key={wp.id} label={wp.label} count={null} icon={wp.icon} color={wp.color}
-                            onClick={()=>{setWeeklyRptPeriod(wp.id);setWeeklyRptOpen(true);closeExport();}}/>
-                        ))}
-                      </div>
-                    )}
+                    {(isAdmin||isManager||isTeamLeader)&&exportSec==="weekly_report"&&(()=>{
+                      // UTC-safe date helpers for period date labels
+                      const aD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+                      const fS=d=>d?new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):"";
+                      const[yr2,mo2,dy2]=today2.split("-").map(Number);
+                      const d0=new Date(Date.UTC(yr2,mo2-1,dy2));
+                      const dow=d0.getUTCDay();d0.setUTCDate(d0.getUTCDate()-(dow===0?5:dow===1?6:dow-2));
+                      const tue=d0.toISOString().slice(0,10);
+                      const moStr=today2.slice(0,7);
+                      const lastDay=new Date(Date.UTC(yr2,mo2,0)).toISOString().slice(0,10);
+                      const prevMoS=(()=>{const d=new Date(Date.UTC(yr2,mo2-2,1));return[d.toISOString().slice(0,7)+"-01",new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10)];})();
+                      const nextMoS=(()=>{const d=new Date(Date.UTC(yr2,mo2,1));return[d.toISOString().slice(0,7)+"-01",new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10)];})();
+                      const ranges={this_week:[tue,aD(tue,6)],last_week:[aD(tue,-7),aD(tue,-1)],next_week:[aD(tue,7),aD(tue,13)],week1:[`${moStr}-01`,`${moStr}-07`],week2:[`${moStr}-08`,`${moStr}-14`],week3:[`${moStr}-15`,`${moStr}-21`],week4:[`${moStr}-22`,lastDay],this_month:[`${moStr}-01`,lastDay],last_month:prevMoS,next_month:nextMoS};
+                      return(
+                        <div style={{background:C.surface+"33",paddingBottom:4}}>
+                          {[
+                            {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e"},
+                            {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b"},
+                            {id:"next_week",icon:"➡",label:"Next Week",color:"#8b5cf6"},
+                            {id:"week1",icon:"📋",label:"1st Week",color:"#f59e0b"},
+                            {id:"week2",icon:"📋",label:"2nd Week",color:"#f59e0b"},
+                            {id:"week3",icon:"📋",label:"3rd Week",color:"#f59e0b"},
+                            {id:"week4",icon:"📋",label:"4th Week",color:"#f59e0b"},
+                            {id:"this_month",icon:"📆",label:"This Month",color:"#0891b2"},
+                            {id:"last_month",icon:"⬅",label:"Last Month",color:"#64748b"},
+                            {id:"next_month",icon:"➡",label:"Next Month",color:"#06b6d4"},
+                          ].map(wp=>{
+                            const[s,e]=ranges[wp.id]||["",""];
+                            return(
+                              <button key={wp.id} onClick={()=>{setWeeklyRptPeriod(wp.id);setWeeklyRptAutoDownload(true);setWeeklyRptOpen(true);closeExport();}}
+                                style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"6px 16px 6px 36px",color:wp.color,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}
+                                onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                                <span style={{display:"flex",alignItems:"center",gap:7}}>
+                                  <span>{wp.icon}</span>
+                                  <span style={{display:"flex",flexDirection:"column",lineHeight:1.3}}>
+                                    <span style={{fontWeight:600}}>{wp.label}</span>
+                                    {s&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>{fS(s)} – {fS(e)}</span>}
+                                  </span>
+                                </span>
+                                <span style={{fontSize:10,opacity:0.6}}>⬇</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                     {/* 7 - Working Hours (all non-client roles) */}
                     {!isClient&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {!isClient&&<SHdr id="hours" icon={"\u23F1"} label="Working Hours"/>}
@@ -15539,7 +15571,7 @@ export default function App(){
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
-      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>setWeeklyRptOpen(false)} initialPeriod={weeklyRptPeriod}/>}
+      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>{setWeeklyRptOpen(false);setWeeklyRptAutoDownload(false);}} initialPeriod={weeklyRptPeriod} autoDownload={weeklyRptAutoDownload}/>}
       {taskModal&&(()=>{
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
