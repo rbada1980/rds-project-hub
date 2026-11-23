@@ -5507,16 +5507,17 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
         const curR=rn+1; // this row number (before TR increments)
         const dsSt=t.detailer_status||"";
         const chkSt=t.checker_status||"";
-        // Days left display
+        // Days left display — completed tasks show Done regardless of date
         let dlDisp="-",dlSty="color:#888;text-align:center";
-        if(dl!==null){
+        if(isDone(t.status)){dlDisp="Done";dlSty="color:#166534;font-weight:700;background:#DCFCE7;text-align:center";}
+        else if(dl!==null){
           if(dl<0){dlDisp=`${Math.abs(dl)}d over`;dlSty="color:#991B1B;font-weight:700;background:#FEE2E2;text-align:center";}
           else if(dl===0){dlDisp="Today";dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
           else if(dl<=3){dlDisp=`${dl}d left`;dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
           else{dlDisp=`${dl}d left`;dlSty="color:#166534;background:#DCFCE7;text-align:center";}
         }
-        // Est.Hrs formula: same row col 11 * 10 (uses x:fmla R1C1 absolute ref)
-        const hrsFmla=`=IF(ISNUMBER(R${curR}C11),R${curR}C11*10,0)`;
+        // Est.Hrs formula: A1-style (K=col11 Det.Wt, L=col12 Est.Hrs) — better Excel compatibility
+        const hrsFmla=`=IF(ISNUMBER(K${curR}),K${curR}*10,0)`;
         s+=TR(
           `${TD(i+1,"text-align:center;width:32px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(dsSt),`text-align:center;background:${dsBg(dsSt)};color:${dsClr(dsSt)};font-weight:700`)}${TD(esc(t.checker||""))}${TD(esc(chkSt),`text-align:center;background:${dsBg(chkSt)};color:${dsClr(chkSt)};font-weight:700`)}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${wt>0?NUM(wt.toFixed(2)):TD("-","text-align:center;color:#aaa")}${NUM(wt>0?(wt*10).toFixed(1):"0","",hrsFmla)}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(dlDisp,dlSty)}`,
           `background:${rowBg}`
@@ -5529,8 +5530,8 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose}){
       const remWt=totWt-doneWt;
       const SL="text-align:right;padding:5px 10px;font-weight:700;border:2px solid";
       const SN="text-align:center;font-weight:700;border:2px solid;font-size:10pt";
-      // Total row — live SUM formulas over data rows (fallback=pre-calc value)
-      s+=TR(`<td colspan="10" style="${SL} #1E3A5F;color:#1E3A5F;background:#DBEAFE">Total Det.Wt (Tons) / Est. Hours:</td>${NUM(totWt.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(R${dStart}C11:R${dEnd}C11)`)}${NUM((totWt*10).toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(R${dStart}C12:R${dEnd}C12)`)}<td colspan="2" style="border:2px solid #1E3A5F;background:#DBEAFE"></td>`);
+      // Total row — live SUM formulas using A1 notation (K=Det.Wt col, L=Est.Hrs col)
+      s+=TR(`<td colspan="10" style="${SL} #1E3A5F;color:#1E3A5F;background:#DBEAFE">Total Det.Wt (Tons) / Est. Hours:</td>${NUM(totWt.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(K${dStart}:K${dEnd})`)}${NUM((totWt*10).toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(L${dStart}:L${dEnd})`)}<td colspan="2" style="border:2px solid #1E3A5F;background:#DBEAFE"></td>`);
       s+=TR(`<td colspan="10" style="${SL} #A7F3D0;color:#166534;background:#DCFCE7">Completed Det.Wt / Hours:</td>${NUM(doneWt.toFixed(2),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`)}${NUM((doneWt*10).toFixed(1),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`)}<td colspan="2" style="border:1px solid #A7F3D0;background:#DCFCE7"></td>`);
       s+=TR(`<td colspan="10" style="${SL} #FECACA;color:#991B1B;background:#FEE2E2">Remaining Det.Wt / Hours (Move to Next Week):</td>${NUM(remWt.toFixed(2),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`)}${NUM((remWt*10).toFixed(1),`${SN} #FECACA;color:#991B1B;background:#FEE2E2`)}<td colspan="2" style="border:1px solid #FECACA;background:#FEE2E2"></td>`);
       s+=TR(`<td colspan="${NC}" style="height:14px"></td>`);

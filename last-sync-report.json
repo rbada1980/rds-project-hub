@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-11-23T07:08:33.218Z",
-  "ist_time": "2026-11-23 12:38:33 IST",
-  "duration_sec": 8.2,
-  "total_synced": 3369,
-  "total_pushed": 1002,
+  "timestamp": "2026-11-23T07:21:33.352Z",
+  "ist_time": "2026-11-23 12:51:33 IST",
+  "duration_sec": 8.4,
+  "total_synced": 3377,
+  "total_pushed": 1010,
   "total_pulled": 2367,
   "total_failed": 0,
   "status": "success",
@@ -17,7 +17,7 @@
     },
     {
       "table": "clients",
-      "synced": 0,
+      "synced": 8,
       "failed": 0,
       "total": 8,
       "pulled": 8
