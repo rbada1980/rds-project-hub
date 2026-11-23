@@ -6820,6 +6820,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
   const [saving,setSaving]=useState(false);
+  const [saveError,setSaveError]=useState("");
   const [editId,setEditId]=useState(null);
   const staffNames=users.filter(u=>u.role!=="Client").map(u=>u.name||u.username).filter(Boolean).sort();
   const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",checker:""};
@@ -6866,14 +6867,15 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
 
   async function saveRevision(){
     if(!form.status){return;}
-    setSaving(true);
+    setSaving(true);setSaveError("");
     try{
       if(editId){
         // UPDATE
         if(IS_LOCAL){
           await fetch(LOCAL_BASE+"/api/task-revisions/"+editId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});
         } else {
-          await supabase.from("task_revisions").update({...form,updated_at:new Date().toISOString()}).eq("id",editId);
+          const{error}=await supabase.from("task_revisions").update({...form,updated_at:new Date().toISOString()}).eq("id",editId);
+          if(error)throw new Error(error.message);
         }
       } else {
         // INSERT - calculate next revision_number first
@@ -6889,7 +6891,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
       setShowForm(false);
       await load();
       if(onRevisionChange) onRevisionChange(taskId);
-    }catch(e){console.error("Revision save error:",e.message);}
+    }catch(e){console.error("Revision save error:",e.message);setSaveError(e.message||"Save failed");}
     setSaving(false);
   }
 
@@ -6966,8 +6968,9 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               rows={3} placeholder="Describe the client's revision request…"
               style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
           </div>
+          {saveError&&<div style={{background:"#ff444422",border:"1px solid #ff4444",borderRadius:6,padding:"8px 10px",color:"#ff6666",fontSize:12,marginBottom:8}}>⚠ {saveError}</div>}
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <button onClick={()=>setShowForm(false)} disabled={saving}
+            <button onClick={()=>{setShowForm(false);setSaveError("");}} disabled={saving}
               style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 14px",fontSize:13,color:C.t2,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
             <button onClick={saveRevision} disabled={saving||!form.status}
               style={{background:C.accent,color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.6:1}}>
