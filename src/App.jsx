@@ -2305,7 +2305,7 @@ function UserDashboard({me,tasks,projects,clients,today,onEditTask,onViewProject
                 ))}</tr></thead>
                 <tbody>{ft.length===0
                   ?<tr><td colSpan={10} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status)&&t.status!=="On Hold";return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -2711,7 +2711,7 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
                 ))}</tr></thead>
                 <tbody>{ft.length===0
                   ?<tr><td colSpan={11} style={{padding:28,textAlign:"center",color:C.t3,fontSize:13}}>No tasks match filters</td></tr>
-                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status);return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                  :ft.map(t=>{const pj=projectById.get(t.project_id);const tdy=localDateStr();const ov=t.due_date&&t.due_date<tdy&&!isDone(t.status)&&t.status!=="On Hold";return(<tr key={t.id} style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.t1,fontSize:13}}>{t.title}</span></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.name||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(t.status)}>{t.status}</Bdg></td>
@@ -3278,7 +3278,7 @@ function ClientReviewModal({task,project,onSave,onClose,saving}){
   const [approval,setApproval]=useState(task.client_approval||"Pending Review");
   const [comment,setComment]=useState(task.client_comment||"");
   const tdy=localDateStr();
-  const isOv=task.due_date&&task.due_date<tdy&&!isDone(task.status);
+  const isOv=task.due_date&&task.due_date<tdy&&!isDone(task.status)&&task.status!=="On Hold";
   return(
     <div style={{position:"fixed",inset:0,background:"#00000088",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:20}}>
       <div style={{background:C.card,borderRadius:18,width:"100%",maxWidth:520,display:"flex",flexDirection:"column",boxShadow:"0 32px 80px #00000090",border:`1px solid ${C.teal}33`}}>
@@ -3443,7 +3443,7 @@ function ClientFeedbackPage({tasks,projects,users,onEditTask}){
                     const apv=t.client_approval||"Pending Review";
                     const col=APPROVAL_CLR[apv]||C.t3;
                     const today2=localDateStr();
-                    const ov=t.due_date&&t.due_date<today2&&!isDone(t.status);
+                    const ov=t.due_date&&t.due_date<today2&&!isDone(t.status)&&t.status!=="On Hold";
                     return(
                       <tr key={t.id} onClick={()=>onEditTask(t)} style={{cursor:"pointer",borderBottom:`1px solid ${C.border}`}}
                         onMouseEnter={e=>e.currentTarget.style.background=C.surface}
@@ -14354,7 +14354,7 @@ export default function App(){
   const members=users.filter(u=>isActiveUser(u)&&u.username!=="srilalitha"&&u.role!=="HR & Finance").map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
   const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
-  const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold";});
+  const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold"&&t.status!=="On Hold";});
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
   function navTo(v,pid=null,client=null){
     // Access guard: clients can only access dashboard and list views (read-only)
