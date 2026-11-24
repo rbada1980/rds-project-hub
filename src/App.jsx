@@ -4172,6 +4172,7 @@ function stateToUrl(v,pid,client,projs=[]){
   if(v==='clientfeedback')return'/clientfeedback';
   if(v==='timings')return'/timings';
   if(v==='auditlog')return'/auditlog';
+  if(v==='recycle')return'/recycle';
   if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
   return'/';
 }
@@ -4187,6 +4188,7 @@ function urlToState(path,projs=[]){
   if(path==='/clientfeedback')return{view:'clientfeedback',pid:null,client:null};
   if(path==='/timings')return{view:'timings',pid:null,client:null};
   if(path==='/auditlog')return{view:'auditlog',pid:null,client:null};
+  if(path==='/recycle')return{view:'recycle',pid:null,client:null};
   const pm=path.match(/^\/projects\/([^/]+)$/);
   if(pm){
     const slug=decodeURIComponent(pm[1]);
@@ -12375,6 +12377,145 @@ function AuditLogPage({users,projects,me}){
   );
 }
 
+// ── Recycle Bin ─────────────────────────────────────────────────────────────
+function RecycleBin({me,projects,showToast,onTaskRestored,onProjectRestored}){
+  const [logs,setLogs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [restoring,setRestoring]=useState(null);
+  const [filter,setFilter]=useState("all");
+  const [search,setSearch]=useState("");
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+    const{data}=await supabase.from("audit_logs").select("*").eq("action","delete").in("entity_type",["task","project"]).gte("created_at",cutoff.toISOString()).not("old_value","is",null).order("created_at",{ascending:false}).limit(300);
+    setLogs(Array.isArray(data)?data:[]);
+    setLoading(false);
+  }
+  const TASK_KEYS=['project_id','title','client','status','priority','assignee','due_date','tags','files','detailer','checker','detailer_status','checker_status','scope','client_sub_date','det_weight','notes'];
+  const PROJ_KEYS=['name','client','color','deadline','description','assigned_users','group_name'];
+  async function restoreItem(log){
+    if(restoring)return;
+    setRestoring(log.id);
+    try{
+      if(log.entity_type==="task"){
+        const task=JSON.parse(log.old_value||"{}");
+        const p={};TASK_KEYS.forEach(k=>{if(task[k]!==undefined)p[k]=task[k];});
+        const{data,error}=await supabase.from("tasks").insert(p).select().single();
+        if(error){showToast("Restore failed: "+error.message,false);setRestoring(null);return;}
+        if(data)onTaskRestored(data);
+        await supabase.from("audit_logs").delete().eq("id",log.id);
+        setLogs(ls=>ls.filter(l=>l.id!==log.id));
+        showToast(`Task "${log.entity_label}" restored ✓`);
+      }else if(log.entity_type==="project"){
+        const proj=JSON.parse(log.old_value||"{}");
+        const tasks=JSON.parse(log.new_value||"[]");
+        const pp={};PROJ_KEYS.forEach(k=>{if(proj[k]!==undefined)pp[k]=proj[k];});
+        const{data:newProj,error:pe}=await supabase.from("projects").insert(pp).select().single();
+        if(pe){showToast("Restore failed: "+pe.message,false);setRestoring(null);return;}
+        const restoredTasks=[];
+        for(const t of tasks){
+          const tp={};TASK_KEYS.forEach(k=>{if(t[k]!==undefined)tp[k]=t[k];});
+          const{data:nt}=await supabase.from("tasks").insert({...tp,project_id:newProj.id}).select().single();
+          if(nt)restoredTasks.push(nt);
+        }
+        onProjectRestored(newProj,restoredTasks);
+        await supabase.from("audit_logs").delete().eq("id",log.id);
+        setLogs(ls=>ls.filter(l=>l.id!==log.id));
+        showToast(`Project "${log.entity_label}" restored with ${restoredTasks.length} task(s) ✓`);
+      }
+    }catch(e){showToast("Error: "+e.message,false);}
+    setRestoring(null);
+  }
+  async function permanentDelete(log){
+    if(!window.confirm("Permanently delete? This cannot be undone."))return;
+    await supabase.from("audit_logs").delete().eq("id",log.id);
+    setLogs(ls=>ls.filter(l=>l.id!==log.id));
+    showToast("Permanently deleted ✓");
+  }
+  function daysLeft(ts){const d=new Date(ts);const exp=new Date(d.getTime()+30*24*60*60*1000);return Math.max(0,Math.ceil((exp-new Date())/86400000));}
+  function fmtTime(ts){const d=new Date(ts);const now=new Date();const diff=Math.floor((now-d)/86400000);const t=d.toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",hour12:true});if(diff===0)return"Today, "+t;if(diff===1)return"Yesterday, "+t;return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"})+", "+t;}
+  const filtered=logs.filter(l=>{
+    if(filter!=="all"&&l.entity_type!==filter)return false;
+    if(search){const s=search.toLowerCase();return(l.entity_label||"").toLowerCase().includes(s)||(l.actor_name||"").toLowerCase().includes(s);}
+    return true;
+  });
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+        <div>
+          <h2 style={{margin:0,fontSize:18,fontWeight:800,color:C.t1}}>🗑️ Recycle Bin</h2>
+          <p style={{margin:"2px 0 0",fontSize:12,color:C.t3}}>{filtered.length} deleted item{filtered.length!==1?"s":""}  ·  auto-deleted after 30 days</p>
+        </div>
+        <button onClick={load} style={{...GBtn,marginLeft:"auto",padding:"8px 16px",fontSize:13,color:C.t2,fontWeight:700}}>↻ Refresh</button>
+      </div>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 16px",marginBottom:16}}>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <input placeholder="🔍 Search name or deleted by…" value={search} onChange={e=>setSearch(e.target.value)}
+            style={{flex:2,minWidth:180,background:C.surface,border:`1px solid ${search?C.accent:C.border}`,borderRadius:8,padding:"7px 10px",color:C.t1,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+          {["all","task","project"].map(f=>(
+            <button key={f} onClick={()=>setFilter(f)} style={{...GBtn,padding:"7px 14px",fontSize:12,
+              background:filter===f?C.accent+"22":"transparent",color:filter===f?C.accent:C.t2,
+              borderColor:filter===f?C.accent:C.border,fontWeight:filter===f?700:500}}>
+              {f==="all"?"All":f==="task"?"✅ Tasks":"📁 Projects"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {loading&&<div style={{padding:40,textAlign:"center",color:C.t3}}>Loading…</div>}
+      {!loading&&filtered.length===0&&(
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:48,textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>🗑️</div>
+          <div style={{fontWeight:700,color:C.t1,fontSize:15,marginBottom:6}}>Recycle Bin is Empty</div>
+          <div style={{color:C.t3,fontSize:13}}>Deleted tasks and projects appear here for 30 days before being permanently removed.</div>
+        </div>
+      )}
+      {!loading&&filtered.length>0&&(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.map(log=>{
+            const isProj=log.entity_type==="project";
+            const dl=daysLeft(log.created_at);
+            let taskCount=0;if(isProj&&log.new_value){try{taskCount=JSON.parse(log.new_value).length;}catch{}}
+            const proj=projects.find(p=>p.id===log.project_id);
+            return(
+              <div key={log.id} style={{background:C.card,border:`1px solid ${dl<=3?C.red+"55":C.border}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"flex-start",gap:12}}>
+                <div style={{width:40,height:40,borderRadius:10,background:isProj?C.accent+"22":C.green+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>
+                  {isProj?"📁":"✅"}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                    <span style={{fontWeight:700,color:C.t1,fontSize:14}}>{log.entity_label||"Unnamed"}</span>
+                    <span style={{background:isProj?C.accent+"22":C.green+"22",color:isProj?C.accent:C.green,borderRadius:4,padding:"1px 7px",fontSize:10,fontWeight:700,textTransform:"uppercase"}}>{log.entity_type}</span>
+                    {isProj&&taskCount>0&&<span style={{background:C.surface,color:C.t2,borderRadius:4,padding:"1px 7px",fontSize:10}}>{taskCount} task{taskCount!==1?"s":""}</span>}
+                  </div>
+                  <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:11,color:C.t3,marginTop:2}}>
+                    <span>🗑️ Deleted by <strong style={{color:C.t2}}>{log.actor_name||"Unknown"}</strong>{log.actor_role&&<span style={{color:C.t3}}> ({log.actor_role})</span>}</span>
+                    <span>🕐 {fmtTime(log.created_at)}</span>
+                    {!isProj&&proj&&<span>📁 {proj.name}</span>}
+                    <span style={{color:dl===0?C.red:dl<=3?C.red:dl<=7?C.accent:C.t3,fontWeight:dl<=7?700:400}}>
+                      ⏳ {dl===0?"Expires today!":dl===1?"Expires tomorrow":dl+" days left"}
+                    </span>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,flexShrink:0,alignItems:"center"}}>
+                  <button onClick={()=>restoreItem(log)} disabled={!!restoring}
+                    style={{...GBtn,padding:"7px 14px",fontSize:12,color:C.green,borderColor:C.green,fontWeight:700,opacity:restoring===log.id?0.6:1,cursor:restoring===log.id?"default":"pointer"}}>
+                    {restoring===log.id?"Restoring…":"↩ Restore"}
+                  </button>
+                  <button onClick={()=>permanentDelete(log)} disabled={!!restoring}
+                    style={{...GBtn,padding:"7px 11px",fontSize:13,color:C.red,borderColor:C.red}}>
+                    🗑
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BackupCenter({me}){
   const [tab,setTab]=useState('dashboard');
   const [search,setSearch]=useState('');
@@ -14342,7 +14483,11 @@ export default function App(){
     const taskToDelete=tasks.find(t=>t.id===id);
     await supabase.from("tasks").delete().eq("id",id);
     st(ts=>ts.filter(t=>t.id!==id));
-    if(taskToDelete)pushUndo("Delete: "+taskToDelete.title,taskToDelete,null);
+    if(taskToDelete){
+      pushUndo("Delete: "+taskToDelete.title,taskToDelete,null);
+      // Log full snapshot to audit_logs for recycle bin restore
+      supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"task",entity_id:id,entity_label:taskToDelete.title,action:"delete",field:null,old_value:JSON.stringify(taskToDelete),new_value:null,project_id:taskToDelete.project_id||null}).then(()=>{});
+    }
     showToast("Task deleted ✓");
   }
   async function duplicateTask(task){
@@ -14390,7 +14535,8 @@ export default function App(){
     const delProj=accessibleProjects.find(p=>p.id===id);
     const delTasks=tasks.filter(t=>t.project_id===id);
     try{
-      await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);
+      // Log full snapshot (project + tasks) to audit_logs for recycle bin restore
+      supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"project",entity_id:id,entity_label:delProj?.name||id,action:"delete",field:null,old_value:JSON.stringify(delProj||{}),new_value:JSON.stringify(delTasks||[]),project_id:id}).then(()=>{});
       const {error:taskErr}=await supabase.from("tasks").delete().eq("project_id",id);
       if(taskErr){showToast("Failed to delete tasks: "+taskErr.message,false);return;}
       const {error:projErr}=await supabase.from("projects").delete().eq("id",id);
@@ -14484,7 +14630,7 @@ export default function App(){
     }
   }
   const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
-  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"],["billing","💰","Billing"]]:isManager?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["auditlog","🔎","Audit Log"],["timings","⏱","Timings"]]:isTeamLeader?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
+  const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["recycle","🗑️","Recycle Bin"],["timings","⏱","Timings"],["billing","💰","Billing"]]:isManager?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["auditlog","🔎","Audit Log"],["recycle","🗑️","Recycle Bin"],["timings","⏱","Timings"]]:isTeamLeader?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
@@ -14876,6 +15022,9 @@ export default function App(){
         )}
         {view==="billing"&&(isAdmin||isFinance||isClient)&&<BillingSummaryPage tasks={tasks} projects={accessibleProjects} clients={clients} me={me} isClient={isClient} isFinance={isFinance}/>
 }{view==="auditlog"&&(isAdmin||isManager)&&<AuditLogPage users={users} projects={accessibleProjects} me={me}/>
+        }{view==="recycle"&&(isAdmin||isManager)&&<RecycleBin me={me} projects={accessibleProjects} showToast={showToast}
+            onTaskRestored={data=>st(ts=>[...ts,data])}
+            onProjectRestored={(proj,tasks)=>{sp(ps=>[...ps,proj]);st(ts=>[...ts,...tasks]);}}/>
         }{view==="backup"&&isAdmin&&<BackupCenter me={me}/>}
         {view==="dashboard"&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<HolidayBanner today={today}/>}
         {view==="dashboard"&&!isClient&&!(isAdmin||isManager||isTeamLeader)&&!isFinance&&<BirthdayBanner me={me} users={users} today={today}/>}
