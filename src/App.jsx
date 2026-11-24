@@ -358,6 +358,18 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
     });
   },[initial.id]);// eslint-disable-line react-hooks/exhaustive-deps
+  // Track unsaved changes — button highlights only when dirty
+  const isDirty=useMemo(()=>{
+    if(!initial.id)return true;// new task always dirty
+    const keys=['project_id','title','client','status','priority','assignee','due_date','detailer','checker','detailer_status','checker_status','scope','client_sub_date'];
+    const tagsCur=f.tags;
+    const tagsOrig=(initial.tags||[]).join(", ");
+    if(tagsCur!==tagsOrig)return true;
+    const dwCur=f.det_weight!=null?String(f.det_weight):"";
+    const dwOrig=initial.det_weight!=null?String(initial.det_weight):"";
+    if(dwCur!==dwOrig)return true;
+    return keys.some(k=>(f[k]||"")!==(initial[k]!=null?String(initial[k]):""));
+  },[f,initial]);// eslint-disable-line react-hooks/exhaustive-deps
   function computeAutoStatus(ds,cs){
     if(ds===cs)return ds; // Both same → use that status
     return"In Progress";  // Any mix → In Progress
@@ -401,8 +413,33 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   const assigneeEqualsDetailer=false;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
   const col={flex:1,minWidth:0},row={display:"flex",gap:16,flexWrap:"wrap"};
+  // Shared button renderer — used at top and bottom
+  function SaveBtn({compact=false}){
+    const oh=f.status==="On Hold";
+    const invalid=saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;
+    const canSave=isDirty&&!invalid;
+    return(
+      <button disabled={!canSave}
+        onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})}
+        title={!isDirty?"No changes to save":invalid?"Fill required fields to save":""}
+        style={{...SBtn,opacity:canSave?1:0.35,cursor:canSave?"pointer":"not-allowed",
+          boxShadow:canSave?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",
+          transition:"opacity 0.2s,box-shadow 0.2s",
+          ...(compact?{padding:"5px 14px",fontSize:12}:{})}}>
+        {saving?"Saving…":"Save Task"}
+      </button>
+    );
+  }
   return(
     <div>
+      {/* Sticky action bar at top */}
+      <div style={{position:"sticky",top:0,zIndex:10,background:C.card,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,padding:"8px 2px",marginBottom:14}}>
+        <span style={{flex:1,fontSize:12,color:isDirty?C.accent:C.t3,fontWeight:600}}>
+          {isDirty?"● Unsaved changes":"✓ No changes"}
+        </span>
+        <button onClick={onClose} style={{...GBtn,padding:"5px 14px",fontSize:12}} disabled={saving}>Cancel</button>
+        <SaveBtn compact/>
+      </div>
       {/* Client first - full width */}
       <div style={{marginBottom:14}}>
         <RLabel text="Client *"/>
@@ -533,9 +570,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       })()}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={(()=>{const oh=f.status==="On Hold";return saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;})()} onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})} style={{...SBtn,opacity:(()=>{const oh=f.status==="On Hold";return (saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer)?0.5:1;})()}}>
-          {saving?"Saving…":"Save Task"}
-        </button>
+        <SaveBtn/>
       </div>
     </div>
   );
