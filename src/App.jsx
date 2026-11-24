@@ -6939,6 +6939,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const staffNames=users.filter(u=>u.role!=="Client").map(u=>u.name||u.username).filter(Boolean).sort();
   const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",checker:"",hours:""};
   const [form,setForm]=useState(blankForm);
+  const origRevForm=useRef(null);
 
   useEffect(()=>{load();},[taskId]);
 
@@ -6960,9 +6961,11 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
     setLoading(false);
   }
 
-  function openAdd(){setForm(blankForm);setEditId(null);setShowForm(true);}
+  function openAdd(){origRevForm.current=null;setForm(blankForm);setEditId(null);setShowForm(true);}
   function openEdit(rev){
-    setForm({status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",checker:rev.checker||"",hours:rev.hours!=null?String(rev.hours):""});
+    const loaded={status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",checker:rev.checker||"",hours:rev.hours!=null?String(rev.hours):""};
+    origRevForm.current=loaded;
+    setForm(loaded);
     setEditId(rev.id);setShowForm(true);
   }
 
@@ -6980,7 +6983,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   }
 
   async function saveRevision(){
-    if(!form.status){return;}
+    if(!form.status||!form.client_sub_date||!form.detailer||!form.checker||!form.hours){setSaveError("Please fill all required fields.");return;}
     setSaving(true);setSaveError("");
     const cleanForm={...form,hours:form.hours!==""&&form.hours!=null?parseFloat(form.hours):null};
     try{
@@ -7045,33 +7048,40 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               ?`Edit Rev ${revisions.find(r=>r.id===editId)?.revision_number||1}`
               :`New Revision - Rev ${revisions.length+1}`}
           </div>
+          {(()=>{
+            const reqFilled=form.status&&form.client_sub_date&&form.detailer&&form.checker&&form.hours!=="";
+            const isEditDirty=editId&&origRevForm.current?
+              ["status","notes","client_sub_date","detailer","checker","hours"].some(k=>(form[k]||"")!==(origRevForm.current[k]||""))
+              :true;
+            const revCanSave=!saving&&reqFilled&&isEditDirty;
+            return(<>
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
             <div style={{flex:1,minWidth:140}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Status *</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Status <span style={{color:C.red}}>*</span></div>
               <select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}
-                style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+                style={{width:"100%",background:C.bg,border:`1px solid ${!form.status?C.red+"88":C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
                 {VALID_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div style={{flex:1,minWidth:140}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Client Sub Date</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Client Sub Date <span style={{color:C.red}}>*</span></div>
               <input type="date" value={form.client_sub_date} onChange={e=>setForm(p=>({...p,client_sub_date:e.target.value}))}
-                style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                style={{width:"100%",background:C.bg,border:`1px solid ${!form.client_sub_date?C.red+"88":C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
             </div>
           </div>
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
             <div style={{flex:1,minWidth:140}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.teal,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Detailer</div>
+              <div style={{fontSize:11,fontWeight:700,color:form.detailer?C.teal:C.red+"cc",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Detailer <span style={{color:C.red}}>*</span></div>
               <select value={form.detailer} onChange={e=>setForm(p=>({...p,detailer:e.target.value}))}
-                style={{width:"100%",background:C.bg,border:`1px solid ${form.detailer?C.teal:C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.detailer?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+                style={{width:"100%",background:C.bg,border:`1px solid ${form.detailer?C.teal:C.red+"88"}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.detailer?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
                 <option value="">- Select Detailer -</option>
                 {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
               </select>
             </div>
             <div style={{flex:1,minWidth:140}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.accent,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Checker</div>
+              <div style={{fontSize:11,fontWeight:700,color:form.checker?C.accent:C.red+"cc",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Checker <span style={{color:C.red}}>*</span></div>
               <select value={form.checker} onChange={e=>setForm(p=>({...p,checker:e.target.value}))}
-                style={{width:"100%",background:C.bg,border:`1px solid ${form.checker?C.accent:C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.checker?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
+                style={{width:"100%",background:C.bg,border:`1px solid ${form.checker?C.accent:C.red+"88"}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.checker?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
                 <option value="">- Select Checker -</option>
                 {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
               </select>
@@ -7079,10 +7089,10 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
           </div>
           <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
             <div style={{flex:1,minWidth:140}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Est. Hours</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Est. Hours <span style={{color:C.red}}>*</span></div>
               <input type="number" min="0" step="0.5" value={form.hours} onChange={e=>setForm(p=>({...p,hours:e.target.value}))}
                 placeholder="e.g. 8"
-                style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                style={{width:"100%",background:C.bg,border:`1px solid ${form.hours===""?C.red+"88":C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
             </div>
             <div style={{flex:1,minWidth:140}}/>
           </div>
@@ -7093,14 +7103,20 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               style={{width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:C.t1,fontFamily:"inherit",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
           </div>
           {saveError&&<div style={{background:"#ff444422",border:"1px solid #ff4444",borderRadius:6,padding:"8px 10px",color:"#ff6666",fontSize:12,marginBottom:8}}>⚠ {saveError}</div>}
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
+            <span style={{flex:1,fontSize:12,color:revCanSave?C.accent:C.t3,fontWeight:600}}>
+              {revCanSave?(editId?"● Unsaved changes":"● Ready to save"):(!reqFilled?"Fill required fields *":(editId?"✓ No changes":"Fill required fields *"))}
+            </span>
             <button onClick={()=>{setShowForm(false);setSaveError("");}} disabled={saving}
               style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 14px",fontSize:13,color:C.t2,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-            <button onClick={saveRevision} disabled={saving||!form.status}
-              style={{background:C.accent,color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving?0.6:1}}>
+            <button onClick={saveRevision} disabled={!revCanSave}
+              title={!reqFilled?"Fill all required fields":""}
+              style={{background:C.accent,color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontSize:13,fontWeight:700,fontFamily:"inherit",opacity:revCanSave?1:0.35,cursor:revCanSave?"pointer":"not-allowed",boxShadow:revCanSave?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
               {saving?"Saving…":"Save Revision"}
             </button>
           </div>
+            </>);
+          })()}
         </div>
       )}
 
