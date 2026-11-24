@@ -875,7 +875,10 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
           </div>
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginTop:12,color:C.red,fontSize:13}}>⚠ {err}</div>}
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14,alignItems:"center"}}>
-            {editId&&<span style={{flex:1,fontSize:12,color:clientIsDirty?C.accent:C.t3,fontWeight:600}}>{clientIsDirty?"● Unsaved changes":"✓ No changes"}</span>}
+            {editId
+              ?<span style={{flex:1,fontSize:12,color:clientIsDirty?C.accent:C.t3,fontWeight:600}}>{clientIsDirty?"● Unsaved changes":"✓ No changes"}</span>
+              :<span style={{flex:1,fontSize:12,color:(f.name.trim()&&(selTLs.length>0||newTLUser)&&f.portal_username.trim())?C.accent:C.t3,fontWeight:600}}>{(f.name.trim()&&(selTLs.length>0||newTLUser)&&f.portal_username.trim())?"● Ready to add":"Fill required fields"}</span>
+            }
             <button onClick={()=>{reset();st("list");}} style={GBtn}>Cancel</button>
             {editId
               ?<button onClick={save} disabled={!clientIsDirty||saving}
@@ -883,7 +886,13 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
                   style={{...SBtn,opacity:(clientIsDirty&&!saving)?1:0.35,cursor:(clientIsDirty&&!saving)?"pointer":"not-allowed",boxShadow:(clientIsDirty&&!saving)?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
                   {saving?"Saving…":"Save Changes"}
                 </button>
-              :<button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Add Client"}</button>
+              :(()=>{const addReady=!saving&&f.name.trim()&&(selTLs.length>0||newTLUser)&&f.portal_username.trim();return(
+                <button onClick={save} disabled={!addReady}
+                  title={!addReady?"Fill required fields to enable":""}
+                  style={{...SBtn,opacity:addReady?1:0.35,cursor:addReady?"pointer":"not-allowed",boxShadow:addReady?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
+                  {saving?"Saving…":"Add Client"}
+                </button>
+              );})()
             }
           </div>
         </div>
@@ -1109,10 +1118,20 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             </div>
           )}
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
-          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
-            <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
-            <button onClick={addUser} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Creating…":"Create Employee"}</button>
-          </div>
+          {(()=>{
+            const addReady=!saving&&f.name.trim()&&f.role&&(f.role==="Client"?!!f.client_name:!!f.email.trim())&&f.username.trim()&&f.password.trim();
+            return(
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4,alignItems:"center"}}>
+                <span style={{flex:1,fontSize:12,color:addReady?C.accent:C.t3,fontWeight:600}}>{addReady?"● Ready to create":"Fill required fields"}</span>
+                <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
+                <button onClick={addUser} disabled={!addReady}
+                  title={!addReady?"Fill all required fields to enable":""}
+                  style={{...SBtn,opacity:addReady?1:0.35,cursor:addReady?"pointer":"not-allowed",boxShadow:addReady?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
+                  {saving?"Creating…":"Create Employee"}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
       {tab==="edit"&&editUser&&(
@@ -3165,10 +3184,20 @@ function ChangePasswordModal({me,onClose}){
             {conf&&conf!==np&&<p style={{margin:"4px 0 0",fontSize:11,color:C.red}}>Passwords don't match</p>}
           </div>
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
-          <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-            <button onClick={onClose} style={GBtn}>Cancel</button>
-            <button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Change Password"}</button>
-          </div>
+          {(()=>{
+            const canSave=!saving&&cur.trim()&&np.trim()&&conf.trim()&&np===conf&&np.length>=6&&np!==cur;
+            return(
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",alignItems:"center"}}>
+                <span style={{flex:1,fontSize:12,color:canSave?C.accent:C.t3,fontWeight:600}}>{canSave?"● Ready to save":"Fill all fields correctly"}</span>
+                <button onClick={onClose} style={GBtn}>Cancel</button>
+                <button onClick={save} disabled={!canSave}
+                  title={!canSave?"Fill all fields correctly to enable":""}
+                  style={{...SBtn,opacity:canSave?1:0.35,cursor:canSave?"pointer":"not-allowed",boxShadow:canSave?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
+                  {saving?"Saving…":"Change Password"}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
     </Modal>
