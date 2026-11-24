@@ -1226,7 +1226,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
     </Modal>
   );
 }
-function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true,fileCount=0,onFiles=null}){
+function KCard({task,project,onEdit,onDelete,onDrop,onDuplicate,readonly,canDelete=true,selected=false,onSelect=null,selectMode=true,fileCount=0,onFiles=null}){
   const [h,sh]=useState(false),[d,sd]=useState(false);
   return(
     <div draggable={!readonly&&!onSelect} onDragStart={e=>{if(onSelect)return;sd(true);e.dataTransfer.setData("tid",task.id);}} onDragEnd={()=>sd(false)}
@@ -1236,6 +1236,7 @@ function KCard({task,project,onEdit,onDelete,onDrop,readonly,canDelete=true,sele
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4,paddingRight:onSelect?26:0}}>{task.title}</p>
         {onSelect?<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{position:"absolute",top:12,right:12,width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>
         :<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
+          {!readonly&&onDuplicate&&<IBtn icon="📋" title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
           {!readonly&&<IBtn icon="✏️" onClick={()=>onEdit(task)}/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
         </div>}
@@ -1274,7 +1275,7 @@ function MobileKMove({task,onDrop}){
     </div>
   );
 }
-function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null}){
+function KCol({status,tasks,projects,onEdit,onDelete,onDrop,onDuplicate,canEditFn,canDelete=true,selTasks=new Set(),onToggleTask=null}){
   const projectById=new Map(projects.map(p=>[p.id,p]));
   const [ov,so]=useState(false);
   const selectMode=!!onToggleTask;
@@ -1287,7 +1288,7 @@ function KCol({status,tasks,projects,onEdit,onDelete,onDrop,canEditFn,canDelete=
         <span style={{color:C.t1,fontWeight:700,fontSize:13}}>{status}</span>
         <span style={{background:C.border,color:C.t3,borderRadius:10,padding:"1px 8px",fontSize:11,marginLeft:"auto"}}>{tasks.length}</span>
       </div>
-      {tasks.map(t=><KCard key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
+      {tasks.map(t=><KCard key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={onEdit} onDelete={onDelete} onDrop={onDrop} onDuplicate={onDuplicate} readonly={!canEditFn(t)} canDelete={canDelete} selected={selTasks.has(t.id)} onSelect={onToggleTask} selectMode={selectMode}/>)}
     </div>
   );
 }
@@ -1334,7 +1335,7 @@ function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
     </tr>
   );
 }
-function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDown,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
+function TRow({task,project,onEdit,onDelete,onDuplicate,onMove,onDragTask,onMoveUp,onMoveDown,readonly,canDelete=true,selected=false,onSelect=null,selectMode=false,fileCount=0,onFiles=null,onReview=null,hideClient=false,isPinned=false,isStarred=false,onPin=null,onStar=null}){
   const [h,sh]=useState(false);
   const [dragging,setDragging]=useState(false);
   const [dragOver,setDragOver]=useState(false);
@@ -1400,6 +1401,7 @@ function TRow({task,project,onEdit,onDelete,onMove,onDragTask,onMoveUp,onMoveDow
         <td style={{...td,width:80}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
           {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
           {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",color:isStarred?"#f59e0b":"#94a3b8",opacity:isStarred?1:(h?.9:.6),transition:"all .15s",lineHeight:1}}>{isStarred?"★":"☆"}</button>}
+          {!readonly&&onDuplicate&&<IBtn icon="📋" title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
         </div></td>
@@ -14208,6 +14210,15 @@ export default function App(){
     ssv(false);
   }
   async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
+  async function duplicateTask(task){
+    if(!canEdit)return;
+    const payload={project_id:task.project_id,title:task.title+" (Copy)",client:task.client||"",status:"Not Yet Started",priority:task.priority||"Medium",assignee:task.assignee||"",due_date:task.due_date||null,tags:task.tags||[],files:task.files||[],detailer:task.detailer||"",checker:task.checker||"",detailer_status:"Not Yet Started",checker_status:"Not Yet Started",scope:task.scope||"",client_sub_date:null,det_weight:task.det_weight||null};
+    try{
+      const{data,error}=await supabase.from("tasks").insert(payload).select().single();
+      if(error){showToast("Duplicate failed: "+error.message,false);return;}
+      if(data){st(ts=>[...ts,data]);showToast("Task duplicated ✓");}
+    }catch(e){showToast("Error: "+e.message,false);}
+  }
   async function doMoveTask(task,destProjectId){
     if(!canEdit)return;
     const destProj=accessibleProjects.find(p=>p.id===destProjectId);
@@ -15428,6 +15439,7 @@ export default function App(){
                 onEdit={t=>{set(t);stm(true);}}
                 onDelete={canEdit?delTask:()=>{}}
                 onDrop={dropTask}
+                onDuplicate={canEdit?duplicateTask:null}
                 canEditFn={t=>canEdit||(userMatchesStr(me,t.assignee)||userMatchesStr(me,t.detailer)||userMatchesStr(me,t.checker))}
                 canDelete={canEdit}
                 selTasks={selTasks}
@@ -15701,7 +15713,7 @@ export default function App(){
                   const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                   const colCount=(canEdit?2:0)+(isClient?10:11);
                   const idx=ordered.indexOf(t);
-                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}}onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}} onDuplicate={canEdit?duplicateTask:null} onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                   if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                   return rows;
                 });
