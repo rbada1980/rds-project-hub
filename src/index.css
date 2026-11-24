@@ -121,6 +121,15 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Date/time input — force white calendar icon on dark-themed app */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"] {
+  color-scheme: dark;
+}
+
 /* Chat message list — scrollable but no visible scrollbar */
 .rds-msg-scroll {
   scrollbar-width: none;
