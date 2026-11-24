@@ -1236,7 +1236,7 @@ function KCard({task,project,onEdit,onDelete,onDrop,onDuplicate,readonly,canDele
         <p style={{margin:0,color:C.t1,fontSize:13,fontWeight:600,flex:1,lineHeight:1.4,paddingRight:onSelect?26:0}}>{task.title}</p>
         {onSelect?<div onClick={e=>{e.stopPropagation();onSelect(task.id);}} style={{position:"absolute",top:12,right:12,width:18,height:18,borderRadius:4,border:`2px solid ${selected?C.accent:C.t3}`,background:selected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0,transition:"all .15s",cursor:"pointer"}}>{selected?"✓":""}</div>
         :<div style={{display:"flex",gap:2,opacity:h?1:0,transition:"opacity .15s"}}>
-          {!readonly&&onDuplicate&&<IBtn icon="📋" title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
+          {!readonly&&onDuplicate&&<IBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><line x1="13" y1="13" x2="18" y2="13"/><line x1="13" y1="16" x2="18" y2="16"/><line x1="13" y1="19" x2="16" y2="19"/></svg>} title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
           {!readonly&&<IBtn icon="✏️" onClick={()=>onEdit(task)}/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={()=>onDelete(task.id)} color={C.red}/>}
         </div>}
@@ -1401,7 +1401,7 @@ function TRow({task,project,onEdit,onDelete,onDuplicate,onMove,onDragTask,onMove
         <td style={{...td,width:80}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
           {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
           {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",color:isStarred?"#f59e0b":"#94a3b8",opacity:isStarred?1:(h?.9:.6),transition:"all .15s",lineHeight:1}}>{isStarred?"★":"☆"}</button>}
-          {!readonly&&onDuplicate&&<IBtn icon="📋" title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
+          {!readonly&&onDuplicate&&<IBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><line x1="13" y1="13" x2="18" y2="13"/><line x1="13" y1="16" x2="18" y2="16"/><line x1="13" y1="19" x2="16" y2="19"/></svg>} title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
           {!readonly&&<IBtn icon="✏️" onClick={e=>{e.stopPropagation();onEdit(task);}} title="Edit"/>}
           {!readonly&&canDelete&&<IBtn icon="🗑" onClick={e=>{e.stopPropagation();onDelete(task.id);}} color={C.red} title="Delete"/>}
         </div></td>
