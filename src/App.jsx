@@ -13393,6 +13393,13 @@ export default function App(){
   const [attStats,sattStats]=useState(null);
   const [toast,sToast]      = useState(null);
   const [cmdOpen,setCmdOpen]    = useState(false); // ⌘K command palette
+  // ── Undo / Redo history (task operations) ────────────────────────────────
+  const undoStackRef=useRef([]); // [{label,before,after}]
+  const redoStackRef=useRef([]);
+  const [undoLen,setUndoLen]=useState(0);
+  const [redoLen,setRedoLen]=useState(0);
+  const undoFnRef=useRef(null);
+  const redoFnRef=useRef(null);
   // ── Pin / Star tasks (per-user, localStorage) ─────────────────────────────
   const [pinnedTasks,setPinnedTasks]=useState(()=>{try{const u=JSON.parse(localStorage.getItem("rds_user")||"{}");return new Set(JSON.parse(localStorage.getItem("rds_pinned_"+(u.id||""))||"[]"));}catch{return new Set();}});
   const [starredTasks,setStarredTasks]=useState(()=>{try{const u=JSON.parse(localStorage.getItem("rds_user")||"{}");return new Set(JSON.parse(localStorage.getItem("rds_starred_"+(u.id||""))||"[]"));}catch{return new Set();}});
@@ -13444,7 +13451,10 @@ export default function App(){
   useEffect(()=>{const h=()=>setIM(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   useEffect(()=>{
     function handleCmdKey(e){
+      const inField=e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.isContentEditable;
       if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();setCmdOpen(o=>!o);}
+      if(!inField&&(e.ctrlKey||e.metaKey)&&e.key==="z"&&!e.shiftKey){e.preventDefault();if(undoFnRef.current)undoFnRef.current();}
+      if(!inField&&(e.ctrlKey||e.metaKey)&&(e.key==="y"||(e.key==="Z"&&e.shiftKey))){e.preventDefault();if(redoFnRef.current)redoFnRef.current();}
       if(e.key==="Escape")setCmdOpen(false);
     }
     window.addEventListener("keydown",handleCmdKey);
@@ -13692,6 +13702,69 @@ export default function App(){
     return()=>{const el=document.getElementById("rds-anim-css");if(el)el.remove();};
   },[]);
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
+  // ── Undo / Redo helpers ────────────────────────────────────────────────────
+  function pushUndo(label,before,after){
+    undoStackRef.current=[...undoStackRef.current.slice(-19),{label,before,after}];
+    redoStackRef.current=[];
+    setUndoLen(undoStackRef.current.length);
+    setRedoLen(0);
+  }
+  async function applyHistOp(op,direction){
+    const{label,before,after}=op;
+    const TASK_KEYS=['project_id','title','client','status','priority','assignee','due_date','tags','files','detailer','checker','detailer_status','checker_status','scope','client_sub_date','det_weight','notes'];
+    function payload(src){const p={};TASK_KEYS.forEach(k=>{if(src&&src[k]!==undefined)p[k]=src[k];});return p;}
+    if(!before&&after){
+      // was a create → undo=delete, redo=re-insert
+      if(direction==='undo'){
+        await supabase.from("tasks").delete().eq("id",after.id);
+        st(ts=>ts.filter(t=>t.id!==after.id));
+        showToast(`Undo create "${label}" ✓`);
+      }else{
+        const{data}=await supabase.from("tasks").insert(payload(after)).select().single();
+        if(data){st(ts=>[...ts,data]);op.after=data;}
+        showToast(`Redo create "${label}" ✓`);
+      }
+    }else if(before&&!after){
+      // was a delete → undo=re-insert, redo=delete
+      if(direction==='undo'){
+        const{data}=await supabase.from("tasks").insert(payload(before)).select().single();
+        if(data){st(ts=>[...ts,data]);op.before=data;}
+        showToast(`Undo delete "${label}" ✓`);
+      }else{
+        await supabase.from("tasks").delete().eq("id",before.id);
+        st(ts=>ts.filter(t=>t.id!==before.id));
+        showToast(`Redo delete "${label}" ✓`);
+      }
+    }else if(before&&after){
+      // was an update → undo=revert to before, redo=apply after
+      const target=direction==='undo'?before:after;
+      const{data}=await supabase.from("tasks").update(payload(target)).eq("id",target.id).select().single();
+      if(data)st(ts=>ts.map(t=>t.id===data.id?data:t));
+      showToast(`${direction==='undo'?'Undo':'Redo'} "${label}" ✓`);
+    }
+  }
+  async function undoLast(){
+    const stack=undoStackRef.current;
+    if(!stack.length){showToast("Nothing to undo",false);return;}
+    const op=stack[stack.length-1];
+    undoStackRef.current=stack.slice(0,-1);
+    redoStackRef.current=[...redoStackRef.current,op];
+    setUndoLen(undoStackRef.current.length);
+    setRedoLen(redoStackRef.current.length);
+    await applyHistOp(op,'undo');
+  }
+  async function redoLast(){
+    const stack=redoStackRef.current;
+    if(!stack.length){showToast("Nothing to redo",false);return;}
+    const op=stack[stack.length-1];
+    redoStackRef.current=stack.slice(0,-1);
+    undoStackRef.current=[...undoStackRef.current,op];
+    setUndoLen(undoStackRef.current.length);
+    setRedoLen(redoStackRef.current.length);
+    await applyHistOp(op,'redo');
+  }
+  undoFnRef.current=undoLast;
+  redoFnRef.current=redoLast;
   function toggleTask(id){setSelTasks(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
   function toggleProject(id){setSelProjs(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});}
   function clearSel(){setSelTasks(new Set());setSelProjs(new Set());}
@@ -14183,12 +14256,13 @@ export default function App(){
         const {data,error:updateErr}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
         if(updateErr){showToast("Update failed: "+updateErr.message,false);ssv(false);return;}
         st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
+        pushUndo("Edit: "+editTask.title,{...editTask,id:editTask.id},data||{...editTask,...payload,id:editTask.id});
         showToast("Task updated ✓");
         // ── Audit: log field changes (use DB state before update as old, actual saved data as new) ──
         await logAudit(me,"task",editTask.id,f.title,pid,"update",taskBeforeUpdate||editTask,data||{...editTask,...payload});
       }else{
         const {data}=await supabase.from("tasks").insert(payload).select().single();
-        if(data)st(ts=>[...ts,data]);
+        if(data){st(ts=>[...ts,data]);pushUndo("Create: "+f.title,null,data);}
         showToast("Task created ✓");
         // ── Audit: log task creation ──
         if(data)await logAudit(me,"task",data.id,data.title,pid,"create",null,data);
@@ -14209,14 +14283,22 @@ export default function App(){
     }catch(e){showToast("Error: "+e.message,false);}
     ssv(false);
   }
-  async function delTask(id){if(!canEdit)return;if(!window.confirm("Delete this task?"))return;await supabase.from("tasks").delete().eq("id",id);st(ts=>ts.filter(t=>t.id!==id));showToast("Task deleted ✓");}
+  async function delTask(id){
+    if(!canEdit)return;
+    if(!window.confirm("Delete this task?"))return;
+    const taskToDelete=tasks.find(t=>t.id===id);
+    await supabase.from("tasks").delete().eq("id",id);
+    st(ts=>ts.filter(t=>t.id!==id));
+    if(taskToDelete)pushUndo("Delete: "+taskToDelete.title,taskToDelete,null);
+    showToast("Task deleted ✓");
+  }
   async function duplicateTask(task){
     if(!canEdit)return;
     const payload={project_id:task.project_id,title:task.title+" (Copy)",client:task.client||"",status:"Not Yet Started",priority:task.priority||"Medium",assignee:task.assignee||"",due_date:task.due_date||null,tags:task.tags||[],files:task.files||[],detailer:task.detailer||"",checker:task.checker||"",detailer_status:"Not Yet Started",checker_status:"Not Yet Started",scope:task.scope||"",client_sub_date:null,det_weight:task.det_weight||null};
     try{
       const{data,error}=await supabase.from("tasks").insert(payload).select().single();
       if(error){showToast("Duplicate failed: "+error.message,false);return;}
-      if(data){st(ts=>[...ts,data]);showToast("Task duplicated ✓");}
+      if(data){st(ts=>[...ts,data]);pushUndo("Duplicate: "+task.title,null,data);showToast("Task duplicated ✓");}
     }catch(e){showToast("Error: "+e.message,false);}
   }
   async function doMoveTask(task,destProjectId){
@@ -14244,7 +14326,7 @@ export default function App(){
       showToast("Reassign failed: "+(error?.message||"unknown"),false);
     }
   }
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);const proj=projectById.get(task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}const prevStatus=task.status;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);pushUndo("Status: "+task.title,{...task,status:prevStatus},{...task,status:ns});const proj=projectById.get(task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
   async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function syncRevDate(taskId,revDate,revNum){const{data,error}=await supabase.from("tasks").update({due_date:revDate}).eq("id",taskId).select().single();if(error){showToast("Update failed: "+error.message,false);return;}if(data)st(ts=>ts.map(t=>t.id===taskId?{...t,due_date:revDate}:t));showToast(`Due date synced to Rev ${revNum} date ✓`);}
@@ -14710,7 +14792,7 @@ export default function App(){
           onTasks={()=>navTo('list')}
           onProject={()=>navTo('list',activePid)}
         />
-        {/* ── Ctrl+K Hint ── */}
+        {/* ── Keyboard Shortcuts Hint ── */}
         {isMobile?(
           <div style={{display:"flex",alignItems:"center",gap:10,background:"#ef444415",border:"1px solid #ef444440",borderRadius:10,padding:"9px 14px",marginBottom:16}}>
             <span style={{fontSize:17}}>🔍</span>
@@ -14719,13 +14801,21 @@ export default function App(){
             </span>
           </div>
         ):(
-          <div style={{display:"flex",alignItems:"center",gap:10,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"9px 14px",marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"9px 14px",marginBottom:16,flexWrap:"wrap"}}>
             <span style={{fontSize:17}}>⌨️</span>
-            <span style={{fontSize:14,color:C.t1,lineHeight:1.5}}>
-              Press{" "}
-              <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:C.t1,fontWeight:700}}>ctrl + k</kbd>
-              {" "}<span style={{color:C.t2}}>(or{" "}<kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:13,color:C.t1,fontWeight:700}}>cmd k</kbd>{" "}on Mac)</span>
-              {" "}anywhere in the website - search projects, tasks, clients, people and files
+            <span style={{fontSize:13,color:C.t1,lineHeight:1.5,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:12,color:C.t1,fontWeight:700}}>Ctrl+K</kbd>
+              <span style={{color:C.t2}}>Search</span>
+              <span style={{color:C.border,margin:"0 4px"}}>·</span>
+              <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:12,color:C.t1,fontWeight:700}}>Ctrl+Z</kbd>
+              <span style={{color:C.t2}}>Undo</span>
+              {undoLen>0&&<span style={{background:C.accent+"33",color:C.accent,borderRadius:10,padding:"0px 7px",fontSize:11,fontWeight:700}}>{undoLen}</span>}
+              <span style={{color:C.border,margin:"0 4px"}}>·</span>
+              <kbd style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:4,padding:"1px 7px",fontFamily:"monospace",fontSize:12,color:C.t1,fontWeight:700}}>Ctrl+Y</kbd>
+              <span style={{color:C.t2}}>Redo</span>
+              {redoLen>0&&<span style={{background:C.teal+"33",color:C.teal,borderRadius:10,padding:"0px 7px",fontSize:11,fontWeight:700}}>{redoLen}</span>}
+              <span style={{color:C.border,margin:"0 4px"}}>·</span>
+              <span style={{color:C.t3,fontSize:12}}>Works for create, edit, delete, duplicate & status changes</span>
             </span>
           </div>
         )}
