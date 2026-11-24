@@ -13703,16 +13703,49 @@ export default function App(){
   },[]);
   function showToast(msg,ok=true){sToast({msg,ok});setTimeout(()=>sToast(null),3000);}
   // ── Undo / Redo helpers ────────────────────────────────────────────────────
-  function pushUndo(label,before,after){
-    undoStackRef.current=[...undoStackRef.current.slice(-19),{label,before,after}];
+  function pushUndo(label,before,after,type="task"){
+    undoStackRef.current=[...undoStackRef.current.slice(-19),{label,before,after,type}];
     redoStackRef.current=[];
     setUndoLen(undoStackRef.current.length);
     setRedoLen(0);
   }
   async function applyHistOp(op,direction){
-    const{label,before,after}=op;
+    const{label,before,after,type="task"}=op;
     const TASK_KEYS=['project_id','title','client','status','priority','assignee','due_date','tags','files','detailer','checker','detailer_status','checker_status','scope','client_sub_date','det_weight','notes'];
-    function payload(src){const p={};TASK_KEYS.forEach(k=>{if(src&&src[k]!==undefined)p[k]=src[k];});return p;}
+    function taskPayload(src){const p={};TASK_KEYS.forEach(k=>{if(src&&src[k]!==undefined)p[k]=src[k];});return p;}
+    // ── Project operations ──
+    if(type==="project"){
+      const PROJ_KEYS=['name','client','color','deadline','description','assigned_users','group_name'];
+      function projPayload(src){const p={};PROJ_KEYS.forEach(k=>{if(src&&src[k]!==undefined)p[k]=src[k];});return p;}
+      if(before&&!after){
+        // was a project delete → undo=restore project+tasks, redo=delete again
+        if(direction==='undo'){
+          const{data:newProj}=await supabase.from("projects").insert(projPayload(before.project)).select().single();
+          if(newProj){
+            sp(ps=>[...ps,newProj]);
+            const restoredTasks=[];
+            for(const t of (before.tasks||[])){
+              const{data:nt}=await supabase.from("tasks").insert({...taskPayload(t),project_id:newProj.id}).select().single();
+              if(nt)restoredTasks.push(nt);
+            }
+            if(restoredTasks.length)st(ts=>[...ts,...restoredTasks]);
+            op.before={project:newProj,tasks:restoredTasks};
+            showToast(`Undo delete project "${before.project?.name||label}" ✓`);
+          }
+        }else{
+          const pid=before.project?.id;
+          if(pid){
+            await supabase.from("tasks").delete().eq("project_id",pid);
+            await supabase.from("projects").delete().eq("id",pid);
+            sp(ps=>ps.filter(p=>p.id!==pid));
+            st(ts=>ts.filter(t=>t.project_id!==pid));
+            showToast(`Redo delete project "${before.project?.name||label}" ✓`);
+          }
+        }
+      }
+      return;
+    }
+    // ── Task operations ──
     if(!before&&after){
       // was a create → undo=delete, redo=re-insert
       if(direction==='undo'){
@@ -13720,14 +13753,14 @@ export default function App(){
         st(ts=>ts.filter(t=>t.id!==after.id));
         showToast(`Undo create "${label}" ✓`);
       }else{
-        const{data}=await supabase.from("tasks").insert(payload(after)).select().single();
+        const{data}=await supabase.from("tasks").insert(taskPayload(after)).select().single();
         if(data){st(ts=>[...ts,data]);op.after=data;}
         showToast(`Redo create "${label}" ✓`);
       }
     }else if(before&&!after){
       // was a delete → undo=re-insert, redo=delete
       if(direction==='undo'){
-        const{data}=await supabase.from("tasks").insert(payload(before)).select().single();
+        const{data}=await supabase.from("tasks").insert(taskPayload(before)).select().single();
         if(data){st(ts=>[...ts,data]);op.before=data;}
         showToast(`Undo delete "${label}" ✓`);
       }else{
@@ -13738,7 +13771,7 @@ export default function App(){
     }else if(before&&after){
       // was an update → undo=revert to before, redo=apply after
       const target=direction==='undo'?before:after;
-      const{data}=await supabase.from("tasks").update(payload(target)).eq("id",target.id).select().single();
+      const{data}=await supabase.from("tasks").update(taskPayload(target)).eq("id",target.id).select().single();
       if(data)st(ts=>ts.map(t=>t.id===data.id?data:t));
       showToast(`${direction==='undo'?'Undo':'Redo'} "${label}" ✓`);
     }
@@ -14335,6 +14368,7 @@ export default function App(){
     if(!canEdit)return;
     if(!window.confirm("Delete this project and all its tasks? This cannot be undone."))return;
     const delProj=accessibleProjects.find(p=>p.id===id);
+    const delTasks=tasks.filter(t=>t.project_id===id);
     try{
       await logAudit(me,"project",id,delProj?.name||id,id,"delete",delProj,null);
       const {error:taskErr}=await supabase.from("tasks").delete().eq("project_id",id);
@@ -14344,7 +14378,8 @@ export default function App(){
       sp(ps=>ps.filter(p=>p.id!==id));
       st(ts=>ts.filter(t=>t.project_id!==id));
       if(activePid===id)sap(null);
-      showToast("Project deleted ✓");
+      pushUndo("Delete project: "+(delProj?.name||id),{project:delProj,tasks:delTasks},null,"project");
+      showToast("Project deleted ✓ — press Ctrl+Z to restore");
     }catch(e){showToast("Error: "+e.message,false);}
   }
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
