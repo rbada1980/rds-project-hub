@@ -480,7 +480,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       <div className="rds-form-row" style={row}>
         <div style={col}>
           <div style={{marginBottom:14}}>
-            <RLabel text="Assignee *"/>
+            <RLabel text={f.status==="On Hold"?"Assignee":"Assignee *"}/>
             <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
               style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee||f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Team Leader -</option>
@@ -498,7 +498,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       </div>
       <div className="rds-form-row" style={row}>
         <div style={col}><FSelect label="Priority" value={f.priority} onChange={s("priority")} options={["High","Medium","Low"]}/></div>
-        <div style={col}><FInput label={requireDates?"Due Date *":"Due Date"} value={f.due_date} onChange={s("due_date")} type="date"/></div>
+        <div style={col}><FInput label={requireDates&&f.status!=="On Hold"?"Due Date *":"Due Date"} value={f.due_date} onChange={s("due_date")} type="date"/></div>
       </div>
       <div className="rds-form-row" style={row}>
         {/* Detailer + Detailer Status side by side */}
@@ -14462,7 +14462,7 @@ export default function App(){
     }
     // ── Admin / Manager: require due_date ──
     if(canEdit){
-      if(!f.due_date){showToast("Due Date is required.",false);return;}
+      if(!f.due_date&&f.status!=="On Hold"){showToast("Due Date is required.",false);return;}
     }
     // ── Admin / Manager: full task save ──
     ssv(true);
