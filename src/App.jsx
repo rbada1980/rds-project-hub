@@ -672,12 +672,25 @@ function EditProjectForm({project,onSave,onClose,saving,users,clients,requireDat
     color:project.color||C.teal,assigned_users:project.assigned_users||[],
     group_name:project.group_name||"",
   });
+  const isDirty=useMemo(()=>{
+    const keys=["name","deadline","description","client","color","group_name"];
+    if(keys.some(k=>(f[k]||"")!==(project[k]||"")))return true;
+    const au=JSON.stringify([...(f.assigned_users||[])].sort());
+    const po=JSON.stringify([...(project.assigned_users||[])].sort());
+    return au!==po;
+  },[f,project]);// eslint-disable-line react-hooks/exhaustive-deps
+  const canSave=isDirty&&!saving&&!!f.name.trim();
   return(
     <div>
       <ProjectFormFields f={f} sf={sf} users={users} clients={clients} requireDates={requireDates} narayanaUsername={narayana?.username} existingGroupNames={existingGroupNames}/>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6,alignItems:"center"}}>
+        <span style={{flex:1,fontSize:12,color:isDirty?C.accent:C.t3,fontWeight:600}}>{isDirty?"● Unsaved changes":"✓ No changes"}</span>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving||!f.name.trim()} onClick={()=>onSave(f)} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Save Changes"}</button>
+        <button disabled={!canSave} onClick={()=>onSave(f)}
+          title={!isDirty?"No changes to save":!f.name.trim()?"Name is required":""}
+          style={{...SBtn,opacity:canSave?1:0.35,cursor:canSave?"pointer":"not-allowed",boxShadow:canSave?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
+          {saving?"Saving…":"Save Changes"}
+        </button>
       </div>
     </div>
   );
@@ -686,12 +699,19 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   const [tab,st]=useState("list");
   const [f,sf]=useState({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});
   const [editId,sei]=useState(null);
+  const origClient=useRef(null);
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [cq,scq]=useState("");
   const [selClients,setSC]=useState(new Set());
   const [newTLUser,setNewTLUser]=useState("");// employee selected to promote to Team Leader
   const s=k=>v=>sf(p=>({...p,[k]:v}));
+  const clientIsDirty=useMemo(()=>{
+    if(!editId||!origClient.current)return true;// new client always dirty
+    const o=origClient.current;
+    const keys=["name","email","phone","address","team_leader","portal_username"];
+    return keys.some(k=>(f[k]||"")!==(o[k]||""));
+  },[f,editId]);// eslint-disable-line react-hooks/exhaustive-deps
   const teamLeaders=users.filter(u=>u.role==="Team Leader"&&u.is_active!==false);
   const promotableEmployees=users.filter(u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false"&&u.role!=="Admin"&&u.role!=="Manager"&&u.role!=="Team Leader"&&u.role!=="Client"&&u.role!=="HR & Finance").sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   const isAddingNewTL=false;// multi-select replaces __new__ flow
@@ -705,11 +725,13 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
   function startEdit(c){
     sei(c.id);
     const pu=users.find(u=>u.role==="Client"&&(u.client_name||"").toLowerCase()===c.name.toLowerCase());
-    sf({name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||"",team_leader:c.team_leader||"",portal_username:pu?.username||toUn(c.name),portal_password:""});
+    const loaded={name:c.name,email:c.email||"",phone:c.phone||"",address:c.address||"",team_leader:c.team_leader||"",portal_username:pu?.username||toUn(c.name),portal_password:""};
+    origClient.current=loaded;
+    sf(loaded);
     setNewTLUser("");
     st("add");
   }
-  function reset(){sei(null);sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");setNewTLUser("");}
+  function reset(){sei(null);origClient.current=null;sf({name:"",email:"",phone:"",address:"",team_leader:"",portal_username:"",portal_password:"Client@RDS2026"});se("");setNewTLUser("");}
   async function save(){
     if(!f.name.trim()){se("Client name is required.");return;}
     if((!f.team_leader||!(f.team_leader||"").trim())&&!newTLUser){se("Please select at least one Team Leader.");return;}
@@ -852,9 +874,17 @@ function ClientsModal({clients,users,onAdd,onEdit,onDelete,onSavePortal,onClose}
             </div>
           </div>
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginTop:12,color:C.red,fontSize:13}}>⚠ {err}</div>}
-          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}>
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14,alignItems:"center"}}>
+            {editId&&<span style={{flex:1,fontSize:12,color:clientIsDirty?C.accent:C.t3,fontWeight:600}}>{clientIsDirty?"● Unsaved changes":"✓ No changes"}</span>}
             <button onClick={()=>{reset();st("list");}} style={GBtn}>Cancel</button>
-            <button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":editId?"Save Changes":"Add Client"}</button>
+            {editId
+              ?<button onClick={save} disabled={!clientIsDirty||saving}
+                  title={!clientIsDirty?"No changes to save":""}
+                  style={{...SBtn,opacity:(clientIsDirty&&!saving)?1:0.35,cursor:(clientIsDirty&&!saving)?"pointer":"not-allowed",boxShadow:(clientIsDirty&&!saving)?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
+                  {saving?"Saving…":"Save Changes"}
+                </button>
+              :<button onClick={save} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Add Client"}</button>
+            }
           </div>
         </div>
       )}
@@ -865,6 +895,7 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const [tab,st]=useState("list");
   const [editUser,seu]=useState(null);
   const [f,sf]=useState({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",date_of_joining:"",shift:"general",assigned_projects:[],is_active:true});
+  const origUser=useRef(null);
   const [err,se]=useState("");
   const [saving,setSaving]=useState(false);
   const [uq,suq]=useState("");
@@ -873,9 +904,18 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
   const [selUsers,setSU]=useState(new Set());
   const s=k=>v=>sf(p=>({...p,[k]:v}));
   const isSuperAdmin=currentUser.username===SUPER_ADMIN;
+  const userIsDirty=useMemo(()=>{
+    if(!editUser||!origUser.current)return false;
+    const o=origUser.current;
+    const keys=["name","username","role","client_name","email","date_of_birth","date_of_joining","shift"];
+    if(keys.some(k=>(f[k]||"")!==(o[k]||"")))return true;
+    if(f.is_active!==o.is_active)return true;
+    if(f.password&&f.password.trim()!=="")return true;// new password entered = dirty
+    return false;
+  },[f,editUser]);// eslint-disable-line react-hooks/exhaustive-deps
   function toggleProj(pid){sf(p=>({...p,assigned_projects:p.assigned_projects.includes(pid)?p.assigned_projects.filter(id=>id!==pid):[...p.assigned_projects,pid]}));}
-  function startEdit(u){seu(u);sf({name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",date_of_birth:u.date_of_birth||"",date_of_joining:u.date_of_joining||"",shift:u.shift||"general",assigned_projects:[],is_active:u.is_active!==false});st("edit");se("");}
-  function resetForm(){seu(null);sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",date_of_joining:"",shift:"general",assigned_projects:[],is_active:true});se("");}
+  function startEdit(u){seu(u);const loaded={name:u.name,username:u.username,password:"",role:u.role,client_name:u.client_name||"",email:u.email||"",date_of_birth:u.date_of_birth||"",date_of_joining:u.date_of_joining||"",shift:u.shift||"general",assigned_projects:[],is_active:u.is_active!==false};origUser.current=loaded;sf(loaded);st("edit");se("");}
+  function resetForm(){seu(null);origUser.current=null;sf({name:"",username:"",password:"RDSTechserv@2026",role:"Rebar",client_name:"",email:"",date_of_birth:"",date_of_joining:"",shift:"general",assigned_projects:[],is_active:true});se("");}
   async function addUser(){
     if(!f.name.trim()){se("Full Name is required.");return;}
     if(!f.role){se("Role is required.");return;}
@@ -1153,9 +1193,14 @@ function UsersModal({users,currentUser,projects,clients,onAdd,onEdit,onDelete,on
             </div>
           )}
           {err&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 14px",marginBottom:14,color:C.red,fontSize:13}}>⚠ {err}</div>}
-          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4,alignItems:"center"}}>
+            <span style={{flex:1,fontSize:12,color:userIsDirty?C.accent:C.t3,fontWeight:600}}>{userIsDirty?"● Unsaved changes":"✓ No changes"}</span>
             <button onClick={()=>{resetForm();st("list");}} style={GBtn}>Cancel</button>
-            <button onClick={saveEdit} disabled={saving} style={{...SBtn,opacity:saving?0.7:1}}>{saving?"Saving…":"Save Changes"}</button>
+            <button onClick={saveEdit} disabled={!userIsDirty||saving}
+              title={!userIsDirty?"No changes to save":""}
+              style={{...SBtn,opacity:(userIsDirty&&!saving)?1:0.35,cursor:(userIsDirty&&!saving)?"pointer":"not-allowed",boxShadow:(userIsDirty&&!saving)?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
+              {saving?"Saving…":"Save Changes"}
+            </button>
           </div>
         </div>
       )}
@@ -1444,6 +1489,8 @@ function BulkActionModal({type,count,members,onApply,onClose}){
 function UserTaskEditForm({task,project,onSave,onClose,saving}){
   const [status,ss]=useState(task.status||"Not Yet Started");
   const [notes,sn]=useState(task.notes||"");
+  const isDirty=(status!==(task.status||"Not Yet Started"))||(notes!==(task.notes||""));
+  const canSave=isDirty&&!saving;
   return(
     <div>
       {/* Read-only task info */}
@@ -1473,9 +1520,12 @@ function UserTaskEditForm({task,project,onSave,onClose,saving}){
           placeholder="Add notes, completion details, or comments…"
           style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,outline:"none",fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
       </div>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16,alignItems:"center"}}>
+        <span style={{flex:1,fontSize:12,color:isDirty?C.accent:C.t3,fontWeight:600}}>{isDirty?"● Unsaved changes":"✓ No changes"}</span>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
-        <button disabled={saving} onClick={()=>onSave({...task,status,notes})} style={{...SBtn,opacity:saving?0.7:1}}>
+        <button disabled={!canSave} onClick={()=>onSave({...task,status,notes})}
+          title={!isDirty?"No changes to save":""}
+          style={{...SBtn,opacity:canSave?1:0.35,cursor:canSave?"pointer":"not-allowed",boxShadow:canSave?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",transition:"opacity 0.2s,box-shadow 0.2s"}}>
           {saving?"Saving…":"Update Status"}
         </button>
       </div>
