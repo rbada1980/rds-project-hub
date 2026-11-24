@@ -12233,8 +12233,8 @@ function AuditLogPage({users,projects,me}){
 
   const FIELD_ICON={Status:"✅",Assignee:"👤","Due Date":"📅","Client Sub Date":"🗓",
     Priority:"🏷",Detailer:"✏",Checker:"✓",Title:"📝",Client:"🏢",Tags:"🏷",Scope:"📋"};
-  const ACTION_CLR={create:C.green,update:C.accent,delete:C.red};
-  const ACTION_ICON={create:"🆕",update:"🔄",delete:"🗑️"};
+  const ACTION_CLR={create:C.green,update:C.accent,delete:C.red,undo:"#8b5cf6",redo:"#06b6d4"};
+  const ACTION_ICON={create:"🆕",update:"🔄",delete:"🗑️",undo:"↩️",redo:"↪️"};
 
   function fmtTs(ts){
     const d=new Date(ts);
@@ -12294,6 +12294,8 @@ function AuditLogPage({users,projects,me}){
             <option value="create">Created</option>
             <option value="update">Updated</option>
             <option value="delete">Deleted</option>
+            <option value="undo">↩ Undone</option>
+            <option value="redo">↪ Redone</option>
           </select>
           <select value={fActor} onChange={e=>setFActor(e.target.value)} style={sel(fActor!=="all")}>
             <option value="all">All People</option>
@@ -12344,7 +12346,10 @@ function AuditLogPage({users,projects,me}){
                         {proj&&<div style={{color:C.t3,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {proj.name}</div>}
                       </td>
                       <td style={{padding:"7px 10px"}}><span style={{color:aclr,fontWeight:700,fontSize:12}}>{ACTION_ICON[l.action]||"🔄"} {l.action||"-"}</span></td>
-                      <td style={{padding:"7px 10px",color:C.t2,fontSize:11}}>{l.field?(FIELD_ICON[l.field]||"")+" "+l.field:"-"}</td>
+                      <td style={{padding:"7px 10px",color:C.t2,fontSize:11,maxWidth:160}}>
+                        {(l.action==="undo"||l.action==="redo")?<span style={{color:aclr,fontStyle:"italic",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block",maxWidth:150}} title={l.field||""}>{l.field||"-"}</span>
+                        :l.field?(FIELD_ICON[l.field]||"")+" "+l.field:"-"}
+                      </td>
                       <td style={{padding:"7px 10px",maxWidth:120}}>{l.old_value?<span style={{background:C.red+"15",color:C.red,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.old_value}</span>:<span style={{color:C.t3}}>-</span>}</td>
                       <td style={{padding:"7px 10px",maxWidth:120}}>{l.new_value?<span style={{background:C.green+"15",color:C.green,borderRadius:3,padding:"1px 5px",fontSize:10,fontFamily:"monospace",display:"inline-block",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.new_value}</span>:<span style={{color:C.t3}}>-</span>}</td>
                     </tr>
@@ -13713,6 +13718,10 @@ export default function App(){
     const{label,before,after,type="task"}=op;
     const TASK_KEYS=['project_id','title','client','status','priority','assignee','due_date','tags','files','detailer','checker','detailer_status','checker_status','scope','client_sub_date','det_weight','notes'];
     function taskPayload(src){const p={};TASK_KEYS.forEach(k=>{if(src&&src[k]!==undefined)p[k]=src[k];});return p;}
+    const act=direction==='undo'?'undo':'redo';
+    function logHistAudit(entity_type,entity_id,entity_label,project_id){
+      supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type,entity_id:entity_id||null,entity_label:entity_label||"",action:act,field:label,old_value:null,new_value:null,project_id:project_id||null}).then(()=>{});
+    }
     // ── Project operations ──
     if(type==="project"){
       const PROJ_KEYS=['name','client','color','deadline','description','assigned_users','group_name'];
@@ -13730,6 +13739,7 @@ export default function App(){
             }
             if(restoredTasks.length)st(ts=>[...ts,...restoredTasks]);
             op.before={project:newProj,tasks:restoredTasks};
+            logHistAudit("project",newProj.id,newProj.name,newProj.id);
             showToast(`Undo delete project "${before.project?.name||label}" ✓`);
           }
         }else{
@@ -13739,6 +13749,7 @@ export default function App(){
             await supabase.from("projects").delete().eq("id",pid);
             sp(ps=>ps.filter(p=>p.id!==pid));
             st(ts=>ts.filter(t=>t.project_id!==pid));
+            logHistAudit("project",pid,before.project?.name||label,pid);
             showToast(`Redo delete project "${before.project?.name||label}" ✓`);
           }
         }
@@ -13751,28 +13762,30 @@ export default function App(){
       if(direction==='undo'){
         await supabase.from("tasks").delete().eq("id",after.id);
         st(ts=>ts.filter(t=>t.id!==after.id));
+        logHistAudit("task",after.id,after.title,after.project_id);
         showToast(`Undo create "${label}" ✓`);
       }else{
         const{data}=await supabase.from("tasks").insert(taskPayload(after)).select().single();
-        if(data){st(ts=>[...ts,data]);op.after=data;}
+        if(data){st(ts=>[...ts,data]);op.after=data;logHistAudit("task",data.id,data.title,data.project_id);}
         showToast(`Redo create "${label}" ✓`);
       }
     }else if(before&&!after){
       // was a delete → undo=re-insert, redo=delete
       if(direction==='undo'){
         const{data}=await supabase.from("tasks").insert(taskPayload(before)).select().single();
-        if(data){st(ts=>[...ts,data]);op.before=data;}
+        if(data){st(ts=>[...ts,data]);op.before=data;logHistAudit("task",data.id,data.title,data.project_id);}
         showToast(`Undo delete "${label}" ✓`);
       }else{
         await supabase.from("tasks").delete().eq("id",before.id);
         st(ts=>ts.filter(t=>t.id!==before.id));
+        logHistAudit("task",before.id,before.title,before.project_id);
         showToast(`Redo delete "${label}" ✓`);
       }
     }else if(before&&after){
       // was an update → undo=revert to before, redo=apply after
       const target=direction==='undo'?before:after;
       const{data}=await supabase.from("tasks").update(taskPayload(target)).eq("id",target.id).select().single();
-      if(data)st(ts=>ts.map(t=>t.id===data.id?data:t));
+      if(data){st(ts=>ts.map(t=>t.id===data.id?data:t));logHistAudit("task",data.id,data.title,data.project_id);}
       showToast(`${direction==='undo'?'Undo':'Redo'} "${label}" ✓`);
     }
   }
@@ -13896,6 +13909,13 @@ export default function App(){
     }catch(e){}
   }
   useEffect(()=>{if(me)loadAll();},[me]);
+
+  // ── Auto-prune audit_logs older than 30 days on login ───────────────────────
+  useEffect(()=>{
+    if(!me)return;
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+    supabase.from("audit_logs").delete().lt("created_at",cutoff.toISOString()).then(()=>{});
+  },[me?.id]);
 
   // ── Stale-data guard: every 60s check DB task count vs in-memory count ───
   // If they differ (missed realtime events while tab was backgrounded/offline),
