@@ -1319,13 +1319,6 @@ function RevisionFlowBar({task,revisions,colSpan,onSyncDate=null}){
                   <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:3,padding:"0px 5px",fontSize:9,fontWeight:700,textTransform:"uppercase"}}>{rev.status}</span>
                   {rev.notes&&<span style={{fontSize:9,color:C.t3,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={rev.notes}>{rev.notes}</span>}
                   {revDate&&<span style={{fontSize:9,color:C.teal,fontWeight:600}}>📅 {fmtD(revDate)}</span>}
-                  {revDate&&onSyncDate&&datesDiffer&&(
-                    <button onClick={e=>{e.stopPropagation();onSyncDate(task.id,revDate,rev.revision_number);}}
-                      title={`Update task due date to Rev ${rev.revision_number} date (${fmtD(revDate)})`}
-                      style={{background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,borderRadius:4,padding:"1px 6px",fontSize:8,fontWeight:800,cursor:"pointer",fontFamily:"inherit",lineHeight:"14px",flexShrink:0}}>
-                      ↑ Sync Date
-                    </button>
-                  )}
                 </div>
               </div>
             );
@@ -4508,7 +4501,7 @@ function exportSubmissionListByPeriod(projects,tasks,period,today){
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBMISSIONS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit}){
+function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdit,allRevisions=[]}){
   const isMobile=useMobile();
   const [period,setPeriod]=useState("today");
   const [customFrom,setCustomFrom]=useState(today);
@@ -4592,6 +4585,50 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const tdC={padding:"10px 12px",textAlign:"center",fontSize:12,verticalAlign:"middle"};
   const tdL={padding:"10px 12px",textAlign:"left",fontSize:12,verticalAlign:"middle"};
 
+  // ── Revision rows in submission list ──
+  const parentTaskMap=new Map(allTasks.map(t=>[String(t.id),t]));
+  const revInRange=(rv,f,to)=>{const d=ds(rv.client_sub_date);if(!d)return false;if(period==="overdue")return d>=f&&d<=to&&!isDone(rv.status);return d>=f&&d<=to;};
+  const periodRevItems=(period==="all"
+    ?allRevisions.filter(rv=>parentTaskMap.has(String(rv.task_id))&&rv.client_sub_date)
+    :allRevisions.filter(rv=>parentTaskMap.has(String(rv.task_id))&&revInRange(rv,rangeFrom,rangeTo))
+  ).sort((a,b)=>(a.client_sub_date||"zzz").localeCompare(b.client_sub_date||"zzz"));
+  const filteredRevItems=subSearch?periodRevItems.filter(rv=>{
+    const t=parentTaskMap.get(String(rv.task_id));if(!t)return false;
+    const proj=scopedProjects.find(p=>p.id===t.project_id);const q=subSearch.toLowerCase();
+    return (t.title||"").toLowerCase().includes(q)||(proj?.name||"").toLowerCase().includes(q)||(proj?.client||"").toLowerCase().includes(q)||(t.assignee||"").toLowerCase().includes(q)||(rv.status||"").toLowerCase().includes(q);
+  }):periodRevItems;
+
+  const RevRow=({rv})=>{
+    const t=parentTaskMap.get(String(rv.task_id));
+    if(!t)return null;
+    const proj=scopedProjects.find(p=>p.id===t.project_id);
+    const clr=getStatusColor(rv.status);
+    return(
+      <tr style={{borderBottom:`1px solid ${C.border}`,background:clr+"08",transition:"background .12s"}}
+        onMouseEnter={e=>e.currentTarget.style.background=clr+"18"}
+        onMouseLeave={e=>e.currentTarget.style.background=clr+"08"}>
+        <td style={{...tdL,fontWeight:600}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:800,flexShrink:0}}>Rev {rv.revision_number}</span>
+            <span style={{color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
+          </div>
+          {rv.notes&&<div style={{fontSize:10,color:C.t3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{rv.notes}</div>}
+        </td>
+        <td style={{...tdC,color:C.accent,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?.name||"-"}</td>
+        {!isClient&&<td style={{...tdC,color:C.teal,fontWeight:600}}>{proj?.client||"-"}</td>}
+        <td style={{...tdC}}>
+          <span style={{fontSize:11,fontWeight:700,color:clr,background:clr+"18",padding:"3px 8px",borderRadius:6,whiteSpace:"nowrap"}}>{rv.status}</span>
+        </td>
+        <td style={{...tdC,color:C.t2}}>{t.assignee||"-"}</td>
+        <td style={{...tdC,color:C.t2}}>{t.detailer||"-"}</td>
+        <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
+        <td style={{...tdC,color:"#16a34a",fontWeight:700}}>{fmtD(rv.client_sub_date)}</td>
+        <td style={{...tdC,color:C.t2}}>—</td>
+        {!isClient&&<td style={{...tdC}}></td>}
+      </tr>
+    );
+  };
+
   const TaskRow=({t})=>{
     const proj=scopedProjects.find(p=>p.id===t.project_id);
     const isOverdue=t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
@@ -4653,6 +4690,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <span>🔗 <strong style={{color:C.t1}}>{allTasks.length}</strong> in scope</span>
         <span>📅 <strong style={{color:C.t1}}>{allTasks.filter(t=>hasDate(t)).length}</strong> have dates</span>
         <span>⛔ <strong style={{color:C.t1}}>{noDatesCount}</strong> no dates</span>
+        {allRevisions.length>0&&<span>🔁 <strong style={{color:C.purple||"#8b5cf6"}}>{allRevisions.length}</strong> revisions</span>}
         <span style={{color:C.t3}}>Today: {today}</span>
       </div>
       {/* ── Summary stat cards ── */}
@@ -4900,7 +4938,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                               ))}
                             </tr>
                           </thead>
-                          <tbody>{grpTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
+                          <tbody>{(()=>{const grpRevs=filteredRevItems.filter(rv=>{const pt=parentTaskMap.get(String(rv.task_id));if(!pt)return false;const proj=scopedProjects.find(p=>p.id===pt.project_id);return(proj?.group_name||null)===(isUng?null:grpName);});const combined=[...grpTasks.map(t=>({type:"task",date:t.client_sub_date||t.due_date||"zzz",data:t})),...grpRevs.map(rv=>({type:"rev",date:rv.client_sub_date||"zzz",data:rv}))].sort((a,b)=>a.date.localeCompare(b.date));return combined.map(item=>item.type==="task"?<TaskRow key={"t"+item.data.id} t={item.data}/>:<RevRow key={"r"+item.data.id} rv={item.data}/>);})()}</tbody>
                         </table>
                       </div>
                     </div>
@@ -4918,7 +4956,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                   ))}
                 </tr>
               </thead>
-              <tbody>{periodTasks.map(t=><TaskRow key={t.id} t={t}/>)}</tbody>
+              <tbody>{(()=>{const combined=[...periodTasks.map(t=>({type:"task",date:t.client_sub_date||t.due_date||"zzz",data:t})),...filteredRevItems.map(rv=>({type:"rev",date:rv.client_sub_date||"zzz",data:rv}))].sort((a,b)=>a.date.localeCompare(b.date));return combined.map(item=>item.type==="task"?<TaskRow key={"t"+item.data.id} t={item.data}/>:<RevRow key={"r"+item.data.id} rv={item.data}/>);})()}</tbody>
             </table>
           </div>
           )
@@ -15666,6 +15704,7 @@ export default function App(){
             clientName={me?.client_name||""}
             canEdit={canEdit}
             onEdit={t=>{set(t);stm(true);}}
+            allRevisions={allRevisions}
           />
         )}
         {view==="kanban"&&(
@@ -16074,6 +16113,16 @@ export default function App(){
               })()} projects={accessibleProjects} members={members} clients={clients} users={users} onSave={saveTask} onClose={closeTask} saving={saving} requireDates={canEdit}/>:
               <UserTaskEditForm key={taskFormKey} task={editTask} project={projects.find(p=>p.id===editTask.project_id)} onSave={saveTask} onClose={closeTask} saving={saving}/>
             }
+            {editTask&&(()=>{const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(editTask.id)).sort((a,b)=>a.revision_number-b.revision_number);if(!taskRevs.length)return null;return(<div style={{margin:"12px 0 4px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 14px"}}>
+              <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}}>🔁 Revisions ({taskRevs.length})</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>{taskRevs.map(rev=>{const clr=getStatusColor(rev.status);return(<div key={rev.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 10px",background:clr+"08",border:`1px solid ${clr}22`,borderRadius:7}}>
+                <span style={{background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:4,padding:"2px 7px",fontSize:10,fontWeight:800,flexShrink:0,lineHeight:"16px"}}>Rev {rev.revision_number}</span>
+                <span style={{background:clr+"22",color:clr,borderRadius:4,padding:"2px 7px",fontSize:10,fontWeight:700,flexShrink:0}}>{rev.status}</span>
+                {rev.client_sub_date&&<span style={{fontSize:11,color:C.teal,fontWeight:600,flexShrink:0}}>📅 {fmtD(rev.client_sub_date)}</span>}
+                {rev.notes&&<span style={{fontSize:11,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}} title={rev.notes}>{rev.notes}</span>}
+                {rev.created_by&&<span style={{fontSize:10,color:C.t3,flexShrink:0}}>by {rev.created_by}</span>}
+              </div>);})}</div>
+            </div>);})()}
             {editTask&&<TaskTabPanel key={editTask.id} taskId={editTask.id} projectId={editTask.project_id} me={me} isClient={isClient} task={editTask} activeTimer={activeTimer} timerStart={timerStart} timerPause={timerPause} timerStop={timerStop} users={users} historyKey={histSeed} onRevisionChange={reloadRevisionsForTask}/>}
           </Modal>
         );
