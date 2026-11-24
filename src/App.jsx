@@ -14496,7 +14496,11 @@ export default function App(){
     try{
       const{data,error}=await supabase.from("tasks").insert(payload).select().single();
       if(error){showToast("Duplicate failed: "+error.message,false);return;}
-      if(data){st(ts=>[...ts,data]);pushUndo("Duplicate: "+task.title,null,data);showToast("Task duplicated ✓");}
+      if(data){
+        // Insert right after the original task, not at the end
+        st(ts=>{const idx=ts.findIndex(t=>t.id===task.id);if(idx===-1)return[...ts,data];const n=[...ts];n.splice(idx+1,0,data);return n;});
+        pushUndo("Duplicate: "+task.title,null,data);showToast("Task duplicated ✓");
+      }
     }catch(e){showToast("Error: "+e.message,false);}
   }
   async function doMoveTask(task,destProjectId){
