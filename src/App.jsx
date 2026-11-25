@@ -562,17 +562,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
           {initial.client_comment&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",lineHeight:1.5,borderTop:initial.client_approval?`1px solid ${C.teal}22`:"none",paddingTop:initial.client_approval?8:0}}>"{initial.client_comment}"</div>}
         </div>
       )}
-      {(()=>{
-        const oh=f.status==="On Hold";
-        const invalid=(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;
-        if(!touched.size)return null;
-        return invalid?(
-          <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
-            {assigneeEqualsDetailer?<div>⚠ Assignee and Detailer cannot be the same person</div>:null}
-            {((!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status)))&&<div>⚠ Required: {[!custom&&!f.project_id&&"Project",!f.title.trim()&&"Task Title",!f.client&&"Client",!oh&&!f.assignee&&"Assignee",!oh&&!f.detailer&&"Detailer",!oh&&!f.status&&"Status",!oh&&(!f.checker&&!isEdit)&&"Checker",!oh&&!f.client_sub_date&&"Client Sub Date",!oh&&!f.detailer_status&&"Detailer Status",!oh&&!f.checker_status&&"Checker Status"].filter(Boolean).join(", ")}</div>}
-          </div>
-        ):null;
-      })()}
+      {assigneeEqualsDetailer&&<div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>⚠ Assignee and Detailer cannot be the same person</div>}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:10}}>
         <button onClick={onClose} style={GBtn} disabled={saving}>Cancel</button>
         <SaveBtn/>
