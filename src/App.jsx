@@ -4624,7 +4624,12 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
         <td style={{...tdC,color:"#16a34a",fontWeight:700}}>{fmtD(rv.client_sub_date)}</td>
         <td style={{...tdC,color:C.t2}}>—</td>
-        {!isClient&&<td style={{...tdC}}></td>}
+        {!isClient&&<td style={{...tdC}}>
+          {canEdit&&<button onClick={()=>onEdit&&onEdit(t)}
+            style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            ✏ Edit
+          </button>}
+        </td>}
       </tr>
     );
   };
@@ -16046,11 +16051,9 @@ export default function App(){
                 const ordered=canEdit?applyTaskOrder(pinSorted,activePid):pinSorted;
                 return ordered.flatMap(t=>{
                   const taskRevs=allRevisions.filter(rv=>String(rv.task_id)===String(t.id)).sort((a,b)=>a.revision_number-b.revision_number);
-                  const latestRev=taskRevs.length?taskRevs[taskRevs.length-1]:null;
-                  const displayTask=latestRev?{...t,status:latestRev.status,...(latestRev.client_sub_date?{due_date:latestRev.client_sub_date}:{})}:t;
                   const colCount=(canEdit?2:0)+(isClient?10:11);
                   const idx=ordered.indexOf(t);
-                  const rows=[<TRow key={t.id} task={displayTask} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}} onDuplicate={canEdit?duplicateTask:null} onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
+                  const rows=[<TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}} onDuplicate={canEdit?duplicateTask:null} onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar}/>];
                   if(taskRevs.length) rows.push(<RevisionFlowBar key={"flow-"+t.id} task={t} revisions={taskRevs} colSpan={colCount} onSyncDate={canEdit?syncRevDate:null}/>);
                   return rows;
                 });
