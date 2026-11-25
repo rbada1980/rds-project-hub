@@ -341,8 +341,12 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     detailer_status:initDS,checker_status:initCS,
     scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
   });
+  const [touched,setTouched]=useState(new Set());
+  const touch=k=>setTouched(p=>{const n=new Set(p);n.add(k);return n;});
+  function touchAll(){setTouched(new Set(['client','project_id','title','assignee','detailer','detailer_status','checker','checker_status','client_sub_date']));}
   // Reset form whenever the task being edited changes (e.g. Prev/Next navigation)
   useEffect(()=>{
+    setTouched(new Set());
     const pid=initial.project_id||(initial.id?projects[0]?.id||"":"");
     const assignee=initial.assignee||"";
     sf({
@@ -418,11 +422,11 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     const oh=f.status==="On Hold";
     const invalid=saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;
     const canSave=isDirty&&!invalid;
+    function handleSave(){if(!canSave){touchAll();return;}onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)});}
     return(
-      <button disabled={!canSave}
-        onClick={()=>onSave({...f,assignee:f.assignee||"",custName:custom?f.custName:"",tags:f.tags.split(",").map(t=>t.trim()).filter(Boolean)})}
+      <button onClick={handleSave}
         title={!isDirty?"No changes to save":invalid?"Fill required fields to save":""}
-        style={{...SBtn,opacity:canSave?1:0.35,cursor:canSave?"pointer":"not-allowed",
+        style={{...SBtn,opacity:canSave?1:0.5,cursor:canSave?"pointer":"default",
           boxShadow:canSave?"0 0 0 2px #f97316,0 2px 10px #f9731655":"none",
           transition:"opacity 0.2s,box-shadow 0.2s",
           ...(compact?{padding:"5px 14px",fontSize:12}:{})}}>
@@ -443,8 +447,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       {/* Client first - full width */}
       <div style={{marginBottom:14}}>
         <RLabel text="Client *"/>
-        <select value={f.client} onChange={e=>onClientChange(e.target.value)}
-          style={{width:"100%",background:C.surface,border:`1px solid ${f.client?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+        <select value={f.client} onChange={e=>onClientChange(e.target.value)} onBlur={()=>touch('client')}
+          style={{width:"100%",background:C.surface,border:`1px solid ${(!touched.has('client')||f.client)?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.client?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
           <option value="">- Select Client -</option>
           {clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
@@ -460,8 +464,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
           ):(
             <div>
               <RLabel text="Project *"/>
-              <select value={f.project_id} onChange={e=>onProjectChange(e.target.value)}
-                style={{width:"100%",background:C.surface,border:`1px solid ${f.project_id?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.project_id?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <select value={f.project_id} onChange={e=>onProjectChange(e.target.value)} onBlur={()=>touch('project_id')}
+                style={{width:"100%",background:C.surface,border:`1px solid ${(!touched.has('project_id')||f.project_id)?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.project_id?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                 <option value="">- Select Project -</option>
                 {filteredProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -481,8 +485,8 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         <div style={col}>
           <div style={{marginBottom:14}}>
             <RLabel text={f.status==="On Hold"?"Assignee":"Assignee *"}/>
-            <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${f.assignee||f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            <select value={f.assignee} onChange={e=>onAssigneeChange(e.target.value)} onBlur={()=>touch('assignee')}
+              style={{width:"100%",background:C.surface,border:`1px solid ${(!touched.has('assignee')||f.assignee||f.status==="On Hold")?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.assignee?C.t1:C.t3,fontSize:14,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Team Leader -</option>
               {assigneeOptions.map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
@@ -505,16 +509,16 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         <div style={{...col,display:"flex",gap:8}}>
           <div style={{flex:1,minWidth:0}}>
             <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600}}>{f.status==="On Hold"?"Detailer":"Detailer *"}</label>
-            <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${f.detailer||f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            <select value={f.detailer} onChange={e=>s("detailer")(e.target.value)} onBlur={()=>touch('detailer')}
+              style={{width:"100%",background:C.surface,border:`1px solid ${(!touched.has('detailer')||f.detailer||f.status==="On Hold")?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:f.detailer?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Detailer -</option>
               {(detailerOptions.length?detailerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <label style={{display:"block",color:C.teal,fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>{f.status==="On Hold"?"Detailer Status":"Detailer Status *"}</label>
-            <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`2px solid ${f.detailer_status?STATUS_CLR[f.detailer_status]||C.border:f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+            <select value={f.detailer_status} onChange={e=>s("detailer_status")(e.target.value)} onBlur={()=>touch('detailer_status')}
+              style={{width:"100%",background:C.surface,border:`2px solid ${f.detailer_status?STATUS_CLR[f.detailer_status]||C.border:(!touched.has('detailer_status')||f.status==="On Hold")?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.detailer_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
               <option value="">- Select -</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
@@ -524,16 +528,16 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         <div style={{...col,display:"flex",gap:8}}>
           <div style={{flex:1,minWidth:0}}>
             <RLabel text={isEdit||f.status==="On Hold"?"Checker":"Checker *"}/>
-            <select value={f.checker} onChange={e=>s("checker")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`1px solid ${(!f.checker&&!isEdit&&f.status!=="On Hold")?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+            <select value={f.checker} onChange={e=>s("checker")(e.target.value)} onBlur={()=>touch('checker')}
+              style={{width:"100%",background:C.surface,border:`1px solid ${(touched.has('checker')&&!f.checker&&!isEdit&&f.status!=="On Hold")?C.red+"88":C.border}`,borderRadius:8,padding:"9px 12px",color:f.checker?C.t1:C.t3,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
               <option value="">- Select Checker -</option>
               {(checkerOptions.length?checkerOptions:members).map(m=><option key={m} value={m}>{withRole(m)}</option>)}
             </select>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <label style={{display:"block",color:"#8b5cf6",fontSize:12,marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>{f.status==="On Hold"?"Checker Status":"Checker Status *"}</label>
-            <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)}
-              style={{width:"100%",background:C.surface,border:`2px solid ${f.checker_status?STATUS_CLR[f.checker_status]||C.border:f.status==="On Hold"?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+            <select value={f.checker_status} onChange={e=>s("checker_status")(e.target.value)} onBlur={()=>touch('checker_status')}
+              style={{width:"100%",background:C.surface,border:`2px solid ${f.checker_status?STATUS_CLR[f.checker_status]||C.border:(!touched.has('checker_status')||f.status==="On Hold")?C.border:C.red+"88"}`,borderRadius:8,padding:"9px 12px",color:STATUS_CLR[f.checker_status]||C.t1,fontSize:13,outline:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
               <option value="">- Select -</option>
               {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
             </select>
@@ -561,6 +565,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       {(()=>{
         const oh=f.status==="On Hold";
         const invalid=(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;
+        if(!touched.size)return null;
         return invalid?(
           <div style={{background:C.red+"18",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 14px",marginBottom:10,color:C.red,fontSize:12}}>
             {assigneeEqualsDetailer?<div>⚠ Assignee and Detailer cannot be the same person</div>:null}
