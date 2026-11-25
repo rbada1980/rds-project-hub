@@ -14363,12 +14363,12 @@ export default function App(){
     if(filterClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==filterClient)return false;}
     if(filterProject!=="All"&&t.project_id!==filterProject)return false;
     if(searchTask&&!t.title.toLowerCase().includes(searchTask.toLowerCase())&&!(projectById.get(t.project_id)?.name||"").toLowerCase().includes(searchTask.toLowerCase()))return false;
-    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!nsMatch&&t.status!==filterStatus)return false;}
+    if(filterStatus!=="All"){const nsMatch=filterStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");const mainMatch=nsMatch||t.status===filterStatus;const revMatch=!mainMatch&&allRevisions.some(rv=>String(rv.task_id)===String(t.id)&&(filterStatus==="Not Yet Started"?(rv.status==="Not Yet Started"||rv.status==="To Be Started"):rv.status===filterStatus));if(!mainMatch&&!revMatch)return false;}
     if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     if(filterPinStar==="pinned"&&!pinnedTasks.has(t.id))return false;
     if(filterPinStar==="starred"&&!starredTasks.has(t.id))return false;
     return true;
-  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks]);
+  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks,allRevisions]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
   const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
