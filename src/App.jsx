@@ -14688,7 +14688,7 @@ export default function App(){
     <MobileCtx.Provider value={isMobile}>
     <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
       {isMobile&&sideOpen&&<div onClick={()=>setSO(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:150,backdropFilter:"blur(2px)"}}/>}
-      {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
+      {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:99999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
       <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:`linear-gradient(180deg,${C.sideBg} 0%,${C.sideActive} 100%)`,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
         <div style={{padding:"0 20px 16px",borderBottom:`1px solid ${C.sideBorder}`,marginBottom:12,flexShrink:0}}>
           <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
