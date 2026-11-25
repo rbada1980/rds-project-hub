@@ -14020,8 +14020,24 @@ export default function App(){
   async function bulkDelete(){
     const tc=selTasks.size,pc=selProjects.size;
     if(!window.confirm(`Delete ${tc>0?tc+" task(s)":""}${tc>0&&pc>0?" and ":""}${pc>0?pc+" project(s)":""}? This cannot be undone.`))return;
-    if(tc>0)await supabase.from("tasks").delete().in("id",[...selTasks]);
-    if(pc>0){await supabase.from("tasks").delete().in("project_id",[...selProjects]);await supabase.from("projects").delete().in("id",[...selProjects]);}
+    // Log tasks to audit_logs (recycle bin) before deleting
+    if(tc>0){
+      const tasksToDelete=tasks.filter(t=>selTasks.has(t.id));
+      await Promise.all(tasksToDelete.map(t=>supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"task",entity_id:t.id,entity_label:t.title,action:"delete",field:null,old_value:JSON.stringify(t),new_value:null,project_id:t.project_id||null})));
+      const {error:te}=await supabase.from("tasks").delete().in("id",[...selTasks]);
+      if(te){showToast("Delete failed: "+te.message,false);return;}
+    }
+    if(pc>0){
+      const projsToDelete=accessibleProjects.filter(p=>selProjects.has(p.id));
+      await Promise.all(projsToDelete.map(proj=>{
+        const projTasks=tasks.filter(t=>t.project_id===proj.id);
+        return supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"project",entity_id:proj.id,entity_label:proj.name,action:"delete",field:null,old_value:JSON.stringify(proj),new_value:JSON.stringify(projTasks),project_id:proj.id});
+      }));
+      const {error:te2}=await supabase.from("tasks").delete().in("project_id",[...selProjects]);
+      if(te2){showToast("Failed to delete tasks: "+te2.message,false);return;}
+      const {error:pe}=await supabase.from("projects").delete().in("id",[...selProjects]);
+      if(pe){showToast("Failed to delete projects: "+pe.message,false);return;}
+    }
     clearSel();setBSO(false);await loadAll();showToast("Deleted successfully ✓");
   }
   async function applyBulkAction(val){
@@ -14542,13 +14558,15 @@ export default function App(){
     if(!canEdit)return;
     if(!window.confirm("Delete this task?"))return;
     const taskToDelete=tasks.find(t=>t.id===id);
-    await supabase.from("tasks").delete().eq("id",id);
-    st(ts=>ts.filter(t=>t.id!==id));
+    // Log to audit_logs (recycle bin) BEFORE deleting
     if(taskToDelete){
-      pushUndo("Delete: "+taskToDelete.title,taskToDelete,null);
-      // Log full snapshot to audit_logs for recycle bin restore
-      supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"task",entity_id:id,entity_label:taskToDelete.title,action:"delete",field:null,old_value:JSON.stringify(taskToDelete),new_value:null,project_id:taskToDelete.project_id||null}).then(()=>{});
+      await supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"task",entity_id:id,entity_label:taskToDelete.title,action:"delete",field:null,old_value:JSON.stringify(taskToDelete),new_value:null,project_id:taskToDelete.project_id||null});
     }
+    const {error}=await supabase.from("tasks").delete().eq("id",id);
+    if(error){showToast("Delete failed: "+error.message,false);return;}
+    st(ts=>ts.filter(t=>t.id!==id));
+    setAllRevisions(prev=>prev.filter(rv=>String(rv.task_id)!==String(id)));
+    if(taskToDelete)pushUndo("Delete: "+taskToDelete.title,taskToDelete,null);
     showToast("Task deleted ✓");
   }
   async function duplicateTask(task){
