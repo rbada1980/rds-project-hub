@@ -16101,7 +16101,7 @@ export default function App(){
       {pwModal&&<ChangePasswordModal me={me} onClose={()=>spwm(false)}/>}
 
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
-      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
+      {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)}><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
       {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>{setWeeklyRptOpen(false);setWeeklyRptAutoDownload(false);}} initialPeriod={weeklyRptPeriod} autoDownload={weeklyRptAutoDownload}/>}
       {taskModal&&(()=>{
