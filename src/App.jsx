@@ -6989,7 +6989,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   const [saveError,setSaveError]=useState("");
   const [editId,setEditId]=useState(null);
   const staffNames=users.filter(u=>u.role!=="Client").map(u=>u.name||u.username).filter(Boolean).sort();
-  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",checker:"",hours:""};
+  const blankForm={status:"Not Yet Started",notes:"",client_sub_date:"",detailer:"",detailer_status:"",checker:"",checker_status:"",hours:""};
   const [form,setForm]=useState(blankForm);
   const origRevForm=useRef(null);
 
@@ -7015,7 +7015,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
 
   function openAdd(){origRevForm.current=null;setForm(blankForm);setEditId(null);setShowForm(true);}
   function openEdit(rev){
-    const loaded={status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",checker:rev.checker||"",hours:rev.hours!=null?String(rev.hours):""};
+    const loaded={status:rev.status,notes:rev.notes||"",client_sub_date:rev.client_sub_date||"",detailer:rev.detailer||"",detailer_status:rev.detailer_status||"",checker:rev.checker||"",checker_status:rev.checker_status||"",hours:rev.hours!=null?String(rev.hours):""};
     origRevForm.current=loaded;
     setForm(loaded);
     setEditId(rev.id);setShowForm(true);
@@ -7035,7 +7035,7 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
   }
 
   async function saveRevision(){
-    if(!form.status||!form.client_sub_date||!form.detailer||!form.checker||!form.hours){setSaveError("Please fill all required fields.");return;}
+    if(!form.status||!form.client_sub_date||!form.detailer||!form.detailer_status||!form.checker||!form.checker_status||!form.hours){setSaveError("Please fill all required fields.");return;}
     setSaving(true);setSaveError("");
     const cleanForm={...form,hours:form.hours!==""&&form.hours!=null?parseFloat(form.hours):null};
     try{
@@ -7101,9 +7101,9 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               :`New Revision - Rev ${revisions.length+1}`}
           </div>
           {(()=>{
-            const reqFilled=form.status&&form.client_sub_date&&form.detailer&&form.checker&&form.hours!=="";
+            const reqFilled=form.status&&form.client_sub_date&&form.detailer&&form.detailer_status&&form.checker&&form.checker_status&&form.hours!=="";
             const isEditDirty=editId&&origRevForm.current?
-              ["status","notes","client_sub_date","detailer","checker","hours"].some(k=>(form[k]||"")!==(origRevForm.current[k]||""))
+              ["status","notes","client_sub_date","detailer","detailer_status","checker","checker_status","hours"].some(k=>(form[k]||"")!==(origRevForm.current[k]||""))
               :true;
             const revCanSave=!saving&&reqFilled&&isEditDirty;
             return(<>
@@ -7131,11 +7131,29 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
               </select>
             </div>
             <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:form.detailer_status?C.teal:C.red+"cc",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Detailer Status <span style={{color:C.red}}>*</span></div>
+              <select value={form.detailer_status} onChange={e=>setForm(p=>({...p,detailer_status:e.target.value}))}
+                style={{width:"100%",background:C.bg,border:`2px solid ${form.detailer_status?STATUS_CLR[form.detailer_status]||C.teal:C.red+"88"}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:STATUS_CLR[form.detailer_status]||C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none",fontWeight:700}}>
+                <option value="">- Select -</option>
+                {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+            <div style={{flex:1,minWidth:140}}>
               <div style={{fontSize:11,fontWeight:700,color:form.checker?C.accent:C.red+"cc",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Checker <span style={{color:C.red}}>*</span></div>
               <select value={form.checker} onChange={e=>setForm(p=>({...p,checker:e.target.value}))}
                 style={{width:"100%",background:C.bg,border:`1px solid ${form.checker?C.accent:C.red+"88"}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:form.checker?C.t1:C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none"}}>
                 <option value="">- Select Checker -</option>
                 {staffNames.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{fontSize:11,fontWeight:700,color:form.checker_status?"#8b5cf6":C.red+"cc",marginBottom:4,textTransform:"uppercase",letterSpacing:".06em"}}>Checker Status <span style={{color:C.red}}>*</span></div>
+              <select value={form.checker_status} onChange={e=>setForm(p=>({...p,checker_status:e.target.value}))}
+                style={{width:"100%",background:C.bg,border:`2px solid ${form.checker_status?STATUS_CLR[form.checker_status]||"#8b5cf6":C.red+"88"}`,borderRadius:7,padding:"8px 10px",fontSize:13,color:STATUS_CLR[form.checker_status]||C.t3,fontFamily:"inherit",cursor:"pointer",outline:"none",fontWeight:700}}>
+                <option value="">- Select -</option>
+                {ALL_STATUSES.map(s2=><option key={s2} value={s2}>{s2}</option>)}
               </select>
             </div>
           </div>
@@ -7208,9 +7226,9 @@ function TaskRevisions({taskId,me,taskStatus,onRevisionChange,users=[]}){
                 )}
               </div>
               {(rev.detailer||rev.checker)&&(
-                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:4}}>
-                  {rev.detailer&&<span style={{fontSize:11,color:C.teal,fontWeight:600}}>✏️ Detailer: {rev.detailer}</span>}
-                  {rev.checker&&<span style={{fontSize:11,color:C.accent,fontWeight:600}}>✔ Checker: {rev.checker}</span>}
+                <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:4,alignItems:"center"}}>
+                  {rev.detailer&&<span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.teal,fontWeight:600}}>✏️ {rev.detailer}{rev.detailer_status&&<span style={{fontSize:10,fontWeight:700,color:STATUS_CLR[rev.detailer_status]||C.t3,background:(STATUS_CLR[rev.detailer_status]||C.t3)+"22",borderRadius:10,padding:"1px 7px",border:`1px solid ${(STATUS_CLR[rev.detailer_status]||C.t3)}44`}}>{rev.detailer_status}</span>}</span>}
+                  {rev.checker&&<span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#8b5cf6",fontWeight:600}}>✔ {rev.checker}{rev.checker_status&&<span style={{fontSize:10,fontWeight:700,color:STATUS_CLR[rev.checker_status]||C.t3,background:(STATUS_CLR[rev.checker_status]||C.t3)+"22",borderRadius:10,padding:"1px 7px",border:`1px solid ${(STATUS_CLR[rev.checker_status]||C.t3)}44`}}>{rev.checker_status}</span>}</span>}
                 </div>
               )}
               {rev.notes&&<div style={{fontSize:12,color:C.t2,lineHeight:1.55,marginBottom:4}}>{rev.notes}</div>}
