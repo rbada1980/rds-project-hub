@@ -14992,57 +14992,25 @@ export default function App(){
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {(isAdmin||isManager||isTeamLeader)&&<SHdr id="weekly_report" icon="🗓" label="Weekly Report"/>}
                     {(isAdmin||isManager||isTeamLeader)&&exportSec==="weekly_report"&&(()=>{
-                      const aD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
-                      const fS=d=>d?new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):"";
-                      const[yr2,mo2,dy2]=today2.split("-").map(Number);
-                      const d0=new Date(Date.UTC(yr2,mo2-1,dy2));
-                      const dow=d0.getUTCDay();d0.setUTCDate(d0.getUTCDate()-(dow===0?5:dow===1?6:dow-2));
-                      const tue=d0.toISOString().slice(0,10);
-                      const ranges={this_week:[tue,aD(tue,6)],last_week:[aD(tue,-7),aD(tue,-1)]};
                       const depts=[
                         {key:"All",label:"All Departments",icon:"🏢",color:"#3b82f6"},
                         {key:"Rebar",label:"Rebar Department",icon:"🔩",color:"#f97316"},
                         {key:"Tekla",label:"Tekla Department",icon:"🖥",color:"#8b5cf6"},
                         {key:"Precast",label:"Precast Department",icon:"🏗",color:"#14b8a6"},
                       ];
-                      const periods=[
-                        {id:"this_week",icon:"📅",label:"This Week",direct:true},
-                        {id:"last_week",icon:"⬅",label:"Last Week",direct:true},
-                        {id:"custom",icon:"🗂",label:"Custom Range",direct:false},
-                      ];
                       return(
                         <div style={{background:C.surface+"33",paddingBottom:4}}>
                           {depts.map(dept=>(
-                            <div key={dept.key}>
-                              {/* Dept header — click to expand/collapse */}
-                              <button onClick={()=>setWeeklyDeptSec(weeklyDeptSec===dept.key?null:dept.key)}
-                                style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"7px 16px 7px 24px",color:dept.color,fontSize:12,cursor:"pointer",fontFamily:"inherit",borderTop:`1px solid ${C.border}33`}}
-                                onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                                <span style={{display:"flex",alignItems:"center",gap:7,fontWeight:700}}>
-                                  <span>{dept.icon}</span><span>{dept.label}</span>
-                                </span>
-                                <span style={{fontSize:10,opacity:0.6,transition:"transform .15s",transform:weeklyDeptSec===dept.key?"rotate(90deg)":"rotate(0deg)"}}>›</span>
-                              </button>
-                              {/* Period buttons — only shown when this dept expanded */}
-                              {weeklyDeptSec===dept.key&&periods.map(wp=>{
-                                const[s,e]=ranges[wp.id]||["",""];
-                                return(
-                                  <button key={wp.id} onClick={()=>{setWeeklyRptDept(dept.key);setWeeklyRptPeriod(wp.id);setWeeklyRptAutoDownload(wp.direct);setWeeklyRptOpen(true);closeExport();}}
-                                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"5px 16px 5px 44px",color:C.t2,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}
-                                    onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                                    <span style={{display:"flex",alignItems:"center",gap:6}}>
-                                      <span>{wp.icon}</span>
-                                      <span style={{display:"flex",flexDirection:"column",lineHeight:1.3}}>
-                                        <span style={{fontWeight:600,color:dept.color}}>{wp.label}</span>
-                                        {s&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>{fS(s)} – {fS(e)}</span>}
-                                        {wp.id==="custom"&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>Pick any date range</span>}
-                                      </span>
-                                    </span>
-                                    <span style={{fontSize:10,opacity:0.5}}>{wp.direct?"⬇":"→"}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
+                            <button key={dept.key}
+                              onClick={()=>{setWeeklyRptDept(dept.key);setWeeklyRptPeriod("this_week");setWeeklyRptAutoDownload(false);setWeeklyRptOpen(true);closeExport();}}
+                              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"9px 16px 9px 28px",color:dept.color,fontSize:12,cursor:"pointer",fontFamily:"inherit",borderTop:`1px solid ${C.border}22`}}
+                              onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                              <span style={{display:"flex",alignItems:"center",gap:8,fontWeight:700}}>
+                                <span style={{fontSize:15}}>{dept.icon}</span>
+                                <span>{dept.label}</span>
+                              </span>
+                              <span style={{fontSize:11,opacity:0.5}}>→</span>
+                            </button>
                           ))}
                         </div>
                       );
