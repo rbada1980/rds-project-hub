@@ -4710,24 +4710,35 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <span style={{color:C.t3}}>Today: {today}</span>
       </div>
       {/* ── Summary stat cards ── */}
-      <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:22}}>
-        {[
-          {label:"⚠️ Overdue",value:overdueCount,color:overdueCount>0?"#ef4444":"#22c55e",icon:"⚠️",id:"overdue"},
-          {label:"Today",value:todayCount,color:todayCount>0?"#f97316":"#22c55e",icon:"📅",id:"today"},
-          {label:"Tomorrow",value:tomorrowCount,color:C.green,icon:"🌅",id:"tomorrow"},
-          {label:"This Week",value:thisWeekCount,color:"#f59e0b",icon:"📆",id:"this_week"},
-          {label:"Next Week",value:nextWeekCount,color:"#8b5cf6",icon:"🗓",id:"next_week"},
-          {label:"Next Month",value:nextMonthCount,color:"#06b6d4",icon:"📅",id:"next_month"},
-        ].map(s=>(
-          <div key={s.label} onClick={()=>{setPeriod(s.id);setShowCal(false);}}
-            style={{background:C.card,border:`2px solid ${period===s.id?s.color:C.border}`,borderRadius:12,padding:"12px 14px",borderLeft:`4px solid ${s.color}`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",transition:"border .15s",boxShadow:period===s.id?`0 0 0 2px ${s.color}33`:"none"}}>
-            <div>
-              <div style={{fontSize:24,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
-              <div style={{fontSize:10,color:C.t3,marginTop:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.label}</div>
-            </div>
+      {(()=>{
+        const sd=v=>{if(!v)return"";const[,mo,dy]=v.split("-");const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+mo-1];return `${+dy} ${mn}`;};
+        const sr=(a,b)=>b?`${sd(a)} - ${sd(b)}`:sd(a);
+        const smth=v=>{if(!v)return"";const[yr,mo]=v.split("-");const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+mo-1];return `${mn} ${yr}`;};
+        const tom=addDays(today,1);
+        const yday=addDays(today,-1);
+        const cards=[
+          {label:"Overdue",value:overdueCount,color:overdueCount>0?"#ef4444":"#22c55e",id:"overdue",date:`till ${sd(yday)}`},
+          {label:"Today",value:todayCount,color:todayCount>0?"#f97316":"#22c55e",id:"today",date:sd(today)},
+          {label:"Tomorrow",value:tomorrowCount,color:C.green,id:"tomorrow",date:sd(tom)},
+          {label:"This Week",value:thisWeekCount,color:"#f59e0b",id:"this_week",date:sr(_twStart,_twEnd)},
+          {label:"Next Week",value:nextWeekCount,color:"#8b5cf6",id:"next_week",date:sr(nextWeekStart,nextWeekEnd)},
+          {label:"Next Month",value:nextMonthCount,color:"#06b6d4",id:"next_month",date:smth(nextMonthStart)},
+        ];
+        return(
+          <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:22}}>
+            {cards.map(s=>(
+              <div key={s.label} onClick={()=>{setPeriod(s.id);setShowCal(false);}}
+                style={{background:C.card,border:`2px solid ${period===s.id?s.color:C.border}`,borderRadius:12,padding:"12px 14px",borderLeft:`4px solid ${s.color}`,display:"flex",alignItems:"center",gap:10,cursor:"pointer",transition:"border .15s",boxShadow:period===s.id?`0 0 0 2px ${s.color}33`:"none"}}>
+                <div>
+                  <div style={{fontSize:24,fontWeight:900,color:s.color,lineHeight:1}}>{s.value}</div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:3,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>{s.label}</div>
+                  {s.date&&<div style={{fontSize:10,color:s.color,marginTop:2,fontWeight:500,opacity:0.85}}>{s.date}</div>}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })()}
       {/* ── No-dates warning ── */}
       {noDatesCount>0&&(
         <div style={{background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:12,color:"#b45309",display:"flex",alignItems:"center",gap:8}}>
