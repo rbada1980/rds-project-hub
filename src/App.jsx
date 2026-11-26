@@ -1367,18 +1367,18 @@ function TRow({task,project,onEdit,onDelete,onDuplicate,onMove,onDragTask,onMove
           <span style={{color:C.t3,fontSize:14,cursor:"grab",lineHeight:1,userSelect:"none"}} title="Drag to reorder">⠿</span>
         </div>
       </td>}
-      <td style={{...td,maxWidth:160,minWidth:90}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
-      <td style={{...td,maxWidth:90}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
-      {!hideClient&&<td style={{...td,maxWidth:75}}><span style={{color:C.teal,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"-"}</span></td>}
-      <td style={{...td,maxWidth:110,width:100}}>{revInfo?(
+      <td style={{...td,overflow:"hidden"}}><div style={{display:"flex",alignItems:"center",gap:5,overflow:"hidden"}}><div style={{width:3,height:16,borderRadius:2,flexShrink:0,background:project?.color||C.accent}}/>{isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Pinned">📌</span>}{isStarred&&!isPinned&&<span style={{fontSize:11,flexShrink:0}} title="Starred">⭐</span>}<span style={{color:C.t1,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,minWidth:0}}>{task.title}</span>{fileCount>0&&<span onClick={e=>{e.stopPropagation();if(onFiles)onFiles(task);}} style={{fontSize:10,color:C.t3,background:C.border,borderRadius:4,padding:"1px 5px",cursor:"pointer",flexShrink:0}}>📎{fileCount}</span>}</div></td>
+      <td style={{...td,overflow:"hidden"}}><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{project?.name}</span></td>
+      {!hideClient&&<td style={{...td,overflow:"hidden"}}><span style={{color:C.teal,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{task.client||"-"}</span></td>}
+      <td style={{...td,overflow:"hidden"}}>{revInfo?(
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
           <span style={{fontSize:8,fontWeight:800,color:getStatusColor(revInfo.status),textTransform:"uppercase",letterSpacing:".05em",background:getStatusColor(revInfo.status)+"22",border:`1px solid ${getStatusColor(revInfo.status)}44`,borderRadius:3,padding:"0px 4px"}}>{revInfo.label}</span>
           <span style={{background:getStatusColor(revInfo.status)+"22",color:getStatusColor(revInfo.status),border:`1px solid ${getStatusColor(revInfo.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{revInfo.status}</span>
         </div>
       ):<span style={{background:getStatusColor(task.status)+"22",color:getStatusColor(task.status),border:`1px solid ${getStatusColor(task.status)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap",letterSpacing:"0.02em"}}>{task.status}</span>}</td>
-      <td style={{...td,maxWidth:70,width:65}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"-"}</span></td>
-      <td style={{...td,maxWidth:85}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>-</span>}</td>
-      <td style={{...td,minWidth:90,maxWidth:140,width:130}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+      <td style={{...td,overflow:"hidden"}}><span style={{background:(PRI_CLR[task.priority]||C.t3)+"22",color:PRI_CLR[task.priority]||C.t3,border:`1px solid ${(PRI_CLR[task.priority]||C.t3)}44`,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"}}>{task.priority||"-"}</span></td>
+      <td style={{...td,overflow:"hidden"}}>{task.assignee?<div style={{display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}><Av name={task.assignee} size={18}/><span style={{color:C.t2,fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.assignee}</span></div>:<span style={{color:C.yellow,fontSize:11,fontWeight:600}}>-</span>}</td>
+      <td style={{...td,overflow:"hidden"}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
         {task.detailer?<div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
           <span style={{color:C.teal,fontSize:10}}>✏ {task.detailer}</span>
           {task.detailer_status&&<span style={{fontSize:9,fontWeight:700,color:STATUS_CLR[task.detailer_status]||C.t3,background:(STATUS_CLR[task.detailer_status]||C.t3)+"18",borderRadius:4,padding:"1px 5px",whiteSpace:"nowrap"}}>{task.detailer_status}</span>}
@@ -1389,20 +1389,20 @@ function TRow({task,project,onEdit,onDelete,onDuplicate,onMove,onDragTask,onMove
         </div>:null}
         {!task.detailer&&!task.checker&&<span style={{color:C.t3,fontSize:10}}>-</span>}
       </div></td>
-      <td style={{...td,width:70,textAlign:"center"}}>
+      <td style={{...td,textAlign:"center",overflow:"hidden"}}>
         {task.det_weight!=null?<span style={{color:C.t1,fontSize:11,fontWeight:600}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})}</span>:<span style={{color:C.t3,fontSize:10}}>-</span>}
       </td>
-      <td style={{...td,minWidth:80}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+      <td style={{...td,overflow:"hidden"}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
         {task.due_date?(()=>{const b=getDueBadge(task.due_date,today,task.status);return(<><span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}</span>{b&&<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap",display:"inline-block"}}>{b.text}</span>}</>);})():null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
         {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:10}}>-</span>}
       </div></td>
       {onReview?(
-        <td style={{...td,minWidth:130}}>
+        <td style={{...td,overflow:"hidden"}}>
           <span style={{fontSize:11,fontWeight:700,color:apvClr,background:apvClr+"18",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>{APPROVAL_ICON[apv]} {apv}</span>
         </td>
       ):(
-        <td style={{...td,width:80}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
+        <td style={{...td,overflow:"hidden"}}><div style={{display:"flex",gap:2,alignItems:"center"}}>
           {onPin&&<button onClick={e=>{e.stopPropagation();onPin(task.id);}} title={isPinned?"Unpin":"Pin to top"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",opacity:isPinned?1:(h?.8:.4),transition:"opacity .15s",lineHeight:1}}>📌</button>}
           {onStar&&<button onClick={e=>{e.stopPropagation();onStar(task.id);}} title={isStarred?"Unstar":"Star"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 3px",color:isStarred?"#f59e0b":"#94a3b8",opacity:isStarred?1:(h?.9:.6),transition:"all .15s",lineHeight:1}}>{isStarred?"★":"☆"}</button>}
           {!readonly&&onDuplicate&&<IBtn icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><line x1="13" y1="13" x2="18" y2="13"/><line x1="13" y1="16" x2="18" y2="16"/><line x1="13" y1="19" x2="16" y2="19"/></svg>} title="Duplicate task" onClick={e=>{e.stopPropagation();onDuplicate(task);}}/>}
@@ -16170,8 +16170,16 @@ export default function App(){
               })}
             </div>
           ):(
-          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto",scrollbarWidth:"none"}} className="rds-tasklist-wrap">
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto"}} className="rds-tasklist-wrap">
+            <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed",minWidth:720}}>
+              <colgroup>
+                {canEdit&&<col style={{width:36}}/>}
+                {canEdit&&<col style={{width:40}}/>}
+                {(isClient
+                  ?[{w:"22%"},{w:"12%"},{w:"10%"},{w:"7%"},{w:"10%"},{w:"12%"},{w:"6%"},{w:"13%"},{w:"8%"}]
+                  :[ {w:"20%"},{w:"10%"},{w:"7%"},{w:"10%"},{w:"7%"},{w:"9%"},{w:"11%"},{w:"5%"},{w:"11%"},{w:"10%"}]
+                ).map((c,i)=><col key={i} style={{width:c.w}}/>)}
+              </colgroup>
               <thead><tr style={{background:C.bg}}>
                 {canEdit&&<th style={{padding:"11px 8px",width:36,borderBottom:`2px solid ${C.border}`,background:C.bg}}>
                   <div title={selTasks.size===filtered.length?"Deselect all":"Select all"} onClick={()=>{if(selTasks.size===filtered.length){setSelTasks(new Set());}else{setSelTasks(new Set(filtered.map(t=>t.id)));}}}
@@ -16179,8 +16187,8 @@ export default function App(){
                     {selTasks.size===filtered.length&&filtered.length>0?"✓":""}
                   </div>
                 </th>}
-                {canEdit&&<th style={{width:44,borderBottom:`2px solid ${C.border}`,background:C.bg}}/>}
-                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 14px",textAlign:"center",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
+                {canEdit&&<th style={{width:40,borderBottom:`2px solid ${C.border}`,background:C.bg}}/>}
+                {(isClient?["Task","Project","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","My Approval"]:["Task","Project","Client","Status","Priority","Assignee","Detailer / Checker","Tons","Due Date / Sub Date","Actions"]).map(h=>(<th key={h} style={{padding:"11px 10px",textAlign:"left",fontSize:11,color:h==="My Approval"?C.teal:C.t1,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",borderBottom:`2px solid ${C.border}`,background:C.bg}}>{h}</th>))}
               </tr></thead>
               <tbody>{(()=>{
                 if(filtered.length===0)return<tr><td colSpan={canEdit?12:10} style={{padding:32,textAlign:"center",color:C.t3}}>No tasks found</td></tr>;
