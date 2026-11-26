@@ -1551,11 +1551,11 @@ function PersonalStats({me,tasks,projects}){
   // IST today string
   const todayIST=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
   const todayDate=new Date(todayIST);
-  // Week start (Monday)
+  // Week start (Tuesday)
   const dow0=todayDate.getDay();
-  const daysSinceMon=dow0===0?6:dow0-1;
+  const daysSinceTue=dow0===0?5:dow0===1?6:dow0-2;
   const weekStartDate=new Date(todayDate);
-  weekStartDate.setDate(weekStartDate.getDate()-daysSinceMon);
+  weekStartDate.setDate(weekStartDate.getDate()-daysSinceTue);
   const weekStartStr=weekStartDate.toLocaleDateString('en-CA');
   // Month prefix
   const monthStr=todayIST.slice(0,7);
@@ -4424,8 +4424,8 @@ ${overdueList.map((t,i)=>{const pj=projectById.get(t.project_id);const days=Math
 // ─────────────────────────────────────────────────────────────────────────────
 function exportSubmissionList(projects,tasks,today){
   const projectById=new Map(projects.map(p=>[p.id,p]));
-  const ws=new Date(today+"T00:00:00");ws.setDate(ws.getDate()-ws.getDay());
-  const we=new Date(today+"T00:00:00");we.setDate(we.getDate()+(6-we.getDay()));
+  const ws=new Date(today+"T00:00:00");const _dw=ws.getDay();ws.setDate(ws.getDate()-(_dw===0?5:_dw===1?6:_dw-2));
+  const we=new Date(ws);we.setDate(we.getDate()+6);
   const wsStr=localDateStr(ws);
   const weStr=localDateStr(we);
   const ds=v=>v?String(v).slice(0,10):null;
@@ -4461,11 +4461,10 @@ function exportSubmissionList(projects,tasks,today){
 
 function exportSubmissionListByPeriod(projects,tasks,period,today){
   const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
-  const mondayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?6:dow-1));return r.toISOString().slice(0,10);};
-  const sundayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()+(dow===0?0:7-dow));return r.toISOString().slice(0,10);};
+  const tuesdayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?5:dow===1?6:dow-2));return r.toISOString().slice(0,10);};
   const yesterday=addDays(today,-1);
   const tom=addDays(today,1);
-  const wkStart=mondayOf(today);const wkEnd=sundayOf(today);
+  const wkStart=tuesdayOf(today);const wkEnd=addDays(wkStart,6);
   const nwStart=addDays(wkStart,7);const nwEnd=addDays(nwStart,6);
   const d=new Date(today);
   const nmStart=localDateStr(new Date(d.getFullYear(),d.getMonth()+1,1));
@@ -4531,8 +4530,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
 
   // ── Date range helpers ──
   const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
-  const mondayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?6:dow-1));return r.toISOString().slice(0,10);};
-  const sundayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()+(dow===0?0:7-dow));return r.toISOString().slice(0,10);};
+  const tuesdayOf=d=>{const r=new Date(d);const dow=r.getDay();r.setDate(r.getDate()-(dow===0?5:dow===1?6:dow-2));return r.toISOString().slice(0,10);};
   const yesterday=addDays(today,-1);
 
   const getRangeDates=()=>{
@@ -4541,8 +4539,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
     if(period==="overdue")  return{from:"2000-01-01",to:yesterday,label:"Overdue (past due, not completed)",icon:"⚠️",color:"#ef4444"};
     if(period==="today")    return{from:today,to:today,label:"Today",icon:"📅",color:"#f97316"};
     if(period==="tomorrow"){const tm=addDays(today,1);return{from:tm,to:tm,label:"Tomorrow",icon:"🌅",color:C.green};}
-    if(period==="this_week"){const ms=mondayOf(today);const se=sundayOf(today);return{from:ms,to:se,label:`This Week  ${ms} → ${se}`,icon:"📆",color:"#f59e0b"};}
-    if(period==="next_week"){const nm=addDays(mondayOf(today),7);const ns=addDays(nm,6);return{from:nm,to:ns,label:`Next Week  ${nm} → ${ns}`,icon:"🗓",color:"#8b5cf6"};}
+    if(period==="this_week"){const ts=tuesdayOf(today);const te=addDays(ts,6);return{from:ts,to:te,label:`This Week  ${ts} (Tue) → ${te} (Mon)`,icon:"📆",color:"#f59e0b"};}
+    if(period==="next_week"){const ts=addDays(tuesdayOf(today),7);const te=addDays(ts,6);return{from:ts,to:te,label:`Next Week  ${ts} (Tue) → ${te} (Mon)`,icon:"🗓",color:"#8b5cf6"};}
     if(period==="next_month"){const nm=new Date(d.getFullYear(),d.getMonth()+1,1);const ne=new Date(d.getFullYear(),d.getMonth()+2,0);const nms=localDateStr(nm);const nes=localDateStr(ne);return{from:nms,to:nes,label:`Next Month  ${nms} → ${nes}`,icon:"📅",color:"#06b6d4"};}
     return{from:customFrom,to:customTo,label:`${customFrom} → ${customTo}`,icon:"📆",color:C.accent};
   };
@@ -4584,8 +4582,9 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
   const overdueCount=allTasks.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
   const todayCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return (d1&&d1===today)||(d2&&d2===today);}).length;
   const tomorrowCount=allTasks.filter(t=>{const tm=addDays(today,1);const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return (d1&&d1===tm)||(d2&&d2===tm);}).length;
-  const thisWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);const ms=mondayOf(today);const se=sundayOf(today);return (d1&&d1>=ms&&d1<=se)||(d2&&d2>=ms&&d2<=se);}).length;
-  const nextWeekStart=addDays(mondayOf(today),7);
+  const _twStart=tuesdayOf(today);const _twEnd=addDays(_twStart,6);
+  const thisWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return (d1&&d1>=_twStart&&d1<=_twEnd)||(d2&&d2>=_twStart&&d2<=_twEnd);}).length;
+  const nextWeekStart=addDays(_twStart,7);
   const nextWeekEnd=addDays(nextWeekStart,6);
   const nextWeekCount=allTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return (d1&&d1>=nextWeekStart&&d1<=nextWeekEnd)||(d2&&d2>=nextWeekStart&&d2<=nextWeekEnd);}).length;
   const nextMonthStart=(()=>{const d=new Date();return localDateStr(new Date(d.getFullYear(),d.getMonth()+1,1));})();
@@ -7872,20 +7871,20 @@ function AttendanceStats({stats,attRec,attBreak,me,isAdmin,isManager}){
   const yst=new Date(todayD);yst.setDate(yst.getDate()-1);
   const ystStr=localDateStr(yst);
   const dow=todayD.getDay();
-  const mon=new Date(todayD);mon.setDate(todayD.getDate()-(dow===0?6:dow-1));
-  const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
-  const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
-  const monStr=localDateStr(mon);
+  const tue=new Date(todayD);tue.setDate(todayD.getDate()-(dow===0?5:dow===1?6:dow-2));
+  const lTue=new Date(tue);lTue.setDate(lTue.getDate()-7);
+  const lMon=new Date(tue);lMon.setDate(lMon.getDate()-1);
+  const tueStr=localDateStr(tue);
+  const lTueStr=localDateStr(lTue);
   const lMonStr=localDateStr(lMon);
-  const lSunStr=localDateStr(lSun);
   const mthStr=todayStr.slice(0,8)+"01";
   const lMthStart=localDateStr(new Date(todayD.getFullYear(),todayD.getMonth()-1,1));
   const lMthEnd=localDateStr(new Date(todayD.getFullYear(),todayD.getMonth(),0));
   const items=[
     {label:"Today",min:todayLive,color:"#22c55e",icon:"📅",from:todayStr,to:todayStr},
     {label:"Yesterday",min:stats.yesterdayMin||0,color:"#3b82f6",icon:"📆",from:ystStr,to:ystStr},
-    {label:"This Week",min:stats.thisWeekMin||0,color:"#a855f7",icon:"🗓",from:monStr,to:todayStr},
-    {label:"Last Week",min:stats.lastWeekMin||0,color:"#06b6d4",icon:"🗓",from:lMonStr,to:lSunStr},
+    {label:"This Week",min:stats.thisWeekMin||0,color:"#a855f7",icon:"🗓",from:tueStr,to:todayStr},
+    {label:"Last Week",min:stats.lastWeekMin||0,color:"#06b6d4",icon:"🗓",from:lTueStr,to:lMonStr},
     {label:"This Month",min:stats.thisMonthMin||0,color:"#f59e0b",icon:"📅",from:mthStr,to:todayStr},
     {label:"Last Month",min:stats.lastMonthMin||0,color:C.t2,icon:"📆",from:lMthStart,to:lMthEnd},
   ];
@@ -8516,7 +8515,7 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
 
   function getWeekStart(offset=0){
     const d=new Date();const day=d.getDay();
-    d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);d.setHours(0,0,0,0);return d;
+    d.setDate(d.getDate()-(day===0?5:day===1?6:day-2)+offset*7);d.setHours(0,0,0,0);return d;
   }
   function fmtDate(d){return localDateStr(d);}
   function fmtH(m){const h=Math.floor(m/60),mm=m%60;return h>0?(mm>0?h+"h "+mm+"m":h+"h"):mm+"m";}
@@ -8528,7 +8527,7 @@ function CapacityPlanner({timeLogs,tasks,projects,users,me,attendance,isAdmin,is
   const fmtRange=weekStart.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",month:"short",day:"numeric",year:"numeric"});
 
   const weekDays=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);weekDays.push(fmtDate(d));}
-  const DOW=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const DOW=["Tue","Wed","Thu","Fri","Sat","Sun","Mon"];
 
   // Load leaves from settings
   useEffect(()=>{
@@ -9271,7 +9270,7 @@ function TimesheetApprovals({timeLogs,me,users,isAdmin,isManager,isClient}){
 
   function getWeekStart(offset=0){
     const d=new Date();const day=d.getDay();
-    d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);
+    d.setDate(d.getDate()-(day===0?5:day===1?6:day-2)+offset*7);
     d.setHours(0,0,0,0);return d;
   }
   function fmtDate(d){return localDateStr(d);}
@@ -14262,12 +14261,12 @@ export default function App(){
       const{data:rows}=await supabase.from("attendance").select("date,total_work_minutes").eq("user_id",me.id).gte("date",localDateStr(from60));
       if(!rows)return;
       const dow=now.getDay();
-      const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));
-      const lMon=new Date(mon);lMon.setDate(lMon.getDate()-7);
-      const lSun=new Date(mon);lSun.setDate(lSun.getDate()-1);
-      const monStr=localDateStr(mon);
+      const tue=new Date(now);tue.setDate(now.getDate()-(dow===0?5:dow===1?6:dow-2));
+      const lTue=new Date(tue);lTue.setDate(lTue.getDate()-7);
+      const lMon=new Date(tue);lMon.setDate(lMon.getDate()-1);
+      const tueStr=localDateStr(tue);
+      const lTueStr=localDateStr(lTue);
       const lMonStr=localDateStr(lMon);
-      const lSunStr=localDateStr(lSun);
       const yst=new Date(now);yst.setDate(yst.getDate()-1);
       const ystStr=localDateStr(yst);
       const mthStr=todayStr.slice(0,8)+"01";
@@ -14277,8 +14276,8 @@ export default function App(){
       sattStats({
         todayMin:sumMin(r=>r.date===todayStr),
         yesterdayMin:sumMin(r=>r.date===ystStr),
-        thisWeekMin:sumMin(r=>r.date>=monStr&&r.date<=todayStr),
-        lastWeekMin:sumMin(r=>r.date>=lMonStr&&r.date<=lSunStr),
+        thisWeekMin:sumMin(r=>r.date>=tueStr&&r.date<=todayStr),
+        lastWeekMin:sumMin(r=>r.date>=lTueStr&&r.date<=lMonStr),
         thisMonthMin:sumMin(r=>r.date>=mthStr&&r.date<=todayStr),
         lastMonthMin:sumMin(r=>r.date>=lMthStart&&r.date<=lMthEnd),
       });
@@ -15070,12 +15069,12 @@ export default function App(){
                       // date helpers
                       const todayStr=iso(y,m,d);
                       const yday=new Date(y,m,d-1);const ydayStr=iso(yday.getFullYear(),yday.getMonth(),yday.getDate());
-                      const dow=now.getDay();const wkMon=new Date(y,m,d-(dow===0?6:dow-1));
-                      const thisWkFrom=iso(wkMon.getFullYear(),wkMon.getMonth(),wkMon.getDate());
-                      const lastWkMon=new Date(wkMon);lastWkMon.setDate(lastWkMon.getDate()-7);
-                      const lastWkSun=new Date(wkMon);lastWkSun.setDate(lastWkSun.getDate()-1);
-                      const lastWkFrom=iso(lastWkMon.getFullYear(),lastWkMon.getMonth(),lastWkMon.getDate());
-                      const lastWkTo=iso(lastWkSun.getFullYear(),lastWkSun.getMonth(),lastWkSun.getDate());
+                      const dow=now.getDay();const wkTue=new Date(y,m,d-(dow===0?5:dow===1?6:dow-2));
+                      const thisWkFrom=iso(wkTue.getFullYear(),wkTue.getMonth(),wkTue.getDate());
+                      const lastWkTue=new Date(wkTue);lastWkTue.setDate(lastWkTue.getDate()-7);
+                      const lastWkMon=new Date(wkTue);lastWkMon.setDate(lastWkMon.getDate()-1);
+                      const lastWkFrom=iso(lastWkTue.getFullYear(),lastWkTue.getMonth(),lastWkTue.getDate());
+                      const lastWkTo=iso(lastWkMon.getFullYear(),lastWkMon.getMonth(),lastWkMon.getDate());
                       const thisMoFrom=iso(y,m,1);
                       const lastMoFrom=iso(m===0?y-1:y,m===0?11:m-1,1);
                       const lastMoTo=iso(y,m,0);
