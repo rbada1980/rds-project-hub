@@ -14124,6 +14124,12 @@ export default function App(){
     else if(bulkModal==="reassign")await supabase.from("tasks").update({assignee:val}).in("id",ids);
     else if(bulkModal==="priority")await supabase.from("tasks").update({priority:val}).in("id",ids);
     setBM(null);clearSel();setBSO(false);await loadAll();showToast("Updated successfully ✓");
+    // After bulk status change, check if any affected projects are now complete
+    if(bulkModal==="status"&&isDone(val)){
+      const affectedPids=[...new Set(tasks.filter(t=>ids.includes(t.id)).map(t=>t.project_id))];
+      const bulkUpdated=tasks.map(t=>ids.includes(t.id)?{...t,status:val}:t);
+      for(const pid of affectedPids)await checkAndCompleteProject(pid,bulkUpdated);
+    }
   }
   // Fetch all tasks paginated - Supabase PostgREST caps at 1000 rows per call
   async function fetchAllTasks(){
@@ -14572,8 +14578,10 @@ export default function App(){
         const updates={status:f.status,...(f.notes!==undefined&&{notes:f.notes})};
         const {data,error:updateErr2}=await supabase.from("tasks").update(updates).eq("id",editTask.id).select().single();
         if(updateErr2){showToast("Update failed: "+updateErr2.message,false);ssv(false);return;}
-        st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...updates}):t));
+        const updatedTasks2=tasks.map(t=>t.id===editTask.id?(data||{...t,...updates}):t);
+        st(()=>updatedTasks2);
         showToast("Status updated ✓");
+        await checkAndCompleteProject(editTask.project_id,updatedTasks2);
         if(f.status!==editTask.status){
           const proj=projects.find(p=>p.id===editTask.project_id);
           const assigneeUser=users.find(u=>u.name===editTask.assignee||u.username===editTask.assignee);
@@ -14612,11 +14620,13 @@ export default function App(){
         const {data:taskBeforeUpdate}=await supabase.from("tasks").select("status,assignee,priority,due_date,checker,detailer,checker_status,detailer_status").eq("id",editTask.id).single();
         const {data,error:updateErr}=await supabase.from("tasks").update(payload).eq("id",editTask.id).select().single();
         if(updateErr){showToast("Update failed: "+updateErr.message,false);ssv(false);return;}
-        st(ts=>ts.map(t=>t.id===editTask.id?(data||{...t,...payload}):t));
+        const updatedTasks3=tasks.map(t=>t.id===editTask.id?(data||{...t,...payload}):t);
+        st(()=>updatedTasks3);
         pushUndo("Edit: "+editTask.title,{...editTask,id:editTask.id},data||{...editTask,...payload,id:editTask.id});
         showToast("Task updated ✓");
         // ── Audit: log field changes (use DB state before update as old, actual saved data as new) ──
         await logAudit(me,"task",editTask.id,f.title,pid,"update",taskBeforeUpdate||editTask,data||{...editTask,...payload});
+        await checkAndCompleteProject(pid,updatedTasks3);
       }else{
         const {data}=await supabase.from("tasks").insert(payload).select().single();
         if(data){st(ts=>[...ts,data]);pushUndo("Create: "+f.title,null,data);}
@@ -14650,10 +14660,12 @@ export default function App(){
     }
     const {error}=await supabase.from("tasks").delete().eq("id",id);
     if(error){showToast("Delete failed: "+error.message,false);return;}
-    st(ts=>ts.filter(t=>t.id!==id));
+    const afterDelete=tasks.filter(t=>t.id!==id);
+    st(()=>afterDelete);
     setAllRevisions(prev=>prev.filter(rv=>String(rv.task_id)!==String(id)));
     if(taskToDelete)pushUndo("Delete: "+taskToDelete.title,taskToDelete,null);
     showToast("Task deleted ✓");
+    if(taskToDelete)await checkAndCompleteProject(taskToDelete.project_id,afterDelete);
   }
   async function duplicateTask(task){
     if(!canEdit)return;
@@ -14693,9 +14705,23 @@ export default function App(){
       showToast("Reassign failed: "+(error?.message||"unknown"),false);
     }
   }
-  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}const prevStatus=task.status;st(ts=>ts.map(t=>t.id===tid?{...t,status:ns}:t));await supabase.from("tasks").update({status:ns}).eq("id",tid);pushUndo("Status: "+task.title,{...task,status:prevStatus},{...task,status:ns});const proj=projectById.get(task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);}
+  async function dropTask(tid,ns){const task=tasks.find(t=>t.id===tid);if(!task||task.status===ns)return;if(isClient){showToast("Not authorized",false);return;}if(isRegularUser&&!userMatchesStr(me,task.assignee)&&!userMatchesStr(me,task.detailer)&&!userMatchesStr(me,task.checker)){showToast("Not authorized",false);return;}const prevStatus=task.status;const dtUpdated=tasks.map(t=>t.id===tid?{...t,status:ns}:t);st(()=>dtUpdated);await supabase.from("tasks").update({status:ns}).eq("id",tid);pushUndo("Status: "+task.title,{...task,status:prevStatus},{...task,status:ns});const proj=projectById.get(task.project_id);const assigneeUser=users.find(u=>u.username===task.assignee||u.name===task.assignee);await checkAndCompleteProject(task.project_id,dtUpdated);}
   async function saveProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data}=await supabase.from("projects").insert({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).select().single();if(data){sp(ps=>[...ps,data]);await logAudit(me,"project",data?.id,data?.name,data?.id,"create",null,data);}spm(false);showToast("Project created ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
   async function updateProject(f){if(canEdit&&!f.deadline){showToast("Project Deadline is required.",false);return;}ssv(true);try{const {data,error:projErr}=await supabase.from("projects").update({name:f.name,client:f.client,color:f.color,deadline:f.deadline||null,description:f.description,assigned_users:f.assigned_users||[],group_name:f.group_name||null}).eq("id",editProject.id).select().single();if(projErr){showToast("Update failed: "+projErr.message,false);ssv(false);return;}if(data){sp(ps=>ps.map(p=>p.id===editProject.id?data:p));await logAudit(me,"project",editProject.id,data.name,editProject.id,"update",editProject,data);}sep(null);showToast("Project updated ✓");}catch(e){showToast("Error: "+e.message,false);}ssv(false);}
+  async function checkAndCompleteProject(projectId,currentTasks){
+    if(!projectId||!canEdit)return;
+    const pt=currentTasks.filter(t=>t.project_id===projectId);
+    if(pt.length===0)return;
+    const proj=projects.find(p=>p.id===projectId);
+    if(!proj||proj.status==="Completed")return;
+    const allDone=pt.every(t=>isDone(t.status));
+    if(!allDone)return;
+    // Auto-complete the project
+    const{data,error}=await supabase.from("projects").update({status:"Completed"}).eq("id",projectId).select().single();
+    if(error)return;
+    if(data)sp(ps=>ps.map(p=>p.id===projectId?data:p));
+    showToast("🎉 Project Complete! All tasks done - "+proj.name);
+  }
   async function syncRevDate(taskId,revDate,revNum){const{data,error}=await supabase.from("tasks").update({due_date:revDate}).eq("id",taskId).select().single();if(error){showToast("Update failed: "+error.message,false);return;}if(data)st(ts=>ts.map(t=>t.id===taskId?{...t,due_date:revDate}:t));showToast(`Due date synced to Rev ${revNum} date ✓`);}
   // deleteProject - allowed for Admin, Manager, Team Leader (canEdit covers all three)
   async function deleteProject(id){
@@ -15716,20 +15742,23 @@ export default function App(){
                 const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                 const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                 const projSelected=selProjects.has(p.id);
+                const isComplete=p.status==="Completed"||pv===100;
                 return(
-                  <div key={p.id} style={{background:projSelected?C.accent+"18":C.card,border:`1px solid ${projSelected?C.accent:C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative"}}
+                  <div key={p.id} style={{background:projSelected?C.accent+"18":isComplete?"#052e1688":C.card,border:`1px solid ${projSelected?C.accent:isComplete?"#22c55e55":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:isComplete?"#22c55e":p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}}
                     onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 8px 28px #22c55e33":"0 8px 28px #00000070";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                    {isComplete&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#22c55e,#4ade80,#22c55e)"}}/>}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
                       <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
                         {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
                           style={{marginTop:2,width:18,height:18,borderRadius:4,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
-                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
+                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:isComplete?"#4ade80":C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                         {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
-                        <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>
+                        {isComplete?<span style={{background:"#22c55e22",color:"#4ade80",border:"1px solid #22c55e55",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>🎉 Complete</span>
+                        :<span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>}
                       </div>
                     </div>
                     <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
@@ -16012,19 +16041,22 @@ export default function App(){
                     const ptd=pt.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
                     const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                     const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
+                    const isComplete=p.status==="Completed"||pv===100;
                     return(
                       <div key={p.id} onClick={()=>navTo('list',p.id)}
-                        style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${p.color}`,transition:"transform .15s,box-shadow .15s"}}
-                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 28px #00000070";}}
+                        style={{background:isComplete?"#052e1688":C.card,border:`1px solid ${isComplete?"#22c55e55":pov>0?C.red+"44":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${isComplete?"#22c55e":p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}}
+                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 8px 28px #22c55e33":"0 8px 28px #00000070";}}
                         onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                        {isComplete&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#22c55e,#4ade80,#22c55e)",backgroundSize:"200% 100%"}}/>}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
-                          <h3 style={{margin:0,fontSize:15,fontWeight:800,color:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
+                          <h3 style={{margin:0,fontSize:15,fontWeight:800,color:isComplete?"#4ade80":C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             {canEdit&&(<>
                               <IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
                               <IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
                             </>)}
-                            <span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 10px",fontSize:13,fontWeight:800}}>{pv}%</span>
+                            {isComplete?<span style={{background:"#22c55e22",color:"#4ade80",border:"1px solid #22c55e55",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>🎉 Complete</span>
+                            :<span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 10px",fontSize:13,fontWeight:800}}>{pv}%</span>}
                           </div>
                         </div>
                         <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
