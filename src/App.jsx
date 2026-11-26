@@ -56,8 +56,8 @@ const LIGHT_C={
 };
 const C=(()=>{try{return localStorage.getItem("rds_theme")==="light"?{...LIGHT_C}:{...DARK_C};}catch{return{...DARK_C};}})();
 const ROLES=["Rebar","Tekla","Precast","Team Leader","Manager","Admin","Client","HR & Finance"];
-const ALL_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
-let STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
+const ALL_STATUSES=["Not Yet Started","In Progress","In Review","Completed","On Hold"];
+let STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"In Review":"#f59e0b","Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
 let PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
@@ -386,8 +386,12 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     return keys.some(k=>(f[k]||"")!==(initial[k]!=null?String(initial[k]):""));
   },[f,initial]);// eslint-disable-line react-hooks/exhaustive-deps
   function computeAutoStatus(ds,cs){
-    if(ds===cs)return ds; // Both same → use that status
-    return"In Progress";  // Any mix → In Progress
+    const dDone=isDone(ds);const cDone=isDone(cs);
+    if(dDone&&cDone)return"Completed";          // Both done → Complete
+    if(dDone&&!cDone)return"In Review";          // Detailer done, checker pending → In Review
+    if(ds==="In Progress")return"In Progress";   // Detailer working
+    if(!ds||ds==="Not Yet Started"||ds==="To Be Started")return"Not Yet Started";
+    return"In Progress";
   }
   const s=k=>v=>sf(p=>{
     const next={...p,[k]:v};
@@ -555,6 +559,39 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
           </div>
         </div>
       </div>
+      {/* ── Handoff Pipeline Checklist ── */}
+      {f.status!=="On Hold"&&(()=>{
+        const dDone=isDone(f.detailer_status);const cDone=isDone(f.checker_status);
+        const dIP=f.detailer_status==="In Progress";
+        const cIP=f.checker_status==="In Progress";
+        const inReview=dDone&&!cDone;
+        const steps=[
+          {icon:"👤",label:"Assigned",sublabel:f.assignee||"—",done:!!f.assignee,active:!!f.assignee&&!dIP&&!dDone,color:"#3b82f6"},
+          {icon:"✏️",label:"Detailing",sublabel:f.detailer||(f.assignee?"Waiting…":"—"),done:dDone,active:dIP,color:"#14b8a6"},
+          {icon:"🔍",label:"In Review",sublabel:dDone&&!cDone?"Awaiting QC":dDone&&cDone?"QC Done":"—",done:dDone,active:inReview,color:"#f59e0b"},
+          {icon:"✅",label:"QC Check",sublabel:f.checker||(dDone?"Waiting…":"—"),done:cDone,active:cIP||inReview,color:"#8b5cf6"},
+          {icon:"🎉",label:"Complete",sublabel:cDone?"All done!":"Pending",done:cDone,active:false,color:"#22c55e"},
+        ];
+        return(
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+            <div style={{fontSize:10,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10}}>Handoff Pipeline</div>
+            <div style={{display:"flex",alignItems:"flex-start",gap:0,position:"relative"}}>
+              {steps.map((st,i)=>(
+                <div key={st.label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative"}}>
+                  {/* connector line */}
+                  {i>0&&<div style={{position:"absolute",top:12,right:"50%",left:"-50%",height:2,background:steps[i-1].done?steps[i-1].color+"66":C.border,zIndex:0}}/>}
+                  <div style={{width:26,height:26,borderRadius:"50%",background:st.done?st.color:st.active?st.color+"33":C.border+"55",border:`2px solid ${st.done||st.active?st.color:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,zIndex:1,position:"relative",transition:"all .2s",flexShrink:0}}>
+                    {st.done?"✓":<span style={{fontSize:10}}>{st.icon}</span>}
+                  </div>
+                  <div style={{fontSize:9,fontWeight:800,color:st.done?st.color:st.active?st.color:C.t3,marginTop:4,textAlign:"center",letterSpacing:".03em"}}>{st.label}</div>
+                  <div style={{fontSize:8,color:C.t3,textAlign:"center",maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{st.sublabel}</div>
+                </div>
+              ))}
+            </div>
+            {inReview&&<div style={{marginTop:10,fontSize:11,background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:7,padding:"7px 12px",color:"#f59e0b",fontWeight:600}}>⚡ Detailing complete — task moved to <strong>In Review</strong>. Checker can now begin QC.</div>}
+          </div>
+        );
+      })()}
       <div className="rds-form-row" style={row}>
         <div style={col}><FInput label="Scope" value={f.scope} onChange={s("scope")} placeholder="e.g. CIP&CMU"/></div>
         <div style={col}><FInput label={f.status==="On Hold"?"Client Sub Date":"Client Sub Date *"} value={f.client_sub_date} onChange={s("client_sub_date")} type="date" required={f.status!=="On Hold"}/></div>
@@ -14824,7 +14861,7 @@ export default function App(){
       showToast("Portal account created ✓");
     }
   }
-  const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
+  const kanbanCols=["Not Yet Started","In Progress","In Review","Completed","On Hold"];
   const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["recycle","🗑️","Recycle Bin"],["timings","⏱","Timings"],["billing","💰","Billing"]]:isManager?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["auditlog","🔎","Audit Log"],["recycle","🗑️","Recycle Bin"],["timings","⏱","Timings"]]:isTeamLeader?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
