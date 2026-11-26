@@ -54,11 +54,11 @@ const LIGHT_C={
   sideBg:"#1a2035",sideActive:"#252d42",sideBorder:"#2e3a52",sideT1:"#f1f5f9",sideT2:"#b0bfcc",sideT3:"#8899aa",
   shadow:"0 2px 8px rgba(0,0,0,0.10),0 0 0 1px rgba(0,0,0,0.06)",
 };
-const C={...DARK_C};
+const C=(()=>{try{return localStorage.getItem("rds_theme")==="light"?{...LIGHT_C}:{...DARK_C};}catch{return{...DARK_C};}})();
 const ROLES=["Rebar","Tekla","Precast","Team Leader","Manager","Admin","Client","HR & Finance"];
 const ALL_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
-const STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
-const PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
+let STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
+let PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
@@ -2627,31 +2627,43 @@ function TeamLeaderDashboard({me,tasks,projects,today,onEditTask,onDeleteTask,on
       })()}
       {/* Our Clients */}
       {(()=>{
-        const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red];
+        const clColors=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b",C.red,"#06b6d4","#8b5cf6","#10b981","#f43f5e"];
         const allClients=[...new Set(projects.map(p=>p.client||"").filter(Boolean))].sort();
         if(!allClients.length)return null;
+        const totalTasks=tasks.length;
         return(
           <div style={{marginBottom:20}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-              <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:18,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
+              <h3 style={{margin:0,color:C.t1,fontSize:isMobile?15:17,fontWeight:800,letterSpacing:"-.01em"}}>Our Clients</h3>
               <span style={{background:C.teal+"22",color:C.teal,border:`1px solid ${C.teal}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>{allClients.length} clients</span>
             </div>
-            <div style={{display:"flex",gap:isMobile?10:14,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
               {allClients.map((cl,i)=>{
                 const cc=clColors[i%clColors.length];
                 const cP=projects.filter(p=>(p.client||"")===cl);
                 const cT=tasks.filter(t=>cP.some(p=>p.id===t.project_id));
                 const od=cT.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
+                const pct=totalTasks>0?Math.round((cT.length/totalTasks)*100):0;
                 return(
                   <div key={cl} onClick={()=>{setTLCM(cl);setTLCP(null);setTLCS("");}}
-                    style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${cc}`,cursor:"pointer",transition:"all .15s",flexShrink:0,minWidth:isMobile?150:180,boxShadow:"none"}}
-                    onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${cc}`;e.currentTarget.style.boxShadow=`0 4px 20px ${cc}33`;e.currentTarget.style.borderTop=`3px solid ${cc}`;}}
-                    onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${C.border}`;e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderTop=`3px solid ${cc}`;}}>
-                    <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl}</p>
-                    <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800,lineHeight:1}}>{cP.length}</p>
-                    <p style={{margin:"0 0 2px",color:C.t2,fontSize:12}}>projects · {cT.length} tasks</p>
-                    {od>0&&<p style={{margin:"2px 0 4px",color:C.red,fontSize:11,fontWeight:700}}>🔴 {od} overdue</p>}
-                    <p style={{margin:"6px 0 0",color:cc,fontSize:11,fontWeight:600}}>Click to view →</p>
+                    style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px 10px 16px",borderLeft:`4px solid ${cc}`,cursor:"pointer",transition:"all .15s",display:"flex",flexDirection:"column",gap:6}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=cc+"11";e.currentTarget.style.borderColor=cc;e.currentTarget.style.boxShadow=`0 2px 12px ${cc}22`;}}
+                    onMouseLeave={e=>{e.currentTarget.style.background=C.card;e.currentTarget.style.borderColor=C.border;e.currentTarget.style.borderLeftColor=cc;e.currentTarget.style.boxShadow="none";}}>
+                    {/* Client name + overdue badge */}
+                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
+                      <span style={{fontWeight:700,color:C.t1,fontSize:13,lineHeight:1.3,wordBreak:"break-word"}}>{cl}</span>
+                      {od>0&&<span style={{flexShrink:0,background:C.red+"22",color:C.red,border:`1px solid ${C.red}44`,borderRadius:10,padding:"1px 7px",fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>⚠ {od} overdue</span>}
+                    </div>
+                    {/* Stats row */}
+                    <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                      <span style={{fontSize:12,color:C.t2}}><span style={{fontWeight:800,color:cc,fontSize:16}}>{cP.length}</span> proj</span>
+                      <span style={{fontSize:12,color:C.t2}}><span style={{fontWeight:700,color:C.t1,fontSize:14}}>{cT.length}</span> tasks</span>
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{height:3,background:C.border,borderRadius:2,overflow:"hidden"}}>
+                      <div style={{width:`${pct}%`,height:"100%",background:cc,borderRadius:2,transition:"width .4s"}}/>
+                    </div>
+                    <span style={{fontSize:10,color:C.t3}}>{pct}% of all tasks</span>
                   </div>
                 );
               })}
@@ -13655,6 +13667,17 @@ export default function App(){
   const initialPath         = useRef(window.location.pathname);
   const [isMobile,setIM]    = useState(()=>window.innerWidth<768);
   const [sideOpen,setSO]    = useState(false);
+  const [isDark,setIsDark]  = useState(()=>{try{return localStorage.getItem("rds_theme")!=="light";}catch{return true;}});
+  const [themeKey,setThemeKey]=useState(0);
+  // Apply theme on mount and on toggle
+  useEffect(()=>{
+    const theme=isDark?DARK_C:LIGHT_C;
+    Object.assign(C,theme);
+    Object.assign(STATUS_CLR,{"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red});
+    Object.assign(PRI_CLR,{High:C.red,Medium:C.yellow,Low:C.green});
+    try{localStorage.setItem("rds_theme",isDark?"dark":"light");}catch{}
+  },[isDark]);
+  function toggleTheme(){setIsDark(d=>{const nd=!d;const theme=nd?DARK_C:LIGHT_C;Object.assign(C,theme);Object.assign(STATUS_CLR,{"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red});Object.assign(PRI_CLR,{High:C.red,Medium:C.yellow,Low:C.green});try{localStorage.setItem("rds_theme",nd?"dark":"light");}catch{}setThemeKey(k=>k+1);return nd;});}
   useEffect(()=>{const h=()=>setIM(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   useEffect(()=>{
     function handleCmdKey(e){
@@ -14717,7 +14740,7 @@ export default function App(){
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
     <MobileCtx.Provider value={isMobile}>
-    <div style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
+    <div key={themeKey} style={{height:"100vh",width:"100vw",background:C.bg,fontFamily:"'DM Sans','Segoe UI',sans-serif",color:C.t1,display:"flex",overflow:"hidden",position:"fixed",top:0,left:0}}>
       {isMobile&&sideOpen&&<div onClick={()=>setSO(false)} style={{position:"fixed",inset:0,background:"#00000070",zIndex:150,backdropFilter:"blur(2px)"}}/>}
       {toast&&<div style={{position:"fixed",top:20,right:20,zIndex:99999,background:toast.ok?C.green:C.red,color:"#fff",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,boxShadow:"0 4px 16px #00000060"}}>{toast.ok?"✓":"⚠"} {toast.msg}</div>}
       <aside className={`rds-sidebar${sideOpen?' open':''}`} style={{width:220,minWidth:220,background:`linear-gradient(180deg,${C.sideBg} 0%,${C.sideActive} 100%)`,borderRight:`1px solid ${C.sideBorder}`,display:"flex",flexDirection:"column",padding:"20px 0 0 0",flexShrink:0,height:"100vh"}}>
@@ -15065,6 +15088,11 @@ export default function App(){
             {canEdit&&activePid&&<button onClick={()=>sep(accessibleProjects.find(p=>p.id===activePid)||null)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.t2,borderColor:C.t2}}>✏️ Edit Project</button>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>spm(true)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.green,borderColor:C.green}}>＋ New Project</button>}
+            <button onClick={toggleTheme} title={isDark?"Switch to Light Mode":"Switch to Dark Mode"} style={{display:"flex",alignItems:"center",gap:7,background:isDark?"#1e2433":"#e2ddd5",border:`1px solid ${isDark?"#3a4255":"#c4bfb7"}`,borderRadius:20,padding:"5px 6px 5px 6px",cursor:"pointer",flexShrink:0,transition:"all .25s",width:60,justifyContent:"space-between",position:"relative"}}>
+              <span style={{fontSize:14,lineHeight:1,transition:"opacity .2s",opacity:isDark?0.4:1}}>☀️</span>
+              <span style={{position:"absolute",left:isDark?"calc(100% - 26px)":"4px",width:22,height:22,borderRadius:"50%",background:isDark?"#f97316":"#f97316",boxShadow:"0 1px 4px #00000040",transition:"left .25s cubic-bezier(.4,0,.2,1)",flexShrink:0}}/>
+              <span style={{fontSize:14,lineHeight:1,transition:"opacity .2s",opacity:isDark?1:0.4}}>🌙</span>
+            </button>
             {canEdit&&<button className="rds-new-task-btn" onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
