@@ -15737,13 +15737,7 @@ export default function App(){
                   );
                 }
                 return(<>
-                  {hasGroups&&Object.entries(grpd).sort((a,b)=>a[0].localeCompare(b[0])).map(([gname,gprojs])=>(
-                    <ProjectGroupCard key={gname} gname={gname} gprojs={gprojs}/>
-                  ))}
-                  {ungrouped.length>0&&<>
-                    {hasGroups&&<h3 style={{margin:"4px 0 14px",fontSize:13,fontWeight:700,color:C.t3,letterSpacing:".05em",textTransform:"uppercase"}}>Ungrouped Projects</h3>}
-                    <ProjGrid projs={ungrouped}/>
-                  </>}
+                  <ProjGrid projs={dashFilteredProjects}/>
                 </>);
               })()
             )}
