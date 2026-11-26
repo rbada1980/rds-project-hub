@@ -5998,6 +5998,25 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
   const isOverdueFor=(t,name)=>{const d=ds(t.due_date);return(t.assignee===name||t.detailer===name||t.checker===name)&&d&&d<today&&!isDone(t.status);};
   const overdueByA=members.map(name=>({name,count:periodTasks.filter(t=>isOverdueFor(t,name)).length,tasks:periodTasks.filter(t=>isOverdueFor(t,name))})).filter(u=>u.count>0).sort((a,b)=>b.count-a.count).slice(0,8);
 
+  // Rework rate
+  const revInPeriod=allRevisions.filter(rv=>periodTasks.some(t=>String(t.id)===String(rv.task_id)));
+  const tasksWithRevs=periodTasks.filter(t=>allRevisions.some(rv=>String(rv.task_id)===String(t.id)));
+  const reworkRate=periodTasks.length?Math.round(tasksWithRevs.length/periodTasks.length*100):0;
+  const totalRevCount=revInPeriod.length;
+  const avgRevsPerTask=tasksWithRevs.length?(totalRevCount/tasksWithRevs.length).toFixed(1):"0";
+  const reworkByProject=projects.map(p=>{
+    const pt=periodTasks.filter(t=>t.project_id===p.id);
+    const wr=pt.filter(t=>allRevisions.some(rv=>String(rv.task_id)===String(t.id)));
+    const rc=allRevisions.filter(rv=>pt.some(t=>String(t.id)===String(rv.task_id))).length;
+    return{name:p.name,tasks:pt.length,withRevs:wr.length,revCount:rc,rate:pt.length?Math.round(wr.length/pt.length*100):0,taskList:wr};
+  }).filter(p=>p.revCount>0).sort((a,b)=>b.revCount-a.revCount).slice(0,8);
+  const reworkByDetailer=members.map(name=>{
+    const mt=periodTasks.filter(t=>t.detailer===name||t.assignee===name);
+    const wr=mt.filter(t=>allRevisions.some(rv=>String(rv.task_id)===String(t.id)));
+    const rc=allRevisions.filter(rv=>mt.some(t=>String(t.id)===String(rv.task_id))).length;
+    return{name,tasks:mt.length,withRevs:wr.length,revCount:rc,rate:mt.length?Math.round(wr.length/mt.length*100):0,taskList:wr};
+  }).filter(u=>u.revCount>0).sort((a,b)=>b.revCount-a.revCount).slice(0,8);
+
   // ── Sub-components ──────────────────────────────────────────────────────────
   const ACard=({icon,label,value,sub,color,onClick,taskList,projList,clientList,memberList})=>{
     const handleClick=projList&&projList.length>0?()=>openProj(label,projList):clientList&&clientList.length>0?()=>openClients(label,clientList):memberList&&memberList.length>0?()=>openMembers(label,memberList):taskList&&taskList.length>0?()=>openModal(label,taskList):onClick;
@@ -6221,6 +6240,70 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
               </div>
               <HBar data={overdueByA.map(u=>({label:u.name,value:u.count,color:C.red,tasks:u.tasks}))}/>
             </>
+          )}
+        </Panel>
+      </div>
+
+      {/* ── Row 4: Rework Rate ── */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.3fr",gap:isMobile?12:18,marginTop:isMobile?12:18,marginBottom:4}}>
+        <Panel title="🔁 Rework Rate — by Project">
+          {reworkByProject.length===0?(
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"22px 0"}}>
+              <div style={{fontSize:36}}>✅</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.green,marginTop:8}}>Zero rework!</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:4}}>No revisions logged in this period</div>
+            </div>
+          ):(
+            <>
+              <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${C.border}`}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:22,fontWeight:900,color:"#f97316"}}>{reworkRate}%</div>
+                  <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:".05em"}}>Tasks reworked</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:22,fontWeight:900,color:"#8b5cf6"}}>{totalRevCount}</div>
+                  <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:".05em"}}>Total revisions</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:22,fontWeight:900,color:C.teal}}>{avgRevsPerTask}</div>
+                  <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:".05em"}}>Avg per reworked task</div>
+                </div>
+              </div>
+              <HBar data={reworkByProject.map(p=>({label:p.name,value:p.revCount,color:"#f97316",tasks:p.taskList}))}/>
+              <div style={{marginTop:10,fontSize:11,color:C.t3}}>{tasksWithRevs.length} of {periodTasks.length} tasks had revisions</div>
+            </>
+          )}
+        </Panel>
+        <Panel title="🔁 Rework Rate — by Employee">
+          {reworkByDetailer.length===0?(
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"22px 0"}}>
+              <div style={{fontSize:36}}>🌟</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.green,marginTop:8}}>No rework found</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:4}}>All detailers are clean this period</div>
+            </div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {reworkByDetailer.map((u,i)=>(
+                <div key={u.name} className="rds-perf-row" onClick={u.taskList.length>0?()=>openModal(`${u.name} — Reworked Tasks`,u.taskList):undefined}
+                  style={{cursor:u.taskList.length>0?"pointer":"default",borderRadius:8,padding:"6px 8px",transition:"background .15s"}}
+                  onMouseEnter={e=>{if(u.taskList.length>0)e.currentTarget.style.background=C.surface;}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:10,color:C.t3,width:16,textAlign:"right"}}>{i+1}.</span>
+                      <Av name={u.name} size={20}/>
+                      <span style={{fontSize:12,color:C.t1,fontWeight:600}}>{u.name.split(" ")[0]}</span>
+                      <span style={{fontSize:10,background:"#f9731620",color:"#f97316",border:"1px solid #f9731640",borderRadius:4,padding:"1px 5px",fontWeight:700}}>{u.revCount} rev{u.revCount!==1?"s":""}</span>
+                    </div>
+                    <span style={{fontSize:12,fontWeight:800,color:u.rate>=50?"#ef4444":u.rate>=25?"#f97316":"#eab308"}}>{u.rate}%</span>
+                  </div>
+                  <div style={{height:6,background:C.surface,borderRadius:3,overflow:"hidden"}}>
+                    <div className="rds-perf-bar" style={{height:"100%",width:`${u.rate}%`,background:u.rate>=50?"#ef4444":u.rate>=25?"#f97316":"#eab308",borderRadius:3}}/>
+                  </div>
+                  <div style={{fontSize:10,color:C.t3,marginTop:2}}>{u.withRevs}/{u.tasks} tasks had revisions</div>
+                </div>
+              ))}
+            </div>
           )}
         </Panel>
       </div>
