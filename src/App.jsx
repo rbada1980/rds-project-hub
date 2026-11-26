@@ -16222,53 +16222,132 @@ export default function App(){
         const hr=new Date().getHours();
         const greet=hr<12?"🌅 Good Morning":hr<17?"☀️ Good Afternoon":hr<21?"🌆 Good Evening":"🌙 Good Night";
         const ds=v=>v?String(v).slice(0,10):null;
-        const myTasks=tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&(t.assignee===me?.name||t.detailer===me?.name||t.checker===me?.name));
-        const todayDue=myTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===today)||(d2&&d2===today);});
         const tueFn=d=>{const r=new Date(d);const dw=r.getDay();r.setDate(r.getDate()-(dw===0?5:dw===1?6:dw-2));return r.toISOString().slice(0,10);};
-        const addD7=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
-        const twS=tueFn(today);const twE=addD7(twS,6);
-        const weekDue=tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=twS&&d1<=twE)||(d2&&d2>=twS&&d2<=twE);});
-        const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today);
-        const inProg=myTasks.filter(t=>t.status==="In Progress").length;
-        const notStarted=myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
-        const statRows=[
-          {icon:"📅",label:"Due Today",val:todayDue.length,color:"#f97316"},
-          {icon:"📆",label:"This Week",val:weekDue.length,color:"#f59e0b"},
-          {icon:"⚠️",label:"Overdue (mine)",val:overdue.length,color:"#ef4444"},
-          {icon:"🔄",label:"In Progress",val:inProg,color:"#3b82f6"},
-          {icon:"🕐",label:"Not Started",val:notStarted,color:"#64748b"},
-        ];
-        const dismiss=(goTo)=>{setDailyPopup(false);if(goTo==="sub")sv("submissions");else sv("dashboard");};
+        const addDN=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
+        const twS=tueFn(today);const twE=addDN(twS,6);
+        const inDate=(t,s,e)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=s&&d1<=e)||(d2&&d2>=s&&d2<=e);};
+        const isOvTask=t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
+        const isMine=t=>t.assignee===me?.name||t.detailer===me?.name||t.checker===me?.name;
+        const openTasks=tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold");
+        const myOpen=openTasks.filter(isMine);
+        const myOv=myOpen.filter(isOvTask);
+        const myToday=myOpen.filter(t=>inDate(t,today,today));
+        const myWeek=myOpen.filter(t=>inDate(t,twS,twE));
+        const myInProg=myOpen.filter(t=>t.status==="In Progress");
+        const myNS=myOpen.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started");
+        const myDetailing=tasks.filter(t=>t.detailer===me?.name&&!isDone(t.status)&&t.status!=="On Hold");
+        const myChecking=tasks.filter(t=>t.checker===me?.name&&!isDone(t.status)&&t.status!=="On Hold");
+        const allOv=tasks.filter(isOvTask);
+        const allToday=tasks.filter(t=>inDate(t,today,today));
+        const allWeek=tasks.filter(t=>inDate(t,twS,twE));
+        const doneThisWeek=tasks.filter(t=>isDone(t.status)&&(t.updated_at||"").slice(0,10)>=twS);
+        const unassigned=openTasks.filter(t=>!t.assignee);
+        const projsAtRisk=[...new Set(allOv.map(t=>t.project_id))].length;
+        // People with overdue (for admin view)
+        const ovByPerson={};allOv.forEach(t=>{[t.assignee,t.detailer,t.checker].filter(Boolean).forEach(n=>{ovByPerson[n]=(ovByPerson[n]||0)+1;});});
+        const topOv=Object.entries(ovByPerson).sort((a,b)=>b[1]-a[1]).slice(0,3);
+        const peopleWithOv=Object.keys(ovByPerson).length;
+        // Role-based config
+        let accentColor=C.accent;
+        let roleBadge="";
+        let roleDesc="";
+        let statRows=[];
+        let extraNote=null;
+        let ctaPrimary={label:"📬 View Submissions",view:"submissions"};
+        let ctaSecondary={label:"🏠 Dashboard",view:"dashboard"};
+        if(isAdmin){
+          accentColor="#8b5cf6";roleBadge="👑 Admin";roleDesc="Full team overview";
+          statRows=[
+            {icon:"🔴",label:"Overdue (All Team)",val:allOv.length,color:"#ef4444"},
+            {icon:"📋",label:"Open Tasks (All)",val:openTasks.length,color:"#3b82f6"},
+            {icon:"✅",label:"Completed This Week",val:doneThisWeek.length,color:"#22c55e"},
+            {icon:"👥",label:"People with Overdue",val:peopleWithOv,color:"#f97316"},
+            {icon:"🏗",label:"Projects at Risk",val:projsAtRisk,color:"#ef4444"},
+            {icon:"📅",label:"Due Today (All)",val:allToday.length,color:"#f59e0b"},
+          ];
+          if(topOv.length)extraNote=<div style={{background:"#ef444412",border:"1px solid #ef444430",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#ef4444"}}>⚠ Highest Overdue:</span> {topOv.map(([n,c])=>`${n} (${c})`).join(", ")}</div>;
+          ctaPrimary={label:"📊 Analytics",view:"analytics"};
+        }else if(isManager){
+          accentColor="#06b6d4";roleBadge="🗂 Manager";roleDesc="Project & team snapshot";
+          statRows=[
+            {icon:"⚠️",label:"Overdue (All)",val:allOv.length,color:"#ef4444"},
+            {icon:"📅",label:"Due Today (All)",val:allToday.length,color:"#f97316"},
+            {icon:"📆",label:"Due This Week",val:allWeek.length,color:"#f59e0b"},
+            {icon:"👤",label:"Unassigned Tasks",val:unassigned.length,color:"#64748b"},
+            {icon:"✅",label:"Done This Week",val:doneThisWeek.length,color:"#22c55e"},
+            {icon:"🏗",label:"Projects at Risk",val:projsAtRisk,color:"#f97316"},
+          ];
+          if(unassigned.length)extraNote=<div style={{background:"#64748b18",border:"1px solid #64748b44",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#f59e0b"}}>📌 {unassigned.length} task{unassigned.length!==1?"s":""} have no assignee</span> — assign them to avoid delays.</div>;
+          ctaPrimary={label:"📋 All Tasks",view:"list"};
+        }else if(isTeamLeader){
+          accentColor="#14b8a6";roleBadge="🏆 Team Leader";roleDesc="Your workload today";
+          statRows=[
+            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316"},
+            {icon:"📆",label:"My Due This Week",val:myWeek.length,color:"#f59e0b"},
+            {icon:"✏️",label:"Detailing Queue",val:myDetailing.length,color:"#3b82f6"},
+            {icon:"✓",label:"Checking Queue",val:myChecking.length,color:"#8b5cf6"},
+            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444"},
+            {icon:"🔄",label:"In Progress",val:myInProg.length,color:"#22c55e"},
+          ];
+          if(myChecking.length)extraNote=<div style={{background:"#8b5cf618",border:"1px solid #8b5cf644",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#8b5cf6"}}>✓ {myChecking.length} task{myChecking.length!==1?"s":""} waiting for your check</span></div>;
+        }else if(isFinance){
+          accentColor="#ec4899";roleBadge="💼 HR & Finance";roleDesc="Your tasks & team snapshot";
+          statRows=[
+            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316"},
+            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444"},
+            {icon:"📋",label:"My Open Tasks",val:myOpen.length,color:"#3b82f6"},
+            {icon:"👥",label:"Total Team",val:users.length,color:"#8b5cf6"},
+            {icon:"🏗",label:"Active Projects",val:projects.filter(p=>p.status!=="Completed").length,color:"#14b8a6"},
+            {icon:"✅",label:"Done This Week",val:doneThisWeek.length,color:"#22c55e"},
+          ];
+        }else{
+          // Rebar / Tekla / Precast / any dept employee
+          const deptLabel=me?.role||"Team";
+          accentColor=deptLabel==="Rebar"?"#f97316":deptLabel==="Tekla"?"#8b5cf6":deptLabel==="Precast"?"#14b8a6":C.accent;
+          roleBadge=`${deptLabel==="Rebar"?"🔩":deptLabel==="Tekla"?"🖥":deptLabel==="Precast"?"🏗":"👷"} ${deptLabel}`;
+          roleDesc="Your personal work brief";
+          statRows=[
+            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316"},
+            {icon:"📆",label:"My Due This Week",val:myWeek.length,color:"#f59e0b"},
+            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444"},
+            {icon:"🔄",label:"In Progress",val:myInProg.length,color:"#3b82f6"},
+            {icon:"✏️",label:"Detailing",val:myDetailing.length,color:"#14b8a6"},
+            {icon:"🕐",label:"Not Started",val:myNS.length,color:"#64748b"},
+          ];
+          if(myOv.length>0)extraNote=<div style={{background:"#ef444412",border:"1px solid #ef444430",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#ef4444"}}>⚠ {myOv.length} of your task{myOv.length!==1?"s are":" is"} overdue</span> — please update or submit.</div>;
+        }
+        const dismiss=(view)=>{setDailyPopup(false);sv(view);};
         return(
-          <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.65)",backdropFilter:"blur(6px)"}}
-            onClick={()=>dismiss("sub")}>
-            <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${C.border}`,borderRadius:20,padding:"28px 30px",maxWidth:420,width:"calc(100% - 40px)",boxShadow:"0 24px 60px #000000aa",position:"relative",animation:"rds-popup-in .3s cubic-bezier(.34,1.56,.64,1)"}}>
-              <style>{`@keyframes rds-popup-in{from{opacity:0;transform:scale(.88) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-              {/* Close */}
-              <button onClick={()=>dismiss("dashboard")} style={{position:"absolute",top:14,right:14,width:30,height:30,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
-              {/* Header */}
-              <div style={{marginBottom:18}}>
-                <div style={{fontSize:18,fontWeight:900,color:C.t1,marginBottom:4}}>{greet}, <span style={{color:C.accent}}>{me?.name||me?.username}</span>!</div>
-                <div style={{fontSize:12,color:C.t3}}>Here's your daily work brief for <strong style={{color:C.t2}}>{new Date(today+"T12:00:00Z").toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</strong></div>
+          <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.70)",backdropFilter:"blur(8px)"}}
+            onClick={()=>dismiss(ctaPrimary.view)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${accentColor}44`,borderRadius:20,padding:"24px 26px",maxWidth:460,width:"calc(100% - 32px)",boxShadow:`0 24px 60px #000000bb, 0 0 0 1px ${accentColor}22`,position:"relative",animation:"rds-popup-in .32s cubic-bezier(.34,1.56,.64,1)"}}>
+              <style>{`@keyframes rds-popup-in{from{opacity:0;transform:scale(.88) translateY(24px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+              <button onClick={()=>dismiss("dashboard")} style={{position:"absolute",top:12,right:12,width:28,height:28,borderRadius:7,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
+              {/* Role badge + greeting */}
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <span style={{fontSize:10,fontWeight:800,background:accentColor+"20",color:accentColor,border:`1px solid ${accentColor}44`,borderRadius:20,padding:"2px 10px",letterSpacing:".06em"}}>{roleBadge}</span>
+                <span style={{fontSize:10,color:C.t3}}>{roleDesc}</span>
               </div>
-              {/* Stats */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:17,fontWeight:900,color:C.t1,marginBottom:3,lineHeight:1.2}}>{greet}, <span style={{color:accentColor}}>{me?.name||me?.username}</span>!</div>
+                <div style={{fontSize:11,color:C.t3}}>📆 {new Date(today+"T12:00:00Z").toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+              </div>
+              {extraNote}
+              {/* Stats grid */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:18}}>
                 {statRows.map(r=>(
-                  <div key={r.label} style={{background:r.color+"12",border:`1px solid ${r.color}33`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
-                    <span style={{fontSize:20}}>{r.icon}</span>
-                    <div>
-                      <div style={{fontSize:22,fontWeight:900,color:r.color,lineHeight:1}}>{r.val}</div>
-                      <div style={{fontSize:10,color:C.t3,fontWeight:600,marginTop:2}}>{r.label}</div>
-                    </div>
+                  <div key={r.label} style={{background:r.color+"12",border:`1px solid ${r.color}30`,borderRadius:10,padding:"10px 10px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,textAlign:"center"}}>
+                    <span style={{fontSize:17}}>{r.icon}</span>
+                    <div style={{fontSize:20,fontWeight:900,color:r.color,lineHeight:1}}>{r.val}</div>
+                    <div style={{fontSize:9,color:C.t3,fontWeight:600,lineHeight:1.3}}>{r.label}</div>
                   </div>
                 ))}
               </div>
-              {/* CTA */}
-              <div style={{display:"flex",gap:10}}>
-                <button onClick={()=>dismiss("sub")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.accent,border:"none",color:"#fff"}}>📬 View Submissions</button>
-                <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>🏠 Go to Dashboard</button>
+              <div style={{display:"flex",gap:9}}>
+                <button onClick={()=>dismiss(ctaPrimary.view)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:accentColor,border:"none",color:"#fff"}}>{ctaPrimary.label}</button>
+                <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>{ctaSecondary.label}</button>
               </div>
-              <div style={{marginTop:12,fontSize:10,color:C.t3,textAlign:"center"}}>Tap outside or on "View Submissions" to open submissions - this brief shows up to 2× per day</div>
+              <div style={{marginTop:10,fontSize:9,color:C.t3,textAlign:"center",opacity:.7}}>Tap outside to go to {ctaPrimary.label} - shows up to 2x per day</div>
             </div>
           </div>
         );
