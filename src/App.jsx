@@ -62,6 +62,17 @@ let PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
 const isDone=s=>s==="Done"||s==="Completed"; // "Done" kept for legacy data
+// Due date urgency badge — returns {text, color, bg} or null (null = no badge needed)
+const getDueBadge=(due_date,today,status)=>{
+  if(!due_date||isDone(status)||status==="On Hold")return null;
+  const dd=String(due_date).slice(0,10);
+  const diff=Math.ceil((new Date(dd+"T12:00:00Z")-new Date(today+"T12:00:00Z"))/86400000);
+  if(diff<0)  return{text:"OVERDUE",   color:"#ef4444",bg:"#ef444420",border:"#ef444455"};
+  if(diff===0)return{text:"DUE TODAY", color:"#f97316",bg:"#f9731620",border:"#f9731655"};
+  if(diff===1)return{text:"1 day left",color:"#f59e0b",bg:"#f59e0b18",border:"#f59e0b44"};
+  if(diff<=3) return{text:`${diff} days left`,color:"#eab308",bg:"#eab30818",border:"#eab30844"};
+  return null;
+};
 const fmtD=v=>{if(!v)return"-";const s=String(v).slice(0,10);if(s.length<10)return s;return s.slice(8)+"/"+s.slice(5,7)+"/"+s.slice(0,4);};
 // Global DD/MM/YYYY formatter for any date string or Date object
 // IST-safe: plain YYYY-MM-DD strings sliced directly; timestamps/Date objects converted via IST locale
@@ -1381,8 +1392,8 @@ function TRow({task,project,onEdit,onDelete,onDuplicate,onMove,onDragTask,onMove
       <td style={{...td,width:70,textAlign:"center"}}>
         {task.det_weight!=null?<span style={{color:C.t1,fontSize:11,fontWeight:600}}>{Number(task.det_weight).toLocaleString(undefined,{maximumFractionDigits:2})}</span>:<span style={{color:C.t3,fontSize:10}}>-</span>}
       </td>
-      <td style={{...td,minWidth:70}}><div style={{display:"flex",flexDirection:"column",gap:1}}>
-        {task.due_date?<span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}{overdue?" ⚠":""}</span>:null}
+      <td style={{...td,minWidth:80}}><div style={{display:"flex",flexDirection:"column",gap:2}}>
+        {task.due_date?(()=>{const b=getDueBadge(task.due_date,today,task.status);return(<><span style={{color:overdue?C.red:C.t3,fontSize:10,fontWeight:overdue?700:400}}>📅 {fmtD(task.due_date)}</span>{b&&<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap",display:"inline-block"}}>{b.text}</span>}</>);})():null}
         {task.client_sub_date?<span style={{color:C.teal,fontSize:10}}>🗓 {fmtD(task.client_sub_date)}</span>:null}
         {!task.due_date&&!task.client_sub_date&&<span style={{color:C.t3,fontSize:10}}>-</span>}
       </div></td>
@@ -4662,7 +4673,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.detailer||"-"}</td>
         <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
         <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{fmtD(t.client_sub_date)}</td>
-        <td style={{...tdC,color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400}}>{fmtD(t.due_date)}{isOverdue?" ⚠":""}</td>
+        <td style={{...tdC}}><div style={{display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}><span style={{color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400,fontSize:11}}>{fmtD(t.due_date)}</span>{(()=>{const b=getDueBadge(t.due_date,today,t.status);return b?<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap"}}>{b.text}</span>:null;})()}</div></td>
         {!isClient&&<td style={{...tdC}}>
           <button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -4907,7 +4918,8 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       <span style={{fontSize:10,fontWeight:700,color:statusColor(t.status),background:statusColor(t.status)+"18",padding:"2px 7px",borderRadius:5}}>{t.status}</span>
                       {t.client_sub_date&&<span style={{fontSize:10,color:C.t3}}>📬 {fmtD(t.client_sub_date)}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t2}}>📅 {fmtD(t.due_date)}{isOverdue?" ⚠":""}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOverdue?C.red:C.t2}}>📅 {fmtD(t.due_date)}</span>}
+                      {(()=>{const b=getDueBadge(t.due_date,today,t.status);return b?<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap"}}>{b.text}</span>:null;})()}
                       {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                     </div>
                     {!isClient&&canEdit&&<button onClick={()=>onEdit&&onEdit(t)} style={{marginTop:8,background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
@@ -15465,8 +15477,8 @@ export default function App(){
                                     <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                                       <span style={{fontSize:10,background:sc+"20",color:sc,border:`1px solid ${sc}44`,borderRadius:5,padding:"1px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{tDispStatus}</span>
                                       {t.assignee&&<span style={{fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>👤 {t.assignee}</span>}
-                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>{od?"🔴":"📅"} {fmtD(t.due_date)}</span>}
-                                      {od&&<span style={{fontSize:9,background:C.red+"20",color:C.red,border:`1px solid ${C.red}44`,borderRadius:4,padding:"1px 5px",fontWeight:800}}>OVERDUE</span>}
+                                      {t.due_date&&<span style={{fontSize:10,color:od?C.red:C.t3,whiteSpace:"nowrap"}}>📅 {fmtD(t.due_date)}</span>}
+                                      {(()=>{const b=getDueBadge(t.due_date,today,t.status);return b?<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap"}}>{b.text}</span>:null;})()}
                                       {t.priority&&<span style={{fontSize:9,color:PRI_CLR[t.priority]||C.t3,fontWeight:700,background:(PRI_CLR[t.priority]||C.t3)+"18",borderRadius:4,padding:"1px 5px"}}>{t.priority}</span>}
                                     </div>
                                   </div>
@@ -15850,8 +15862,8 @@ export default function App(){
                               {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
                               {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 {t.assignee}</span>}
                               {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏ {t.detailer}</span>}
-                              {isOv&&<span style={{fontSize:10,color:C.red,fontWeight:700}}>⚠ {fmtD(t.due_date)}</span>}
-                              {!isOv&&t.due_date&&<span style={{fontSize:10,color:C.t3}}>📅 {fmtD(t.due_date)}</span>}
+                              {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {fmtD(t.due_date)}</span>}
+                              {(()=>{const b=getDueBadge(t.due_date,today,t.status);return b?<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap"}}>{b.text}</span>:null;})()}
                             </div>
                             {canEditTask&&<div style={{display:"flex",alignItems:"center",gap:6}}>
                               <span style={{fontSize:10,color:C.t3,flexShrink:0}}>Move to:</span>
@@ -16115,7 +16127,8 @@ export default function App(){
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:4}}>
                       <span style={{fontSize:11,fontWeight:700,color:dispClr}}>{dispStatus}</span>
                       {t.priority&&<span style={{fontSize:10,background:(PRI_CLR[t.priority]||C.t3)+"22",color:PRI_CLR[t.priority]||C.t3,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{t.priority}</span>}
-                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>{isOv?"⚠ ":""}{fmtD(t.due_date)}</span>}
+                      {t.due_date&&<span style={{fontSize:10,color:isOv?C.red:C.t3,fontWeight:isOv?700:400}}>📅 {fmtD(t.due_date)}</span>}
+                      {(()=>{const b=getDueBadge(t.due_date,today,t.status);return b?<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap"}}>{b.text}</span>:null;})()}
                     </div>
                     <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:taskRevs.length?6:0}}>
                       {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
