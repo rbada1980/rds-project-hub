@@ -15088,11 +15088,6 @@ export default function App(){
             {canEdit&&activePid&&<button onClick={()=>sep(accessibleProjects.find(p=>p.id===activePid)||null)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.t2,borderColor:C.t2}}>✏️ Edit Project</button>}
             {canEdit&&activePid&&<button onClick={()=>deleteProject(activePid)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.red,borderColor:C.red}}>🗑 Delete Project</button>}
             {canEdit&&<button onClick={()=>spm(true)} style={{...GBtn,padding:"9px 14px",fontSize:13,color:C.green,borderColor:C.green}}>＋ New Project</button>}
-            <button onClick={toggleTheme} title={isDark?"Switch to Light Mode":"Switch to Dark Mode"} style={{display:"flex",alignItems:"center",gap:7,background:isDark?"#1e2433":"#e2ddd5",border:`1px solid ${isDark?"#3a4255":"#c4bfb7"}`,borderRadius:20,padding:"5px 6px 5px 6px",cursor:"pointer",flexShrink:0,transition:"all .25s",width:60,justifyContent:"space-between",position:"relative"}}>
-              <span style={{fontSize:14,lineHeight:1,transition:"opacity .2s",opacity:isDark?0.4:1}}>☀️</span>
-              <span style={{position:"absolute",left:isDark?"calc(100% - 26px)":"4px",width:22,height:22,borderRadius:"50%",background:isDark?"#f97316":"#f97316",boxShadow:"0 1px 4px #00000040",transition:"left .25s cubic-bezier(.4,0,.2,1)",flexShrink:0}}/>
-              <span style={{fontSize:14,lineHeight:1,transition:"opacity .2s",opacity:isDark?1:0.4}}>🌙</span>
-            </button>
             {canEdit&&<button className="rds-new-task-btn" onClick={()=>{set(null);stm(true);}} style={SBtn}>+ New Task</button>}
           </div>
         </div>
