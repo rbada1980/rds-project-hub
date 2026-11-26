@@ -15487,34 +15487,36 @@ export default function App(){
                 return activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)===s.label);
               };
               return(
-                <div style={{display:"flex",flexWrap:"wrap",gap:18,marginBottom:20,marginTop:8}}>
-                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flexShrink:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>📊 Tasks by Status</div>
-                    <div style={{display:"flex",gap:18,alignItems:"center"}}>
-                      <DonutChart data={sData} size={130} onSliceClick={s=>ssm({title:`${s.label} Tasks`,tasks:getStatusTasks(s)})}/>
-                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                        {sData.map(d=>{
-                          return(
-                            <div key={d.label}
-                              onMouseEnter={e=>{const el=e.currentTarget;el.style.background=d.color+"18";el.querySelector("span").style.color=d.color;el.querySelector("span").style.fontWeight="700";}}
-                              onMouseLeave={e=>{const el=e.currentTarget;el.style.background="transparent";el.querySelector("span").style.color=C.t2;el.querySelector("span").style.fontWeight="400";}}
-                              onClick={()=>ssm({title:`${d.label} Tasks`,tasks:getStatusTasks(d)})}
-                              style={{display:"flex",alignItems:"center",gap:8,padding:"4px 8px",borderRadius:7,background:"transparent",cursor:"pointer",transition:"background .15s"}}>
-                              <div style={{width:10,height:10,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                              <span style={{fontSize:11,color:C.t2,fontWeight:400,transition:"color .15s"}}>{d.label}</span>
-                              <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:8}}>{d.value}</span>
-                            </div>
-                          );
-                        })}
+                <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:20,marginTop:8}}>
+                  {/* Tasks by Status — compact donut + legend */}
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",flexShrink:0,minWidth:240}}>
+                    <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Tasks by Status</div>
+                    <div style={{display:"flex",gap:14,alignItems:"center"}}>
+                      <DonutChart data={sData} size={110} onSliceClick={s=>ssm({title:`${s.label} Tasks`,tasks:getStatusTasks(s)})}/>
+                      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                        {sData.map(d=>(
+                          <div key={d.label}
+                            onMouseEnter={e=>{e.currentTarget.style.background=d.color+"18";}}
+                            onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}
+                            onClick={()=>ssm({title:`${d.label} Tasks`,tasks:getStatusTasks(d)})}
+                            style={{display:"flex",alignItems:"center",gap:7,padding:"3px 7px",borderRadius:6,background:"transparent",cursor:"pointer",transition:"background .15s"}}>
+                            <div style={{width:8,height:8,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                            <span style={{fontSize:11,color:C.t2}}>{d.label}</span>
+                            <span style={{fontSize:12,fontWeight:700,color:d.color,marginLeft:6}}>{d.value}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:20,flex:"1 1 280px"}}>
-                    <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14}}>👤 Tasks by Client</div>
-                    <MiniBarChart data={cData} onBarClick={d=>{
-                      const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===d.label);
-                      ssm({title:`${d.label} - Tasks`,tasks:activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id))});
-                    }}/>
+                  {/* Tasks by Client — scrollable bar list */}
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",flex:"1 1 240px"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Tasks by Client</div>
+                    <div style={{maxHeight:200,overflowY:"auto",scrollbarWidth:"thin"}}>
+                      <MiniBarChart data={cData} onBarClick={d=>{
+                        const cp=accessibleProjects.filter(p=>(p.client||"Unassigned")===d.label);
+                        ssm({title:`${d.label} - Tasks`,tasks:activeDashTasks.filter(t=>cp.some(p=>p.id===t.project_id))});
+                      }}/>
+                    </div>
                   </div>
                 </div>
               );
