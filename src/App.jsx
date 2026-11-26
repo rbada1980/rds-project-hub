@@ -362,7 +362,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
     });
   },[initial.id]);// eslint-disable-line react-hooks/exhaustive-deps
-  // Track unsaved changes — button highlights only when dirty
+  // Track unsaved changes - button highlights only when dirty
   const isDirty=useMemo(()=>{
     if(!initial.id)return true;// new task always dirty
     const keys=['project_id','title','client','status','priority','assignee','due_date','detailer','checker','detailer_status','checker_status','scope','client_sub_date'];
@@ -417,7 +417,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   const assigneeEqualsDetailer=false;
   const isEdit=!!initial.id;// true when editing existing task; false for new task creation
   const col={flex:1,minWidth:0},row={display:"flex",gap:16,flexWrap:"wrap"};
-  // Shared button renderer — used at top and bottom
+  // Shared button renderer - used at top and bottom
   function SaveBtn({compact=false}){
     const oh=f.status==="On Hold";
     const invalid=saving||(!custom&&!f.project_id)||!f.title.trim()||!f.client||(!oh&&(!f.assignee||!f.detailer||!f.status||(!f.checker&&!isEdit)||!f.client_sub_date||!f.detailer_status||!f.checker_status))||assigneeEqualsDetailer;
@@ -4635,7 +4635,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.detailer||"-"}</td>
         <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
         <td style={{...tdC,color:"#16a34a",fontWeight:700}}>{fmtD(rv.client_sub_date)}</td>
-        <td style={{...tdC,color:C.t2}}>—</td>
+        <td style={{...tdC,color:C.t2}}>-</td>
         {!isClient&&<td style={{...tdC}}>
           {canEdit&&<button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -5614,7 +5614,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     return new Set(users.filter(u=>u.role===activeDept).map(u=>u.name).filter(Boolean));
   },[users,activeDept]);
   const dTasks=useMemo(()=>deptNames?tasks.filter(t=>deptNames.has(t.detailer)||deptNames.has(t.assignee)||deptNames.has(t.checker)):tasks,[tasks,deptNames]);
-  // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
+  // UTC-safe helpers - avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
   const addD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
   const fmtD2=d=>d?new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"";
   // Tuesday-based week start (UTC-safe)
@@ -5638,7 +5638,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   }
   const[curStart,curEnd]=period==="custom"?[customStart||today,customEnd||today]:getPeriodRange(period);
   const isMonthly=["this_month","last_month","next_month"].includes(period);
-  // Prev/next — full calendar months when monthly, else 7-day weeks
+  // Prev/next - full calendar months when monthly, else 7-day weeks
   let prevStart,prevEnd,nextStart,nextEnd;
   if(isMonthly){
     const[cyr,cmo]=curStart.split("-").map(Number);
@@ -5675,7 +5675,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     const TR=(cells,sty="")=>{rn++;return`<tr style="${sty}">${cells}</tr>\n`;};
     const TD=(v,sty="")=>`<td style="border:1px solid #E5E7EB;padding:5px 6px;font-size:9pt;vertical-align:top;${sty}">${v}</td>`;
     const TH=(v,sty="")=>`<th style="background:#1E40AF;color:#fff;border:1px solid #3B82F6;padding:6px 7px;font-size:9pt;text-align:center;white-space:nowrap;${sty}">${v}</th>`;
-    // Numeric cell — x:num marks it as number; x:fmla adds live formula; initial value shown if formula unsupported
+    // Numeric cell - x:num marks it as number; x:fmla adds live formula; initial value shown if formula unsupported
     const NUM=(val,sty="",fmla=null)=>fmla
       ?`<td style="text-align:center;border:1px solid #E5E7EB;padding:5px 6px;font-size:9pt;${sty}" x:num x:fmla="${esc(fmla)}">${val}</td>`
       :`<td style="text-align:center;border:1px solid #E5E7EB;padding:5px 6px;font-size:9pt;${sty}" x:num>${val}</td>`;
@@ -5703,7 +5703,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
         const curR=rn+1; // this row number (before TR increments)
         const dsSt=t.detailer_status||"";
         const chkSt=t.checker_status||"";
-        // Days left display — completed tasks show Done regardless of date
+        // Days left display - completed tasks show Done regardless of date
         let dlDisp="-",dlSty="color:#888;text-align:center";
         if(isDone(t.status)){dlDisp="Done";dlSty="color:#166534;font-weight:700;background:#DCFCE7;text-align:center";}
         else if(dl!==null){
@@ -5712,7 +5712,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
           else if(dl<=3){dlDisp=`${dl}d left`;dlSty="color:#D97706;font-weight:700;background:#FEF3C7;text-align:center";}
           else{dlDisp=`${dl}d left`;dlSty="color:#166534;background:#DCFCE7;text-align:center";}
         }
-        // Est.Hrs is a separate independent value — NOT derived from Det.Wt (blank if no est_hrs column yet)
+        // Est.Hrs is a separate independent value - NOT derived from Det.Wt (blank if no est_hrs column yet)
         const hrs=parseFloat(t.est_hrs||0)||0;
         s+=TR(
           `${TD(i+1,"text-align:center;width:32px")}${TD(esc(t.client||pj?.client||""))}${TD(esc(pj?.name||t.custName||""))}${TD(esc(t.title||""),"font-weight:600")}${TD(esc(t.detailer||""))}${TD(esc(dsSt),`text-align:center;background:${dsBg(dsSt)};color:${dsClr(dsSt)};font-weight:700`)}${TD(esc(t.checker||""))}${TD(esc(chkSt),`text-align:center;background:${dsBg(chkSt)};color:${dsClr(chkSt)};font-weight:700`)}${TD(esc(t.status||""),`text-align:center;background:${stBg(t.status)};color:${stClr(t.status)};font-weight:700`)}${TD(fmtD2(t.client_sub_date||t.due_date),"text-align:center;color:#0891B2;font-weight:600")}${wt>0?NUM(wt.toFixed(2)):TD("-","text-align:center;color:#aaa")}${hrs>0?NUM(hrs.toFixed(1)):TD("-","text-align:center;color:#aaa")}${TD(esc((t.notes||"").slice(0,120)),"font-size:8pt;color:#555")}${TD(dlDisp,dlSty)}`,
@@ -5730,14 +5730,14 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
       const SL="text-align:right;padding:5px 10px;font-weight:700;border:2px solid";
       const SN="text-align:center;font-weight:700;border:2px solid;font-size:10pt";
       // Col I = Status (col 9), K = Det.Wt (col 11), L = Est.Hrs (col 12)
-      // Total — SUM formulas
+      // Total - SUM formulas
       s+=TR(`<td colspan="10" style="${SL} #1E3A5F;color:#1E3A5F;background:#DBEAFE">Total Det.Wt (Tons) / Est. Hours:</td>${NUM(totWt.toFixed(2),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(K${dStart}:K${dEnd})`)}${NUM(totHrs.toFixed(1),`${SN} #1E3A5F;color:#1E3A5F;background:#DBEAFE`,`=SUM(L${dStart}:L${dEnd})`)}<td colspan="2" style="border:2px solid #1E3A5F;background:#DBEAFE"></td>`);
       if(!totalsOnly){
-        // Completed — SUMIF on Status column I for "Completed" or "Done"
+        // Completed - SUMIF on Status column I for "Completed" or "Done"
         const cmpFmlaK=`=SUMIF(I${dStart}:I${dEnd},"Completed",K${dStart}:K${dEnd})+SUMIF(I${dStart}:I${dEnd},"Done",K${dStart}:K${dEnd})`;
         const cmpFmlaL=`=SUMIF(I${dStart}:I${dEnd},"Completed",L${dStart}:L${dEnd})+SUMIF(I${dStart}:I${dEnd},"Done",L${dStart}:L${dEnd})`;
         s+=TR(`<td colspan="10" style="${SL} #A7F3D0;color:#166534;background:#DCFCE7">Completed Det.Wt / Hours:</td>${NUM(doneWt.toFixed(2),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`,cmpFmlaK)}${NUM(doneHrs.toFixed(1),`${SN} #A7F3D0;color:#166534;background:#DCFCE7`,cmpFmlaL)}<td colspan="2" style="border:1px solid #A7F3D0;background:#DCFCE7"></td>`);
-        // Remaining — Total minus Completed (Not Yet Started + In Progress)
+        // Remaining - Total minus Completed (Not Yet Started + In Progress)
         const remFmlaK=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",K${dStart}:K${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",K${dStart}:K${dEnd})`;
         const remFmlaL=`=SUMIF(I${dStart}:I${dEnd},"Not Yet Started",L${dStart}:L${dEnd})+SUMIF(I${dStart}:I${dEnd},"In Progress",L${dStart}:L${dEnd})`;
         if(showRemaining){
@@ -5827,7 +5827,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   );
   const periodLabel=period==="last_week"?`${fmtD2(prevStart)} → ${fmtD2(prevEnd)}`:period==="custom"?`${fmtD2(curStart)} → ${fmtD2(curEnd)}`:`${fmtD2(curStart)} (Tue) → ${fmtD2(curEnd)} (Mon)`;
   return(
-    <Modal title={`🗓 Weekly Report${activeDept==="All"?"":" — "+activeDept+" Dept"}`} onClose={onClose} wide>
+    <Modal title={`🗓 Weekly Report${activeDept==="All"?"":" - "+activeDept+" Dept"}`} onClose={onClose} wide>
       {/* Department tabs */}
       <div style={{display:"flex",gap:6,marginBottom:16,borderBottom:`1px solid ${C.border}`,paddingBottom:12}}>
         {[{key:"All",icon:"🏢",label:"All Departments",color:"#3b82f6"},{key:"Rebar",icon:"🔩",label:"Rebar",color:"#f97316"},{key:"Tekla",icon:"🖥",label:"Tekla",color:"#8b5cf6"},{key:"Precast",icon:"🏗",label:"Precast",color:"#14b8a6"}].map(d=>(
@@ -14684,7 +14684,7 @@ export default function App(){
       st(ts=>ts.filter(t=>t.project_id!==id));
       if(activePid===id)sap(null);
       pushUndo("Delete project: "+(delProj?.name||id),{project:delProj,tasks:delTasks},null,"project");
-      showToast("Project deleted ✓ — press Ctrl+Z to restore");
+      showToast("Project deleted ✓ - press Ctrl+Z to restore");
     }catch(e){showToast("Error: "+e.message,false);}
   }
   async function addUser(f){try{const {data,error}=await supabase.from("users").insert({name:f.name,username:f.username,password:f.password,role:f.role,client_name:f.client_name||"",email:f.email||"",date_of_birth:f.date_of_birth||null,date_of_joining:f.date_of_joining||null}).select().single();if(error)throw new Error(error.message);if(data){su(us=>[...us,data]);await logAudit(me,"user",data.id,data.name,null,"create",null,data);}showToast("User created ✓");return data;}catch(e){showToast("Error: "+e.message,false);throw e;}}
@@ -15500,7 +15500,7 @@ export default function App(){
               };
               return(
                 <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:20,marginTop:8}}>
-                  {/* Tasks by Status — compact donut + legend */}
+                  {/* Tasks by Status - compact donut + legend */}
                   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",flexShrink:0,minWidth:240}}>
                     <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Tasks by Status</div>
                     <div style={{display:"flex",gap:14,alignItems:"center"}}>
@@ -15520,7 +15520,7 @@ export default function App(){
                       </div>
                     </div>
                   </div>
-                  {/* Tasks by Client — scrollable bar list */}
+                  {/* Tasks by Client - scrollable bar list */}
                   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",flex:"1 1 240px"}}>
                     <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Tasks by Client</div>
                     <div style={{maxHeight:200,overflowY:"auto",scrollbarWidth:"thin"}}>
@@ -15955,12 +15955,12 @@ export default function App(){
                     <option value="All">All Employees</option>
                     {projEmpList.map(e=><option key={e} value={e}>{e}</option>)}
                   </select>
-                  {/* Year filter — by project deadline */}
+                  {/* Year filter - by project deadline */}
                   <select value={projFYear} onChange={e=>setProjFYear(e.target.value)} style={fSel(projFYear!=="All")}>
                     <option value="All">All Years</option>
                     {[...new Set(accessibleProjects.map(p=>(p.deadline||"").slice(0,4)).filter(y=>y&&y.length===4))].sort((a,b)=>b-a).map(y=><option key={y} value={y}>{y}</option>)}
                   </select>
-                  {/* Month filter — by project deadline */}
+                  {/* Month filter - by project deadline */}
                   <select value={projFMonth} onChange={e=>setProjFMonth(e.target.value)} style={fSel(projFMonth!=="All")}>
                     <option value="All">All Months</option>
                     {[["01","January"],["02","February"],["03","March"],["04","April"],["05","May"],["06","June"],["07","July"],["08","August"],["09","September"],["10","October"],["11","November"],["12","December"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
@@ -16162,7 +16162,7 @@ export default function App(){
                   const colCount=(canEdit?2:0)+(isClient?10:11);
                   const idx=ordered.indexOf(t);
                   const rows=[<TRow key={t.id} task={t} project={projectById.get(t.project_id)} onEdit={()=>{set(t);stm(true);stnl(ordered);}} onDelete={canEdit?delTask:()=>{}} onDuplicate={canEdit?duplicateTask:null} onDragTask={canEdit?(draggedId,overId)=>handleTaskDrop(draggedId,overId,ordered,activePid):null} onMoveUp={canEdit&&idx>0?()=>handleTaskDrop(t.id,ordered[idx-1].id,ordered,activePid):null} onMoveDown={canEdit&&idx<ordered.length-1?()=>handleTaskDrop(t.id,ordered[idx+1].id,ordered,activePid):null} readonly={!canEdit} canDelete={canEdit} selected={selTasks.has(t.id)} onSelect={canEdit?toggleTask:null} onReview={isClient?()=>setCRT(t):null} hideClient={isClient} isPinned={pinnedTasks.has(t.id)} isStarred={starredTasks.has(t.id)} onPin={togglePin} onStar={toggleStar} revInfo={revInfo}/>];
-                  taskRevs.forEach(rv=>{const rClr=getStatusColor(rv.status);const proj=projectById.get(t.project_id);rows.push(<tr key={"rev-"+rv.id} style={{background:rClr+"06",borderLeft:`3px solid ${rClr}`,borderBottom:"1px solid rgba(255,255,255,0.03)"}}>{canEdit&&<td style={{padding:"0 10px",width:30}}/>}{canEdit&&<td style={{padding:"0 4px",width:44}}/>}<td style={{padding:"7px 14px 7px 28px"}}><div style={{display:"flex",alignItems:"center",gap:7,overflow:"hidden"}}><span style={{flexShrink:0,fontSize:10,fontWeight:700,background:rClr,color:"#fff",borderRadius:20,padding:"2px 9px",letterSpacing:"0.02em",whiteSpace:"nowrap"}}>↳ Rev {rv.revision_number}</span><span style={{fontSize:12,color:"#94a3b8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:1,maxWidth:220}} title={t.title}>{t.title}</span>{rv.notes&&<span style={{fontSize:11,color:"#64748b",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:2}} title={rv.notes}>· {rv.notes}</span>}</div></td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{proj?.name||"—"}</td>{!isClient&&<td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{proj?.client||"—"}</td>}<td style={{padding:"7px 14px",textAlign:"center"}}><span style={{fontSize:11,fontWeight:600,color:rClr,background:rClr+"1a",padding:"3px 11px",borderRadius:20,whiteSpace:"nowrap",border:`1px solid ${rClr}30`}}>{rv.status}</span></td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#475569"}}>—</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{t.assignee||"—"}</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{[t.detailer,t.checker].filter(Boolean).join(" / ")||"—"}</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#475569"}}>—</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,fontWeight:500,color:"#cbd5e1"}}>{rv.client_sub_date?fmtD(rv.client_sub_date):"—"}</td>{isClient?<td/>:<td style={{padding:"7px 14px",textAlign:"center"}}>{canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);stnl(ordered);}} style={{background:"transparent",border:"1px solid rgba(148,163,184,0.3)",borderRadius:6,cursor:"pointer",padding:"3px 10px",fontSize:11,color:"#94a3b8",display:"inline-flex",alignItems:"center",gap:4,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#94a3b8";e.currentTarget.style.color="#e2e8f0";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(148,163,184,0.3)";e.currentTarget.style.color="#94a3b8";}}>✏ Edit</button>}</td>}</tr>);});
+                  taskRevs.forEach(rv=>{const rClr=getStatusColor(rv.status);const proj=projectById.get(t.project_id);rows.push(<tr key={"rev-"+rv.id} style={{background:rClr+"06",borderLeft:`3px solid ${rClr}`,borderBottom:"1px solid rgba(255,255,255,0.03)"}}>{canEdit&&<td style={{padding:"0 10px",width:30}}/>}{canEdit&&<td style={{padding:"0 4px",width:44}}/>}<td style={{padding:"7px 14px 7px 28px"}}><div style={{display:"flex",alignItems:"center",gap:7,overflow:"hidden"}}><span style={{flexShrink:0,fontSize:10,fontWeight:700,background:rClr,color:"#fff",borderRadius:20,padding:"2px 9px",letterSpacing:"0.02em",whiteSpace:"nowrap"}}>↳ Rev {rv.revision_number}</span><span style={{fontSize:12,color:"#94a3b8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:1,maxWidth:220}} title={t.title}>{t.title}</span>{rv.notes&&<span style={{fontSize:11,color:"#64748b",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:2}} title={rv.notes}>· {rv.notes}</span>}</div></td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{proj?.name||"-"}</td>{!isClient&&<td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{proj?.client||"-"}</td>}<td style={{padding:"7px 14px",textAlign:"center"}}><span style={{fontSize:11,fontWeight:600,color:rClr,background:rClr+"1a",padding:"3px 11px",borderRadius:20,whiteSpace:"nowrap",border:`1px solid ${rClr}30`}}>{rv.status}</span></td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#475569"}}>-</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{t.assignee||"-"}</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#64748b"}}>{[t.detailer,t.checker].filter(Boolean).join(" / ")||"-"}</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,color:"#475569"}}>-</td><td style={{padding:"7px 14px",textAlign:"center",fontSize:12,fontWeight:500,color:"#cbd5e1"}}>{rv.client_sub_date?fmtD(rv.client_sub_date):"-"}</td>{isClient?<td/>:<td style={{padding:"7px 14px",textAlign:"center"}}>{canEdit&&<button onClick={e=>{e.stopPropagation();set(t);stm(true);stnl(ordered);}} style={{background:"transparent",border:"1px solid rgba(148,163,184,0.3)",borderRadius:6,cursor:"pointer",padding:"3px 10px",fontSize:11,color:"#94a3b8",display:"inline-flex",alignItems:"center",gap:4,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#94a3b8";e.currentTarget.style.color="#e2e8f0";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(148,163,184,0.3)";e.currentTarget.style.color="#94a3b8";}}>✏ Edit</button>}</td>}</tr>);});
                   return rows;
                 });
               })()}</tbody>
