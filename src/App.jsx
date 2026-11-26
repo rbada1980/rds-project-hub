@@ -13623,6 +13623,7 @@ export default function App(){
   const [weeklyRptAutoDownload,setWeeklyRptAutoDownload] = useState(false);
   const [weeklyRptDept,setWeeklyRptDept] = useState("All");
   const [weeklyDeptSec,setWeeklyDeptSec] = useState(null);
+  const [dailyPopup,setDailyPopup] = useState(false);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -13744,6 +13745,13 @@ export default function App(){
   const isTeamLeader=!isAdmin&&!isManager&&me?.role==="Team Leader";
   const isFinance=!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&me?.role==="HR & Finance";
   const canEdit=isAdmin||isManager||isTeamLeader;
+  // Daily brief popup — show up to 2× per day per user (not for clients)
+  useEffect(()=>{
+    if(!me?.username||isClient)return;
+    const key=`rds_brief_${me.username}_${today}`;
+    const count=parseInt(localStorage.getItem(key)||"0");
+    if(count<2){localStorage.setItem(key,String(count+1));setDailyPopup(true);}
+  },[me?.username]);
   // Inject responsive CSS once
   useEffect(()=>{
     const s=document.createElement("style");
@@ -16210,6 +16218,61 @@ export default function App(){
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
       {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} users={users} today={today} onClose={()=>{setWeeklyRptOpen(false);setWeeklyRptAutoDownload(false);}} initialPeriod={weeklyRptPeriod} autoDownload={weeklyRptAutoDownload} department={weeklyRptDept}/>}
+      {dailyPopup&&(()=>{
+        const hr=new Date().getHours();
+        const greet=hr<12?"🌅 Good Morning":hr<17?"☀️ Good Afternoon":hr<21?"🌆 Good Evening":"🌙 Good Night";
+        const ds=v=>v?String(v).slice(0,10):null;
+        const myTasks=tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&(t.assignee===me?.name||t.detailer===me?.name||t.checker===me?.name));
+        const todayDue=myTasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1===today)||(d2&&d2===today);});
+        const tueFn=d=>{const r=new Date(d);const dw=r.getDay();r.setDate(r.getDate()-(dw===0?5:dw===1?6:dw-2));return r.toISOString().slice(0,10);};
+        const addD7=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
+        const twS=tueFn(today);const twE=addD7(twS,6);
+        const weekDue=tasks.filter(t=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=twS&&d1<=twE)||(d2&&d2>=twS&&d2<=twE);});
+        const overdue=myTasks.filter(t=>t.due_date&&t.due_date<today);
+        const inProg=myTasks.filter(t=>t.status==="In Progress").length;
+        const notStarted=myTasks.filter(t=>t.status==="Not Yet Started"||t.status==="To Be Started").length;
+        const statRows=[
+          {icon:"📅",label:"Due Today",val:todayDue.length,color:"#f97316"},
+          {icon:"📆",label:"This Week",val:weekDue.length,color:"#f59e0b"},
+          {icon:"⚠️",label:"Overdue (mine)",val:overdue.length,color:"#ef4444"},
+          {icon:"🔄",label:"In Progress",val:inProg,color:"#3b82f6"},
+          {icon:"🕐",label:"Not Started",val:notStarted,color:"#64748b"},
+        ];
+        const dismiss=(goTo)=>{setDailyPopup(false);if(goTo==="sub")sv("submissions");else sv("dashboard");};
+        return(
+          <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.65)",backdropFilter:"blur(6px)"}}
+            onClick={()=>dismiss("sub")}>
+            <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${C.border}`,borderRadius:20,padding:"28px 30px",maxWidth:420,width:"calc(100% - 40px)",boxShadow:"0 24px 60px #000000aa",position:"relative",animation:"rds-popup-in .3s cubic-bezier(.34,1.56,.64,1)"}}>
+              <style>{`@keyframes rds-popup-in{from{opacity:0;transform:scale(.88) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+              {/* Close */}
+              <button onClick={()=>dismiss("dashboard")} style={{position:"absolute",top:14,right:14,width:30,height:30,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
+              {/* Header */}
+              <div style={{marginBottom:18}}>
+                <div style={{fontSize:18,fontWeight:900,color:C.t1,marginBottom:4}}>{greet}, <span style={{color:C.accent}}>{me?.name||me?.username}</span>!</div>
+                <div style={{fontSize:12,color:C.t3}}>Here's your daily work brief for <strong style={{color:C.t2}}>{new Date(today+"T12:00:00Z").toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</strong></div>
+              </div>
+              {/* Stats */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+                {statRows.map(r=>(
+                  <div key={r.label} style={{background:r.color+"12",border:`1px solid ${r.color}33`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:20}}>{r.icon}</span>
+                    <div>
+                      <div style={{fontSize:22,fontWeight:900,color:r.color,lineHeight:1}}>{r.val}</div>
+                      <div style={{fontSize:10,color:C.t3,fontWeight:600,marginTop:2}}>{r.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* CTA */}
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>dismiss("sub")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.accent,border:"none",color:"#fff"}}>📬 View Submissions</button>
+                <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>🏠 Go to Dashboard</button>
+              </div>
+              <div style={{marginTop:12,fontSize:10,color:C.t3,textAlign:"center"}}>Tap outside or on "View Submissions" to open submissions - this brief shows up to 2× per day</div>
+            </div>
+          </div>
+        );
+      })()}
       {taskModal&&(()=>{
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
