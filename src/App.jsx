@@ -6211,41 +6211,8 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
         </Panel>
       </div>
 
-      {/* ── Row 3: Priority + Overdue Risk ── */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?12:18,marginBottom:4}}>
-        <Panel title="🎯 Priority Distribution">
-          <div style={{display:"flex",alignItems:"center",gap:24}}>
-            <Donut segs={priData} label={tasks.length} sub="tasks" size={140} sw={22}/>
-            <div style={{flex:1}}>
-              <HBar data={priData}/>
-              <div style={{marginTop:12,display:"flex",gap:6,flexWrap:"wrap"}}>
-                {priData.map(p=>(
-                  <span key={p.label} onClick={()=>openModal(`${p.label} Priority Tasks`,p.tasks)} style={{fontSize:11,background:p.color+"18",color:p.color,border:`1px solid ${p.color}33`,borderRadius:6,padding:"2px 8px",fontWeight:600,cursor:"pointer"}}>{p.label}: {p.value}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Panel>
-        <Panel title="⚠ Overdue Risk Analysis">
-          {overdue===0?(
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"22px 0"}}>
-              <div style={{fontSize:36}}>✅</div>
-              <div style={{fontSize:14,fontWeight:700,color:C.green,marginTop:8}}>All tasks on schedule!</div>
-              <div style={{fontSize:12,color:C.t3,marginTop:4}}>No overdue tasks found</div>
-            </div>
-          ):(
-            <>
-              <div style={{marginBottom:14,padding:"8px 14px",background:C.red+"12",border:`1px solid ${C.red}30`,borderRadius:8,fontSize:12,color:C.red,fontWeight:600}}>
-                ⚠ {overdue} overdue task{overdue!==1?"s":""} - immediate attention needed
-              </div>
-              <HBar data={overdueByA.map(u=>({label:u.name,value:u.count,color:C.red,tasks:u.tasks}))}/>
-            </>
-          )}
-        </Panel>
-      </div>
-
-      {/* ── Row 4: Rework Rate ── */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.3fr",gap:isMobile?12:18,marginTop:isMobile?12:18,marginBottom:4}}>
+      {/* ── Row 3: Rework Rate ── */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.3fr",gap:isMobile?12:18,marginBottom:isMobile?12:18}}>
         <Panel title="🔁 Rework Rate — by Project">
           {reworkByProject.length===0?(
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"22px 0"}}>
@@ -6304,6 +6271,39 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
                 </div>
               ))}
             </div>
+          )}
+        </Panel>
+      </div>
+
+      {/* ── Row 4: Priority + Overdue Risk ── */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?12:18,marginBottom:4}}>
+        <Panel title="🎯 Priority Distribution">
+          <div style={{display:"flex",alignItems:"center",gap:24}}>
+            <Donut segs={priData} label={tasks.length} sub="tasks" size={140} sw={22}/>
+            <div style={{flex:1}}>
+              <HBar data={priData}/>
+              <div style={{marginTop:12,display:"flex",gap:6,flexWrap:"wrap"}}>
+                {priData.map(p=>(
+                  <span key={p.label} onClick={()=>openModal(`${p.label} Priority Tasks`,p.tasks)} style={{fontSize:11,background:p.color+"18",color:p.color,border:`1px solid ${p.color}33`,borderRadius:6,padding:"2px 8px",fontWeight:600,cursor:"pointer"}}>{p.label}: {p.value}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Panel>
+        <Panel title="⚠ Overdue Risk Analysis">
+          {overdue===0?(
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"22px 0"}}>
+              <div style={{fontSize:36}}>✅</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.green,marginTop:8}}>All tasks on schedule!</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:4}}>No overdue tasks found</div>
+            </div>
+          ):(
+            <>
+              <div style={{marginBottom:14,padding:"8px 14px",background:C.red+"12",border:`1px solid ${C.red}30`,borderRadius:8,fontSize:12,color:C.red,fontWeight:600}}>
+                ⚠ {overdue} overdue task{overdue!==1?"s":""} - immediate attention needed
+              </div>
+              <HBar data={overdueByA.map(u=>({label:u.name,value:u.count,color:C.red,tasks:u.tasks}))}/>
+            </>
           )}
         </Panel>
       </div>
