@@ -13596,6 +13596,8 @@ export default function App(){
   const [showMore,setShowMore] = useState(false);
   const [saving,ssv]        = useState(false);
   const [dashSearch,sdss]   = useState("");
+  const [dashYear,sdsy]     = useState("All");
+  const [dashMonth,sdsm]    = useState("All");
   const [projSearch,setProjSearch] = useState("");
   const [projFStatus,setProjFStatus] = useState("All");
   const [projFEmp,setProjFEmp]     = useState("All");
@@ -14422,7 +14424,7 @@ export default function App(){
     return true;
   }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks,allRevisions]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
-  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All";
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All"||dashYear!=="All"||dashMonth!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
     if(dashUser!=="All"&&t.assignee!==dashUser)return false;
@@ -14431,8 +14433,15 @@ export default function App(){
     if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
     if(dashClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
     if(dashRevision==="Has Revisions"&&!allRevisions.some(rv=>String(rv.task_id)===String(t.id)))return false;
+    if(dashYear!=="All"||dashMonth!=="All"){
+      const dd=t.due_date||t.created_at||"";
+      if(!dd)return false;
+      const yr=dd.slice(0,4);const mo=dd.slice(5,7);
+      if(dashYear!=="All"&&yr!==dashYear)return false;
+      if(dashMonth!=="All"&&mo!==dashMonth)return false;
+    }
     return true;
-  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions]);
+  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions,dashYear,dashMonth]);
   // Effective status per task - uses latest revision's status if task has revisions
   const dashEffStatus=useMemo(()=>{
     const m=new Map();
@@ -15567,7 +15576,17 @@ export default function App(){
                   <option value="All">All Revisions</option>
                   <option value="Has Revisions">Revision Tasks</option>
                 </select>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");sdsrev("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
+                {/* 7. Year */}
+                <select value={dashYear} onChange={e=>sdsy(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashYear!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashYear!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Years</option>
+                  {(()=>{const yrs=[...new Set(dashTasks.map(t=>(t.due_date||t.created_at||"").slice(0,4)).filter(y=>y&&y.length===4))].sort((a,b)=>b-a);return yrs.map(y=><option key={y} value={y}>{y}</option>);})()}
+                </select>
+                {/* 8. Month */}
+                <select value={dashMonth} onChange={e=>sdsm(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashMonth!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashMonth!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                  <option value="All">All Months</option>
+                  {[["01","January"],["02","February"],["03","March"],["04","April"],["05","May"],["06","June"],["07","July"],["08","August"],["09","September"],["10","October"],["11","November"],["12","December"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                </select>
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");sdsrev("All");sdsy("All");sdsm("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
               </div>
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
