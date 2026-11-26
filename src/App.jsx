@@ -5602,11 +5602,17 @@ function WorkflowsPage({workflows,onAdd,onUpdate,onDelete,onToggle,users,saving}
 }
 
 // ── Weekly Report Modal ────────────────────────────────────────────────────
-function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="this_week",autoDownload=false,initialCustomStart="",initialCustomEnd=""}){
+function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initialPeriod="this_week",autoDownload=false,initialCustomStart="",initialCustomEnd="",department="All"}){
   const [period,setPeriod]=useState(initialPeriod);
   const [customStart,setCustomStart]=useState(initialCustomStart||today);
   const [customEnd,setCustomEnd]=useState(initialCustomEnd||today);
   const projectById=new Map(projects.map(p=>[p.id,p]));
+  // Filter tasks by department (Rebar/Tekla/Precast/All)
+  const deptNames=useMemo(()=>{
+    if(department==="All")return null;
+    return new Set(users.filter(u=>u.role===department).map(u=>u.name).filter(Boolean));
+  },[users,department]);
+  const dTasks=useMemo(()=>deptNames?tasks.filter(t=>deptNames.has(t.detailer)||deptNames.has(t.assignee)||deptNames.has(t.checker)):tasks,[tasks,deptNames]);
   // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
   const addD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
   const fmtD2=d=>d?new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"";
@@ -5647,11 +5653,11 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
   }
   const inR=(t,s,e)=>{const d=(t.client_sub_date||t.due_date||"").slice(0,10);return d&&d>=s&&d<=e;};
   const srt=ts=>[...ts].sort((a,b)=>{const da=(a.client_sub_date||a.due_date||"9999");const db=(b.client_sub_date||b.due_date||"9999");return da.localeCompare(db)||(a.client||"").localeCompare(b.client||"");});
-  const lastWk=srt(tasks.filter(t=>inR(t,prevStart,prevEnd)));
-  const thisWk=srt(tasks.filter(t=>inR(t,curStart,curEnd)));
-  const nextWk=srt(tasks.filter(t=>inR(t,nextStart,nextEnd)));
-  const inHand=srt(tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&!inR(t,prevStart,nextEnd)));
-  const revisions=srt(tasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
+  const lastWk=srt(dTasks.filter(t=>inR(t,prevStart,prevEnd)));
+  const thisWk=srt(dTasks.filter(t=>inR(t,curStart,curEnd)));
+  const nextWk=srt(dTasks.filter(t=>inR(t,nextStart,nextEnd)));
+  const inHand=srt(dTasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&!inR(t,prevStart,nextEnd)));
+  const revisions=srt(dTasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
   const fmtMonth=ds=>ds?new Date(ds+"T12:00:00Z").toLocaleDateString("en-GB",{month:"long",year:"numeric"}):"";
 
   function doExcel(){
@@ -5745,7 +5751,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     // Filter out On Hold from every section
     const noHold=arr=>arr.filter(t=>t.status!=="On Hold");
     // Revision tasks = revision keywords AND falls within current+next week only
-    const revThis=srt(tasks.filter(t=>{
+    const revThis=srt(dTasks.filter(t=>{
       const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();
       if(!tl.includes("revis")&&!nt.includes("revis")) return false;
       if(t.status==="On Hold") return false;
@@ -5754,9 +5760,10 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     }));
 
     // Build main HTML (expressions evaluated left-to-right, so rn stays sequential)
+    const deptLabel=department==="All"?"All Departments":department+" Department";
     const rptTitle=isMonthly
-      ?"RDS TechServ - Rebar Department Monthly Project Status Report"
-      :"RDS TechServ - Rebar Department Weekly Project Status Report";
+      ?`RDS TechServ - ${deptLabel} Monthly Project Status Report`
+      :`RDS TechServ - ${deptLabel} Weekly Project Status Report`;
     const periodLabel=isMonthly
       ?`${fmtD2(curStart)} to ${fmtD2(curEnd)}`
       :`${fmtD2(curStart)} (Tue) to ${fmtD2(curEnd)} (Mon)`;
@@ -5790,7 +5797,8 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    const fname=isMonthly?`RDS_Monthly_Report_${curStart}_to_${curEnd}.xls`:period==="custom"?`RDS_Custom_Report_${curStart}_to_${curEnd}.xls`:`RDS_Weekly_Report_${curStart}_to_${curEnd}.xls`;
+    const dSuffix=department==="All"?"AllDepts":department;
+    const fname=isMonthly?`RDS_${dSuffix}_Monthly_${curStart}_to_${curEnd}.xls`:period==="custom"?`RDS_${dSuffix}_Custom_${curStart}_to_${curEnd}.xls`:`RDS_${dSuffix}_Weekly_${curStart}_to_${curEnd}.xls`;
     a.href=url;a.download=fname;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -5803,7 +5811,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
   if(autoDownload)return null;
 
   const totWt=ts=>ts.reduce((s,t)=>s+(parseFloat(t.det_weight)||0),0);
-  const activeTasks=period==="last_week"?lastWk:period==="custom"?srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold")):thisWk;
+  const activeTasks=period==="last_week"?lastWk:period==="custom"?srt(dTasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold")):thisWk;
   const SecRow=({label,tl,clr,start,end})=>(
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:9,background:C.surface,border:`1px solid ${C.border}`,marginBottom:8}}>
       <div>
@@ -5818,7 +5826,7 @@ function WeeklyReportModal({tasks,projects,clients,today,onClose,initialPeriod="
   );
   const periodLabel=period==="last_week"?`${fmtD2(prevStart)} → ${fmtD2(prevEnd)}`:period==="custom"?`${fmtD2(curStart)} → ${fmtD2(curEnd)}`:`${fmtD2(curStart)} (Tue) → ${fmtD2(curEnd)} (Mon)`;
   return(
-    <Modal title="🗓 Weekly Report" onClose={onClose} wide>
+    <Modal title={`🗓 Weekly Report${department==="All"?"":" — "+department+" Dept"}`} onClose={onClose} wide>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Select Period</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -5858,6 +5866,8 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
   const [weeklyReport,setWR]=useState(false);
+  const [wrDept,setWRDept]=useState("All");
+  const [wrDeptOpen,setWRDeptOpen]=useState(false);
 
   // Period filter - apply to tasks before all KPI computations
   const ds=v=>v?String(v).slice(0,10):null;
@@ -6000,7 +6010,20 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
           {!isMobile&&<p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>}
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <button onClick={()=>setWR(true)} style={{padding:"7px 14px",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🗓 Weekly Report</button>
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setWRDeptOpen(o=>!o)} style={{padding:"7px 14px",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🗓 Weekly Report ▾</button>
+          {wrDeptOpen&&(
+            <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 8px 24px #00000050",zIndex:200,minWidth:200,overflow:"hidden"}}>
+              {[{key:"All",label:"All Departments",icon:"🏢",color:"#3b82f6"},{key:"Rebar",label:"Rebar",icon:"🔩",color:"#f97316"},{key:"Tekla",label:"Tekla",icon:"🖥",color:"#8b5cf6"},{key:"Precast",label:"Precast",icon:"🏗",color:"#14b8a6"}].map(d=>(
+                <button key={d.key} onClick={()=>{setWRDept(d.key);setWR(true);setWRDeptOpen(false);}}
+                  style={{display:"flex",alignItems:"center",gap:9,width:"100%",background:"none",border:"none",padding:"9px 14px",fontSize:12,fontWeight:600,color:d.color,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                  <span>{d.icon}</span><span>{d.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3,flexShrink:0}}>
           {[["all",isMobile?"All":"All Time"],["quarter",isMobile?"Q":"Quarter"],["month",isMobile?"Mo":"Month"],["week",isMobile?"Wk":"Week"]].map(([v,l])=>(
             <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:isMobile?"5px 10px":"6px 14px",fontSize:isMobile?11:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
@@ -6153,7 +6176,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
       {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={periodTasks} today={today} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="clients"&&<AnalyticsClientModal title={modal.title} clientList={modal.list} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="members"&&<AnalyticsMemberModal title={modal.title} memberList={modal.list} tasks={tasks} onClose={()=>setModal(null)}/>}
-      {weeklyReport&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>setWR(false)}/>}
+      {weeklyReport&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} users={users} today={today} onClose={()=>setWR(false)} department={wrDept}/>}
     </div>
   );
 }
@@ -13582,6 +13605,8 @@ export default function App(){
   const [weeklyRptOpen,setWeeklyRptOpen] = useState(false);
   const [weeklyRptPeriod,setWeeklyRptPeriod] = useState("this_week");
   const [weeklyRptAutoDownload,setWeeklyRptAutoDownload] = useState(false);
+  const [weeklyRptDept,setWeeklyRptDept] = useState("All");
+  const [weeklyDeptSec,setWeeklyDeptSec] = useState(null);
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -14967,42 +14992,58 @@ export default function App(){
                     {(isAdmin||isManager||isTeamLeader)&&<div style={{height:1,background:C.border,margin:"4px 0"}}/>}
                     {(isAdmin||isManager||isTeamLeader)&&<SHdr id="weekly_report" icon="🗓" label="Weekly Report"/>}
                     {(isAdmin||isManager||isTeamLeader)&&exportSec==="weekly_report"&&(()=>{
-                      // UTC-safe date helpers for period date labels
                       const aD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
                       const fS=d=>d?new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):"";
                       const[yr2,mo2,dy2]=today2.split("-").map(Number);
                       const d0=new Date(Date.UTC(yr2,mo2-1,dy2));
                       const dow=d0.getUTCDay();d0.setUTCDate(d0.getUTCDate()-(dow===0?5:dow===1?6:dow-2));
                       const tue=d0.toISOString().slice(0,10);
-                      const moStr=today2.slice(0,7);
-                      const lastDay=new Date(Date.UTC(yr2,mo2,0)).toISOString().slice(0,10);
-                      const prevMoS=(()=>{const d=new Date(Date.UTC(yr2,mo2-2,1));return[d.toISOString().slice(0,7)+"-01",new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10)];})();
-                      const nextMoS=(()=>{const d=new Date(Date.UTC(yr2,mo2,1));return[d.toISOString().slice(0,7)+"-01",new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10)];})();
-                      const ranges={this_week:[tue,aD(tue,6)],last_week:[aD(tue,-7),aD(tue,-1)],next_week:[aD(tue,7),aD(tue,13)],week1:[`${moStr}-01`,`${moStr}-07`],week2:[`${moStr}-08`,`${moStr}-14`],week3:[`${moStr}-15`,`${moStr}-21`],week4:[`${moStr}-22`,lastDay],this_month:[`${moStr}-01`,lastDay],last_month:prevMoS,next_month:nextMoS};
+                      const ranges={this_week:[tue,aD(tue,6)],last_week:[aD(tue,-7),aD(tue,-1)]};
+                      const depts=[
+                        {key:"All",label:"All Departments",icon:"🏢",color:"#3b82f6"},
+                        {key:"Rebar",label:"Rebar Department",icon:"🔩",color:"#f97316"},
+                        {key:"Tekla",label:"Tekla Department",icon:"🖥",color:"#8b5cf6"},
+                        {key:"Precast",label:"Precast Department",icon:"🏗",color:"#14b8a6"},
+                      ];
+                      const periods=[
+                        {id:"this_week",icon:"📅",label:"This Week",direct:true},
+                        {id:"last_week",icon:"⬅",label:"Last Week",direct:true},
+                        {id:"custom",icon:"🗂",label:"Custom Range",direct:false},
+                      ];
                       return(
                         <div style={{background:C.surface+"33",paddingBottom:4}}>
-                          {[
-                            {id:"this_week",icon:"📅",label:"This Week",color:"#22c55e",direct:true},
-                            {id:"last_week",icon:"⬅",label:"Last Week",color:"#64748b",direct:true},
-                            {id:"custom",icon:"🗂",label:"Custom Range",color:"#f59e0b",direct:false},
-                          ].map(wp=>{
-                            const[s,e]=ranges[wp.id]||["",""];
-                            return(
-                              <button key={wp.id} onClick={()=>{setWeeklyRptPeriod(wp.id);setWeeklyRptAutoDownload(wp.direct);setWeeklyRptOpen(true);closeExport();}}
-                                style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"6px 16px 6px 36px",color:wp.color,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}
+                          {depts.map(dept=>(
+                            <div key={dept.key}>
+                              {/* Dept header — click to expand/collapse */}
+                              <button onClick={()=>setWeeklyDeptSec(weeklyDeptSec===dept.key?null:dept.key)}
+                                style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"7px 16px 7px 24px",color:dept.color,fontSize:12,cursor:"pointer",fontFamily:"inherit",borderTop:`1px solid ${C.border}33`}}
                                 onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                                <span style={{display:"flex",alignItems:"center",gap:7}}>
-                                  <span>{wp.icon}</span>
-                                  <span style={{display:"flex",flexDirection:"column",lineHeight:1.3}}>
-                                    <span style={{fontWeight:600}}>{wp.label}</span>
-                                    {s&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>{fS(s)} – {fS(e)}</span>}
-                                    {wp.id==="custom"&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>Pick any date range</span>}
-                                  </span>
+                                <span style={{display:"flex",alignItems:"center",gap:7,fontWeight:700}}>
+                                  <span>{dept.icon}</span><span>{dept.label}</span>
                                 </span>
-                                <span style={{fontSize:10,opacity:0.6}}>{wp.direct?"⬇":"→"}</span>
+                                <span style={{fontSize:10,opacity:0.6,transition:"transform .15s",transform:weeklyDeptSec===dept.key?"rotate(90deg)":"rotate(0deg)"}}>›</span>
                               </button>
-                            );
-                          })}
+                              {/* Period buttons — only shown when this dept expanded */}
+                              {weeklyDeptSec===dept.key&&periods.map(wp=>{
+                                const[s,e]=ranges[wp.id]||["",""];
+                                return(
+                                  <button key={wp.id} onClick={()=>{setWeeklyRptDept(dept.key);setWeeklyRptPeriod(wp.id);setWeeklyRptAutoDownload(wp.direct);setWeeklyRptOpen(true);closeExport();}}
+                                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",padding:"5px 16px 5px 44px",color:C.t2,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}
+                                    onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                                    <span style={{display:"flex",alignItems:"center",gap:6}}>
+                                      <span>{wp.icon}</span>
+                                      <span style={{display:"flex",flexDirection:"column",lineHeight:1.3}}>
+                                        <span style={{fontWeight:600,color:dept.color}}>{wp.label}</span>
+                                        {s&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>{fS(s)} – {fS(e)}</span>}
+                                        {wp.id==="custom"&&<span style={{fontSize:10,opacity:0.75,color:C.t3}}>Pick any date range</span>}
+                                      </span>
+                                    </span>
+                                    <span style={{fontSize:10,opacity:0.5}}>{wp.direct?"⬇":"→"}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))}
                         </div>
                       );
                     })()}
@@ -16183,7 +16224,7 @@ export default function App(){
       {userModal&&<UsersModal users={users} currentUser={me} projects={projects} clients={clients} onAdd={addUser} onEdit={editUserFn} onDelete={delUser} onClose={()=>sum(false)}/>}
       {editProject&&(<Modal title="Edit Project" onClose={()=>sep(null)} wide><EditProjectForm project={editProject} onSave={updateProject} onClose={()=>sep(null)} saving={saving} users={users} clients={clients} requireDates={canEdit} existingGroupNames={[...new Set(projects.map(p=>p.group_name).filter(Boolean))]}/></Modal>)}
       {clientReviewTask&&<ClientReviewModal task={clientReviewTask} project={projects.find(p=>p.id===clientReviewTask.project_id)} onSave={saveClientReview} onClose={()=>setCRT(null)} saving={clientReviewSaving}/>}
-      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} today={today} onClose={()=>{setWeeklyRptOpen(false);setWeeklyRptAutoDownload(false);}} initialPeriod={weeklyRptPeriod} autoDownload={weeklyRptAutoDownload}/>}
+      {weeklyRptOpen&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} users={users} today={today} onClose={()=>{setWeeklyRptOpen(false);setWeeklyRptAutoDownload(false);}} initialPeriod={weeklyRptPeriod} autoDownload={weeklyRptAutoDownload} department={weeklyRptDept}/>}
       {taskModal&&(()=>{
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
