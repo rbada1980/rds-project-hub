@@ -5606,12 +5606,13 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   const [period,setPeriod]=useState(initialPeriod);
   const [customStart,setCustomStart]=useState(initialCustomStart||today);
   const [customEnd,setCustomEnd]=useState(initialCustomEnd||today);
+  const [activeDept,setActiveDept]=useState(department);
   const projectById=new Map(projects.map(p=>[p.id,p]));
   // Filter tasks by department (Rebar/Tekla/Precast/All)
   const deptNames=useMemo(()=>{
-    if(department==="All")return null;
-    return new Set(users.filter(u=>u.role===department).map(u=>u.name).filter(Boolean));
-  },[users,department]);
+    if(activeDept==="All")return null;
+    return new Set(users.filter(u=>u.role===activeDept).map(u=>u.name).filter(Boolean));
+  },[users,activeDept]);
   const dTasks=useMemo(()=>deptNames?tasks.filter(t=>deptNames.has(t.detailer)||deptNames.has(t.assignee)||deptNames.has(t.checker)):tasks,[tasks,deptNames]);
   // UTC-safe helpers — avoids timezone shift in .toISOString() (critical for IST/UTC+5:30)
   const addD=(ds,n)=>{const[yr,mo,dy]=ds.split("-").map(Number);const d=new Date(Date.UTC(yr,mo-1,dy));d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
@@ -5760,7 +5761,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     }));
 
     // Build main HTML (expressions evaluated left-to-right, so rn stays sequential)
-    const deptLabel=department==="All"?"All Departments":department+" Department";
+    const deptLabel=activeDept==="All"?"All Departments":activeDept+" Department";
     const rptTitle=isMonthly
       ?`RDS TechServ - ${deptLabel} Monthly Project Status Report`
       :`RDS TechServ - ${deptLabel} Weekly Project Status Report`;
@@ -5797,7 +5798,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     const blob=new Blob(['﻿'+html],{type:"application/vnd.ms-excel;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    const dSuffix=department==="All"?"AllDepts":department;
+    const dSuffix=activeDept==="All"?"AllDepts":activeDept;
     const fname=isMonthly?`RDS_${dSuffix}_Monthly_${curStart}_to_${curEnd}.xls`:period==="custom"?`RDS_${dSuffix}_Custom_${curStart}_to_${curEnd}.xls`:`RDS_${dSuffix}_Weekly_${curStart}_to_${curEnd}.xls`;
     a.href=url;a.download=fname;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
@@ -5826,7 +5827,15 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   );
   const periodLabel=period==="last_week"?`${fmtD2(prevStart)} → ${fmtD2(prevEnd)}`:period==="custom"?`${fmtD2(curStart)} → ${fmtD2(curEnd)}`:`${fmtD2(curStart)} (Tue) → ${fmtD2(curEnd)} (Mon)`;
   return(
-    <Modal title={`🗓 Weekly Report${department==="All"?"":" — "+department+" Dept"}`} onClose={onClose} wide>
+    <Modal title={`🗓 Weekly Report${activeDept==="All"?"":" — "+activeDept+" Dept"}`} onClose={onClose} wide>
+      {/* Department tabs */}
+      <div style={{display:"flex",gap:6,marginBottom:16,borderBottom:`1px solid ${C.border}`,paddingBottom:12}}>
+        {[{key:"All",icon:"🏢",label:"All Departments",color:"#3b82f6"},{key:"Rebar",icon:"🔩",label:"Rebar",color:"#f97316"},{key:"Tekla",icon:"🖥",label:"Tekla",color:"#8b5cf6"},{key:"Precast",icon:"🏗",label:"Precast",color:"#14b8a6"}].map(d=>(
+          <button key={d.key} onClick={()=>setActiveDept(d.key)} style={{padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`2px solid ${activeDept===d.key?d.color:C.border}`,background:activeDept===d.key?d.color+"18":C.surface,color:activeDept===d.key?d.color:C.t2,display:"flex",alignItems:"center",gap:5,transition:"all .15s",whiteSpace:"nowrap"}}>
+            <span>{d.icon}</span><span>{d.label}</span>
+          </button>
+        ))}
+      </div>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Select Period</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -5866,8 +5875,6 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
   const [period,setP]=useState("all");
   const [modal,setModal]=useState(null); // {title, type, list}
   const [weeklyReport,setWR]=useState(false);
-  const [wrDept,setWRDept]=useState("All");
-  const [wrDeptOpen,setWRDeptOpen]=useState(false);
 
   // Period filter - apply to tasks before all KPI computations
   const ds=v=>v?String(v).slice(0,10):null;
@@ -6010,20 +6017,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
           {!isMobile&&<p style={{margin:"4px 0 0",color:C.t2,fontSize:13}}>Enterprise insights · projects, team performance & client portfolio</p>}
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <div style={{position:"relative"}}>
-          <button onClick={()=>setWRDeptOpen(o=>!o)} style={{padding:"7px 14px",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🗓 Weekly Report ▾</button>
-          {wrDeptOpen&&(
-            <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 8px 24px #00000050",zIndex:200,minWidth:200,overflow:"hidden"}}>
-              {[{key:"All",label:"All Departments",icon:"🏢",color:"#3b82f6"},{key:"Rebar",label:"Rebar",icon:"🔩",color:"#f97316"},{key:"Tekla",label:"Tekla",icon:"🖥",color:"#8b5cf6"},{key:"Precast",label:"Precast",icon:"🏗",color:"#14b8a6"}].map(d=>(
-                <button key={d.key} onClick={()=>{setWRDept(d.key);setWR(true);setWRDeptOpen(false);}}
-                  style={{display:"flex",alignItems:"center",gap:9,width:"100%",background:"none",border:"none",padding:"9px 14px",fontSize:12,fontWeight:600,color:d.color,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}
-                  onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                  <span>{d.icon}</span><span>{d.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <button onClick={()=>setWR(true)} style={{padding:"7px 14px",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:C.teal+"18",border:`1px solid ${C.teal}55`,color:C.teal,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🗓 Weekly Report</button>
         <div style={{display:"flex",gap:4,background:C.surface,borderRadius:10,padding:3,flexShrink:0}}>
           {[["all",isMobile?"All":"All Time"],["quarter",isMobile?"Q":"Quarter"],["month",isMobile?"Mo":"Month"],["week",isMobile?"Wk":"Week"]].map(([v,l])=>(
             <button key={v} onClick={()=>setP(v)} style={{border:"none",borderRadius:8,padding:isMobile?"5px 10px":"6px 14px",fontSize:isMobile?11:12,fontWeight:600,cursor:"pointer",background:period===v?C.accent:"transparent",color:period===v?"#fff":C.t3,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
@@ -6176,7 +6170,7 @@ function AnalyticsCenter({projects,tasks,users,clients,today,members,allRevision
       {modal&&modal.type==="projects"&&<AnalyticsProjModal title={modal.title} projList={modal.list} tasks={periodTasks} today={today} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="clients"&&<AnalyticsClientModal title={modal.title} clientList={modal.list} onClose={()=>setModal(null)}/>}
       {modal&&modal.type==="members"&&<AnalyticsMemberModal title={modal.title} memberList={modal.list} tasks={tasks} onClose={()=>setModal(null)}/>}
-      {weeklyReport&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} users={users} today={today} onClose={()=>setWR(false)} department={wrDept}/>}
+      {weeklyReport&&<WeeklyReportModal tasks={tasks} projects={projects} clients={clients} users={users} today={today} onClose={()=>setWR(false)}/>}
     </div>
   );
 }
