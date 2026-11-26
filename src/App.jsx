@@ -13601,6 +13601,10 @@ export default function App(){
   const [projSearch,setProjSearch] = useState("");
   const [projFStatus,setProjFStatus] = useState("All");
   const [projFEmp,setProjFEmp]     = useState("All");
+  const [projFYear,setProjFYear]   = useState("All");
+  const [projFMonth,setProjFMonth] = useState("All");
+  const [filterYear,sfyr]          = useState("All");
+  const [filterMonth,sfmo]         = useState("All");
   const [dashUser,sdsu]     = useState("All");
   const [dashProject,sdsp]  = useState("All");
   const [dashClient,sdsc]   = useState("All");
@@ -14421,8 +14425,9 @@ export default function App(){
     if(!isRegularUser&&filterAssignee!=="All"&&t.assignee!==filterAssignee)return false;
     if(filterPinStar==="pinned"&&!pinnedTasks.has(t.id))return false;
     if(filterPinStar==="starred"&&!starredTasks.has(t.id))return false;
+    if(filterYear!=="All"||filterMonth!=="All"){const dd=t.due_date||t.created_at||"";if(!dd)return false;if(filterYear!=="All"&&dd.slice(0,4)!==filterYear)return false;if(filterMonth!=="All"&&dd.slice(5,7)!==filterMonth)return false;}
     return true;
-  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks,allRevisions]);
+  }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks,allRevisions,filterYear,filterMonth]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
   const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All"||dashYear!=="All"||dashMonth!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
@@ -15890,8 +15895,8 @@ export default function App(){
           const projClientList=[...new Set(accessibleProjects.map(p=>p.client||"").filter(Boolean))].sort();
           const activeEmpSet=new Set(users.filter(u=>u.role!=="Client"&&u.role!=="Admin"&&u.role!=="HR & Finance"&&u.is_active!==false&&u.is_active!==0&&u.is_active!=="false").map(u=>u.name));
           const projEmpList=[...new Set(tasks.map(t=>t.assignee).filter(n=>n&&activeEmpSet.has(n)))].sort();
-          const hasFilter=projSearch||filterClient!=="All"||projFStatus!=="All"||projFEmp!=="All";
-          const clearFilters=()=>{setProjSearch("");sfc("All");setProjFStatus("All");setProjFEmp("All");};
+          const hasFilter=projSearch||filterClient!=="All"||projFStatus!=="All"||projFEmp!=="All"||projFYear!=="All"||projFMonth!=="All";
+          const clearFilters=()=>{setProjSearch("");sfc("All");setProjFStatus("All");setProjFEmp("All");setProjFYear("All");setProjFMonth("All");};
           const filteredProjs=accessibleProjects.filter(p=>{
             const pt=tasks.filter(t=>t.project_id===p.id);
             if(projSearch&&!p.name.toLowerCase().includes(projSearch.toLowerCase())&&!(p.client||"").toLowerCase().includes(projSearch.toLowerCase()))return false;
@@ -15903,6 +15908,12 @@ export default function App(){
               if(projFStatus==="In Progress"&&!pt.some(t=>t.status==="In Progress"))return false;
               if(projFStatus==="Not Yet Started"&&!pt.some(t=>t.status==="Not Yet Started"||t.status==="To Be Started"))return false;
               if(projFStatus==="On Hold"&&!pt.some(t=>t.status==="On Hold"))return false;
+            }
+            if(projFYear!=="All"||projFMonth!=="All"){
+              const dd=p.deadline||"";
+              if(!dd)return false;
+              if(projFYear!=="All"&&dd.slice(0,4)!==projFYear)return false;
+              if(projFMonth!=="All"&&dd.slice(5,7)!==projFMonth)return false;
             }
             return true;
           });
@@ -15940,6 +15951,16 @@ export default function App(){
                   <select value={projFEmp} onChange={e=>setProjFEmp(e.target.value)} style={fSel(projFEmp!=="All")}>
                     <option value="All">All Employees</option>
                     {projEmpList.map(e=><option key={e} value={e}>{e}</option>)}
+                  </select>
+                  {/* Year filter — by project deadline */}
+                  <select value={projFYear} onChange={e=>setProjFYear(e.target.value)} style={fSel(projFYear!=="All")}>
+                    <option value="All">All Years</option>
+                    {[...new Set(accessibleProjects.map(p=>(p.deadline||"").slice(0,4)).filter(y=>y&&y.length===4))].sort((a,b)=>b-a).map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                  {/* Month filter — by project deadline */}
+                  <select value={projFMonth} onChange={e=>setProjFMonth(e.target.value)} style={fSel(projFMonth!=="All")}>
+                    <option value="All">All Months</option>
+                    {[["01","January"],["02","February"],["03","March"],["04","April"],["05","May"],["06","June"],["07","July"],["08","August"],["09","September"],["10","October"],["11","November"],["12","December"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
                   </select>
                   {hasFilter&&<button onClick={clearFilters} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
                 </div>
@@ -16004,7 +16025,7 @@ export default function App(){
           <div>
           {/* ── Advanced Filter Bar ── */}
           {(()=>{
-            const hasF=searchTask||filterClient!=="All"||filterProject!=="All"||filterAssignee!=="All"||filterStatus!=="All"||filterPinStar!=="all";
+            const hasF=searchTask||filterClient!=="All"||filterProject!=="All"||filterAssignee!=="All"||filterStatus!=="All"||filterPinStar!=="all"||filterYear!=="All"||filterMonth!=="All";
             const clientList=[...new Set(accessibleProjects.map(p=>p.client||"Unassigned").filter(c=>c!=="Unassigned"))].sort();
             const projList=accessibleProjects.filter(p=>filterClient==="All"||(p.client||"Unassigned")===filterClient);
             const empList=members.filter(n=>!users.find(u=>u.name===n&&u.role==="Client"));
@@ -16036,7 +16057,15 @@ export default function App(){
                     <option value="All">All Statuses</option>
                     {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
-                  {hasF&&<button onClick={()=>{sst("");sfc("All");sfp("All");sfa("All");sfs("All");sfps("all");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
+                  <select value={filterYear} onChange={e=>sfyr(e.target.value)} style={ssel(filterYear!=="All")}>
+                    <option value="All">All Years</option>
+                    {[...new Set(tasks.filter(t=>accessibleProjIds.has(t.project_id)).map(t=>(t.due_date||t.created_at||"").slice(0,4)).filter(y=>y&&y.length===4))].sort((a,b)=>b-a).map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <select value={filterMonth} onChange={e=>sfmo(e.target.value)} style={ssel(filterMonth!=="All")}>
+                    <option value="All">All Months</option>
+                    {[["01","January"],["02","February"],["03","March"],["04","April"],["05","May"],["06","June"],["07","July"],["08","August"],["09","September"],["10","October"],["11","November"],["12","December"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                  </select>
+                  {hasF&&<button onClick={()=>{sst("");sfc("All");sfp("All");sfa("All");sfs("All");sfps("all");sfyr("All");sfmo("All");}} style={{...GBtn,padding:"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕ Clear</button>}
                 </div>
                 {hasF&&<p style={{margin:"6px 0 0",fontSize:12,color:C.accent}}>Showing {filtered.length} task{filtered.length!==1?"s":""}</p>}
               </div>
