@@ -13762,7 +13762,7 @@ export default function App(){
   const [showMore,setShowMore] = useState(false);
   const [saving,ssv]        = useState(false);
   const [dashSearch,sdss]   = useState("");
-  const [dashYear,sdsy]     = useState(String(new Date().getFullYear()));
+  const [dashYear,sdsy]     = useState("All");
   const [dashMonth,sdsm]    = useState("All");
   const [projSearch,setProjSearch] = useState("");
   const [projFStatus,setProjFStatus] = useState("All");
@@ -14606,7 +14606,7 @@ export default function App(){
     return true;
   }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks,allRevisions,filterYear,filterMonth]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
-  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All"||dashYear!==String(new Date().getFullYear())||dashMonth!=="All";
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All"||dashYear!=="All"||dashMonth!=="All";
   const hasYearFilter=dashYear!=="All"||dashMonth!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
@@ -14628,7 +14628,7 @@ export default function App(){
   // Effective status per task - uses latest revision's status if task has revisions
   const dashEffStatus=useMemo(()=>{
     const m=new Map();
-    const list=filteredDashTasks;
+    const list=hasDashFilter?filteredDashTasks:dashTasks;
     list.forEach(t=>{
       const rv=allRevisions.filter(r=>String(r.task_id)===String(t.id));
       const latest=rv.length?rv.reduce((a,b)=>a.revision_number>b.revision_number?a:b):null;
@@ -14645,7 +14645,7 @@ export default function App(){
   const isActiveUser=u=>u.is_active!==false&&u.is_active!==0&&u.is_active!=="false";
   const members=users.filter(u=>isActiveUser(u)&&u.username!=="srilalitha"&&u.role!=="HR & Finance").map(u=>u.name);
   const visibleProjects=accessibleProjects.filter(p=>!searchProj||p.name.toLowerCase().includes(searchProj.toLowerCase())||(p.client||"").toLowerCase().includes(searchProj.toLowerCase()));
-  const activeDashTasks=filteredDashTasks;
+  const activeDashTasks=hasDashFilter?filteredDashTasks:dashTasks;
   const overdueTasks=activeDashTasks.filter(t=>{const eff=dashEffStatus.get(t.id)||t.status;return t.due_date&&t.due_date<today&&!isDone(eff)&&eff!=="On Hold"&&t.status!=="On Hold";});
   function prog(pid){const pts=tasks.filter(t=>t.project_id===pid);return pts.length?Math.round(pts.filter(t=>isDone(t.status)).length/pts.length*100):0;}
   function navTo(v,pid=null,client=null){
@@ -15773,7 +15773,7 @@ export default function App(){
                   <option value="All">All Months</option>
                   {[["01","January"],["02","February"],["03","March"],["04","April"],["05","May"],["06","June"],["07","July"],["08","August"],["09","September"],["10","October"],["11","November"],["12","December"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
                 </select>
-                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");sdsrev("All");sdsy(String(new Date().getFullYear()));sdsm("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
+                {hasDashFilter&&<button onClick={()=>{sdss("");sdsu("All");sdsp("All");sdsc("All");sdst("All");sdsst("All");sdsrev("All");sdsy("All");sdsm("All");}} style={{...GBtn,padding:isMobile?"7px 10px":"8px 12px",fontSize:12,color:C.red,borderColor:C.red,flexShrink:0}}>✕</button>}
               </div>
             </div>
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
