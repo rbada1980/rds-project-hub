@@ -196,7 +196,7 @@ function MiniBarChart({data,onBarClick}){
 
 function Modal({title,onClose,children,wide=false}){
   return(
-    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(4px)"}}>
+    <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20000,backdropFilter:"blur(4px)"}}>
       <div className="rds-modal-inner" style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"22px 28px",width:wide?"90vw":"480px",maxWidth:"96vw",minWidth:0,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px #00000080"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{margin:0,color:C.t1,fontSize:17}}>{title}</h3>
