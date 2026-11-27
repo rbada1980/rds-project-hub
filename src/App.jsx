@@ -13762,7 +13762,7 @@ export default function App(){
   const [showMore,setShowMore] = useState(false);
   const [saving,ssv]        = useState(false);
   const [dashSearch,sdss]   = useState("");
-  const [dashYear,sdsy]     = useState(String(new Date().getFullYear()));
+  const [dashYear,sdsy]     = useState("All");
   const [dashMonth,sdsm]    = useState("All");
   const [projSearch,setProjSearch] = useState("");
   const [projFStatus,setProjFStatus] = useState("All");
@@ -14607,8 +14607,9 @@ export default function App(){
   }),[tasks,accessibleProjIds,isRegularUser,me,activePid,activeClient,filterClient,filterProject,searchTask,filterStatus,filterAssignee,projectById,filterPinStar,pinnedTasks,starredTasks,allRevisions,filterYear,filterMonth]);
   const dashTasks=useMemo(()=>tasks.filter(t=>accessibleProjIds.has(t.project_id)),[tasks,accessibleProjIds]);
   const _cy=String(new Date().getFullYear());
-  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All"||(dashYear!=="All"&&dashYear!==_cy)||dashMonth!=="All";
-  const hasYearFilter=dashYear!=="All"||dashMonth!=="All";
+  // "All Years" in dropdown still shows current year data; selecting a specific year overrides
+  const _effectiveYear=dashYear==="All"?_cy:dashYear;
+  const hasDashFilter=dashSearch||dashUser!=="All"||dashProject!=="All"||dashClient!=="All"||dashTask!=="All"||dashStatus!=="All"||dashRevision!=="All"||dashYear!=="All"||dashMonth!=="All";
   const filteredDashTasks=useMemo(()=>dashTasks.filter(t=>{
     if(dashSearch&&!t.title.toLowerCase().includes(dashSearch.toLowerCase()))return false;
     if(dashUser!=="All"&&t.assignee!==dashUser)return false;
@@ -14617,15 +14618,14 @@ export default function App(){
     if(dashStatus!=="All"){const isNotStarted=dashStatus==="Not Yet Started"&&(t.status==="Not Yet Started"||t.status==="To Be Started");if(!isNotStarted&&t.status!==dashStatus)return false;}
     if(dashClient!=="All"){const proj=projectById.get(t.project_id);if((proj?.client||"Unassigned")!==dashClient)return false;}
     if(dashRevision==="Has Revisions"&&!allRevisions.some(rv=>String(rv.task_id)===String(t.id)))return false;
-    if(hasYearFilter){
-      const dd=t.due_date||t.created_at||"";
-      if(!dd)return false;
-      const yr=dd.slice(0,4);const mo=dd.slice(5,7);
-      if(dashYear!=="All"&&yr!==dashYear)return false;
-      if(dashMonth!=="All"&&mo!==dashMonth)return false;
-    }
+    // Always filter by effective year (current year when "All Years" is selected)
+    const dd=t.due_date||t.created_at||"";
+    if(!dd)return false;
+    const yr=dd.slice(0,4);const mo=dd.slice(5,7);
+    if(yr!==_effectiveYear)return false;
+    if(dashMonth!=="All"&&mo!==dashMonth)return false;
     return true;
-  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions,dashYear,dashMonth]);
+  }),[dashTasks,dashSearch,dashUser,dashProject,dashTask,dashStatus,dashClient,projectById,dashRevision,allRevisions,dashYear,dashMonth,_effectiveYear]);
   // Effective status per task - uses latest revision's status if task has revisions
   const dashEffStatus=useMemo(()=>{
     const m=new Map();
@@ -15765,7 +15765,7 @@ export default function App(){
                   <option value="Has Revisions">Revision Tasks</option>
                 </select>
                 {/* 7. Year */}
-                <select value={dashYear} onChange={e=>sdsy(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashYear!=="All"&&dashYear!==_cy?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashYear!=="All"&&dashYear!==_cy?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
+                <select value={dashYear} onChange={e=>sdsy(e.target.value)} style={{flex:1,minWidth:0,background:C.surface,border:`1px solid ${dashYear!=="All"?C.accent:C.border}`,borderRadius:8,padding:isMobile?"7px 6px":"8px 10px",color:dashYear!=="All"?C.accent:C.t1,fontSize:isMobile?12:13,outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
                   <option value="All">All Years</option>
                   {(()=>{const yrs=[...new Set(dashTasks.map(t=>(t.due_date||t.created_at||"").slice(0,4)).filter(y=>y&&y.length===4))].sort((a,b)=>b-a);return yrs.map(y=><option key={y} value={y}>{y}</option>);})()}
                 </select>
@@ -15780,12 +15780,12 @@ export default function App(){
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
                         {/* ── Stat Cards ── */}
             <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} year={dashYear} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} year={dashYear} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length} sub="actively running" color={C.accent} year={dashYear} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length} sub="pending start" color={C.t2} year={dashYear} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";})})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} year={dashYear} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
-              <Stat label="On Hold" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold").length} sub="on hold" color="#f59e0b" year={dashYear} onClick={()=>ssm({title:"On Hold Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold")})}/>
+              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} year={_effectiveYear} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
+              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} year={_effectiveYear} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status))})}/>
+              <Stat label="In Progress" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length} sub="actively running" color={C.accent} year={_effectiveYear} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress")})}/>
+              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length} sub="pending start" color={C.t2} year={_effectiveYear} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";})})}/>
+              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} year={_effectiveYear} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
+              <Stat label="On Hold" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold").length} sub="on hold" color="#f59e0b" year={_effectiveYear} onClick={()=>ssm({title:"On Hold Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold")})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
             {(()=>{
