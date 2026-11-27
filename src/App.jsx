@@ -4237,6 +4237,8 @@ function stateToUrl(v,pid,client,projs=[]){
   if(v==='timings')return'/timings';
   if(v==='auditlog')return'/auditlog';
   if(v==='recycle')return'/recycle';
+  if(v==='projects')return'/projects';
+  if(v==='billing')return'/billing';
   if(v==='clientprojects'&&client)return`/clients/${encodeURIComponent(client)}`;
   return'/';
 }
@@ -4253,6 +4255,8 @@ function urlToState(path,projs=[]){
   if(path==='/timings')return{view:'timings',pid:null,client:null};
   if(path==='/auditlog')return{view:'auditlog',pid:null,client:null};
   if(path==='/recycle')return{view:'recycle',pid:null,client:null};
+  if(path==='/projects')return{view:'projects',pid:null,client:null};
+  if(path==='/billing')return{view:'billing',pid:null,client:null};
   const pm=path.match(/^\/projects\/([^/]+)$/);
   if(pm){
     const slug=decodeURIComponent(pm[1]);
@@ -4296,6 +4300,12 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
     crumbs.push({label:'⏱ Timings',href:'/timings',active:true});
   }else if(view==='auditlog'){
     crumbs.push({label:'🔎 Audit Log',href:'/auditlog',active:true});
+  }else if(view==='recycle'){
+    crumbs.push({label:'🗑️ Recycle Bin',href:'/recycle',active:true});
+  }else if(view==='projects'){
+    crumbs.push({label:'📁 Projects',href:'/projects',active:true});
+  }else if(view==='billing'){
+    crumbs.push({label:'💰 Billing',href:'/billing',active:true});
   }else if(view==='clientprojects'&&activeClient){
     crumbs.push({label:'🏢 Clients',onClick:onDashboard,href:'/',active:false});
     crumbs.push({label:activeClient,href:`/clients/${encodeURIComponent(activeClient)}`,active:true});
@@ -13826,7 +13836,7 @@ export default function App(){
   const [workflows,swf]     = useState([]);
   const [clients,scl]       = useState([]);
   const [loading,sl]        = useState(false);
-  const [view,sv]           = useState(()=>{try{const p=new URLSearchParams(window.location.search).get("view");if(p)return p;const path=window.location.pathname;if(path.match(/^\/clients\/.+/))return"clientprojects";if(path.match(/^\/projects\/.+/))return"list";if(path==="/kanban")return"kanban";if(path==="/analytics")return"analytics";if(path==="/submissions")return"submissions";if(path==="/clientfeedback")return"clientfeedback";if(path==="/backup")return"backup";if(path==="/workflows")return"workflows";if(path==="/auditlog")return"auditlog";if(path==="/recycle")return"recycle";if(path==="/timings")return"timings";if(path==="/billing")return"billing";return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
+  const [view,sv]           = useState(()=>{try{const p=new URLSearchParams(window.location.search).get("view");if(p)return p;const path=window.location.pathname;if(path.match(/^\/clients\/.+/))return"clientprojects";if(path.match(/^\/projects\/.+/))return"list";if(path==="/kanban")return"kanban";if(path==="/analytics")return"analytics";if(path==="/submissions")return"submissions";if(path==="/clientfeedback")return"clientfeedback";if(path==="/backup")return"backup";if(path==="/workflows")return"workflows";if(path==="/auditlog")return"auditlog";if(path==="/recycle")return"recycle";if(path==="/timings")return"timings";if(path==="/billing")return"billing";if(path==="/projects")return"projects";if(path==="/announcements")return"announcements";return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
   useEffect(()=>{try{sessionStorage.setItem("rds_view",view);}catch(e){}},[view]);
   const [activePid,sap]     = useState(null);
   const [activeClient,sac]  = useState(()=>{try{const cm=window.location.pathname.match(/^\/clients\/(.+)$/);return cm?decodeURIComponent(cm[1]):null;}catch{return null;}});
