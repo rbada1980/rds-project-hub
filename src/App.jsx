@@ -16536,7 +16536,7 @@ export default function App(){
                   <div style={{overflowY:"auto",flex:1}}>
                     {briefTile.list.map((t,i)=>(
                       <div key={t.id||i}
-                        onClick={e=>{e.stopPropagation();setBriefTile(null);set(t);stm(true);}}
+                        onClick={e=>{e.stopPropagation();set(t);stm(true);}}
                         style={{padding:"10px 16px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",transition:"background .1s",display:"flex",flexDirection:"column",gap:4}}
                         onMouseEnter={e=>e.currentTarget.style.background=briefTile.color+"12"}
                         onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -16564,7 +16564,7 @@ export default function App(){
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
         const canNextTask=taskNavIdx>=0&&taskNavIdx<taskNavList.length-1;
-        const closeTask=()=>{stm(false);set(null);stnl([]);setBriefTile(null);};
+        const closeTask=()=>{stm(false);set(null);stnl([]);};
         return(
           <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={closeTask} wide={canEdit}>
             {editTask&&(
