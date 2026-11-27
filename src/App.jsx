@@ -1623,8 +1623,10 @@ function PersonalStats({me,tasks,projects}){
   const myTasks=tasks.filter(t=>t.assignee===me.name);
   const doneTasks=myTasks.filter(t=>isDone(t.status));
   // Time-bucketed completions (using updated_at as proxy)
-  const doneThisWeek=doneTasks.filter(t=>(t.updated_at||"").slice(0,10)>=weekStartStr);
-  const doneThisMonth=doneTasks.filter(t=>(t.updated_at||"").slice(0,7)===monthStr);
+  const weekEndDate=new Date(weekStartDate);weekEndDate.setDate(weekEndDate.getDate()+6);
+  const weekEndStr=weekEndDate.toLocaleDateString('en-CA');
+  const doneThisWeek=doneTasks.filter(t=>t.client_sub_date&&t.client_sub_date>=weekStartStr&&t.client_sub_date<=weekEndStr);
+  const doneThisMonth=doneTasks.filter(t=>t.client_sub_date&&t.client_sub_date.slice(0,7)===monthStr);
   // On-time rate: done tasks with due_date where updated_at <= due_date
   const doneWithDue=doneTasks.filter(t=>t.due_date);
   const onTimeCount=doneWithDue.filter(t=>(t.updated_at||"").slice(0,10)<=t.due_date).length;
@@ -16531,7 +16533,7 @@ export default function App(){
         const allOv=tasks.filter(isOvTask);
         const allToday=tasks.filter(t=>inDate(t,today,today));
         const allWeek=tasks.filter(t=>inDate(t,twS,twE));
-        const doneThisWeek=tasks.filter(t=>isDone(t.status)&&(t.updated_at||"").slice(0,10)>=twS);
+        const doneThisWeek=tasks.filter(t=>isDone(t.status)&&t.client_sub_date&&t.client_sub_date>=twS&&t.client_sub_date<=twE);
         const unassigned=openTasks.filter(t=>!t.assignee);
         const projsAtRisk=[...new Set(allOv.map(t=>t.project_id))].length;
         // People with overdue (for admin view)
