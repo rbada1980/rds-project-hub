@@ -4706,6 +4706,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
         <td style={{...tdC,color:"#16a34a",fontWeight:700}}>{fmtD(rv.client_sub_date)}</td>
         <td style={{...tdC,color:C.t2}}>-</td>
+        {!isClient&&<td style={{...tdC,maxWidth:140,overflow:"hidden"}}><span style={{fontSize:11,color:C.t2,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={t.task_remark||""}>{t.task_remark||<span style={{color:C.t3}}>-</span>}</span></td>}
         {!isClient&&<td style={{...tdC}}>
           {canEdit&&<button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -4734,6 +4735,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
         <td style={{...tdC,color:C.t2}}>{t.checker||"-"}</td>
         <td style={{...tdC,color:isOverdue?C.red:"#16a34a",fontWeight:700}}>{fmtD(t.client_sub_date)}</td>
         <td style={{...tdC}}><div style={{display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}><span style={{color:isOverdue?C.red:C.t2,fontWeight:isOverdue?700:400,fontSize:11}}>{fmtD(t.due_date)}</span>{(()=>{const b=getDueBadge(t.due_date,today,t.status);return b?<span style={{fontSize:9,background:b.bg,color:b.color,border:`1px solid ${b.border}`,borderRadius:4,padding:"1px 6px",fontWeight:800,whiteSpace:"nowrap"}}>{b.text}</span>:null;})()}</div></td>
+        {!isClient&&<td style={{...tdC,maxWidth:140,overflow:"hidden"}}><span style={{fontSize:11,color:C.t2,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={t.task_remark||""}>{t.task_remark||<span style={{color:C.t3}}>-</span>}</span></td>}
         {!isClient&&<td style={{...tdC}}>
           <button onClick={()=>onEdit&&onEdit(t)}
             style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,color:C.accent,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -4744,7 +4746,7 @@ function SubmissionsPage({projects,tasks,today,isClient,clientName,onEdit,canEdi
     );
   };
 
-  const HEADERS=["Task","Project",...(!isClient?["Client"]:[]),"Status","Assignee","Detailer","Checker","Client Sub Date","Due Date",...(!isClient?[""]:[])];
+  const HEADERS=["Task","Project",...(!isClient?["Client"]:[]),"Status","Assignee","Detailer","Checker","Client Sub Date","Due Date",...(!isClient?["Remark",""]:[])];
 
   const btnStyle=(active,color="#6366f1")=>({
     padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
