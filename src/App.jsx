@@ -16496,53 +16496,69 @@ export default function App(){
               </div>
               {extraNote}
               {/* Stats grid */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:briefTile?10:18}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:18}}>
                 {statRows.map(r=>{
                   const hasItems=r.list&&r.list.length>0;
                   const isActive=briefTile&&briefTile.label===r.label;
                   return(
                     <div key={r.label}
                       onClick={hasItems?e=>{e.stopPropagation();setBriefTile(isActive?null:r);}:undefined}
-                      style={{background:isActive?r.color+"25":r.color+"12",border:`1px solid ${isActive?r.color+"88":r.color+"30"}`,borderRadius:10,padding:"10px 10px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,textAlign:"center",cursor:hasItems?"pointer":"default",transition:"all .15s",transform:isActive?"scale(1.04)":"scale(1)",position:"relative"}}>
-                      {hasItems&&!isActive&&<div style={{position:"absolute",top:5,right:6,fontSize:8,color:r.color,opacity:.7,fontWeight:800}}>▼</div>}
-                      {isActive&&<div style={{position:"absolute",top:5,right:6,fontSize:8,color:r.color,fontWeight:800}}>▲</div>}
+                      style={{background:isActive?r.color+"30":r.color+"12",border:`1.5px solid ${isActive?r.color+"99":r.color+"30"}`,borderRadius:10,padding:"10px 10px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,textAlign:"center",cursor:hasItems?"pointer":"default",transition:"all .18s",transform:isActive?"scale(1.06)":"scale(1)",position:"relative",boxShadow:isActive?`0 0 0 2px ${r.color}44`:"none"}}>
+                      {hasItems&&<div style={{position:"absolute",top:5,right:6,fontSize:8,color:r.color,opacity:.8,fontWeight:800}}>{isActive?"▲":"▼"}</div>}
                       <span style={{fontSize:17}}>{r.icon}</span>
                       <div style={{fontSize:20,fontWeight:900,color:r.color,lineHeight:1}}>{r.val}</div>
                       <div style={{fontSize:9,color:isActive?r.color:C.t3,fontWeight:600,lineHeight:1.3}}>{r.label}</div>
+                      {hasItems&&<div style={{fontSize:8,color:r.color,opacity:.7,fontWeight:700,marginTop:1}}>tap to view</div>}
                     </div>
                   );
                 })}
               </div>
-              {/* Expanded tile task list */}
-              {briefTile&&briefTile.list&&briefTile.list.length>0&&(
-                <div style={{background:C.surface,border:`1px solid ${briefTile.color}44`,borderRadius:12,marginBottom:14,overflow:"hidden"}}>
-                  <div style={{padding:"8px 12px",background:briefTile.color+"18",borderBottom:`1px solid ${briefTile.color}33`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span style={{fontSize:11,fontWeight:800,color:briefTile.color}}>{briefTile.icon} {briefTile.label} — {briefTile.list.length} task{briefTile.list.length!==1?"s":""}</span>
-                    <button onClick={()=>setBriefTile(null)} style={{background:"none",border:"none",color:C.t3,fontSize:14,cursor:"pointer",lineHeight:1,padding:"0 2px"}}>✕</button>
-                  </div>
-                  <div style={{maxHeight:180,overflowY:"auto"}}>
-                    {briefTile.list.map((t,i)=>(
-                      <div key={t.id||i} onClick={()=>{setBriefTile(null);set(t);stm(true);}} style={{padding:"8px 12px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",transition:"background .1s",display:"flex",flexDirection:"column",gap:2}}
-                        onMouseEnter={e=>e.currentTarget.style.background=briefTile.color+"10"}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        <div style={{fontSize:12,color:C.t1,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title||"Untitled"}</div>
-                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontSize:9,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{projName(t.project_id)}</span>
-                          {t.assignee&&<span style={{fontSize:9,color:C.t3}}>· {t.assignee}</span>}
-                          {t.due_date&&<span style={{fontSize:9,color:t.due_date<today&&!isDone(t.status)?"#ef4444":C.t3}}>· {t.due_date}</span>}
-                          <span style={{fontSize:8,fontWeight:700,background:(STATUS_CLR[t.status]||C.t3)+"22",color:STATUS_CLR[t.status]||C.t3,borderRadius:4,padding:"1px 5px"}}>{t.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div style={{display:"flex",gap:9}}>
                 <button onClick={()=>dismiss(ctaPrimary.view)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:accentColor,border:"none",color:"#fff"}}>{ctaPrimary.label}</button>
                 <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>{ctaSecondary.label}</button>
               </div>
               <div style={{marginTop:10,fontSize:9,color:C.t3,textAlign:"center",opacity:.7}}>Tap outside to go to {ctaPrimary.label} - shows up to 2x per day</div>
             </div>
+            {/* Tile detail popup */}
+            {briefTile&&briefTile.list&&briefTile.list.length>0&&(
+              <div onClick={()=>setBriefTile(null)} style={{position:"fixed",inset:0,zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.55)",backdropFilter:"blur(4px)"}}>
+                <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${briefTile.color}55`,borderRadius:16,width:"min(440px,calc(100vw - 24px))",maxHeight:"72vh",display:"flex",flexDirection:"column",boxShadow:`0 28px 70px #000000cc, 0 0 0 1px ${briefTile.color}22`,animation:"rds-popup-in .22s cubic-bezier(.34,1.56,.64,1)"}}>
+                  {/* Header */}
+                  <div style={{padding:"13px 16px",background:briefTile.color+"18",borderBottom:`1px solid ${briefTile.color}33`,display:"flex",justifyContent:"space-between",alignItems:"center",borderRadius:"16px 16px 0 0",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:20}}>{briefTile.icon}</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:800,color:briefTile.color}}>{briefTile.label}</div>
+                        <div style={{fontSize:10,color:C.t3}}>{briefTile.list.length} task{briefTile.list.length!==1?"s":""} · click any to open</div>
+                      </div>
+                    </div>
+                    <button onClick={()=>setBriefTile(null)} style={{background:briefTile.color+"18",border:`1px solid ${briefTile.color}44`,color:briefTile.color,fontSize:13,cursor:"pointer",lineHeight:1,padding:"5px 9px",borderRadius:8,fontFamily:"inherit",fontWeight:700}}>✕</button>
+                  </div>
+                  {/* Task list */}
+                  <div style={{overflowY:"auto",flex:1}}>
+                    {briefTile.list.map((t,i)=>(
+                      <div key={t.id||i}
+                        onClick={()=>{setBriefTile(null);setDailyPopup(false);set(t);stm(true);}}
+                        style={{padding:"10px 16px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",transition:"background .1s",display:"flex",flexDirection:"column",gap:4}}
+                        onMouseEnter={e=>e.currentTarget.style.background=briefTile.color+"12"}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <div style={{fontSize:13,color:C.t1,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title||"Untitled"}</div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontSize:10,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:150}}>{projName(t.project_id)}</span>
+                          {t.assignee&&<span style={{fontSize:10,color:C.t3}}>· {t.assignee}</span>}
+                          {t.due_date&&<span style={{fontSize:10,color:t.due_date<today&&!isDone(t.status)?"#ef4444":C.t3}}>· {t.due_date}</span>}
+                          <span style={{fontSize:9,fontWeight:700,background:(STATUS_CLR[t.status]||C.t3)+"22",color:STATUS_CLR[t.status]||C.t3,borderRadius:4,padding:"1px 6px"}}>{t.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Footer */}
+                  <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,textAlign:"center"}}>
+                    <button onClick={()=>setBriefTile(null)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 20px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
