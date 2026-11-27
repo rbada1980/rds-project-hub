@@ -1,0 +1,268 @@
+// /api/cron-daily-evening.js
+// Vercel Cron: runs Mon-Sat at 3:45 PM IST (= 10:15 AM UTC)
+// Schedule in vercel.json: "15 10 * * 1-6"
+
+const SUPA_URL  = "https://xypcbioltukahipkqqzc.supabase.co";
+const SUPA_KEY  = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cGNiaW9sdHVrYWhpcGtxcXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzEzNjUsImV4cCI6MjA5NTAwNzM2NX0.DG5sv2bpx8j3Mmz0mqIsoDVaCMP2TmWqh-OQUfSZFRw";
+const SUPA_WRITE_KEY = process.env.SUPABASE_SERVICE_KEY || SUPA_KEY;
+const NOTIFY_URL = `${SUPA_URL}/functions/v1/notify`;
+
+async function supaFetch(path) {
+  const res = await fetch(SUPA_URL + path, {
+    headers: {
+      "apikey": SUPA_KEY,
+      "Authorization": `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json"
+    }
+  });
+  return res.json();
+}
+
+async function postJson(url, payload) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "apikey": SUPA_KEY,
+      "Authorization": `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  return res.status;
+}
+
+const PORTAL = "https://hub-rdsprojects.com/submissions";
+const aStyle = "text-decoration:none;color:inherit;display:block;";
+
+function statusBadge(s) {
+  if (s === "Done")        return `<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">Done</span>`;
+  if (s === "In Progress") return `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">In Progress</span>`;
+  return `<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">Not Started</span>`;
+}
+function rowBg(s) { return s === "Done" ? "#f0fdf4" : s === "In Progress" ? "#fffbeb" : "#ffffff"; }
+
+function tableRows(tasks, pm) {
+  if (!tasks.length) return `<tr><td colspan="7" style="padding:20px;text-align:center;color:#9ca3af;font-style:italic;font-size:13px;">No submissions planned for today.</td></tr>`;
+  return tasks.map(t => {
+    const p = pm[t.project_id];
+    return `<tr style="background:${rowBg(t.status)}">
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client || (p && p.client) || "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${p ? p.name : "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#111827;font-weight:600;font-size:12px;">${t.title}</a></td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${statusBadge(t.status)}</td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.assignee || "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.client_sub_date || "-"}</a></td>
+      <td style="padding:0;border-bottom:1px solid #e5e7eb;text-align:center;"><a href="${PORTAL}" style="${aStyle}padding:9px 12px;color:#374151;font-size:12px;">${t.due_date || "-"}</a></td>
+    </tr>`;
+  }).join("");
+}
+
+function buildEmail(name, tasks, pm, dateLabel) {
+  const total = tasks.length;
+  const done  = tasks.filter(t => t.status === "Done").length;
+  const ip    = tasks.filter(t => t.status === "In Progress").length;
+  const ns    = total - done - ip;
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:20px 0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;"><tr><td>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:10px 10px 0 0;">
+<tr><td style="padding:20px 28px;">
+  <table cellpadding="0" cellspacing="0" width="100%"><tr>
+    <td style="width:1px;white-space:nowrap;">
+      <table cellpadding="0" cellspacing="0"><tr><td style="background:#ffffff;border-radius:8px;padding:6px 12px;">
+        <a href="${PORTAL}" style="text-decoration:none;display:block;">
+          <img src="https://hub-rdsprojects.com/logo.png" alt="RDS" style="height:44px;width:auto;display:block;" />
+        </a>
+      </td></tr></table>
+    </td>
+    <td style="width:1px;padding:0 16px;"><div style="width:1px;height:36px;background:rgba(255,255,255,0.2);"></div></td>
+    <td>
+      <a href="${PORTAL}" style="text-decoration:none;display:block;">
+        <div style="font-size:18px;font-weight:700;color:#ffffff;">Evening Submission List</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:3px;">${dateLabel}</div>
+      </a>
+    </td>
+    <td align="right" style="white-space:nowrap;padding-left:12px;">
+      <a href="${PORTAL}" style="text-decoration:none;background:rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:#ffffff;border:1px solid rgba(255,255,255,0.3);">&#127762; Evening Report</a>
+    </td>
+  </tr></table>
+</td></tr>
+<tr><td style="background:#163060;padding:9px 28px;">
+  <table cellpadding="0" cellspacing="0"><tr>
+    <td style="width:7px;height:7px;background:#f59e0b;border-radius:50%;"></td>
+    <td style="padding-left:8px;font-size:11px;color:rgba(255,255,255,0.75);">Automated evening digest - sent at 3:45 PM IST every day except Sunday</td>
+  </tr></table>
+</td></tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-left:1px solid #dde3ef;border-right:1px solid #dde3ef;">
+<tr><td style="padding:26px 28px;">
+  <a href="${PORTAL}" style="text-decoration:none;display:block;">
+    <p style="font-size:14px;color:#374151;margin:0 0 6px;">Dear ${name},</p>
+    <p style="font-size:14px;color:#374151;margin:0 0 22px;line-height:1.7;">Here is the evening status update for <span style="color:#1a3a6b;font-weight:700;">${total} submission(s)</span> planned for today. Please review and ensure all pending items are addressed before end of day.</p>
+  </a>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin-bottom:22px;border-left:4px solid #f59e0b;"><tr>
+    <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#1a3a6b;">${total}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Total</div></a></td>
+    <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#059669;">${done}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Done</div></a></td>
+    <td width="25%" style="padding:0;text-align:center;border-right:1px solid #e5e7eb;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#d97706;">${ip}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">In Progress</div></a></td>
+    <td width="25%" style="padding:0;text-align:center;"><a href="${PORTAL}" style="text-decoration:none;display:block;padding:14px 0;"><div style="font-size:22px;font-weight:700;color:#ef4444;">${ns}</div><div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;">Not Started</div></a></td>
+  </tr></table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+  <thead><tr style="background:#1a3a6b;">
+    <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">CLIENT</th>
+    <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">PROJECT</th>
+    <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">TASK</th>
+    <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">STATUS</th>
+    <th style="padding:10px 12px;text-align:left;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">ASSIGNEE</th>
+    <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.1);">SUB DATE</th>
+    <th style="padding:10px 12px;text-align:center;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;">DUE DATE</th>
+  </tr></thead>
+  <tbody>${tableRows(tasks, pm)}</tbody>
+  </table>
+
+  <a href="${PORTAL}" style="text-decoration:none;display:block;margin-top:24px;padding-top:20px;border-top:1px solid #f3f4f6;">
+    <p style="font-size:13px;color:#374151;margin:0 0 8px;line-height:1.7;">Please review the above and ensure all tasks marked <em>Not Started</em> are actioned before end of business. For any clarification, contact the respective project lead.</p>
+    <p style="font-size:13px;color:#374151;margin:0;">Thank you for your continued efforts.</p>
+    <p style="font-size:13px;color:#1a3a6b;margin:14px 0 0;font-weight:700;">RDS TechServ Team</p>
+    <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Project Management Portal - <span style="color:#1a3a6b;font-weight:600;">hub-rdsprojects.com/submissions</span></p>
+  </a>
+</td></tr></table>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a3a6b;border-radius:0 0 10px 10px;">
+<tr>
+  <td style="padding:14px 28px;font-size:11px;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.5);text-decoration:none;">&copy; ${new Date().getFullYear()} RDS TechServ. Automated email - do not reply.</a></td>
+  <td style="padding:14px 28px;font-size:11px;text-align:right;"><a href="${PORTAL}" style="color:rgba(255,255,255,0.6);text-decoration:none;">hub-rdsprojects.com/submissions</a></td>
+</tr>
+</table>
+
+</td></tr></table>
+</body></html>`;
+}
+
+export default async function handler(req, res) {
+  try {
+    // IST date: UTC+5:30
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffset);
+    const today = istDate.toISOString().slice(0, 10); // YYYY-MM-DD
+    const dateLabel = istDate.toLocaleDateString("en-GB", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+      timeZone: "Asia/Kolkata"
+    });
+
+    // Check if evening digest is enabled + allowed days
+    const settingsData = await supaFetch(`/rest/v1/settings?key=in.(daily_digest_evening_enabled,daily_digest_evening_days)&select=key,value`);
+    const settingsMap = {};
+    if (Array.isArray(settingsData)) settingsData.forEach(r => { settingsMap[r.key] = r.value; });
+
+    if (settingsMap["daily_digest_evening_enabled"] === "false") {
+      console.log("Evening digest is disabled via settings.");
+      return res.status(200).json({ message: "Evening digest is disabled." });
+    }
+
+    // Check allowed days (0=Sun,1=Mon,...6=Sat). Default: Mon-Sat (1,2,3,4,5,6)
+    const allowedDays = (settingsMap["daily_digest_evening_days"] || "1,2,3,4,5,6")
+      .split(",").map(Number);
+    const todayDow = istDate.getDay();
+    if (!allowedDays.includes(todayDow)) {
+      console.log(`Evening digest skipped - ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][todayDow]} not in allowed days.`);
+      return res.status(200).json({ message: `Skipped: today not in scheduled days.` });
+    }
+
+    // Idempotency: use separate key last_digest_evening_date
+    const preCheck = await supaFetch(`/rest/v1/settings?key=eq.last_digest_evening_date&select=value`);
+    const existingDate = Array.isArray(preCheck) && preCheck[0]?.value;
+    if (existingDate === today) {
+      console.log(`Evening digest already ran for ${today} - duplicate suppressed (pre-check).`);
+      return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
+    }
+
+    // Claim today's slot
+    const claimPatch = await fetch(
+      `${SUPA_URL}/rest/v1/settings?key=eq.last_digest_evening_date&value=neq.${today}`,
+      { method: "PATCH",
+        headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`,
+                   "Content-Type": "application/json", "Prefer": "return=representation" },
+        body: JSON.stringify({ value: today }) }
+    );
+    let claimed = false;
+    if (claimPatch.ok) {
+      const rows = await claimPatch.json().catch(() => []);
+      if (Array.isArray(rows) && rows.length > 0) { claimed = true; }
+    }
+
+    if (!claimed) {
+      const claimInsert = await fetch(`${SUPA_URL}/rest/v1/settings`, {
+        method: "POST",
+        headers: { "apikey": SUPA_WRITE_KEY, "Authorization": `Bearer ${SUPA_WRITE_KEY}`,
+                   "Content-Type": "application/json",
+                   "Prefer": "resolution=ignore-duplicates,return=representation" },
+        body: JSON.stringify({ key: "last_digest_evening_date", value: today })
+      });
+      if (claimInsert.ok) {
+        const rows = await claimInsert.json().catch(() => []);
+        if (Array.isArray(rows) && rows.length > 0) { claimed = true; }
+      }
+    }
+
+    if (!claimed) {
+      const postCheck = await supaFetch(`/rest/v1/settings?key=eq.last_digest_evening_date&select=value`);
+      const currentVal = Array.isArray(postCheck) && postCheck[0]?.value;
+      if (currentVal === today) {
+        return res.status(200).json({ message: `Already sent for ${today}. Duplicate suppressed.` });
+      }
+      return res.status(200).json({ message: "Stamp failed - aborted to prevent duplicate. Set SUPABASE_SERVICE_KEY in Vercel env vars." });
+    }
+
+    const [allTasks, projects, users] = await Promise.all([
+      supaFetch(`/rest/v1/tasks?or=(client_sub_date.eq.${today},due_date.eq.${today})&select=title,client,status,assignee,due_date,client_sub_date,project_id&order=client.asc,client_sub_date.asc`),
+      supaFetch(`/rest/v1/projects?select=id,name,client`),
+      supaFetch(`/rest/v1/users?select=name,email,role,client_name`)
+    ]);
+
+    if (!Array.isArray(allTasks) || !allTasks.length) {
+      console.log(`No submissions for ${today}.`);
+      return res.status(200).json({ message: `No submissions for ${today}.` });
+    }
+
+    const pm = {};
+    for (const p of (projects || [])) pm[p.id] = p;
+
+    const results = [];
+    const sent = new Set();
+
+    const DIGEST_ROLES = ["Admin", "Manager", "Team Leader"];
+    for (const u of (users || []).filter(u => DIGEST_ROLES.includes(u.role) && u.email?.trim())) {
+      const emailKey = u.email.trim().toLowerCase();
+      if (sent.has(emailKey)) continue;
+      sent.add(emailKey);
+      const html = buildEmail(u.name, allTasks, pm, dateLabel);
+      const status = await postJson(NOTIFY_URL, {
+        type: "submission_digest",
+        data: {
+          taskName: "Evening Submission List",
+          projectName: `${allTasks.length} submission(s) planned`,
+          completedBy: "RDS TechServ",
+          completedAt: dateLabel,
+          recipientEmail: u.email.trim(),
+          subject: `RDS Evening Submission List - ${dateLabel}`,
+          htmlBody: html
+        }
+      });
+      results.push({ email: u.email, name: u.name, role: u.role, tasks: allTasks.length, status });
+      await new Promise(r => setTimeout(r, 1200));
+    }
+
+    console.log(`Evening digest sent to ${results.length} recipients, ${allTasks.length} tasks.`);
+    return res.status(200).json({ sent: results.length, tasks: allTasks.length, results });
+
+  } catch (err) {
+    console.error("Evening cron error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
