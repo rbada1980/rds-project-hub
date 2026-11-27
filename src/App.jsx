@@ -16519,9 +16519,15 @@ export default function App(){
         const addDN=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().slice(0,10);};
         const twS=tueFn(today);const twE=addDN(twS,6);
         const inDate=(t,s,e)=>{const d1=ds(t.client_sub_date);const d2=ds(t.due_date);return(d1&&d1>=s&&d1<=e)||(d2&&d2>=s&&d2<=e);};
+        const cy=today.slice(0,4);
         const isOvTask=t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold";
         const isMine=t=>t.assignee===me?.name||t.detailer===me?.name||t.checker===me?.name;
-        const openTasks=tasks.filter(t=>!isDone(t.status)&&t.status!=="On Hold");
+        // Open tasks = current year only (by due_date or client_sub_date year, or no date = include)
+        const openTasks=tasks.filter(t=>{
+          if(isDone(t.status)||t.status==="On Hold")return false;
+          const yr=(t.due_date||t.client_sub_date||"").slice(0,4);
+          return !yr||yr===cy;
+        });
         const myOpen=openTasks.filter(isMine);
         const myOv=myOpen.filter(isOvTask);
         const myToday=myOpen.filter(t=>inDate(t,today,today));
@@ -16536,8 +16542,8 @@ export default function App(){
         const doneThisWeek=tasks.filter(t=>isDone(t.status)&&t.client_sub_date&&t.client_sub_date>=twS&&t.client_sub_date<=twE);
         const unassigned=openTasks.filter(t=>!t.assignee);
         const projsAtRisk=[...new Set(allOv.map(t=>t.project_id))].length;
-        // People with overdue (for admin view)
-        const ovByPerson={};allOv.forEach(t=>{[t.assignee,t.detailer,t.checker].filter(Boolean).forEach(n=>{ovByPerson[n]=(ovByPerson[n]||0)+1;});});
+        // People with overdue — count by assignee only (1 task = 1 person, not assignee+detailer+checker)
+        const ovByPerson={};allOv.forEach(t=>{if(t.assignee)ovByPerson[t.assignee]=(ovByPerson[t.assignee]||0)+1;});
         const topOv=Object.entries(ovByPerson).sort((a,b)=>b[1]-a[1]).slice(0,3);
         const peopleWithOv=Object.keys(ovByPerson).length;
         // Role-based config
