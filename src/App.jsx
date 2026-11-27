@@ -14982,14 +14982,13 @@ export default function App(){
         </div>
         <div style={{padding:"0 12px",flex:1,overflow:"auto"}}>
           {navs.map(([k,ico,lbl])=>{
+            const navHref=stateToUrl(k,k==='list'?activePid:null,k==='clientprojects'?activeClient:null,projects);
             return(
-              <button key={k} onClick={()=>{
-                navTo(k,k==='list'?activePid:null);
-                if(isMobile)setSO(false);
-              }} style={{...sel(view===k&&!(view==="kanban"&&activeClient)),position:"relative"}}>
+              <a key={k} href={navHref} onClick={e=>{e.preventDefault();navTo(k,k==='list'?activePid:null);if(isMobile)setSO(false);}}
+                style={{...sel(view===k&&!(view==="kanban"&&activeClient)),position:"relative",textDecoration:"none",display:"flex"}}>
                 <span style={{fontSize:16}}>{ico}</span>
                 <span style={{flex:1}}>{lbl}</span>
-              </button>
+              </a>
             );
           })}
         </div>
@@ -15891,9 +15890,9 @@ export default function App(){
                   ?{background:C.card,border:`1px solid ${p.color}55`,borderTop:`3px solid ${p.color}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",boxShadow:`0 2px 12px ${p.color}25`}
                   :{background:C.card,border:`1px solid ${C.accent}33`,borderTop:`3px solid ${C.accent}66`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"};
                 if(projSelected){cardStyle.background=C.accent+"18";cardStyle.border=`1px solid ${C.accent}`;cardStyle.borderTop=`3px solid ${C.accent}`;}
+                const projHref=stateToUrl('list',p.id,null,projects);
                 return(
-                  <div key={p.id} style={cardStyle}
-                    onClick={()=>navTo('list',p.id)}
+                  <a key={p.id} href={projHref} onClick={e=>{e.preventDefault();navTo('list',p.id);}} style={{...cardStyle,textDecoration:"none",display:"block"}}
                     onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=isActive?`0 6px 22px ${p.color}44`:"0 4px 14px #00000050";}}
                     onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=isActive?`0 2px 12px ${p.color}25`:"";}}>
                     {/* Header */}
@@ -15937,7 +15936,7 @@ export default function App(){
                       </div>
                       <span style={{fontSize:10,color:C.t3}}>{pt.length} tasks →</span>
                     </div>
-                  </div>
+                  </a>
                 );
               })}
                   </div>
@@ -16193,8 +16192,9 @@ export default function App(){
                       :isActive
                       ?{background:C.card,border:`1px solid ${p.color}55`,borderTop:`3px solid ${p.color}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",boxShadow:`0 2px 12px ${p.color}25`}
                       :{background:C.card,border:`1px solid ${C.accent}33`,borderTop:`3px solid ${C.accent}66`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"};
+                    const fProjHref=stateToUrl('list',p.id,null,projects);
                     return(
-                      <div key={p.id} onClick={()=>navTo('list',p.id)} style={fCardStyle}
+                      <a key={p.id} href={fProjHref} onClick={e=>{e.preventDefault();navTo('list',p.id);}} style={{...fCardStyle,textDecoration:"none",display:"block"}}
                         onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=isActive?`0 6px 22px ${p.color}44`:"0 4px 14px #00000050";}}
                         onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=isActive?`0 2px 12px ${p.color}25`:"";}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,gap:6}}>
@@ -16232,7 +16232,7 @@ export default function App(){
                           </div>
                           <span style={{fontSize:10,color:C.t3}}>{pt.length} tasks →</span>
                         </div>
-                      </div>
+                      </a>
                     );
                   })}
                 </div>
