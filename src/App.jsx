@@ -15819,24 +15819,27 @@ export default function App(){
                   const pd=pt.filter(t=>isDone(t.status)).length;
                   const pip=pt.filter(t=>t.status==="In Progress").length;
                   const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
+                  const isCmp=p.status==="Completed"||pv===100;
+                  const isAct=!isCmp&&pip>0;
                   return(
                     <div key={p.id} onClick={()=>navTo('list',p.id)}
-                      style={{background:C.card,border:`1px solid ${pov>0?C.red+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${p.color}`}}>
+                      style={{background:isCmp?"#052e1660":C.card,border:`1px solid ${isCmp?"#22c55e33":pov>0?C.red+"44":isAct?C.blue+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${isCmp?"#22c55e88":isAct?C.blue:p.color}`,opacity:isCmp?0.72:1}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
-                        <span style={{fontSize:13,fontWeight:800,color:C.t1,flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+                        <span style={{fontSize:13,fontWeight:800,color:isCmp?"#4ade80":C.t1,flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
                         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                           {canEdit&&<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>}
-                          <span style={{fontSize:13,fontWeight:800,color:p.color}}>{pv}%</span>
+                          {isCmp?<span style={{fontSize:10,color:"#4ade80",fontWeight:800}}>✅ Done</span>:<span style={{fontSize:13,fontWeight:800,color:p.color}}>{pv}%</span>}
                         </div>
                       </div>
                       <div style={{height:4,background:C.surface,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${pv}%`,background:p.color,borderRadius:2}}/>
+                        <div style={{height:"100%",width:`${pv}%`,background:isCmp?"#22c55e":p.color,borderRadius:2}}/>
                       </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                         {p.client&&<span style={{fontSize:11,color:C.teal}}>🏢 {p.client}</span>}
                         <span style={{fontSize:11,color:C.green}}>✅ {pd}</span>
                         <span style={{fontSize:11,color:C.blue}}>🔄 {pip}</span>
                         {pov>0&&<span style={{fontSize:11,color:C.red,fontWeight:700}}>⚠ {pov} overdue</span>}
+                        {!isCmp&&isAct&&<span style={{fontSize:10,color:C.blue,fontWeight:700,background:C.blue+"18",borderRadius:5,padding:"1px 6px"}}>⚡ Active</span>}
                         <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} tasks →</span>
                       </div>
                     </div>
@@ -15871,12 +15874,14 @@ export default function App(){
                 const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                 const projSelected=selProjects.has(p.id);
                 const isComplete=p.status==="Completed"||pv===100;
+                const isActive=!isComplete&&pip>0;
                 return(
-                  <div key={p.id} style={{background:projSelected?C.accent+"18":isComplete?"#052e1688":C.card,border:`1px solid ${projSelected?C.accent:isComplete?"#22c55e55":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:isComplete?"#22c55e":p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}}
+                  <div key={p.id} style={{background:projSelected?C.accent+"18":isComplete?"#052e1660":C.card,border:`1px solid ${projSelected?C.accent:isComplete?"#22c55e33":pov>0?C.red+"44":isActive?C.blue+"33":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${projSelected?C.accent:isComplete?"#22c55e88":isActive?C.blue+"aa":p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",opacity:isComplete?0.72:1}}
                     onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 8px 28px #22c55e33":"0 8px 28px #00000070";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 8px 24px #22c55e22":isActive?"0 8px 28px "+C.blue+"33":"0 8px 28px #00000070";e.currentTarget.style.opacity="1";}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.opacity=isComplete?"0.72":"1";}}>
                     {isComplete&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#22c55e,#4ade80,#22c55e)"}}/>}
+                    {isActive&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${C.blue},#60a5fa,${C.blue})`}}/>}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
                       <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
                         {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
@@ -15885,7 +15890,8 @@ export default function App(){
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                         {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
-                        {isComplete?<span style={{background:"#22c55e22",color:"#4ade80",border:"1px solid #22c55e55",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>🎉 Complete</span>
+                        {isComplete?<span style={{background:"#22c55e18",color:"#4ade80",border:"1px solid #22c55e44",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>✅ Complete</span>
+                        :isActive?<span style={{background:C.blue+"22",color:C.blue,border:`1px solid ${C.blue}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>⚡ {pv}% Active</span>
                         :<span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 12px",fontSize:14,fontWeight:800,whiteSpace:"nowrap"}}>{pv}%</span>}
                       </div>
                     </div>
@@ -16170,12 +16176,14 @@ export default function App(){
                     const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                     const assignees=[...new Set(pt.map(t=>t.assignee).filter(Boolean))];
                     const isComplete=p.status==="Completed"||pv===100;
+                    const isActive=!isComplete&&pip>0;
                     return(
                       <div key={p.id} onClick={()=>navTo('list',p.id)}
-                        style={{background:isComplete?"#052e1688":C.card,border:`1px solid ${isComplete?"#22c55e55":pov>0?C.red+"44":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${isComplete?"#22c55e":p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}}
-                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 8px 28px #22c55e33":"0 8px 28px #00000070";}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                        {isComplete&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#22c55e,#4ade80,#22c55e)",backgroundSize:"200% 100%"}}/>}
+                        style={{background:isComplete?"#052e1660":C.card,border:`1px solid ${isComplete?"#22c55e33":pov>0?C.red+"44":isActive?C.blue+"33":C.border}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`4px solid ${isComplete?"#22c55e88":isActive?C.blue+"aa":p.color}`,transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",opacity:isComplete?0.72:1}}
+                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 8px 24px #22c55e22":isActive?"0 8px 28px "+C.blue+"33":"0 8px 28px #00000070";e.currentTarget.style.opacity="1";}}
+                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.opacity=isComplete?"0.72":"1";}}>
+                        {isComplete&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(90deg,#22c55e,#4ade80,#22c55e)"}}/>}
+                        {isActive&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${C.blue},#60a5fa,${C.blue})`}}/>}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
                           <h3 style={{margin:0,fontSize:15,fontWeight:800,color:isComplete?"#4ade80":C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -16183,7 +16191,8 @@ export default function App(){
                               <IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
                               <IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
                             </>)}
-                            {isComplete?<span style={{background:"#22c55e22",color:"#4ade80",border:"1px solid #22c55e55",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>🎉 Complete</span>
+                            {isComplete?<span style={{background:"#22c55e18",color:"#4ade80",border:"1px solid #22c55e44",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>✅ Complete</span>
+                            :isActive?<span style={{background:C.blue+"22",color:C.blue,border:`1px solid ${C.blue}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>⚡ Active</span>
                             :<span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:8,padding:"4px 10px",fontSize:13,fontWeight:800}}>{pv}%</span>}
                           </div>
                         </div>
