@@ -14381,8 +14381,8 @@ export default function App(){
     }
     return all;
   }
-  async function loadAll(){
-    sl(true);
+  async function loadAll(silent=false){
+    if(!silent)sl(true);
     try{
       const role=me?.role;
       const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Team Leader"&&role!=="Client"&&role!=="HR & Finance";
@@ -14421,8 +14421,8 @@ export default function App(){
         // Load revisions using the fresh task list (pass task IDs to avoid RLS issues)
         await loadAllRevisions(t||[]);
       }
-    }catch(e){showToast("Failed to load: "+e.message,false);}
-    sl(false);
+    }catch(e){if(!silent)showToast("Failed to load: "+e.message,false);}
+    if(!silent)sl(false);
   }
   async function loadAllRevisions(taskList){
     try{
@@ -14468,7 +14468,7 @@ export default function App(){
         st(prev=>{
           // Only reload if count differs AND prev has data (never wipe on error)
           if(prev.length>0&&prev.length!==count){
-            loadAll();
+            loadAll(true);
           }
           return prev;
         });
