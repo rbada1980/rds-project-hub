@@ -14380,8 +14380,8 @@ export default function App(){
     }
     return all;
   }
-  async function loadAll(silent=false){
-    if(!silent)sl(true);
+  async function loadAll(){
+    sl(true);
     try{
       const role=me?.role;
       const isRegularUser=role&&role!=="Admin"&&role!=="Manager"&&role!=="Team Leader"&&role!=="Client"&&role!=="HR & Finance";
@@ -14420,8 +14420,8 @@ export default function App(){
         // Load revisions using the fresh task list (pass task IDs to avoid RLS issues)
         await loadAllRevisions(t||[]);
       }
-    }catch(e){if(!silent)showToast("Failed to load: "+e.message,false);}
-    if(!silent)sl(false);
+    }catch(e){showToast("Failed to load: "+e.message,false);}
+    sl(false);
   }
   async function loadAllRevisions(taskList){
     try{
@@ -14454,27 +14454,7 @@ export default function App(){
     supabase.from("audit_logs").delete().lt("created_at",cutoff.toISOString()).then(()=>{});
   },[me?.id]);
 
-  // ── Stale-data guard: every 60s check DB task count vs in-memory count ───
-  // If they differ (missed realtime events while tab was backgrounded/offline),
-  // silently re-fetch everything so the user never sees missing tasks.
-  useEffect(()=>{
-    if(!me||IS_LOCAL)return;
-    const iv=setInterval(async()=>{
-      try{
-        const{count,error}=await supabase.from("tasks").select("*",{count:"exact",head:true});
-        // Guard: ignore errors, null counts, or count=0 (network glitch returning empty)
-        if(error||count==null||count===0)return;
-        st(prev=>{
-          // Only reload if count differs AND prev has data (never wipe on error)
-          if(prev.length>0&&prev.length!==count){
-            loadAll(true);
-          }
-          return prev;
-        });
-      }catch(_){}
-    },60000);
-    return()=>clearInterval(iv);
-  },[me]);
+  // Auto-refresh removed — data loads once on login. Use the manual Refresh button.
 
   // ── Live updates ──────────────────────────────────────────────
   // Online: Supabase Realtime WebSocket (instant)
