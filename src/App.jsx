@@ -13826,10 +13826,10 @@ export default function App(){
   const [workflows,swf]     = useState([]);
   const [clients,scl]       = useState([]);
   const [loading,sl]        = useState(false);
-  const [view,sv]           = useState(()=>{try{const p=new URLSearchParams(window.location.search).get("view");if(p)return p;return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
+  const [view,sv]           = useState(()=>{try{const p=new URLSearchParams(window.location.search).get("view");if(p)return p;const path=window.location.pathname;if(path.match(/^\/clients\/.+/))return"clientprojects";if(path.match(/^\/projects\/.+/))return"list";if(path==="/kanban")return"kanban";if(path==="/analytics")return"analytics";if(path==="/submissions")return"submissions";if(path==="/clientfeedback")return"clientfeedback";if(path==="/backup")return"backup";if(path==="/workflows")return"workflows";if(path==="/auditlog")return"auditlog";if(path==="/recycle")return"recycle";if(path==="/timings")return"timings";if(path==="/billing")return"billing";return sessionStorage.getItem("rds_view")||"dashboard";}catch(e){return"dashboard";}});
   useEffect(()=>{try{sessionStorage.setItem("rds_view",view);}catch(e){}},[view]);
   const [activePid,sap]     = useState(null);
-  const [activeClient,sac]  = useState(null);
+  const [activeClient,sac]  = useState(()=>{try{const cm=window.location.pathname.match(/^\/clients\/(.+)$/);return cm?decodeURIComponent(cm[1]):null;}catch{return null;}});
   const [taskModal,stm]     = useState(false);
   const [taskNavList,stnl]  = useState([]);
   const [taskFormKey,setTFK]= useState(0);
