@@ -15874,7 +15874,7 @@ export default function App(){
                 });
                 const hasGroups=Object.keys(grpd).length>0;
                 function ProjGrid({projs}){return(
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18,marginBottom:16}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(260px,100%),1fr))",gap:12,marginBottom:16}}>
                   {projs.map(p=>{
                 const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                 const pd=pt.filter(t=>isDone(t.status)).length;
@@ -15885,54 +15885,58 @@ export default function App(){
                 const projSelected=selProjects.has(p.id);
                 const isComplete=p.status==="Completed"||pv===100;
                 const isActive=!isComplete&&pip>0;
-                // Three distinct card styles
                 const cardStyle=isComplete
-                  ?{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.t3}`,borderRadius:14,padding:20,cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}
+                  ?{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.t3}55`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",opacity:0.75}
                   :isActive
-                  ?{background:C.card,border:`1px solid ${p.color}44`,borderTop:`4px solid ${p.color}`,borderRadius:14,padding:20,cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}
-                  :{background:C.card,border:`1px dashed ${C.border}`,borderTop:`3px solid ${C.t3}55`,borderRadius:14,padding:20,cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"};
-                if(projSelected){cardStyle.background=C.accent+"18";cardStyle.border=`1px solid ${C.accent}`;cardStyle.borderTop=`4px solid ${C.accent}`;}
+                  ?{background:C.card,border:`1px solid ${p.color}55`,borderTop:`3px solid ${p.color}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",boxShadow:`0 2px 12px ${p.color}25`}
+                  :{background:C.card,border:`1px solid ${C.accent}33`,borderTop:`3px solid ${C.accent}66`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"};
+                if(projSelected){cardStyle.background=C.accent+"18";cardStyle.border=`1px solid ${C.accent}`;cardStyle.borderTop=`3px solid ${C.accent}`;}
                 return(
                   <div key={p.id} style={cardStyle}
                     onClick={()=>navTo('list',p.id)}
-                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isComplete?"0 6px 20px #00000040":isActive?`0 8px 28px ${p.color}33`:"0 6px 20px #00000040";}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
-                      <div style={{display:"flex",alignItems:"flex-start",gap:10,flex:1,minWidth:0}}>
+                    onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=isActive?`0 6px 22px ${p.color}44`:"0 4px 14px #00000050";}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=isActive?`0 2px 12px ${p.color}25`:"";}}>
+                    {/* Header */}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,gap:6}}>
+                      <div style={{display:"flex",alignItems:"flex-start",gap:8,flex:1,minWidth:0}}>
                         {canEdit&&<div onClick={e=>{e.stopPropagation();toggleProject(p.id);}} title={projSelected?"Deselect":"Select"}
-                          style={{marginTop:2,width:18,height:18,borderRadius:4,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
-                        <h3 style={{margin:0,fontSize:15,fontWeight:800,color:isComplete?C.t2:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
+                          style={{marginTop:2,width:16,height:16,borderRadius:3,border:`2px solid ${projSelected?C.accent:C.t3}`,background:projSelected?C.accent:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:10,cursor:"pointer",transition:"all .15s",flexShrink:0}}>{projSelected?"✓":""}</div>}
+                        <h3 style={{margin:0,fontSize:13,fontWeight:700,color:isComplete?C.t3:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
                       </div>
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                         {canEdit&&(<><IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/><IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/></>)}
                         {isComplete
-                          ?<span style={{background:C.t3+"22",color:C.t2,border:`1px solid ${C.t3}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>✓ Closed</span>
+                          ?<span style={{background:C.t3+"18",color:C.t3,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:600,whiteSpace:"nowrap"}}>✓ Closed</span>
                           :isActive
-                          ?<span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}55`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>⚡ {pv}%</span>
-                          :<span style={{background:C.t3+"18",color:C.t3,border:`1px solid ${C.t3}33`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>⏳ {pv}%</span>}
+                          ?<span style={{background:p.color,color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>⚡ {pv}%</span>
+                          :<span style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}44`,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>⏳ Pending</span>}
                       </div>
                     </div>
-                    <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
-                      {p.client&&<span style={{fontSize:12,color:isComplete?C.t3:C.teal,fontWeight:600}}>🏢 {p.client}</span>}
-                      {p.deadline&&<span style={{fontSize:12,color:isComplete?C.t3:pov>0?C.red:C.t3}}>📅 {p.deadline}</span>}
-                      {pov>0&&!isComplete&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 7px"}}>⚠ {pov} overdue</span>}
+                    {/* Meta */}
+                    <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {p.client&&<span style={{fontSize:11,color:isComplete?C.t3:C.teal,fontWeight:600}}>🏢 {p.client}</span>}
+                      {p.deadline&&<span style={{fontSize:11,color:isComplete?C.t3:pov>0?C.red:C.t3}}>📅 {p.deadline}</span>}
+                      {pov>0&&!isComplete&&<span style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:5,padding:"1px 6px"}}>⚠ {pov}</span>}
                     </div>
-                    <Pb v={pv} color={isComplete?C.t3:isActive?p.color:C.t3} h={isComplete?4:6}/>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:12}}>
-                      {[{l:"Done",v:pd,c:isComplete?C.t3:C.green},{l:"Running",v:pip,c:isComplete?C.t3:C.blue},{l:"Pending",v:ptd,c:C.t3},{l:"Overdue",v:pov,c:isComplete?C.t3:pov>0?C.red:C.t3}].map(s=>(
-                        <div key={s.l} style={{background:s.c+(isComplete?"12":"18"),borderRadius:7,padding:"8px 4px",textAlign:"center"}}>
-                          <div style={{fontSize:18,fontWeight:800,color:isComplete?C.t3:s.c}}>{s.v}</div>
-                          <div style={{fontSize:10,color:C.t3,marginTop:1}}>{s.l}</div>
+                    {/* Progress bar */}
+                    <Pb v={pv} color={isComplete?C.t3:isActive?p.color:C.accent} h={isComplete?3:5}/>
+                    {/* Stats row */}
+                    <div style={{display:"flex",gap:4,marginTop:8,justifyContent:"space-between"}}>
+                      {[{l:"Done",v:pd,c:isComplete?C.t3:C.green},{l:"Run",v:pip,c:isComplete?C.t3:C.blue},{l:"Pend",v:ptd,c:isComplete?C.t3:C.accent},{l:"Over",v:pov,c:isComplete?C.t3:pov>0?C.red:C.t3}].map(s=>(
+                        <div key={s.l} style={{flex:1,textAlign:"center",background:s.c+"15",borderRadius:5,padding:"4px 2px"}}>
+                          <div style={{fontSize:14,fontWeight:800,color:isComplete?C.t3:s.c,lineHeight:1}}>{s.v}</div>
+                          <div style={{fontSize:9,color:C.t3,marginTop:1}}>{s.l}</div>
                         </div>
                       ))}
                     </div>
-                    {assignees.length>0&&(
-                      <div style={{marginTop:10,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-                        {assignees.slice(0,4).map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:3}}><Av name={a} size={18}/><span style={{fontSize:11,color:isComplete?C.t3:C.t2}}>{a}</span></div>)}
-                        {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4}</span>}
+                    {/* Assignees + task count */}
+                    <div style={{marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+                        {assignees.slice(0,4).map(a=><Av key={a} name={a} size={16}/>)}
+                        {assignees.length>4&&<span style={{fontSize:10,color:C.t3}}>+{assignees.length-4}</span>}
                       </div>
-                    )}
-                    <div style={{marginTop:8,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} tasks →</div>
+                      <span style={{fontSize:10,color:C.t3}}>{pt.length} tasks →</span>
+                    </div>
                   </div>
                 );
               })}
@@ -16174,7 +16178,7 @@ export default function App(){
                   {accessibleProjects.length===0?"No projects yet. Click + New Project to create one.":"No projects match your filters."}
                 </div>
               ):(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(320px,100%),1fr))",gap:18}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(260px,100%),1fr))",gap:12}}>
                   {filteredProjs.map(p=>{
                     const pv=prog(p.id),pt=tasks.filter(t=>t.project_id===p.id);
                     const pd=pt.filter(t=>isDone(t.status)).length;
@@ -16185,47 +16189,49 @@ export default function App(){
                     const isComplete=p.status==="Completed"||pv===100;
                     const isActive=!isComplete&&pip>0;
                     const fCardStyle=isComplete
-                      ?{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.t3}`,borderRadius:14,padding:20,cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}
+                      ?{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.t3}55`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",opacity:0.75}
                       :isActive
-                      ?{background:C.card,border:`1px solid ${p.color}44`,borderTop:`4px solid ${p.color}`,borderRadius:14,padding:20,cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}
-                      :{background:C.card,border:`1px dashed ${C.border}`,borderTop:`3px solid ${C.t3}55`,borderRadius:14,padding:20,cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"};
+                      ?{background:C.card,border:`1px solid ${p.color}55`,borderTop:`3px solid ${p.color}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden",boxShadow:`0 2px 12px ${p.color}25`}
+                      :{background:C.card,border:`1px solid ${C.accent}33`,borderTop:`3px solid ${C.accent}66`,borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"};
                     return(
                       <div key={p.id} onClick={()=>navTo('list',p.id)} style={fCardStyle}
-                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isActive?`0 8px 28px ${p.color}33`:"0 6px 20px #00000040";}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
-                          <h3 style={{margin:0,fontSize:15,fontWeight:800,color:isComplete?C.t2:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
-                          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=isActive?`0 6px 22px ${p.color}44`:"0 4px 14px #00000050";}}
+                        onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=isActive?`0 2px 12px ${p.color}25`:"";}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,gap:6}}>
+                          <h3 style={{margin:0,fontSize:13,fontWeight:700,color:isComplete?C.t3:C.t1,lineHeight:1.3,flex:1,minWidth:0}}>{p.name}</h3>
+                          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                             {canEdit&&(<>
                               <IBtn icon="✏️" title="Edit Project" onClick={e=>{e.stopPropagation();sep(p);}} color={C.t2}/>
                               <IBtn icon="🗑" title="Delete Project" onClick={e=>{e.stopPropagation();deleteProject(p.id);}} color={C.red}/>
                             </>)}
                             {isComplete
-                              ?<span style={{background:C.t3+"22",color:C.t2,border:`1px solid ${C.t3}44`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>✓ Closed</span>
+                              ?<span style={{background:C.t3+"18",color:C.t3,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:600,whiteSpace:"nowrap"}}>✓ Closed</span>
                               :isActive
-                              ?<span style={{background:p.color+"22",color:p.color,border:`1px solid ${p.color}55`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>⚡ {pv}%</span>
-                              :<span style={{background:C.t3+"18",color:C.t3,border:`1px solid ${C.t3}33`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>⏳ {pv}%</span>}
+                              ?<span style={{background:p.color,color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>⚡ {pv}%</span>
+                              :<span style={{background:C.accent+"22",color:C.accent,border:`1px solid ${C.accent}44`,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>⏳ Pending</span>}
                           </div>
                         </div>
-                        <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-                          {p.client&&<span style={{fontSize:12,color:isComplete?C.t3:C.teal,fontWeight:600}}>🏢 {p.client}</span>}
-                          {p.deadline&&<span style={{fontSize:12,color:isComplete?C.t3:pov>0?C.red:C.t3}}>📅 {p.deadline}</span>}
-                          {pov>0&&!isComplete&&<span style={{fontSize:11,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:6,padding:"2px 7px"}}>⚠ {pov} overdue</span>}
+                        <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+                          {p.client&&<span style={{fontSize:11,color:isComplete?C.t3:C.teal,fontWeight:600}}>🏢 {p.client}</span>}
+                          {p.deadline&&<span style={{fontSize:11,color:isComplete?C.t3:pov>0?C.red:C.t3}}>📅 {p.deadline}</span>}
+                          {pov>0&&!isComplete&&<span style={{fontSize:10,color:C.red,fontWeight:700,background:C.red+"18",borderRadius:5,padding:"1px 6px"}}>⚠ {pov}</span>}
                         </div>
-                        <Pb v={pv} color={isComplete?C.t3:isActive?p.color:C.t3} h={isComplete?4:6}/>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:12}}>
-                          {[{l:"Done",v:pd,c:isComplete?C.t3:C.green},{l:"Running",v:pip,c:isComplete?C.t3:C.blue},{l:"Pending",v:ptd,c:C.t3},{l:"Overdue",v:pov,c:isComplete?C.t3:pov>0?C.red:C.t3}].map(s=>(
-                            <div key={s.l} style={{background:s.c+(isComplete?"12":"18"),borderRadius:7,padding:"8px 4px",textAlign:"center"}}>
-                              <div style={{fontSize:18,fontWeight:800,color:isComplete?C.t3:s.c}}>{s.v}</div>
-                              <div style={{fontSize:10,color:C.t3,marginTop:1}}>{s.l}</div>
+                        <Pb v={pv} color={isComplete?C.t3:isActive?p.color:C.accent} h={isComplete?3:5}/>
+                        <div style={{display:"flex",gap:4,marginTop:8,justifyContent:"space-between"}}>
+                          {[{l:"Done",v:pd,c:isComplete?C.t3:C.green},{l:"Run",v:pip,c:isComplete?C.t3:C.blue},{l:"Pend",v:ptd,c:isComplete?C.t3:C.accent},{l:"Over",v:pov,c:isComplete?C.t3:pov>0?C.red:C.t3}].map(s=>(
+                            <div key={s.l} style={{flex:1,textAlign:"center",background:s.c+"15",borderRadius:5,padding:"4px 2px"}}>
+                              <div style={{fontSize:14,fontWeight:800,color:isComplete?C.t3:s.c,lineHeight:1}}>{s.v}</div>
+                              <div style={{fontSize:9,color:C.t3,marginTop:1}}>{s.l}</div>
                             </div>
                           ))}
                         </div>
-                        {assignees.length>0&&<div style={{marginTop:10,display:"flex",gap:5,flexWrap:"wrap"}}>
-                          {assignees.slice(0,4).map(a=><span key={a} style={{fontSize:11,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 7px",color:isComplete?C.t3:C.t2}}>👤 {a}</span>)}
-                          {assignees.length>4&&<span style={{fontSize:11,color:C.t3}}>+{assignees.length-4} more</span>}
-                        </div>}
-                        <div style={{marginTop:8,fontSize:11,color:C.t3,textAlign:"right"}}>{pt.length} tasks →</div>
+                        <div style={{marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                          <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+                            {assignees.slice(0,4).map(a=><Av key={a} name={a} size={16}/>)}
+                            {assignees.length>4&&<span style={{fontSize:10,color:C.t3}}>+{assignees.length-4}</span>}
+                          </div>
+                          <span style={{fontSize:10,color:C.t3}}>{pt.length} tasks →</span>
+                        </div>
                       </div>
                     );
                   })}
