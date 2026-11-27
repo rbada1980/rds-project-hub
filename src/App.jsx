@@ -13866,12 +13866,10 @@ export default function App(){
   const isTeamLeader=!isAdmin&&!isManager&&me?.role==="Team Leader";
   const isFinance=!isAdmin&&!isManager&&!isTeamLeader&&!isClient&&me?.role==="HR & Finance";
   const canEdit=isAdmin||isManager||isTeamLeader;
-  // Daily brief popup — show up to 2× per day per user (not for clients)
+  // Daily brief popup — show every page load (not for clients)
   useEffect(()=>{
     if(!me?.username||isClient)return;
-    const key=`rds_brief_${me.username}_${today}`;
-    const count=parseInt(localStorage.getItem(key)||"0");
-    if(count<2){localStorage.setItem(key,String(count+1));setDailyPopup(true);}
+    setDailyPopup(true);
   },[me?.username]);
   // Inject responsive CSS once
   useEffect(()=>{
@@ -16517,11 +16515,11 @@ export default function App(){
                 <button onClick={()=>dismiss(ctaPrimary.view)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:accentColor,border:"none",color:"#fff"}}>{ctaPrimary.label}</button>
                 <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>{ctaSecondary.label}</button>
               </div>
-              <div style={{marginTop:10,fontSize:9,color:C.t3,textAlign:"center",opacity:.7}}>Tap outside to go to {ctaPrimary.label} - shows up to 2x per day</div>
+              <div style={{marginTop:10,fontSize:9,color:C.t3,textAlign:"center",opacity:.7}}>Tap outside to go to {ctaPrimary.label}</div>
             </div>
             {/* Tile detail popup */}
             {briefTile&&briefTile.list&&briefTile.list.length>0&&(
-              <div onClick={()=>setBriefTile(null)} style={{position:"fixed",inset:0,zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.55)",backdropFilter:"blur(4px)"}}>
+              <div onClick={e=>{e.stopPropagation();setBriefTile(null);}} style={{position:"fixed",inset:0,zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.55)",backdropFilter:"blur(4px)"}}>
                 <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${briefTile.color}55`,borderRadius:16,width:"min(440px,calc(100vw - 24px))",maxHeight:"72vh",display:"flex",flexDirection:"column",boxShadow:`0 28px 70px #000000cc, 0 0 0 1px ${briefTile.color}22`,animation:"rds-popup-in .22s cubic-bezier(.34,1.56,.64,1)"}}>
                   {/* Header */}
                   <div style={{padding:"13px 16px",background:briefTile.color+"18",borderBottom:`1px solid ${briefTile.color}33`,display:"flex",justifyContent:"space-between",alignItems:"center",borderRadius:"16px 16px 0 0",flexShrink:0}}>
@@ -16532,13 +16530,13 @@ export default function App(){
                         <div style={{fontSize:10,color:C.t3}}>{briefTile.list.length} task{briefTile.list.length!==1?"s":""} · click any to open</div>
                       </div>
                     </div>
-                    <button onClick={()=>setBriefTile(null)} style={{background:briefTile.color+"18",border:`1px solid ${briefTile.color}44`,color:briefTile.color,fontSize:13,cursor:"pointer",lineHeight:1,padding:"5px 9px",borderRadius:8,fontFamily:"inherit",fontWeight:700}}>✕</button>
+                    <button onClick={e=>{e.stopPropagation();setBriefTile(null);}} style={{background:briefTile.color+"18",border:`1px solid ${briefTile.color}44`,color:briefTile.color,fontSize:13,cursor:"pointer",lineHeight:1,padding:"5px 9px",borderRadius:8,fontFamily:"inherit",fontWeight:700}}>✕</button>
                   </div>
                   {/* Task list */}
                   <div style={{overflowY:"auto",flex:1}}>
                     {briefTile.list.map((t,i)=>(
                       <div key={t.id||i}
-                        onClick={()=>{setBriefTile(null);setDailyPopup(false);set(t);stm(true);}}
+                        onClick={e=>{e.stopPropagation();setBriefTile(null);setDailyPopup(false);set(t);stm(true);}}
                         style={{padding:"10px 16px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",transition:"background .1s",display:"flex",flexDirection:"column",gap:4}}
                         onMouseEnter={e=>e.currentTarget.style.background=briefTile.color+"12"}
                         onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -16554,7 +16552,7 @@ export default function App(){
                   </div>
                   {/* Footer */}
                   <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0,textAlign:"center"}}>
-                    <button onClick={()=>setBriefTile(null)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 20px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Close</button>
+                    <button onClick={e=>{e.stopPropagation();setBriefTile(null);}} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 20px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Close</button>
                   </div>
                 </div>
               </div>
