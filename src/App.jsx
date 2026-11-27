@@ -14974,6 +14974,12 @@ export default function App(){
     try{
       // Log full snapshot (project + tasks) to audit_logs for recycle bin restore
       supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"project",entity_id:id,entity_label:delProj?.name||id,action:"delete",field:null,old_value:JSON.stringify(delProj||{}),new_value:JSON.stringify(delTasks||[]),project_id:id}).then(()=>{});
+      // Delete child records first to avoid FK constraint errors
+      if(delTasks.length>0){
+        const tids=delTasks.map(t=>t.id);
+        await supabase.from("task_revisions").delete().in("task_id",tids);
+        await supabase.from("task_files").delete().in("task_id",tids);
+      }
       const {error:taskErr}=await supabase.from("tasks").delete().eq("project_id",id);
       if(taskErr){showToast("Failed to delete tasks: "+taskErr.message,false);return;}
       const {error:projErr}=await supabase.from("projects").delete().eq("id",id);
