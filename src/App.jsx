@@ -4268,6 +4268,24 @@ function urlToState(path,projs=[]){
   if(cm)return{view:'clientprojects',pid:null,client:decodeURIComponent(cm[1])};
   return{view:'dashboard',pid:null,client:null};
 }
+// ── View registry: add ANY new page here → breadcrumbs work automatically ────
+// key = view name, value = { label, href }
+// Special views (list, clientprojects, dashboard+task) are handled separately below.
+const VIEW_CRUMB_REGISTRY={
+  kanban:        {label:'🗂 Kanban',            href:'/kanban'},
+  analytics:     {label:'📊 Analytics',          href:'/analytics'},
+  workflows:     {label:'⚙️ Workflows',           href:'/workflows'},
+  backup:        {label:'🛡 Backup & Recovery',   href:'/backup'},
+  submissions:   {label:'📬 Submission List',     href:'/submissions'},
+  announcements: {label:'📢 Announcements',       href:'/announcements'},
+  clientfeedback:{label:'🏢 Client Feedback',     href:'/clientfeedback'},
+  timings:       {label:'⏱ Timings',              href:'/timings'},
+  auditlog:      {label:'🔎 Audit Log',            href:'/auditlog'},
+  recycle:       {label:'🗑️ Recycle Bin',          href:'/recycle'},
+  projects:      {label:'📁 Projects',             href:'/projects'},
+  billing:       {label:'💰 Billing',              href:'/billing'},
+  // ↑ ADD NEW PAGES HERE — breadcrumbs will appear automatically
+};
 // ── Breadcrumb ───────────────────────────────────────────────────────────────
 function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard,onTasks,onProject}){
   const crumbs=[];
@@ -4282,35 +4300,15 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
       if(p)crumbs.push({label:p.name,color:p.color,onClick:hasTask?onProject:null,href:tasksHref,active:!hasTask});
     }
     if(hasTask)crumbs.push({label:`✏️ ${activeTask.title}`,active:true});
-  }else if(view==='kanban'){
-    crumbs.push({label:'🗂 Kanban',href:'/kanban',active:true});
-  }else if(view==='analytics'){
-    crumbs.push({label:'📊 Analytics',href:'/analytics',active:true});
-  }else if(view==='workflows'){
-    crumbs.push({label:'⚙️ Workflows',href:'/workflows',active:true});
-  }else if(view==='backup'){
-    crumbs.push({label:'🛡 Backup & Recovery',href:'/backup',active:true});
-  }else if(view==='submissions'){
-    crumbs.push({label:'📬 Submission List',href:'/submissions',active:true});
-  }else if(view==='announcements'){
-    crumbs.push({label:'📢 Announcements',href:'/announcements',active:true});
-  }else if(view==='clientfeedback'){
-    crumbs.push({label:'🏢 Client Feedback',href:'/clientfeedback',active:true});
-  }else if(view==='timings'){
-    crumbs.push({label:'⏱ Timings',href:'/timings',active:true});
-  }else if(view==='auditlog'){
-    crumbs.push({label:'🔎 Audit Log',href:'/auditlog',active:true});
-  }else if(view==='recycle'){
-    crumbs.push({label:'🗑️ Recycle Bin',href:'/recycle',active:true});
-  }else if(view==='projects'){
-    crumbs.push({label:'📁 Projects',href:'/projects',active:true});
-  }else if(view==='billing'){
-    crumbs.push({label:'💰 Billing',href:'/billing',active:true});
   }else if(view==='clientprojects'&&activeClient){
     crumbs.push({label:'🏢 Clients',onClick:onDashboard,href:'/',active:false});
     crumbs.push({label:activeClient,href:`/clients/${encodeURIComponent(activeClient)}`,active:true});
   }else if(view==='dashboard'&&activeTask){
     crumbs.push({label:`✏️ ${activeTask.title}`,active:true});
+  }else if(VIEW_CRUMB_REGISTRY[view]){
+    // ✅ All registered pages get breadcrumbs automatically
+    const vc=VIEW_CRUMB_REGISTRY[view];
+    crumbs.push({label:vc.label,href:vc.href,active:true});
   }
   if(crumbs.length<=1)return null;
   const items=[];
