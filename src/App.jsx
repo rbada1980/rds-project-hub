@@ -56,8 +56,8 @@ const LIGHT_C={
 };
 const C=(()=>{try{return localStorage.getItem("rds_theme")==="light"?{...LIGHT_C}:{...DARK_C};}catch{return{...DARK_C};}})();
 const ROLES=["Rebar","Tekla","Precast","Team Leader","Manager","Admin","Client","HR & Finance"];
-const ALL_STATUSES=["Not Yet Started","In Progress","In Review","Completed","On Hold"];
-let STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"In Review":"#f59e0b","Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
+const ALL_STATUSES=["Not Yet Started","In Progress","Completed","On Hold"];
+let STATUS_CLR={"To Do":C.t3,"Not Yet Started":C.t3,"In Progress":C.blue,"Done":C.green,"To Be Started":C.t3,"Completed":C.green,"On Hold":C.red};
 let PRI_CLR={High:C.red,Medium:C.yellow,Low:C.green};
 const PROJECT_COLORS=[C.teal,C.blue,C.purple,C.accent,C.green,"#ec4899","#f59e0b"];
 const getStatusColor=s=>STATUS_CLR[s]||C.t3;
@@ -391,7 +391,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
   function computeAutoStatus(ds,cs){
     const dDone=isDone(ds);const cDone=isDone(cs);
     if(dDone&&cDone)return"Completed";          // Both done → Complete
-    if(dDone&&!cDone)return"In Review";          // Detailer done, checker pending → In Review
+    if(dDone&&!cDone)return"In Progress";        // Detailer done, checker pending → In Progress
     if(ds==="In Progress")return"In Progress";   // Detailer working
     if(!ds||ds==="Not Yet Started"||ds==="To Be Started")return"Not Yet Started";
     return"In Progress";
@@ -567,12 +567,10 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
         const dDone=isDone(f.detailer_status);const cDone=isDone(f.checker_status);
         const dIP=f.detailer_status==="In Progress";
         const cIP=f.checker_status==="In Progress";
-        const inReview=dDone&&!cDone;
         const steps=[
           {icon:"👤",label:"Assigned",sublabel:f.assignee||"—",done:!!f.assignee,active:!!f.assignee&&!dIP&&!dDone,color:"#3b82f6"},
           {icon:"✏️",label:"Detailing",sublabel:f.detailer||(f.assignee?"Waiting…":"—"),done:dDone,active:dIP,color:"#14b8a6"},
-          {icon:"🔍",label:"In Review",sublabel:dDone&&!cDone?"Awaiting QC":dDone&&cDone?"QC Done":"—",done:dDone,active:inReview,color:"#f59e0b"},
-          {icon:"✅",label:"QC Check",sublabel:f.checker||(dDone?"Waiting…":"—"),done:cDone,active:cIP||inReview,color:"#8b5cf6"},
+          {icon:"✅",label:"QC Check",sublabel:f.checker||(dDone?"Waiting…":"—"),done:cDone,active:cIP||(dDone&&!cDone),color:"#8b5cf6"},
           {icon:"🎉",label:"Complete",sublabel:cDone?"All done!":"Pending",done:cDone,active:false,color:"#22c55e"},
         ];
         return(
@@ -591,7 +589,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
                 </div>
               ))}
             </div>
-            {inReview&&<div style={{marginTop:10,fontSize:11,background:"#f59e0b18",border:"1px solid #f59e0b44",borderRadius:7,padding:"7px 12px",color:"#f59e0b",fontWeight:600}}>⚡ Detailing complete — task moved to <strong>In Review</strong>. Checker can now begin QC.</div>}
+            {dDone&&!cDone&&<div style={{marginTop:10,fontSize:11,background:"#8b5cf618",border:"1px solid #8b5cf644",borderRadius:7,padding:"7px 12px",color:"#8b5cf6",fontWeight:600}}>⚡ Detailing complete — awaiting QC Check.</div>}
           </div>
         );
       })()}
@@ -14954,7 +14952,7 @@ export default function App(){
       showToast("Portal account created ✓");
     }
   }
-  const kanbanCols=["Not Yet Started","In Progress","In Review","Completed","On Hold"];
+  const kanbanCols=["Not Yet Started","In Progress","Completed","On Hold"];
   const navs=isClient?[["dashboard","🏠","Dashboard"],["list","✅","Task List"],["submissions","📬","Submission List"],["billing","💰","Invoices"]]:isAdmin?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["workflows","⚙️","Workflows"],["backup","🛡","Backup & Recovery"],["auditlog","🔎","Audit Log"],["recycle","🗑️","Recycle Bin"],["timings","⏱","Timings"],["billing","💰","Billing"]]:isManager?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["auditlog","🔎","Audit Log"],["recycle","🗑️","Recycle Bin"],["timings","⏱","Timings"]]:isTeamLeader?[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["projects","📁","Projects"],["clientfeedback","🏢","Client Feedback"],["analytics","📊","Analytics"],["submissions","📬","Submission List"],["timings","⏱","Timings"]]:isFinance?[["dashboard","🏠","Dashboard"],["billing","💰","Billing"],["timings","⏱","Timings"]]:[["dashboard","🏠","Dashboard"],["kanban","🗂️","Kanban"],["list","✅","Task List"],["submissions","📬","Submission List"],["timings","⏱","Timings"]];
   const sel=(active)=>({display:"flex",alignItems:"center",gap:10,width:"100%",background:active?C.sideActive:"transparent",border:active?`1px solid ${C.sideBorder}`:"1px solid transparent",borderRadius:8,padding:"9px 12px",cursor:"pointer",color:active?C.sideT1:C.sideT2,fontWeight:active?700:500,fontSize:13,textAlign:"left",marginBottom:2,fontFamily:"inherit",transition:"all .15s"});
   return(
