@@ -5330,7 +5330,7 @@ function EmailDigestCard(){
 function EveningDigestCard(){
   const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const [enabled,setEnabled]=useState(true);
-  const [sched,setSched]=useState({days:"1,2,3,4,5,6",time:"10:00"});
+  const [sched,setSched]=useState({days:"1,2,3,4,5,6",time:"15:45"});
   const [loading,setLoading]=useState(true);
   const [triggering,setTriggering]=useState(false);
   const [msg,setMsg]=useState(null);
@@ -5347,7 +5347,7 @@ function EveningDigestCard(){
       if(Array.isArray(data)){
         const map={};data.forEach(r=>{map[r.key]=r.value;});
         setEnabled(map["daily_digest_evening_enabled"]!=="false");
-        setSched({days:map["daily_digest_evening_days"]||"1,2,3,4,5,6",time:map["daily_digest_evening_time"]||"10:00"});
+        setSched({days:map["daily_digest_evening_days"]||"1,2,3,4,5,6",time:map["daily_digest_evening_time"]||"15:45"});
       }
       setLoading(false);
     })();
@@ -5410,7 +5410,7 @@ function EveningDigestCard(){
             );})}
           </div>
           <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>TIME (IST)</div>
-          <input type="time" value={editDraft.time||"10:00"} onChange={e=>setEditDraft(p=>({...p,time:e.target.value}))} style={{...inp2,marginBottom:14}}/>
+          <input type="time" value={editDraft.time||"15:45"} onChange={e=>setEditDraft(p=>({...p,time:e.target.value}))} style={{...inp2,marginBottom:14}}/>
           <div style={{display:"flex",gap:8}}>
             <button onClick={saveEdit} disabled={saving2} style={{...GBtn,background:C.accent,color:"#fff",borderColor:C.accent,flex:1,padding:"8px 0"}}>{saving2?"Saving...":"Save Schedule"}</button>
             <button onClick={()=>setEditing(false)} style={GBtn}>Cancel</button>
