@@ -16564,7 +16564,7 @@ export default function App(){
         const taskNavIdx=editTask?taskNavList.findIndex(t=>t.id===editTask.id):-1;
         const canPrevTask=taskNavIdx>0;
         const canNextTask=taskNavIdx>=0&&taskNavIdx<taskNavList.length-1;
-        const closeTask=()=>{stm(false);set(null);stnl([]);if(dailyPopup){setDailyPopup(false);setBriefTile(null);}};
+        const closeTask=()=>{stm(false);set(null);stnl([]);setBriefTile(null);};
         return(
           <Modal title={editTask?(canEdit?"Edit Task":"Update Task Status"):"New Task"} onClose={closeTask} wide={canEdit}>
             {editTask&&(
