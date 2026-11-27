@@ -16667,7 +16667,7 @@ export default function App(){
                       <span style={{fontSize:20}}>{briefTile.icon}</span>
                       <div>
                         <div style={{fontSize:13,fontWeight:800,color:briefTile.color}}>{briefTile.label}</div>
-                        <div style={{fontSize:10,color:C.t3}}>{briefTile.list.length} task{briefTile.list.length!==1?"s":""} · click any to open</div>
+                        <div style={{fontSize:10,color:C.t3}}>{briefTile.list.length} task{briefTile.list.length!==1?"s":""}</div>
                       </div>
                     </div>
                     <button onClick={e=>{e.stopPropagation();setBriefTile(null);}} style={{background:briefTile.color+"18",border:`1px solid ${briefTile.color}44`,color:briefTile.color,fontSize:13,cursor:"pointer",lineHeight:1,padding:"5px 9px",borderRadius:8,fontFamily:"inherit",fontWeight:700}}>✕</button>
@@ -16676,16 +16676,17 @@ export default function App(){
                   <div style={{overflowY:"auto",flex:1}}>
                     {briefTile.list.map((t,i)=>(
                       <div key={t.id||i}
-                        onClick={e=>{e.stopPropagation();set(t);stm(true);}}
-                        style={{padding:"10px 16px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",transition:"background .1s",display:"flex",flexDirection:"column",gap:4}}
-                        onMouseEnter={e=>e.currentTarget.style.background=briefTile.color+"12"}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        style={{padding:"10px 16px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",display:"flex",flexDirection:"column",gap:4}}>
                         <div style={{fontSize:13,color:C.t1,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title||"Untitled"}</div>
                         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontSize:10,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:150}}>{projName(t.project_id)}</span>
-                          {t.assignee&&<span style={{fontSize:10,color:C.t3}}>· {t.assignee}</span>}
-                          {t.due_date&&<span style={{fontSize:10,color:t.due_date<today&&!isDone(t.status)?"#ef4444":C.t3}}>· {t.due_date}</span>}
+                          <span style={{fontSize:10,color:C.teal,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>🏢 {t.client||projName(t.project_id)||"-"}</span>
+                          {(t.client_sub_date||t.due_date)&&<span style={{fontSize:10,color:C.t3}}>· {t.client_sub_date||t.due_date}</span>}
                           <span style={{fontSize:9,fontWeight:700,background:(STATUS_CLR[t.status]||C.t3)+"22",color:STATUS_CLR[t.status]||C.t3,borderRadius:4,padding:"1px 6px"}}>{t.status}</span>
+                        </div>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                          {t.assignee&&<span style={{fontSize:10,color:C.t2}}>👤 <b>Assignee:</b> {t.assignee}</span>}
+                          {t.detailer&&<span style={{fontSize:10,color:C.t2}}>✏️ <b>Detailer:</b> {t.detailer}</span>}
+                          {t.checker&&<span style={{fontSize:10,color:C.t2}}>✓ <b>Checker:</b> {t.checker}</span>}
                         </div>
                       </div>
                     ))}
