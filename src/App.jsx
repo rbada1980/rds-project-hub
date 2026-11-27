@@ -16679,7 +16679,8 @@ export default function App(){
                         style={{padding:"10px 16px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",display:"flex",flexDirection:"column",gap:4}}>
                         <div style={{fontSize:13,color:C.t1,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title||"Untitled"}</div>
                         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontSize:10,color:C.teal,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>🏢 {t.client||projName(t.project_id)||"-"}</span>
+                          {t.client&&<span style={{fontSize:10,color:C.teal,fontWeight:600}}>🏢 {t.client}</span>}
+                          {t.project_id&&<span style={{fontSize:10,color:C.accent,fontWeight:600}}>📁 {projName(t.project_id)}</span>}
                           {(t.client_sub_date||t.due_date)&&<span style={{fontSize:10,color:C.t3}}>· {t.client_sub_date||t.due_date}</span>}
                           <span style={{fontSize:9,fontWeight:700,background:(STATUS_CLR[t.status]||C.t3)+"22",color:STATUS_CLR[t.status]||C.t3,borderRadius:4,padding:"1px 6px"}}>{t.status}</span>
                         </div>
