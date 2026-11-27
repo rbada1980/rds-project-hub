@@ -5288,9 +5288,9 @@ function EmailDigestCard(){
   return(
     <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:20}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-        <span style={{fontSize:20}}>{"\ud83d\udce7"}</span>
+        <span style={{fontSize:20}}>{"\u2600\ufe0f"}</span>
         <div style={{flex:1}}>
-          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Daily Submission Email</div>
+          <div style={{fontSize:15,fontWeight:800,color:C.t1}}>Morning Submission Email</div>
           <div style={{fontSize:11,color:C.t3,marginTop:2}}>{"Sent to Admin, Manager, Team Leaders"+(loading?"":" - "+schedLabel())}</div>
         </div>
         <div onClick={()=>toggle(!enabled)} style={{width:44,height:24,borderRadius:12,background:enabled?C.green:C.border,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
