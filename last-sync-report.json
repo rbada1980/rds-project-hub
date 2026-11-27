@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-27T09:10:35.322Z",
-  "ist_time": "2026-11-27 14:40:35 IST",
-  "duration_sec": 5.9,
-  "total_synced": 3399,
-  "total_pushed": 1031,
-  "total_pulled": 2368,
+  "timestamp": "2026-11-27T09:14:35.357Z",
+  "ist_time": "2026-11-27 14:44:35 IST",
+  "duration_sec": 10.6,
+  "total_synced": 3605,
+  "total_pushed": 1234,
+  "total_pulled": 2371,
   "total_failed": 5,
   "status": "partial",
   "tables": [
@@ -31,10 +31,10 @@
     },
     {
       "table": "tasks",
-      "synced": 883,
+      "synced": 1086,
       "failed": 0,
-      "total": 1083,
-      "pulled": 1083
+      "total": 1086,
+      "pulled": 1086
     },
     {
       "table": "task_files",

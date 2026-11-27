@@ -4268,36 +4268,37 @@ function urlToState(path,projs=[]){
 function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard,onTasks,onProject}){
   const crumbs=[];
   const onDash=view!=='dashboard'?onDashboard:null;
-  crumbs.push({label:'🏠 Dashboard',onClick:onDash,active:view==='dashboard'});
+  crumbs.push({label:'🏠 Dashboard',onClick:onDash,href:'/',active:view==='dashboard'});
   if(view==='list'){
     const hasTask=!!(activeTask);
-    crumbs.push({label:'📋 Tasks',onClick:activePid?onTasks:null,active:!activePid&&!hasTask});
+    const tasksHref=activePid?(projects.find(pr=>pr.id===activePid)?`/projects/${slugify(projects.find(pr=>pr.id===activePid).name)}`:`/projects/${activePid}`):`/tasks`;
+    crumbs.push({label:'📋 Tasks',onClick:activePid?onTasks:null,href:'/tasks',active:!activePid&&!hasTask});
     if(activePid){
       const p=projects.find(pr=>pr.id===activePid);
-      if(p)crumbs.push({label:p.name,color:p.color,onClick:hasTask?onProject:null,active:!hasTask});
+      if(p)crumbs.push({label:p.name,color:p.color,onClick:hasTask?onProject:null,href:tasksHref,active:!hasTask});
     }
     if(hasTask)crumbs.push({label:`✏️ ${activeTask.title}`,active:true});
   }else if(view==='kanban'){
-    crumbs.push({label:'🗂 Kanban',active:true});
+    crumbs.push({label:'🗂 Kanban',href:'/kanban',active:true});
   }else if(view==='analytics'){
-    crumbs.push({label:'📊 Analytics',active:true});
+    crumbs.push({label:'📊 Analytics',href:'/analytics',active:true});
   }else if(view==='workflows'){
-    crumbs.push({label:'⚙️ Workflows',active:true});
+    crumbs.push({label:'⚙️ Workflows',href:'/workflows',active:true});
   }else if(view==='backup'){
-    crumbs.push({label:'🛡 Backup & Recovery',active:true});
+    crumbs.push({label:'🛡 Backup & Recovery',href:'/backup',active:true});
   }else if(view==='submissions'){
-    crumbs.push({label:'📬 Submission List',active:true});
+    crumbs.push({label:'📬 Submission List',href:'/submissions',active:true});
   }else if(view==='announcements'){
-    crumbs.push({label:'📢 Announcements',active:true});
+    crumbs.push({label:'📢 Announcements',href:'/announcements',active:true});
   }else if(view==='clientfeedback'){
-    crumbs.push({label:'🏢 Client Feedback',active:true});
+    crumbs.push({label:'🏢 Client Feedback',href:'/clientfeedback',active:true});
   }else if(view==='timings'){
-    crumbs.push({label:'⏱ Timings',active:true});
+    crumbs.push({label:'⏱ Timings',href:'/timings',active:true});
   }else if(view==='auditlog'){
-    crumbs.push({label:'🔎 Audit Log',active:true});
+    crumbs.push({label:'🔎 Audit Log',href:'/auditlog',active:true});
   }else if(view==='clientprojects'&&activeClient){
-    crumbs.push({label:'🏢 Clients',onClick:onDashboard,active:false});
-    crumbs.push({label:activeClient,active:true});
+    crumbs.push({label:'🏢 Clients',onClick:onDashboard,href:'/',active:false});
+    crumbs.push({label:activeClient,href:`/clients/${encodeURIComponent(activeClient)}`,active:true});
   }else if(view==='dashboard'&&activeTask){
     crumbs.push({label:`✏️ ${activeTask.title}`,active:true});
   }
@@ -4305,8 +4306,8 @@ function Breadcrumb({view,activePid,activeClient,projects,activeTask,onDashboard
   const items=[];
   crumbs.forEach((c,i)=>{
     if(i>0)items.push(<span key={`s${i}`} style={{color:C.t3,fontSize:11,fontWeight:700,padding:'0 2px'}}>›</span>);
-    if(c.onClick)
-      items.push(<button key={`c${i}`} onClick={c.onClick} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:13,padding:0,fontFamily:'inherit',fontWeight:600,textDecoration:'underline',textUnderlineOffset:2}}>{c.label}</button>);
+    if(c.onClick||c.href)
+      items.push(<a key={`c${i}`} href={c.href||'/'} onClick={e=>{e.preventDefault();if(c.onClick)c.onClick();}} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:13,padding:0,fontFamily:'inherit',fontWeight:600,textDecoration:'underline',textUnderlineOffset:2}}>{c.label}</a>);
     else
       items.push(<span key={`c${i}`} style={{color:c.color||C.t1,fontWeight:c.active?700:500}}>{c.label}</span>);
   });
@@ -15830,9 +15831,10 @@ export default function App(){
                   const pov=pt.filter(t=>t.due_date&&t.due_date<today&&!isDone(t.status)&&t.status!=="On Hold").length;
                   const isCmp=p.status==="Completed"||pv===100;
                   const isAct=!isCmp&&pip>0;
+                  const mobProjHref=stateToUrl('list',p.id,null,projects);
                   return(
-                    <div key={p.id} onClick={()=>navTo('list',p.id)}
-                      style={{background:isCmp?"#052e1660":C.card,border:`1px solid ${isCmp?"#22c55e33":pov>0?C.red+"44":isAct?C.blue+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${isCmp?"#22c55e88":isAct?C.blue:p.color}`,opacity:isCmp?0.72:1}}>
+                    <a key={p.id} href={mobProjHref} onClick={e=>{e.preventDefault();navTo('list',p.id);}}
+                      style={{background:isCmp?"#052e1660":C.card,border:`1px solid ${isCmp?"#22c55e33":pov>0?C.red+"44":isAct?C.blue+"44":C.border}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",borderLeft:`4px solid ${isCmp?"#22c55e88":isAct?C.blue:p.color}`,opacity:isCmp?0.72:1,textDecoration:"none",display:"block"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
                         <span style={{fontSize:13,fontWeight:800,color:isCmp?"#4ade80":C.t1,flex:1,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
                         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
@@ -15851,7 +15853,7 @@ export default function App(){
                         {!isCmp&&isAct&&<span style={{fontSize:10,color:C.blue,fontWeight:700,background:C.blue+"18",borderRadius:5,padding:"1px 6px"}}>⚡ Active</span>}
                         <span style={{fontSize:11,color:C.t3,marginLeft:"auto"}}>{pt.length} tasks →</span>
                       </div>
-                    </div>
+                    </a>
                   );
                 })}
               </div>
@@ -16083,7 +16085,7 @@ export default function App(){
           return(
             <div>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <button onClick={()=>navTo('dashboard')} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6}}>← Back</button>
+                <a href="/" onClick={e=>{e.preventDefault();navTo('dashboard');}} style={{...GBtn,padding:"7px 14px",fontSize:13,display:"flex",alignItems:"center",gap:6,textDecoration:"none"}}>← Back</a>
                 <span style={{color:C.t3,fontSize:13}}>{cpProjects.length} project(s) · {cpTasks.length} tasks</span>
               </div>
               <ClientProjectSearch
@@ -16788,12 +16790,12 @@ export default function App(){
     {showMore&&<div style={{position:"fixed",inset:0,zIndex:210,background:"#00000055"}} onClick={()=>setShowMore(false)}>
       <div style={{position:"absolute",bottom:"env(safe-area-inset-bottom,60px)",marginBottom:60,left:0,right:0,background:C.card,borderRadius:"16px 16px 0 0",borderTop:`1px solid ${C.border}`,padding:"12px 8px 8px"}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:4}}>
-          {navs.slice(4).map(([k,ico,lbl])=>{const active=view===k;return(
-            <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);setShowMore(false);}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
+          {navs.slice(4).map(([k,ico,lbl])=>{const active=view===k;const moreHref=stateToUrl(k,k==='list'?activePid:null,null,projects);return(
+            <a key={k} href={moreHref} onClick={e=>{e.preventDefault();navTo(k,k==='list'?activePid:null);setSO(false);setShowMore(false);}}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:active?C.accent+"18":"none",border:`1px solid ${active?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",position:"relative",color:active?C.accent:C.t2,fontFamily:"inherit",minWidth:80,textDecoration:"none"}}>
               <span style={{fontSize:24,lineHeight:1}}>{ico}</span>
               <span style={{fontSize:10,fontWeight:active?700:500,whiteSpace:"nowrap"}}>{lbl}</span>
-            </button>
+            </a>
           );})}
           <button onClick={()=>{sMenu(v=>!v);setShowMore(false);}}
             style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:uMenu?C.accent+"18":"none",border:`1px solid ${uMenu?C.accent:C.border}`,borderRadius:12,cursor:"pointer",padding:"10px 16px",color:uMenu?C.accent:C.t2,fontFamily:"inherit",minWidth:80}}>
@@ -16804,14 +16806,13 @@ export default function App(){
       </div>
     </div>}
     <nav className="rds-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:200,paddingBottom:"env(safe-area-inset-bottom,0px)",alignItems:"stretch",display:"flex"}}>
-      {navs.slice(0,4).map(([k,ico,lbl])=>{const active=view===k;return(
-        <button key={k} onClick={()=>{navTo(k,k==='list'?activePid:null);setSO(false);setShowMore(false);}}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
+      {navs.slice(0,4).map(([k,ico,lbl])=>{const active=view===k;const botHref=stateToUrl(k,k==='list'?activePid:null,null,projects);return(
+        <a key={k} href={botHref} onClick={e=>{e.preventDefault();navTo(k,k==='list'?activePid:null);setSO(false);setShowMore(false);}}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:active?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s",textDecoration:"none"}}>
           {active&&<span style={{position:"absolute",top:0,left:"25%",right:"25%",height:2,background:C.accent,borderRadius:"0 0 3px 3px"}}/>}
           <span style={{fontSize:21,lineHeight:1}}>{ico}</span>
           <span style={{fontSize:9,fontWeight:active?700:500,letterSpacing:".03em",whiteSpace:"nowrap"}}>{lbl}</span>
-          
-        </button>
+        </a>
       );})}
       {navs.length>4&&<button onClick={()=>setShowMore(v=>!v)}
         style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"8px 4px",position:"relative",color:showMore?C.accent:C.t3,fontFamily:"inherit",transition:"color .15s"}}>
