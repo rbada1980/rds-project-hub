@@ -14972,14 +14972,19 @@ export default function App(){
     const delProj=accessibleProjects.find(p=>p.id===id);
     const delTasks=tasks.filter(t=>t.project_id===id);
     try{
+      // Fetch ALL task IDs from DB (not just local state — year filter may hide some)
+      const {data:allTaskRows}=await supabase.from("tasks").select("id").eq("project_id",id);
+      const allTids=(allTaskRows||[]).map(t=>t.id);
       // Log full snapshot (project + tasks) to audit_logs for recycle bin restore
       supabase.from("audit_logs").insert({actor_id:me?.id||null,actor_name:me?.name||me?.username||"?",actor_role:me?.role||"",entity_type:"project",entity_id:id,entity_label:delProj?.name||id,action:"delete",field:null,old_value:JSON.stringify(delProj||{}),new_value:JSON.stringify(delTasks||[]),project_id:id}).then(()=>{});
-      // Delete child records first to avoid FK constraint errors
-      if(delTasks.length>0){
-        const tids=delTasks.map(t=>t.id);
-        await supabase.from("task_revisions").delete().in("task_id",tids);
-        await supabase.from("task_files").delete().in("task_id",tids);
+      // Delete all child records first (use DB task ids to avoid missing tasks hidden by year filter)
+      if(allTids.length>0){
+        await supabase.from("task_revisions").delete().in("task_id",allTids);
+        await supabase.from("task_files").delete().in("task_id",allTids);
+        await supabase.from("task_comments").delete().in("task_id",allTids);
       }
+      // Also delete task_files that reference project_id directly (belt-and-suspenders)
+      await supabase.from("task_files").delete().eq("project_id",id);
       const {error:taskErr}=await supabase.from("tasks").delete().eq("project_id",id);
       if(taskErr){showToast("Failed to delete tasks: "+taskErr.message,false);return;}
       const {error:projErr}=await supabase.from("projects").delete().eq("id",id);
