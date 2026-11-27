@@ -353,7 +353,7 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
     tags:(initial.tags||[]).join(", "),files:initial.files||[],
     detailer:initial.detailer||initAssignee,checker:initial.checker||"",
     detailer_status:initDS,checker_status:initCS,
-    scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
+    scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",hours:initial.hours!==undefined&&initial.hours!==null?String(initial.hours):"",task_remark:initial.task_remark||"",
   });
   const [touched,setTouched]=useState(new Set());
   const touch=k=>setTouched(p=>{const n=new Set(p);n.add(k);return n;});
@@ -373,19 +373,22 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       detailer:initial.detailer||assignee,checker:initial.checker||"",
       detailer_status:initial.detailer_status||(initial.id?"Not Yet Started":""),checker_status:initial.checker_status||(initial.id?"Not Yet Started":""),
       scope:initial.scope||"",client_sub_date:initial.client_sub_date||"",
-      det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",
+      det_weight:initial.det_weight!==undefined&&initial.det_weight!==null?String(initial.det_weight):"",hours:initial.hours!==undefined&&initial.hours!==null?String(initial.hours):"",task_remark:initial.task_remark||"",
     });
   },[initial.id]);// eslint-disable-line react-hooks/exhaustive-deps
   // Track unsaved changes - button highlights only when dirty
   const isDirty=useMemo(()=>{
     if(!initial.id)return true;// new task always dirty
-    const keys=['project_id','title','client','status','priority','assignee','due_date','detailer','checker','detailer_status','checker_status','scope','client_sub_date'];
+    const keys=['project_id','title','client','status','priority','assignee','due_date','detailer','checker','detailer_status','checker_status','scope','client_sub_date','task_remark'];
     const tagsCur=f.tags;
     const tagsOrig=(initial.tags||[]).join(", ");
     if(tagsCur!==tagsOrig)return true;
     const dwCur=f.det_weight!=null?String(f.det_weight):"";
     const dwOrig=initial.det_weight!=null?String(initial.det_weight):"";
     if(dwCur!==dwOrig)return true;
+    const hrCur=f.hours!=null?String(f.hours):"";
+    const hrOrig=initial.hours!=null?String(initial.hours):"";
+    if(hrCur!==hrOrig)return true;
     return keys.some(k=>(f[k]||"")!==(initial[k]!=null?String(initial[k]):""));
   },[f,initial]);// eslint-disable-line react-hooks/exhaustive-deps
   function computeAutoStatus(ds,cs){
@@ -599,6 +602,13 @@ function TaskForm({initial={},projects,members,clients=[],users=[],onSave,onClos
       </div>
       <div className="rds-form-row" style={row}>
         <div style={{...col,maxWidth:200}}><FInput label="Det. Wt. (Tons)" value={f.det_weight} onChange={s("det_weight")} type="number" placeholder="e.g. 12.5"/></div>
+        <div style={{...col,maxWidth:180}}><FInput label="Hours" value={f.hours} onChange={s("hours")} type="number" placeholder="e.g. 8"/></div>
+      </div>
+      <div className="rds-form-row" style={row}>
+        <div style={{...col,flex:1}}>
+          <label style={{fontSize:12,fontWeight:700,color:C.accent,marginBottom:4,display:"block",textTransform:"uppercase",letterSpacing:".05em"}}>Task Remark</label>
+          <textarea value={f.task_remark||""} onChange={e=>s("task_remark")(e.target.value)} placeholder="Add any remarks or notes for this task…" rows={3} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 12px",color:C.t1,fontSize:13,resize:"vertical",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        </div>
       </div>
       {(initial.client_approval||initial.client_comment)&&(
         <div style={{background:C.teal+"0d",border:`1px solid ${C.teal}33`,borderRadius:10,padding:"14px 16px",marginBottom:12}}>
@@ -14738,7 +14748,7 @@ export default function App(){
         }
         else{pid=exists.id;}
       }
-      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",detailer_status:f.detailer_status||"Not Yet Started",checker_status:f.checker_status||"Not Yet Started",scope:f.scope||"",client_sub_date:f.client_sub_date||null,det_weight:f.det_weight!==''&&f.det_weight!==null&&f.det_weight!==undefined?parseFloat(f.det_weight):null};
+      const payload={project_id:pid,title:f.title,client:f.client,status:f.status,priority:f.priority,assignee:f.assignee||"",due_date:f.due_date||null,tags:f.tags,files:f.files,detailer:f.detailer||"",checker:f.checker||"",detailer_status:f.detailer_status||"Not Yet Started",checker_status:f.checker_status||"Not Yet Started",scope:f.scope||"",client_sub_date:f.client_sub_date||null,det_weight:f.det_weight!==''&&f.det_weight!==null&&f.det_weight!==undefined?parseFloat(f.det_weight):null,hours:f.hours!==''&&f.hours!==null&&f.hours!==undefined?parseFloat(f.hours):null,task_remark:f.task_remark||null};
       const proj=projects.find(p=>p.id===pid);
       const assigneeUser=users.find(u=>u.username===f.assignee||u.name===f.assignee);
       const checkerUser=f.checker?users.find(u=>u.name===f.checker.split("/")[0].trim()):null;
