@@ -13744,6 +13744,7 @@ export default function App(){
   const [weeklyRptDept,setWeeklyRptDept] = useState("All");
   const [weeklyDeptSec,setWeeklyDeptSec] = useState(null);
   const [dailyPopup,setDailyPopup] = useState(false);
+  const [briefTile,setBriefTile] = useState(null); // {label, list}
   const exportRef = useRef();
   const [editTask,set]      = useState(null);
   const [editProject,sep]   = useState(null);
@@ -16418,47 +16419,47 @@ export default function App(){
         if(isAdmin){
           accentColor="#8b5cf6";roleBadge="👑 Admin";roleDesc="Full team overview";
           statRows=[
-            {icon:"🔴",label:"Overdue (All Team)",val:allOv.length,color:"#ef4444"},
-            {icon:"📋",label:"Open Tasks (All)",val:openTasks.length,color:"#3b82f6"},
-            {icon:"✅",label:"Completed This Week",val:doneThisWeek.length,color:"#22c55e"},
-            {icon:"👥",label:"People with Overdue",val:peopleWithOv,color:"#f97316"},
-            {icon:"🏗",label:"Projects at Risk",val:projsAtRisk,color:"#ef4444"},
-            {icon:"📅",label:"Due Today (All)",val:allToday.length,color:"#f59e0b"},
+            {icon:"🔴",label:"Overdue (All Team)",val:allOv.length,color:"#ef4444",list:allOv},
+            {icon:"📋",label:"Open Tasks (All)",val:openTasks.length,color:"#3b82f6",list:openTasks},
+            {icon:"✅",label:"Completed This Week",val:doneThisWeek.length,color:"#22c55e",list:doneThisWeek},
+            {icon:"👥",label:"People with Overdue",val:peopleWithOv,color:"#f97316",list:allOv},
+            {icon:"🏗",label:"Projects at Risk",val:projsAtRisk,color:"#ef4444",list:allOv},
+            {icon:"📅",label:"Due Today (All)",val:allToday.length,color:"#f59e0b",list:allToday},
           ];
           if(topOv.length)extraNote=<div style={{background:"#ef444412",border:"1px solid #ef444430",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#ef4444"}}>⚠ Highest Overdue:</span> {topOv.map(([n,c])=>`${n} (${c})`).join(", ")}</div>;
           ctaPrimary={label:"📊 Analytics",view:"analytics"};
         }else if(isManager){
           accentColor="#06b6d4";roleBadge="🗂 Manager";roleDesc="Project & team snapshot";
           statRows=[
-            {icon:"⚠️",label:"Overdue (All)",val:allOv.length,color:"#ef4444"},
-            {icon:"📅",label:"Due Today (All)",val:allToday.length,color:"#f97316"},
-            {icon:"📆",label:"Due This Week",val:allWeek.length,color:"#f59e0b"},
-            {icon:"👤",label:"Unassigned Tasks",val:unassigned.length,color:"#64748b"},
-            {icon:"✅",label:"Done This Week",val:doneThisWeek.length,color:"#22c55e"},
-            {icon:"🏗",label:"Projects at Risk",val:projsAtRisk,color:"#f97316"},
+            {icon:"⚠️",label:"Overdue (All)",val:allOv.length,color:"#ef4444",list:allOv},
+            {icon:"📅",label:"Due Today (All)",val:allToday.length,color:"#f97316",list:allToday},
+            {icon:"📆",label:"Due This Week",val:allWeek.length,color:"#f59e0b",list:allWeek},
+            {icon:"👤",label:"Unassigned Tasks",val:unassigned.length,color:"#64748b",list:unassigned},
+            {icon:"✅",label:"Done This Week",val:doneThisWeek.length,color:"#22c55e",list:doneThisWeek},
+            {icon:"🏗",label:"Projects at Risk",val:projsAtRisk,color:"#f97316",list:allOv},
           ];
           if(unassigned.length)extraNote=<div style={{background:"#64748b18",border:"1px solid #64748b44",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#f59e0b"}}>📌 {unassigned.length} task{unassigned.length!==1?"s":""} have no assignee</span> — assign them to avoid delays.</div>;
           ctaPrimary={label:"📋 All Tasks",view:"list"};
         }else if(isTeamLeader){
           accentColor="#14b8a6";roleBadge="🏆 Team Leader";roleDesc="Your workload today";
           statRows=[
-            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316"},
-            {icon:"📆",label:"My Due This Week",val:myWeek.length,color:"#f59e0b"},
-            {icon:"✏️",label:"Detailing Queue",val:myDetailing.length,color:"#3b82f6"},
-            {icon:"✓",label:"Checking Queue",val:myChecking.length,color:"#8b5cf6"},
-            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444"},
-            {icon:"🔄",label:"In Progress",val:myInProg.length,color:"#22c55e"},
+            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316",list:myToday},
+            {icon:"📆",label:"My Due This Week",val:myWeek.length,color:"#f59e0b",list:myWeek},
+            {icon:"✏️",label:"Detailing Queue",val:myDetailing.length,color:"#3b82f6",list:myDetailing},
+            {icon:"✓",label:"Checking Queue",val:myChecking.length,color:"#8b5cf6",list:myChecking},
+            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444",list:myOv},
+            {icon:"🔄",label:"In Progress",val:myInProg.length,color:"#22c55e",list:myInProg},
           ];
           if(myChecking.length)extraNote=<div style={{background:"#8b5cf618",border:"1px solid #8b5cf644",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#8b5cf6"}}>✓ {myChecking.length} task{myChecking.length!==1?"s":""} waiting for your check</span></div>;
         }else if(isFinance){
           accentColor="#ec4899";roleBadge="💼 HR & Finance";roleDesc="Your tasks & team snapshot";
           statRows=[
-            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316"},
-            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444"},
-            {icon:"📋",label:"My Open Tasks",val:myOpen.length,color:"#3b82f6"},
-            {icon:"👥",label:"Total Team",val:users.length,color:"#8b5cf6"},
-            {icon:"🏗",label:"Active Projects",val:projects.filter(p=>p.status!=="Completed").length,color:"#14b8a6"},
-            {icon:"✅",label:"Done This Week",val:doneThisWeek.length,color:"#22c55e"},
+            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316",list:myToday},
+            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444",list:myOv},
+            {icon:"📋",label:"My Open Tasks",val:myOpen.length,color:"#3b82f6",list:myOpen},
+            {icon:"👥",label:"Total Team",val:users.length,color:"#8b5cf6",list:[]},
+            {icon:"🏗",label:"Active Projects",val:projects.filter(p=>p.status!=="Completed").length,color:"#14b8a6",list:[]},
+            {icon:"✅",label:"Done This Week",val:doneThisWeek.length,color:"#22c55e",list:doneThisWeek},
           ];
         }else{
           // Rebar / Tekla / Precast / any dept employee
@@ -16467,22 +16468,23 @@ export default function App(){
           roleBadge=`${deptLabel==="Rebar"?"🔩":deptLabel==="Tekla"?"🖥":deptLabel==="Precast"?"🏗":"👷"} ${deptLabel}`;
           roleDesc="Your personal work brief";
           statRows=[
-            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316"},
-            {icon:"📆",label:"My Due This Week",val:myWeek.length,color:"#f59e0b"},
-            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444"},
-            {icon:"🔄",label:"In Progress",val:myInProg.length,color:"#3b82f6"},
-            {icon:"✏️",label:"Detailing",val:myDetailing.length,color:"#14b8a6"},
-            {icon:"🕐",label:"Not Started",val:myNS.length,color:"#64748b"},
+            {icon:"📅",label:"My Due Today",val:myToday.length,color:"#f97316",list:myToday},
+            {icon:"📆",label:"My Due This Week",val:myWeek.length,color:"#f59e0b",list:myWeek},
+            {icon:"⚠️",label:"My Overdue",val:myOv.length,color:"#ef4444",list:myOv},
+            {icon:"🔄",label:"In Progress",val:myInProg.length,color:"#3b82f6",list:myInProg},
+            {icon:"✏️",label:"Detailing",val:myDetailing.length,color:"#14b8a6",list:myDetailing},
+            {icon:"🕐",label:"Not Started",val:myNS.length,color:"#64748b",list:myNS},
           ];
           if(myOv.length>0)extraNote=<div style={{background:"#ef444412",border:"1px solid #ef444430",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#ef4444"}}>⚠ {myOv.length} of your task{myOv.length!==1?"s are":" is"} overdue</span> — please update or submit.</div>;
         }
-        const dismiss=(view)=>{setDailyPopup(false);sv(view);};
+        const dismiss=(view)=>{setDailyPopup(false);setBriefTile(null);sv(view);};
+        const projName=pid=>{const p=projects.find(x=>x.id===pid);return p?p.name:"—";};
         return(
           <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.70)",backdropFilter:"blur(8px)"}}
-            onClick={()=>dismiss(ctaPrimary.view)}>
+            onClick={()=>{if(briefTile){setBriefTile(null);}else{dismiss(ctaPrimary.view);}}}>
             <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${accentColor}44`,borderRadius:20,padding:"24px 26px",maxWidth:460,width:"calc(100% - 32px)",boxShadow:`0 24px 60px #000000bb, 0 0 0 1px ${accentColor}22`,position:"relative",animation:"rds-popup-in .32s cubic-bezier(.34,1.56,.64,1)"}}>
               <style>{`@keyframes rds-popup-in{from{opacity:0;transform:scale(.88) translateY(24px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-              <button onClick={()=>dismiss("dashboard")} style={{position:"absolute",top:12,right:12,width:28,height:28,borderRadius:7,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
+              <button onClick={()=>{if(briefTile)setBriefTile(null);else dismiss("dashboard");}} style={{position:"absolute",top:12,right:12,width:28,height:28,borderRadius:7,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
               {/* Role badge + greeting */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                 <span style={{fontSize:10,fontWeight:800,background:accentColor+"20",color:accentColor,border:`1px solid ${accentColor}44`,borderRadius:20,padding:"2px 10px",letterSpacing:".06em"}}>{roleBadge}</span>
@@ -16494,15 +16496,47 @@ export default function App(){
               </div>
               {extraNote}
               {/* Stats grid */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:18}}>
-                {statRows.map(r=>(
-                  <div key={r.label} style={{background:r.color+"12",border:`1px solid ${r.color}30`,borderRadius:10,padding:"10px 10px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,textAlign:"center"}}>
-                    <span style={{fontSize:17}}>{r.icon}</span>
-                    <div style={{fontSize:20,fontWeight:900,color:r.color,lineHeight:1}}>{r.val}</div>
-                    <div style={{fontSize:9,color:C.t3,fontWeight:600,lineHeight:1.3}}>{r.label}</div>
-                  </div>
-                ))}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:briefTile?10:18}}>
+                {statRows.map(r=>{
+                  const hasItems=r.list&&r.list.length>0;
+                  const isActive=briefTile&&briefTile.label===r.label;
+                  return(
+                    <div key={r.label}
+                      onClick={hasItems?e=>{e.stopPropagation();setBriefTile(isActive?null:r);}:undefined}
+                      style={{background:isActive?r.color+"25":r.color+"12",border:`1px solid ${isActive?r.color+"88":r.color+"30"}`,borderRadius:10,padding:"10px 10px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,textAlign:"center",cursor:hasItems?"pointer":"default",transition:"all .15s",transform:isActive?"scale(1.04)":"scale(1)",position:"relative"}}>
+                      {hasItems&&!isActive&&<div style={{position:"absolute",top:5,right:6,fontSize:8,color:r.color,opacity:.7,fontWeight:800}}>▼</div>}
+                      {isActive&&<div style={{position:"absolute",top:5,right:6,fontSize:8,color:r.color,fontWeight:800}}>▲</div>}
+                      <span style={{fontSize:17}}>{r.icon}</span>
+                      <div style={{fontSize:20,fontWeight:900,color:r.color,lineHeight:1}}>{r.val}</div>
+                      <div style={{fontSize:9,color:isActive?r.color:C.t3,fontWeight:600,lineHeight:1.3}}>{r.label}</div>
+                    </div>
+                  );
+                })}
               </div>
+              {/* Expanded tile task list */}
+              {briefTile&&briefTile.list&&briefTile.list.length>0&&(
+                <div style={{background:C.surface,border:`1px solid ${briefTile.color}44`,borderRadius:12,marginBottom:14,overflow:"hidden"}}>
+                  <div style={{padding:"8px 12px",background:briefTile.color+"18",borderBottom:`1px solid ${briefTile.color}33`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,fontWeight:800,color:briefTile.color}}>{briefTile.icon} {briefTile.label} — {briefTile.list.length} task{briefTile.list.length!==1?"s":""}</span>
+                    <button onClick={()=>setBriefTile(null)} style={{background:"none",border:"none",color:C.t3,fontSize:14,cursor:"pointer",lineHeight:1,padding:"0 2px"}}>✕</button>
+                  </div>
+                  <div style={{maxHeight:180,overflowY:"auto"}}>
+                    {briefTile.list.map((t,i)=>(
+                      <div key={t.id||i} onClick={()=>{setBriefTile(null);set(t);stm(true);}} style={{padding:"8px 12px",borderBottom:i<briefTile.list.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",transition:"background .1s",display:"flex",flexDirection:"column",gap:2}}
+                        onMouseEnter={e=>e.currentTarget.style.background=briefTile.color+"10"}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <div style={{fontSize:12,color:C.t1,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title||"Untitled"}</div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontSize:9,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{projName(t.project_id)}</span>
+                          {t.assignee&&<span style={{fontSize:9,color:C.t3}}>· {t.assignee}</span>}
+                          {t.due_date&&<span style={{fontSize:9,color:t.due_date<today&&!isDone(t.status)?"#ef4444":C.t3}}>· {t.due_date}</span>}
+                          <span style={{fontSize:8,fontWeight:700,background:(STATUS_CLR[t.status]||C.t3)+"22",color:STATUS_CLR[t.status]||C.t3,borderRadius:4,padding:"1px 5px"}}>{t.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{display:"flex",gap:9}}>
                 <button onClick={()=>dismiss(ctaPrimary.view)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:accentColor,border:"none",color:"#fff"}}>{ctaPrimary.label}</button>
                 <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>{ctaSecondary.label}</button>
