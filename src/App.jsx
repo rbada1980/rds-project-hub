@@ -16079,7 +16079,7 @@ export default function App(){
             )}
           </>
         )}
-        {view=="clientprojects"&&canEdit&&(()=>{
+        {view=="clientprojects"&&(()=>{
           const cpProjects=accessibleProjects.filter(p=>(p.client||"Unassigned")===activeClient);
           const cpTasks=tasks.filter(t=>cpProjects.some(p=>p.id===t.project_id));
           const cpAssignees=[...new Set(cpTasks.map(t=>t.assignee).filter(Boolean))].sort();
@@ -16551,9 +16551,9 @@ export default function App(){
               </div>
               <div style={{display:"flex",gap:9}}>
                 <button onClick={()=>dismiss(ctaPrimary.view)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:accentColor,border:"none",color:"#fff"}}>{ctaPrimary.label}</button>
-                <button onClick={()=>dismiss("dashboard")} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>{ctaSecondary.label}</button>
+                <button onClick={()=>dismiss(null,false)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:C.surface,border:`1.5px solid ${C.border}`,color:C.t2}}>{ctaSecondary.label}</button>
               </div>
-              <div style={{marginTop:10,fontSize:9,color:C.t3,textAlign:"center",opacity:.7}}>Tap outside to go to {ctaPrimary.label}</div>
+              <div style={{marginTop:10,fontSize:9,color:C.t3,textAlign:"center",opacity:.7}}>Tap outside to close</div>
             </div>
             {/* Tile detail popup */}
             {briefTile&&briefTile.list&&briefTile.list.length>0&&(
