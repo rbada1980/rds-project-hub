@@ -4190,8 +4190,8 @@ function StatTaskModal({title,tasks,projects,today,onEdit,onClose,canEdit=true,a
                 const ovDisp=dispDate&&dispDate<today&&!isDone(dispStatus);
                 const rows=[
                   <tr key={t.id} style={{borderBottom:taskRevs.length?`1px solid ${C.border}33`:`1px solid ${C.border}`,background:hi?"#f9731610":"transparent"}}>
-                    <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/><span style={{color:C.t1,fontSize:13,fontWeight:600}}>{t.title}</span></div></td>
-                    <td style={{padding:"10px 14px"}}><span style={{color:C.t2,fontSize:12}}>{pj?.name||"-"}</span></td>
+                    <td style={{padding:"10px 14px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:18,borderRadius:2,background:pj?.color||C.accent,flexShrink:0}}/><a href={pj?stateToUrl('list',pj.id,null,projects):"/tasks"} style={{color:C.t1,fontSize:13,fontWeight:600,textDecoration:"none"}}>{t.title}</a></div></td>
+                    <td style={{padding:"10px 14px"}}><a href={pj?stateToUrl('list',pj.id,null,projects):"/tasks"} style={{color:C.t2,fontSize:12,textDecoration:"none"}}>{pj?.name||"-"}</a></td>
                     <td style={{padding:"10px 14px"}}><span style={{color:C.teal,fontSize:12}}>{pj?.client||"-"}</span></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={getStatusColor(dispStatus)}>{dispStatus}</Bdg></td>
                     <td style={{padding:"10px 14px"}}><Bdg color={PRI_CLR[t.priority]||C.t3}>{t.priority||"-"}</Bdg></td>
