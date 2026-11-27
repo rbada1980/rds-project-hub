@@ -96,12 +96,15 @@ function IBtn({icon,onClick,title,color=C.t2}){
 function Spinner(){
   return <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:40}}><div style={{width:32,height:32,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
 }
-function Stat({label,value,sub,color=C.accent,onClick}){
+function Stat({label,value,sub,color=C.accent,onClick,year}){
   const [hov,sh]=useState(false);
   return(
     <div onClick={onClick} onMouseEnter={()=>sh(true)} onMouseLeave={()=>sh(false)}
       className="rds-stat-card" style={{background:C.card,border:`1px solid ${hov&&onClick?color:C.border}`,borderRadius:12,padding:"18px 22px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"all .15s",boxShadow:hov&&onClick?`0 4px 20px ${color}33`:"none"}}>
-      <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em"}}>{label}</p>
+      <p style={{margin:0,color:C.t3,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.07em",display:"flex",alignItems:"center",gap:5}}>
+        {label}
+        {year&&year!=="All"&&<span style={{fontSize:9,fontWeight:700,color:color,background:color+"22",padding:"1px 5px",borderRadius:4,textTransform:"none",letterSpacing:0}}>{year}</span>}
+      </p>
       <p style={{margin:"8px 0 4px",color:C.t1,fontSize:32,fontWeight:800}}>{value}</p>
       {sub&&<p style={{margin:0,color:C.t2,fontSize:12}}>{sub}</p>}
       {onClick&&<p style={{margin:"6px 0 0",color:color,fontSize:11,fontWeight:600}}>Click to view →</p>}
@@ -15776,12 +15779,12 @@ export default function App(){
             {hasDashFilter&&<p style={{margin:"8px 0 0",fontSize:12,color:C.accent}}>Showing {activeDashTasks.length} of {dashTasks.length} tasks</p>}
                         {/* ── Stat Cards ── */}
             <div className="rds-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:16,marginBottom:24}}>
-              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
-              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status))})}/>
-              <Stat label="In Progress" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length} sub="actively running" color={C.accent} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress")})}/>
-              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length} sub="pending start" color={C.t2} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";})})}/>
-              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
-              <Stat label="On Hold" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold").length} sub="on hold" color="#f59e0b" onClick={()=>ssm({title:"On Hold Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold")})}/>
+              <Stat label="Total Tasks" value={activeDashTasks.length} sub={`across ${accessibleProjects.length} projects`} color={C.blue} year={dashYear} onClick={()=>ssm({title:"All Tasks",tasks:activeDashTasks})}/>
+              <Stat label="Completed" value={activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length} sub={activeDashTasks.length?`${Math.round(activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status)).length/activeDashTasks.length*100)}% done`:"0%"} color={C.green} year={dashYear} onClick={()=>ssm({title:"Completed Tasks",tasks:activeDashTasks.filter(t=>isDone(dashEffStatus.get(t.id)||t.status))})}/>
+              <Stat label="In Progress" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress").length} sub="actively running" color={C.accent} year={dashYear} onClick={()=>ssm({title:"In Progress Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="In Progress")})}/>
+              <Stat label="Not Yet Started" value={activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";}).length} sub="pending start" color={C.t2} year={dashYear} onClick={()=>ssm({title:"Not Yet Started Tasks",tasks:activeDashTasks.filter(t=>{const s=dashEffStatus.get(t.id)||t.status;return s==="Not Yet Started"||s==="To Be Started";})})}/>
+              <Stat label="Overdue" value={overdueTasks.length} sub="need attention" color={C.red} year={dashYear} onClick={()=>ssm({title:"Overdue Tasks",tasks:overdueTasks})}/>
+              <Stat label="On Hold" value={activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold").length} sub="on hold" color="#f59e0b" year={dashYear} onClick={()=>ssm({title:"On Hold Tasks",tasks:activeDashTasks.filter(t=>(dashEffStatus.get(t.id)||t.status)==="On Hold")})}/>
             </div>
             {/* ── 1. Projects Overview ── */}
             {(()=>{
