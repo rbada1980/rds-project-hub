@@ -16510,14 +16510,14 @@ export default function App(){
           ];
           if(myOv.length>0)extraNote=<div style={{background:"#ef444412",border:"1px solid #ef444430",borderRadius:9,padding:"9px 12px",marginBottom:16,fontSize:11,color:C.t2}}><span style={{fontWeight:800,color:"#ef4444"}}>⚠ {myOv.length} of your task{myOv.length!==1?"s are":" is"} overdue</span> — please update or submit.</div>;
         }
-        const dismiss=(view)=>{setDailyPopup(false);setBriefTile(null);sv(view);};
+        const dismiss=(targetView,navigate=true)=>{setDailyPopup(false);setBriefTile(null);if(navigate)sv(targetView);};
         const projName=pid=>{const p=projects.find(x=>x.id===pid);return p?p.name:"—";};
         return(
           <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.70)",backdropFilter:"blur(8px)"}}
-            onClick={()=>{if(briefTile){setBriefTile(null);}else{dismiss(ctaPrimary.view);}}}>
+            onClick={()=>{if(briefTile){setBriefTile(null);}else{dismiss(null,false);}}}>
             <div onClick={e=>e.stopPropagation()} style={{background:C.card,border:`1.5px solid ${accentColor}44`,borderRadius:20,padding:"24px 26px",maxWidth:460,width:"calc(100% - 32px)",boxShadow:`0 24px 60px #000000bb, 0 0 0 1px ${accentColor}22`,position:"relative",animation:"rds-popup-in .32s cubic-bezier(.34,1.56,.64,1)"}}>
               <style>{`@keyframes rds-popup-in{from{opacity:0;transform:scale(.88) translateY(24px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-              <button onClick={()=>{if(briefTile)setBriefTile(null);else dismiss("dashboard");}} style={{position:"absolute",top:12,right:12,width:28,height:28,borderRadius:7,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
+              <button onClick={()=>{if(briefTile)setBriefTile(null);else dismiss(null,false);}} style={{position:"absolute",top:12,right:12,width:28,height:28,borderRadius:7,background:C.surface,border:`1px solid ${C.border}`,color:C.t2,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",lineHeight:1}}>✕</button>
               {/* Role badge + greeting */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                 <span style={{fontSize:10,fontWeight:800,background:accentColor+"20",color:accentColor,border:`1px solid ${accentColor}44`,borderRadius:20,padding:"2px 10px",letterSpacing:".06em"}}>{roleBadge}</span>
