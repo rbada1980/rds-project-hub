@@ -6049,9 +6049,10 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
       </div>
       {/* Filter download: By Client / By Project */}
       {(()=>{
-        // Use ALL tasks (not dept-filtered) so By Client/Project captures every staff member
-        const clients2=[...new Set(tasks.map(t=>t.client||projects.find(p=>p.id===t.project_id)?.client||"").filter(Boolean))].sort();
-        const projs2=[...new Map(tasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+        // List uses dept-filtered tasks so only relevant clients/projects show per dept tab
+        // Download uses ALL tasks so every staff member's work is included
+        const clients2=[...new Set(dTasks.map(t=>t.client||projects.find(p=>p.id===t.project_id)?.client||"").filter(Boolean))].sort();
+        const projs2=[...new Map(dTasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
         return(
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Filter Download</div>
