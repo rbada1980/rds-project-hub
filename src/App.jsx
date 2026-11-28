@@ -5785,6 +5785,8 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   const [customStart,setCustomStart]=useState(initialCustomStart||today);
   const [customEnd,setCustomEnd]=useState(initialCustomEnd||today);
   const [activeDept,setActiveDept]=useState(department);
+  const [filterMode,setFilterMode]=useState(null); // null | "client" | "project"
+  const [filterSel,setFilterSel]=useState(null); // selected client name or project id
   const projectById=new Map(projects.map(p=>[p.id,p]));
   // Filter tasks by department (Rebar/Tekla/Precast/All)
   const deptNames=useMemo(()=>{
@@ -6044,44 +6046,64 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
       <div style={{marginBottom:16}}>
         <SecRow label={period==="last_week"?"📌 Last Week's Work":period==="custom"?"🗂 Custom Period Work":"📋 This Week's Work"} tl={activeTasks} clr={C.accent} start={curStart} end={curEnd}/>
       </div>
-      {/* By Client download buttons */}
+      {/* Filter download: By Client / By Project */}
       {(()=>{
         const clients2=[...new Set(dTasks.map(t=>t.client||projects.find(p=>p.id===t.project_id)?.client||"").filter(Boolean))].sort();
-        if(!clients2.length)return null;
+        const projs2=[...new Map(dTasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+        const list=filterMode==="client"?clients2:filterMode==="project"?projs2.map(p=>({id:p.id,label:p.name||p.id})):[];
+        const doDownloadSel=()=>{
+          if(!filterSel)return;
+          if(filterMode==="client"){
+            doExcel(dTasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`);
+          } else {
+            const p=projects.find(pr=>pr.id===filterSel);
+            doExcel(dTasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`);
+          }
+        };
         return(
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>⬇ Download by Client</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {clients2.map(cl=>(
-                <button key={cl} onClick={()=>doExcel(dTasks.filter(t=>t.client===cl||projects.find(p=>p.id===t.project_id)?.client===cl),`_${cl.replace(/[^a-zA-Z0-9]/g,"_")}`)} style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${C.border}`,background:C.surface,color:C.teal,transition:"all .15s",whiteSpace:"nowrap"}}>
-                  🏢 {cl}
+            <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Filter Download</div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              {[["client","🏢 By Client",C.teal],["project","📁 By Project",C.accent]].map(([k,lbl,clr])=>(
+                <button key={k} onClick={()=>{setFilterMode(filterMode===k?null:k);setFilterSel(null);}} style={{padding:"6px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",border:`2px solid ${filterMode===k?clr:C.border}`,background:filterMode===k?clr+"22":C.surface,color:filterMode===k?clr:C.t2,transition:"all .15s"}}>
+                  {lbl}
                 </button>
               ))}
             </div>
+            {filterMode&&(
+              <div style={{border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",marginBottom:10}}>
+                <div style={{maxHeight:180,overflowY:"auto",padding:6,display:"flex",flexDirection:"column",gap:3}}>
+                  {(filterMode==="client"?clients2.map(c=>({id:c,label:c})):projs2.map(p=>({id:p.id,label:p.name||p.id}))).map(item=>(
+                    <div key={item.id} onClick={()=>setFilterSel(filterSel===item.id?null:item.id)} style={{padding:"7px 12px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:filterSel===item.id?700:400,color:filterSel===item.id?"#fff":C.t1,background:filterSel===item.id?(filterMode==="client"?C.teal:C.accent):C.bg,border:`1px solid ${filterSel===item.id?"transparent":C.border}`,transition:"all .12s",userSelect:"none"}}>
+                      {filterMode==="client"?"🏢":"📁"} {item.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
-      {/* By Project download buttons */}
-      {(()=>{
-        const projs2=[...new Map(dTasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-        if(!projs2.length)return null;
-        return(
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>⬇ Download by Project</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {projs2.map(p=>(
-                <button key={p.id} onClick={()=>doExcel(dTasks.filter(t=>t.project_id===p.id),`_${(p.name||p.id).replace(/[^a-zA-Z0-9]/g,"_")}`)} style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${C.border}`,background:C.surface,color:C.accent,transition:"all .15s",whiteSpace:"nowrap"}}>
-                  📁 {p.name||p.id}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
         <button onClick={onClose} style={GBtn}>Close</button>
-        <button onClick={doExcel} style={{...SBtn,display:"flex",alignItems:"center",gap:7}}>
-          ⬇ Download Excel
+        {filterSel&&(()=>{
+          const doDownloadSel=()=>{
+            if(filterMode==="client"){
+              doExcel(dTasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`);
+            } else {
+              const p=projects.find(pr=>pr.id===filterSel);
+              doExcel(dTasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`);
+            }
+          };
+          const selLabel=filterMode==="client"?filterSel:(projects.find(p=>p.id===filterSel)?.name||filterSel);
+          return(
+            <button onClick={doDownloadSel} style={{...SBtn,background:"#059669",display:"flex",alignItems:"center",gap:7,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              ⬇ Download: {selLabel}
+            </button>
+          );
+        })()}
+        <button onClick={()=>doExcel()} style={{...SBtn,display:"flex",alignItems:"center",gap:7}}>
+          ⬇ Download All
         </button>
       </div>
     </Modal>
