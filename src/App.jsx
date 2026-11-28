@@ -5839,7 +5839,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   const revisions=srt(dTasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
   const fmtMonth=ds=>ds?new Date(ds+"T12:00:00Z").toLocaleDateString("en-GB",{month:"long",year:"numeric"}):"";
 
-  function doExcel(){
+  function doExcel(filteredBase=null,nameSuffix=""){
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
     const NC=14; // total columns
@@ -5929,8 +5929,14 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
 
     // Filter out On Hold from every section
     const noHold=arr=>arr.filter(t=>t.status!=="On Hold");
+    // When a filtered base is passed, recompute period arrays from it
+    const _dTasks=filteredBase||dTasks;
+    const _lastWk=filteredBase?srt(filteredBase.filter(t=>inR(t,prevStart,prevEnd))):lastWk;
+    const _thisWk=filteredBase?srt(filteredBase.filter(t=>inR(t,curStart,curEnd))):thisWk;
+    const _nextWk=filteredBase?srt(filteredBase.filter(t=>inR(t,nextStart,nextEnd))):nextWk;
+    const _inHand=filteredBase?srt(filteredBase.filter(t=>!isDone(t.status)&&t.status!=="On Hold"&&!inR(t,prevStart,nextEnd))):inHand;
     // Revision tasks = revision keywords AND falls within current+next week only
-    const revThis=srt(dTasks.filter(t=>{
+    const _revThis=srt(_dTasks.filter(t=>{
       const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();
       if(!tl.includes("revis")&&!nt.includes("revis")) return false;
       if(t.status==="On Hold") return false;
@@ -5958,15 +5964,15 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     const s3rng=`${fmtD2(nextStart)} to ${fmtD2(nextEnd)}`;
     const bodyRows=
       isMonthly
-        ?buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
+        ?buildSection(s2lbl,`(${s2rng})`,noHold(_thisWk),true)
       :period==="last_week"
-        ?buildSection("LAST WEEK'S WORK",`(${s2rng})`,noHold(thisWk),true,true,true)
+        ?buildSection("LAST WEEK'S WORK",`(${s2rng})`,noHold(_thisWk),true,true,true)
       :period==="custom"
-        ?buildSection("CUSTOM PERIOD WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(srt(tasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold"))),true,false)
-      :(buildSection(s2lbl,`(${s2rng})`,noHold(thisWk),true)
-        +buildSection(s3lbl,`(${s3rng})`,noHold(nextWk),false,true,true)
-        +buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(inHand),false,true,true)
-        +buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,revThis,false,true,true));
+        ?buildSection("CUSTOM PERIOD WORK",`(${fmtD2(curStart)} to ${fmtD2(curEnd)})`,noHold(srt(_dTasks.filter(t=>inR(t,curStart,curEnd)&&t.status!=="On Hold"))),true,false)
+      :(buildSection(s2lbl,`(${s2rng})`,noHold(_thisWk),true)
+        +buildSection(s3lbl,`(${s3rng})`,noHold(_nextWk),false,true,true)
+        +buildSection("IN-HAND WORK","(Ongoing - no specific deadline)",noHold(_inHand),false,true,true)
+        +buildSection("REVISION TASKS",`(${fmtD2(curStart)} to ${fmtD2(nextEnd)})`,_revThis,false,true,true));
 
     const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
@@ -5977,7 +5983,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
     const dSuffix=activeDept==="All"?"AllDepts":activeDept;
-    const fname=isMonthly?`RDS_${dSuffix}_Monthly_${curStart}_to_${curEnd}.xls`:period==="custom"?`RDS_${dSuffix}_Custom_${curStart}_to_${curEnd}.xls`:`RDS_${dSuffix}_Weekly_${curStart}_to_${curEnd}.xls`;
+    const fname=isMonthly?`RDS_${dSuffix}_Monthly_${curStart}_to_${curEnd}${nameSuffix}.xls`:period==="custom"?`RDS_${dSuffix}_Custom_${curStart}_to_${curEnd}${nameSuffix}.xls`:`RDS_${dSuffix}_Weekly_${curStart}_to_${curEnd}${nameSuffix}.xls`;
     a.href=url;a.download=fname;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -6038,6 +6044,40 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
       <div style={{marginBottom:16}}>
         <SecRow label={period==="last_week"?"📌 Last Week's Work":period==="custom"?"🗂 Custom Period Work":"📋 This Week's Work"} tl={activeTasks} clr={C.accent} start={curStart} end={curEnd}/>
       </div>
+      {/* By Client download buttons */}
+      {(()=>{
+        const clients2=[...new Set(dTasks.map(t=>t.client||projects.find(p=>p.id===t.project_id)?.client||"").filter(Boolean))].sort();
+        if(!clients2.length)return null;
+        return(
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>⬇ Download by Client</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {clients2.map(cl=>(
+                <button key={cl} onClick={()=>doExcel(dTasks.filter(t=>t.client===cl||projects.find(p=>p.id===t.project_id)?.client===cl),`_${cl.replace(/[^a-zA-Z0-9]/g,"_")}`)} style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${C.border}`,background:C.surface,color:C.teal,transition:"all .15s",whiteSpace:"nowrap"}}>
+                  🏢 {cl}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+      {/* By Project download buttons */}
+      {(()=>{
+        const projs2=[...new Map(dTasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+        if(!projs2.length)return null;
+        return(
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>⬇ Download by Project</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {projs2.map(p=>(
+                <button key={p.id} onClick={()=>doExcel(dTasks.filter(t=>t.project_id===p.id),`_${(p.name||p.id).replace(/[^a-zA-Z0-9]/g,"_")}`)} style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${C.border}`,background:C.surface,color:C.accent,transition:"all .15s",whiteSpace:"nowrap"}}>
+                  📁 {p.name||p.id}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
         <button onClick={onClose} style={GBtn}>Close</button>
         <button onClick={doExcel} style={{...SBtn,display:"flex",alignItems:"center",gap:7}}>

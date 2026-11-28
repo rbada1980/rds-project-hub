@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-27T09:17:35.377Z",
-  "ist_time": "2026-11-27 14:47:35 IST",
-  "duration_sec": 11.6,
-  "total_synced": 3501,
-  "total_pushed": 1130,
-  "total_pulled": 2371,
+  "timestamp": "2026-11-28T06:39:01.912Z",
+  "ist_time": "2026-11-28 12:09:01 IST",
+  "duration_sec": 10.1,
+  "total_synced": 3636,
+  "total_pushed": 1149,
+  "total_pulled": 2487,
   "total_failed": 5,
   "status": "partial",
   "tables": [
@@ -31,10 +31,10 @@
     },
     {
       "table": "tasks",
-      "synced": 982,
+      "synced": 1000,
       "failed": 0,
-      "total": 1086,
-      "pulled": 1086
+      "total": 1200,
+      "pulled": 1200
     },
     {
       "table": "task_files",
@@ -115,10 +115,10 @@
     },
     {
       "table": "settings",
-      "synced": 24,
+      "synced": 25,
       "failed": 0,
-      "total": 24,
-      "pulled": 24
+      "total": 25,
+      "pulled": 25
     },
     {
       "table": "attendance",
@@ -146,8 +146,8 @@
       "table": "task_revisions",
       "synced": 0,
       "failed": 0,
-      "total": 4,
-      "pulled": 4
+      "total": 5,
+      "pulled": 5
     }
   ]
 }
