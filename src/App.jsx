@@ -6049,18 +6049,9 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
       </div>
       {/* Filter download: By Client / By Project */}
       {(()=>{
-        const clients2=[...new Set(dTasks.map(t=>t.client||projects.find(p=>p.id===t.project_id)?.client||"").filter(Boolean))].sort();
-        const projs2=[...new Map(dTasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-        const list=filterMode==="client"?clients2:filterMode==="project"?projs2.map(p=>({id:p.id,label:p.name||p.id})):[];
-        const doDownloadSel=()=>{
-          if(!filterSel)return;
-          if(filterMode==="client"){
-            doExcel(dTasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`);
-          } else {
-            const p=projects.find(pr=>pr.id===filterSel);
-            doExcel(dTasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`);
-          }
-        };
+        // Use ALL tasks (not dept-filtered) so By Client/Project captures every staff member
+        const clients2=[...new Set(tasks.map(t=>t.client||projects.find(p=>p.id===t.project_id)?.client||"").filter(Boolean))].sort();
+        const projs2=[...new Map(tasks.map(t=>{const p=projects.find(pr=>pr.id===t.project_id);return p?[p.id,p]:null;}).filter(Boolean)).values()].sort((a,b)=>(a.name||"").localeCompare(b.name||""));
         return(
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Filter Download</div>
@@ -6091,10 +6082,10 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
           const selLabel=filterMode==="client"?filterSel:(projects.find(p=>p.id===filterSel)?.name||filterSel);
           const doDownloadSel=()=>{
             if(filterMode==="client"){
-              doExcel(dTasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`,`Client: ${filterSel}`);
+              doExcel(tasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`,`Client: ${filterSel}`);
             } else {
               const p=projects.find(pr=>pr.id===filterSel);
-              doExcel(dTasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`,`Project: ${p?.name||filterSel}`);
+              doExcel(tasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`,`Project: ${p?.name||filterSel}`);
             }
           };
           return(
