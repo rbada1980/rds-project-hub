@@ -5841,7 +5841,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
   const revisions=srt(dTasks.filter(t=>{const tl=(t.title||"").toLowerCase(),nt=(t.notes||"").toLowerCase();return tl.includes("revis")||nt.includes("revis");}));
   const fmtMonth=ds=>ds?new Date(ds+"T12:00:00Z").toLocaleDateString("en-GB",{month:"long",year:"numeric"}):"";
 
-  function doExcel(filteredBase=null,nameSuffix=""){
+  function doExcel(filteredBase=null,nameSuffix="",filterLabel=""){
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     const dateStr=new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
     const NC=14; // total columns
@@ -5957,6 +5957,7 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
     const titleRows=
       TR(`<td colspan="${NC}" style="font-size:14pt;font-weight:bold;color:#1E3A5F;text-align:center;padding:10px">${rptTitle}</td>`)+
       TR(`<td colspan="${NC}" style="font-size:10pt;color:#555;text-align:center;padding:4px">Reference Period: ${periodLabel}&nbsp;|&nbsp;Generated: ${dateStr}&nbsp;|&nbsp;Confidential</td>`)+
+      (filterLabel?TR(`<td colspan="${NC}" style="font-size:12pt;font-weight:bold;color:#fff;background:#1E40AF;text-align:center;padding:7px">${esc(filterLabel)}</td>`):``)+
       TR(`<td colspan="${NC}" style="height:12px"></td>`);
     const s1lbl=isMonthly?`LAST MONTH'S WORK (${fmtMonth(prevStart)})`:"LAST WEEK'S WORK";
     const s1rng=isMonthly?`${fmtD2(prevStart)} to ${fmtD2(prevEnd)}`:`${fmtD2(prevStart)} to ${fmtD2(prevEnd)}`;
@@ -6087,15 +6088,15 @@ function WeeklyReportModal({tasks,projects,clients,users=[],today,onClose,initia
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
         <button onClick={onClose} style={GBtn}>Close</button>
         {filterSel&&(()=>{
+          const selLabel=filterMode==="client"?filterSel:(projects.find(p=>p.id===filterSel)?.name||filterSel);
           const doDownloadSel=()=>{
             if(filterMode==="client"){
-              doExcel(dTasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`);
+              doExcel(dTasks.filter(t=>t.client===filterSel||projects.find(p=>p.id===t.project_id)?.client===filterSel),`_${filterSel.replace(/[^a-zA-Z0-9]/g,"_")}`,`Client: ${filterSel}`);
             } else {
               const p=projects.find(pr=>pr.id===filterSel);
-              doExcel(dTasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`);
+              doExcel(dTasks.filter(t=>t.project_id===filterSel),`_${(p?.name||filterSel).replace(/[^a-zA-Z0-9]/g,"_")}`,`Project: ${p?.name||filterSel}`);
             }
           };
-          const selLabel=filterMode==="client"?filterSel:(projects.find(p=>p.id===filterSel)?.name||filterSel);
           return(
             <button onClick={doDownloadSel} style={{...SBtn,background:"#059669",display:"flex",alignItems:"center",gap:7,maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               ⬇ Download: {selLabel}
